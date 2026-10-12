@@ -17,12 +17,14 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "vectors": "node scripts/regenerate.mjs vectors",
-    "ci:verify": "pnpm lint && pnpm lint:budget && pnpm lint:yaml && pnpm format:check && pnpm test && pnpm typecheck",
+    "ci:verify": "pnpm lint && pnpm lint:budget && pnpm lint:yaml && pnpm format:check && pnpm test && pnpm build && pnpm typecheck",
     "check": "pnpm ci:verify",
     "check:gate-php": "composer --working-dir=gates/php check",
     "check:all": "pnpm check && pnpm check:gate-php",
     "conformance": "vitest run --project core libs/core/src/conformance.spec.ts && composer --working-dir=gates/php conformance",
-    "schema": "node scripts/regenerate.mjs schema"
+    "schema": "node scripts/regenerate.mjs schema",
+    "build": "nx run-many -t build",
+    "moat": "node dist/apps/cli/moat.cjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",
@@ -31,6 +33,7 @@
     "@nx/js": "23.2.1",
     "@types/libsodium-wrappers-sumo": "^0.8.2",
     "@types/node": "^24.0.0",
+    "esbuild": "^0.25.12",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
     "fast-check": "^4.3.0",

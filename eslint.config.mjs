@@ -30,6 +30,11 @@ export default [
               sourceTag: 'scope:core',
               onlyDependOnLibsWithTags: ['scope:core'],
             },
+            // The CLI is the trustworthy signing path (SEC-37): libs/core and nothing else.
+            {
+              sourceTag: 'scope:cli',
+              onlyDependOnLibsWithTags: ['scope:core'],
+            },
             {
               sourceTag: '*',
               onlyDependOnLibsWithTags: ['*'],
