@@ -2080,7 +2080,7 @@
       }
     },
     {
-      "name": "origin wildcard",
+      "name": "route origin wildcard",
       "config": {
         "version": 1,
         "upstreams": {
@@ -2123,7 +2123,7 @@
       }
     },
     {
-      "name": "origin \"null\"",
+      "name": "route origin \"null\"",
       "config": {
         "version": 1,
         "upstreams": {
@@ -2166,7 +2166,7 @@
       }
     },
     {
-      "name": "origin with a trailing slash",
+      "name": "route origin with a trailing slash",
       "config": {
         "version": 1,
         "upstreams": {
@@ -2209,7 +2209,7 @@
       }
     },
     {
-      "name": "origin with a path",
+      "name": "route origin with a path",
       "config": {
         "version": 1,
         "upstreams": {
@@ -2252,7 +2252,7 @@
       }
     },
     {
-      "name": "plain http origin other than localhost",
+      "name": "route plain http origin other than localhost",
       "config": {
         "version": 1,
         "upstreams": {
@@ -2295,7 +2295,7 @@
       }
     },
     {
-      "name": "http localhost with port 80",
+      "name": "route http localhost with port 80",
       "config": {
         "version": 1,
         "upstreams": {
@@ -2338,7 +2338,7 @@
       }
     },
     {
-      "name": "origin with upper-case host",
+      "name": "route origin with upper-case host",
       "config": {
         "version": 1,
         "upstreams": {
@@ -2381,7 +2381,7 @@
       }
     },
     {
-      "name": "17 origins",
+      "name": "route 17 origins",
       "config": {
         "version": 1,
         "upstreams": {

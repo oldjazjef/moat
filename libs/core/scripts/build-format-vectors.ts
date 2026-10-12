@@ -365,30 +365,30 @@ function configVectors(): Json {
         ]),
     ],
     ['route without origins key', (c) => delete route(c)['origins']],
-    ['origin wildcard', (c) => (route(c)['origins'] = ['*'])],
-    ['origin "null"', (c) => (route(c)['origins'] = ['null'])],
+    ['route origin wildcard', (c) => (route(c)['origins'] = ['*'])],
+    ['route origin "null"', (c) => (route(c)['origins'] = ['null'])],
     [
-      'origin with a trailing slash',
+      'route origin with a trailing slash',
       (c) => (route(c)['origins'] = ['https://www.example.ch/']),
     ],
     [
-      'origin with a path',
+      'route origin with a path',
       (c) => (route(c)['origins'] = ['https://www.example.ch/shop']),
     ],
     [
-      'plain http origin other than localhost',
+      'route plain http origin other than localhost',
       (c) => (route(c)['origins'] = ['http://www.example.ch']),
     ],
     [
-      'http localhost with port 80',
+      'route http localhost with port 80',
       (c) => (route(c)['origins'] = ['http://localhost:80']),
     ],
     [
-      'origin with upper-case host',
+      'route origin with upper-case host',
       (c) => (route(c)['origins'] = ['https://WWW.example.ch']),
     ],
     [
-      '17 origins',
+      'route 17 origins',
       (c) =>
         (route(c)['origins'] = Array.from(
           { length: 17 },

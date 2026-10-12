@@ -81,6 +81,33 @@ if (WRITE) {
 }
 
 describe('conformance vectors', () => {
+  it('case names are unique per list (PHPUnit uses them as data set keys)', () => {
+    const lists = (value: unknown): unknown[][] =>
+      Array.isArray(value)
+        ? [value, ...value.flatMap(lists)]
+        : typeof value === 'object' && value !== null
+          ? Object.values(value).flatMap(lists)
+          : [];
+    for (const file of [
+      'config/config.json',
+      'config/policy.json',
+      'http/path.json',
+      'http/content-type.json',
+      'http/cors.json',
+      'http/rate-limit.json',
+      '../http/gate.json',
+    ]) {
+      for (const list of lists(load<unknown>(file))) {
+        const names = list.flatMap((item) =>
+          typeof item === 'object' && item !== null && 'name' in item
+            ? [String(item.name)]
+            : [],
+        );
+        expect(new Set(names).size, file).toBe(names.length);
+      }
+    }
+  });
+
   it.each(Object.keys(built))(
     '%s matches scripts/build-vectors.ts (`pnpm vectors` rewrites it)',
     (file) => {
