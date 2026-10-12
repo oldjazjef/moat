@@ -15,6 +15,8 @@ import {
 } from 'class-validator';
 import {
   METHODS,
+  QUOTA_PERIODS,
+  type QuotaPeriod,
   type RouteInput,
   type UpstreamAuthInput,
   type UpstreamInput,
@@ -43,6 +45,17 @@ export class RateLimitDto {
   @IsOptional()
   @IsIn(['ip', 'route'])
   per?: 'ip' | 'route';
+}
+
+/** FR-31: requests per calendar day or month. */
+export class QuotaDto {
+  @IsInt()
+  @Min(1)
+  @Max(1_000_000)
+  requests!: number;
+
+  @IsIn(QUOTA_PERIODS)
+  period!: QuotaPeriod;
 }
 
 /**
@@ -82,6 +95,12 @@ export class RouteDto {
   @ValidateNested()
   @Type(() => RateLimitDto)
   rateLimit?: RateLimitDto;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => QuotaDto)
+  quota?: QuotaDto;
 }
 
 export const AUTH_TYPES = ['bearer', 'header', 'query'] as const;
@@ -188,6 +207,11 @@ function routeInput(dto: RouteDto): RouteInput {
               ? {}
               : { per: dto.rateLimit.per }),
           },
+        }),
+    ...(dto.quota === undefined
+      ? {}
+      : {
+          quota: { requests: dto.quota.requests, period: dto.quota.period },
         }),
   };
 }

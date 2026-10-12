@@ -1,5 +1,5 @@
 {
-  "description": "FR-30, SEC-26, SEC-45. `sequences`: requests at these unix times against these limits, starting with no counters → per request `{allowed, retryAfter}` (retryAfter 0 when allowed). A window opens with the first request and lasts windowSeconds; a refused request does not count; with several limits a request passes only if each has room, and then each counts it. `clients`: REMOTE_ADDR → the key a per-IP limit counts (IPv4 as is, IPv6 by /64 as `xxxx:xxxx:xxxx:xxxx::/64`, IPv4-mapped as IPv4), or null = not an address (the gate refuses the request).",
+  "description": "FR-30, FR-31, SEC-26, SEC-45. `sequences`: requests at these unix times against these limits, starting with no counters → per request `{allowed, retryAfter, quota}` (retryAfter 0 when allowed; quota true when a full quota is among the reasons, so the gate answers `quota_exceeded`). A rate-limit window opens with the first request and lasts windowSeconds; a quota (`period` day or month) counts the calendar day or month in UTC of the request and resets at its end; a refused request does not count; with several limits a request passes only if each has room, and then each counts it. `clients`: REMOTE_ADDR → the key a per-IP limit counts (IPv4 as is, IPv6 by /64 as `xxxx:xxxx:xxxx:xxxx::/64`, IPv4-mapped as IPv4), or null = not an address (the gate refuses the request).",
   "sequences": [
     {
       "name": "two per minute",
@@ -21,31 +21,38 @@
       "expect": [
         {
           "allowed": true,
-          "retryAfter": 0
+          "retryAfter": 0,
+          "quota": false
         },
         {
           "allowed": true,
-          "retryAfter": 0
+          "retryAfter": 0,
+          "quota": false
         },
         {
           "allowed": false,
-          "retryAfter": 58
+          "retryAfter": 58,
+          "quota": false
         },
         {
           "allowed": false,
-          "retryAfter": 1
+          "retryAfter": 1,
+          "quota": false
         },
         {
           "allowed": true,
-          "retryAfter": 0
+          "retryAfter": 0,
+          "quota": false
         },
         {
           "allowed": true,
-          "retryAfter": 0
+          "retryAfter": 0,
+          "quota": false
         },
         {
           "allowed": false,
-          "retryAfter": 58
+          "retryAfter": 58,
+          "quota": false
         }
       ]
     },
@@ -68,27 +75,33 @@
       "expect": [
         {
           "allowed": true,
-          "retryAfter": 0
+          "retryAfter": 0,
+          "quota": false
         },
         {
           "allowed": true,
-          "retryAfter": 0
+          "retryAfter": 0,
+          "quota": false
         },
         {
           "allowed": false,
-          "retryAfter": 60
+          "retryAfter": 60,
+          "quota": false
         },
         {
           "allowed": false,
-          "retryAfter": 60
+          "retryAfter": 60,
+          "quota": false
         },
         {
           "allowed": false,
-          "retryAfter": 1
+          "retryAfter": 1,
+          "quota": false
         },
         {
           "allowed": true,
-          "retryAfter": 0
+          "retryAfter": 0,
+          "quota": false
         }
       ]
     },
@@ -110,23 +123,28 @@
       "expect": [
         {
           "allowed": true,
-          "retryAfter": 0
+          "retryAfter": 0,
+          "quota": false
         },
         {
           "allowed": false,
-          "retryAfter": 1
+          "retryAfter": 1,
+          "quota": false
         },
         {
           "allowed": true,
-          "retryAfter": 0
+          "retryAfter": 0,
+          "quota": false
         },
         {
           "allowed": false,
-          "retryAfter": 1
+          "retryAfter": 1,
+          "quota": false
         },
         {
           "allowed": true,
-          "retryAfter": 0
+          "retryAfter": 0,
+          "quota": false
         }
       ]
     },
@@ -154,31 +172,183 @@
       "expect": [
         {
           "allowed": true,
-          "retryAfter": 0
+          "retryAfter": 0,
+          "quota": false
         },
         {
           "allowed": true,
-          "retryAfter": 0
+          "retryAfter": 0,
+          "quota": false
         },
         {
           "allowed": false,
-          "retryAfter": 58
+          "retryAfter": 58,
+          "quota": false
         },
         {
           "allowed": true,
-          "retryAfter": 0
+          "retryAfter": 0,
+          "quota": false
         },
         {
           "allowed": false,
-          "retryAfter": 3539
+          "retryAfter": 3539,
+          "quota": false
         },
         {
           "allowed": false,
-          "retryAfter": 3480
+          "retryAfter": 3480,
+          "quota": false
         },
         {
           "allowed": true,
-          "retryAfter": 0
+          "retryAfter": 0,
+          "quota": false
+        }
+      ]
+    },
+    {
+      "name": "quota per day (FR-31): the calendar day in UTC, not 24 hours from the first request",
+      "limits": [
+        {
+          "requests": 2,
+          "period": "day"
+        }
+      ],
+      "times": [
+        1791846000,
+        1791847800,
+        1791849599,
+        1791849600,
+        1791892800
+      ],
+      "expect": [
+        {
+          "allowed": true,
+          "retryAfter": 0,
+          "quota": false
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0,
+          "quota": false
+        },
+        {
+          "allowed": false,
+          "retryAfter": 1,
+          "quota": true
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0,
+          "quota": false
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0,
+          "quota": false
+        }
+      ]
+    },
+    {
+      "name": "quota per month: resets on the 1st (UTC), across the year end and a leap day",
+      "limits": [
+        {
+          "requests": 1,
+          "period": "month"
+        }
+      ],
+      "times": [
+        1828828800,
+        1830297599,
+        1830297600,
+        1835438400,
+        1835442000,
+        1835481600
+      ],
+      "expect": [
+        {
+          "allowed": true,
+          "retryAfter": 0,
+          "quota": false
+        },
+        {
+          "allowed": false,
+          "retryAfter": 1,
+          "quota": true
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0,
+          "quota": false
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0,
+          "quota": false
+        },
+        {
+          "allowed": false,
+          "retryAfter": 39600,
+          "quota": true
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0,
+          "quota": false
+        }
+      ]
+    },
+    {
+      "name": "quota and rate limit together: refused by the quota answers quota",
+      "limits": [
+        {
+          "requests": 2,
+          "windowSeconds": 60
+        },
+        {
+          "requests": 3,
+          "period": "day"
+        }
+      ],
+      "times": [
+        1791763200,
+        1791763201,
+        1791763202,
+        1791763260,
+        1791763261,
+        1791763320
+      ],
+      "expect": [
+        {
+          "allowed": true,
+          "retryAfter": 0,
+          "quota": false
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0,
+          "quota": false
+        },
+        {
+          "allowed": false,
+          "retryAfter": 58,
+          "quota": false
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0,
+          "quota": false
+        },
+        {
+          "allowed": false,
+          "retryAfter": 86339,
+          "quota": true
+        },
+        {
+          "allowed": false,
+          "retryAfter": 86280,
+          "quota": true
         }
       ]
     }

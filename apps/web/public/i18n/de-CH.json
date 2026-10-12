@@ -218,7 +218,7 @@
       "request": "Anfrage",
       "target": "Ziel",
       "origins": "Erlaubte Websites",
-      "rateLimit": "Rate-Limit",
+      "rateLimit": "Limits",
       "upstream": "Upstream",
       "origin": "Adresse",
       "auth": "Anmeldung",
@@ -230,6 +230,10 @@
       "ip": "{{requests}} pro {{window}} {{unit}} je Besucher",
       "route": "{{requests}} pro {{window}} {{unit}} insgesamt",
       "policyOnly": "Nur die Grenzen der lokalen Policy"
+    },
+    "quota": {
+      "day": "{{requests}} pro Tag insgesamt",
+      "month": "{{requests}} pro Monat insgesamt"
     },
     "maxBody": "max. {{value}} {{unit}} pro Anfrage",
     "duration": "{{value}} {{unit}}",
@@ -300,6 +304,13 @@
       "perIp": "je Besucher",
       "perRoute": "insgesamt",
       "windowHint": "Zeitfenster mit Einheit in ganzen Sekunden, z. B. 30s, 10m, 1h, höchstens 1d. Die Grenzen der lokalen Policy gelten immer zusätzlich.",
+      "quota": "Quote pro Tag oder Monat",
+      "period": "Zeitraum",
+      "periods": {
+        "day": "pro Tag",
+        "month": "pro Monat"
+      },
+      "quotaHint": "Zählt alle Anfragen an diese Route zusammen, egal von wem. Der Tag beginnt um Mitternacht UTC, der Monat am 1. Ist die Quote aufgebraucht, antwortet das Gate bis dahin mit 429 und quota_exceeded.",
       "refused": "Moat hat die Route nicht gespeichert: Die markierten Felder enthalten Werte, die das Gate ablehnen würde.",
       "save": "Speichern",
       "cancel": "Abbrechen",
@@ -437,7 +448,7 @@
           "recipe": "Für häufige Fälle gibt es Recipes, zum Beispiel die Newsletter-Anmeldung bei HubSpot.",
           "origins": "Ruft eine andere Website die Route im Browser auf, trage sie unter «Erlaubte Websites» ein (in moat.yaml: `origins`). Ohne Eintrag lehnen Browser fremde Websites ab.",
           "bundle": "Eine neue oder geänderte Route gilt auf dem Gate erst mit dem nächsten Bundle: `moat build <gate>`, hochladen und annehmen.",
-          "check": "Unter «Routen» siehst du jede Route so, wie das Gate sie prüft: Pfad, Ziel, erlaubte Websites, Rate-Limit und maximale Grösse."
+          "check": "Unter «Routen» siehst du jede Route so, wie das Gate sie prüft: Pfad, Ziel, erlaubte Websites, Limits und maximale Grösse."
         },
         "tips": {
           "exact": "Pfade gelten exakt: `/newsletter` passt nicht auf `/newsletter/abc`.",
@@ -446,12 +457,13 @@
       },
       "limits": {
         "title": "Limits",
-        "purpose": "Rate-Limits schützen deine API-Kontingente vor Skripten. Das Gate zählt selbst mit.",
-        "where": "Projekt › Routen › Rate-Limit",
+        "purpose": "Rate-Limits schützen deine API vor Skripten, Quoten begrenzen, wie viel eine Route pro Tag oder Monat insgesamt verbraucht. Das Gate zählt selbst mit.",
+        "where": "Projekt › Routen › Limits",
         "steps": {
           "route": "Gib einer Route ein Rate-Limit, zum Beispiel 5 Anfragen pro 10 Minuten je Besucher.",
-          "policy": "Die lokale Policy des Gates setzt Grenzen, die immer gelten, egal was ein Bundle sagt. `moat policy suggest` schlägt eine passende Policy vor.",
-          "answer": "Ist das Limit erreicht, antwortet das Gate mit 429 und sagt, wann es wieder geht."
+          "quota": "Gib einer Route mit «Quote pro Tag oder Monat» eine Obergrenze für alle Anfragen zusammen, zum Beispiel 1000 pro Tag. So kann niemand dein KI-Budget verbrennen, auch nicht mit vielen Adressen.",
+          "policy": "Die lokale Policy des Gates setzt Grenzen, die immer gelten, egal was ein Bundle sagt. Sie kann auch eine Quote für das ganze Gate setzen (`limits.quota`), die kein Bundle aufheben kann. `moat policy suggest` schlägt eine passende Policy vor.",
+          "answer": "Ist ein Limit erreicht, antwortet das Gate mit 429 und sagt, wann es wieder geht: `rate_limited` beim Rate-Limit, `quota_exceeded` bei der Quote."
         },
         "tips": {
           "proxy": "Läuft deine Website hinter einem Proxy wie Cloudflare, sieht das Gate nur dessen Adresse. Setze die Limits dann grosszügiger."

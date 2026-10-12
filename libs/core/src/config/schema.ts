@@ -4,6 +4,7 @@ import {
   compiledRouteSchema,
   isWebOrigin,
   LIMIT_SCOPES,
+  quotaSchema,
   MAX_LIMIT_REQUESTS,
   MAX_ORIGINS,
   MAX_WINDOW_SECONDS,
@@ -82,6 +83,8 @@ export const routeSchema = z.strictObject({
       per: z.enum(LIMIT_SCOPES).optional(),
     })
     .optional(),
+  /** FR-31, e.g. `{requests: 1000, period: day}`: per calendar day or month (UTC), for the whole route. */
+  quota: quotaSchema.optional(),
 });
 
 /** FR-01: dev, staging, production … A locked environment locks every gate in it. */

@@ -1,14 +1,16 @@
+import type { QuotaPeriod } from '../config/compiled';
+
 /**
- * FR-30, SEC-45: rate limits as every gate counts them (conformance/vectors/http/rate-limit.json).
- * A window opens with the first request and lasts `windowSeconds`; within it at most `requests`
- * pass. A refused request does not count. Several limits apply together: a request passes only
- * if every one has room, and only then is every counter raised.
+ * FR-30, FR-31, SEC-45: rate limits and quotas as every gate counts them
+ * (conformance/vectors/http/rate-limit.json). A rate-limit window opens with the first request and
+ * lasts `windowSeconds`; a quota's window is the calendar day or month (UTC) of the request. Within
+ * a window at most `requests` pass. A refused request does not count. Several limits apply
+ * together: a request passes only if every one has room, and only then is every counter raised.
  */
 
-export interface Limit {
-  requests: number;
-  windowSeconds: number;
-}
+export type Limit =
+  | { requests: number; windowSeconds: number }
+  | { requests: number; period: QuotaPeriod };
 
 /** One counter: the window ends at `resetAt` (unix seconds), `count` requests so far. */
 export interface Window {
@@ -16,8 +18,20 @@ export interface Window {
   count: number;
 }
 
+/**
+ * Refused: `retryAfter` seconds until every full window has ended; `quota` when one of them is a
+ * quota's (the gate answers `quota_exceeded` instead of `rate_limited`).
+ */
 export type LimitResult =
-  { allowed: true; windows: Window[] } | { allowed: false; retryAfter: number };
+  | { allowed: true; windows: Window[] }
+  | { allowed: false; retryAfter: number; quota: boolean };
+
+/** The first second after the calendar day or month (UTC) that holds `now`. */
+export function periodEnd(period: QuotaPeriod, now: number): number {
+  if (period === 'day') return (Math.floor(now / 86_400) + 1) * 86_400;
+  const date = new Date(now * 1000);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1) / 1000;
+}
 
 /** Applies `limits[i]` to `windows[i]` (null = no counter yet) at `now` (unix seconds). */
 export function hitLimits(
@@ -27,19 +41,25 @@ export function hitLimits(
 ): LimitResult {
   const next: Window[] = [];
   let retryAfter = 0;
+  let quota = false;
   limits.forEach((limit, index) => {
     const window = windows[index] ?? null;
     if (window === null || now >= window.resetAt) {
-      next.push({ resetAt: now + limit.windowSeconds, count: 1 });
+      const resetAt =
+        'period' in limit
+          ? periodEnd(limit.period, now)
+          : now + limit.windowSeconds;
+      next.push({ resetAt, count: 1 });
     } else if (window.count < limit.requests) {
       next.push({ resetAt: window.resetAt, count: window.count + 1 });
     } else {
       retryAfter = Math.max(retryAfter, window.resetAt - now);
+      quota ||= 'period' in limit;
       next.push(window);
     }
   });
   return retryAfter > 0
-    ? { allowed: false, retryAfter }
+    ? { allowed: false, retryAfter, quota }
     : { allowed: true, windows: next };
 }
 

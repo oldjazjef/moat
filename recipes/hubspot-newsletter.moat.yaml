@@ -23,5 +23,9 @@ routes:
     rateLimit:
       requests: 5
       window: '10m'
+    # At most this many sign-ups a day in total, from whoever sends them (FR-31).
+    quota:
+      requests: 500
+      period: day
     # When the form runs on another site than the gate, list that site (FR-15):
     # origins: ['https://www.example.ch']

@@ -228,6 +228,33 @@ describe('route edits', () => {
     expect(loadMoatYaml(text).routes['newsletter']?.path).toBe('/signup');
   });
 
+  it('FR-31: adds, changes and removes a quota', () => {
+    const added = setRoute(
+      site,
+      'newsletter',
+      { ...newsletter, quota: { requests: 1000, period: 'day' } },
+      'update',
+    );
+    expect(loadMoatYaml(added).routes['newsletter']?.quota).toEqual({
+      requests: 1000,
+      period: 'day',
+    });
+    expect(added).toContain('# Sign-ups from the footer form.');
+    const changed = setRoute(
+      added,
+      'newsletter',
+      { ...newsletter, quota: { requests: 20000, period: 'month' } },
+      'update',
+    );
+    expect(loadMoatYaml(changed).routes['newsletter']?.quota).toEqual({
+      requests: 20000,
+      period: 'month',
+    });
+    expect(setRoute(changed, 'newsletter', newsletter, 'update')).not.toContain(
+      'quota',
+    );
+  });
+
   it('removes optional keys that are left empty', () => {
     const text = setRoute(
       site,
@@ -356,6 +383,10 @@ describe('route edits', () => {
     expect(attempt({ rateLimit: { requests: 0, window: '1m' } })).toEqual([
       'value_invalid',
       ['rateLimit.requests'],
+    ]);
+    expect(attempt({ quota: { requests: 0, period: 'day' } })).toEqual([
+      'value_invalid',
+      ['quota.requests'],
     ]);
   });
 

@@ -79,7 +79,7 @@ body come back. Errors are `{"error":"<code>"}`:
 | 405    | `method_not_allowed` (with `Allow`)                                        |
 | 413    | `body_too_large`                                                           |
 | 415    | `unsupported_media_type`                                                   |
-| 429    | `rate_limited` (with `Retry-After`)                                        |
+| 429    | `rate_limited`, `quota_exceeded` (with `Retry-After`)                      |
 | 500    | `secret_unavailable`, `internal_error`                                     |
 | 502    | `upstream_forbidden`, `upstream_unreachable`, `upstream_redirect`,         |
 |        | `upstream_content_type`, `upstream_too_large`, `upstream_reflected_secret` |
@@ -123,26 +123,34 @@ origins. A request without `Origin` passes, unless the browser marks it `Sec-Fet
 cross-site` or `same-site` (an `<img src>` or a link on another site). Origin binding stops
 browsers, not scripts (T-01, SEC-58); rate limits are what stops scripts.
 
-## Rate limits (FR-30, SEC-45)
+## Rate limits and quotas (FR-30, FR-31, SEC-45)
 
 Two layers, both counted on the gate:
 
 1. **The local policy's `limits`** apply to every request, whatever the bundle says (SEC-14,
    T-21): `perIp` per client address, `total` for all clients together. `moat policy suggest`
    proposes 30 requests per minute per IP and 600 in total.
-2. **A route's own `rateLimit`** (`{requests: 5, window: '10m'}`, per IP or `per: route`) can
-   only make it stricter.
+   Optionally `quota` (`{requests: 10000, period: month}`) caps all requests of the gate per
+   calendar day or month (T-07): a bundle cannot lift or remove it.
+2. **A route's own `rateLimit`** (`{requests: 5, window: '10m'}`, per IP or `per: route`) and
+   **`quota`** (`{requests: 1000, period: day}`, for the whole route) can only make it stricter.
 
-A window opens with the first request and lasts its length. A request over a limit gets
-`429 rate_limited` with `Retry-After` and is not forwarded; refused requests do not count. The
+A rate-limit window opens with the first request and lasts its length; a quota counts the
+calendar day or month in UTC and resets at midnight UTC or on the 1st. A request over a limit gets
+`429 rate_limited` with `Retry-After` and is not forwarded; over a quota it gets
+`429 quota_exceeded`, with `Retry-After` until the reset. Refused requests do not count. The
 client is `REMOTE_ADDR` only, never `X-Forwarded-For` (SEC-26); IPv6 clients count per /64.
 
 The counters live in `limits.php`, at most `maxClients` of them. A counter is only created for a
-request that passes `total`, so the gate can compute how many can be alive at once; a bundle
+request that passes `total` (plus one per quota), so the gate can compute how many can be alive at once; a bundle
 whose limits could need more than `maxClients` is rejected (`policy_violation`), and `moat policy
 suggest` sizes `maxClients` to fit. A flood therefore cannot fill the store. Should it still be
 full, damaged, or locked for more than 250 ms, the request gets `503 rate_limit_unavailable`
-(SEC-27, fail closed); deleting `limits.php` resets it.
+(SEC-27, fail closed); deleting `limits.php` resets it. A route's counters belong to the route
+limits of the bundle in force: a bundle that changes a route's name, rate limit or quota starts
+the route counters afresh, so counters of earlier bundles (a quota's lasts up to a month) cannot
+fill the store. The policy's counters keep running. The first request after updating from a gate
+without quotas starts the store afresh.
 
 ## The `testing` block
 

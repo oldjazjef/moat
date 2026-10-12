@@ -59,6 +59,29 @@ describe('loadMoatYaml', () => {
     });
   });
 
+  it('FR-31: compiles a quota, and leaves the key out of routes without one', () => {
+    const text = `${valid}    quota: { requests: 1000, period: day }
+`;
+    expect(
+      compileConfig(loadMoatYaml(text), ['hubspot-token']).routes['newsletter']
+        ?.quota,
+    ).toEqual({ requests: 1000, period: 'day' });
+    expect(
+      compileConfig(loadMoatYaml(valid), ['hubspot-token']).routes[
+        'newsletter'
+      ],
+    ).not.toHaveProperty('quota');
+  });
+
+  it.each([
+    ['an unknown period', '{ requests: 1000, period: week }'],
+    ['0 requests', '{ requests: 0, period: day }'],
+    ['requests as a string', '{ requests: "1000", period: day }'],
+    ['a window instead of a period', '{ requests: 1000, window: "1d" }'],
+  ])('FR-31: rejects a quota with %s', (_name, quota) => {
+    expect(issues(`${valid}    quota: ${quota}\n`).length).toBeGreaterThan(0);
+  });
+
   it.each([
     ['a window below a second', '{ requests: 5, window: "500ms" }'],
     ['a window above a day', '{ requests: 5, window: "2d" }'],

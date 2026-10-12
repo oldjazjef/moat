@@ -166,6 +166,7 @@ final class ConfigValidator
             'enabled',
             'origins',
             'rateLimit',
+            ...($value->has('quota') ? ['quota'] : []),
         )) {
             self::fail();
         }
@@ -198,6 +199,7 @@ final class ConfigValidator
             $enabled,
             self::origins($value->get('origins')),
             $value->get('rateLimit') === null ? null : self::routeLimit($value->get('rateLimit')),
+            $value->has('quota') ? self::quota($value->get('quota'), RejectionCode::ConfigInvalid) : null,
         );
     }
 
@@ -226,6 +228,21 @@ final class ConfigValidator
         $per = \is_string($value->get('per')) ? LimitScope::tryFrom($value->get('per')) : null;
 
         return new RouteLimit(self::limit($value, RejectionCode::ConfigInvalid), $per ?? self::fail());
+    }
+
+    /** `{requests, period}` of a quota (route or policy, FR-31); else a Rejection with `$code`. */
+    public static function quota(mixed $value, RejectionCode $code): Quota
+    {
+        if (!$value instanceof JsonObject || !$value->hasExactKeys('requests', 'period')) {
+            throw new Rejection($code);
+        }
+        $requests = $value->get('requests');
+        $period = \is_string($value->get('period')) ? QuotaPeriod::tryFrom($value->get('period')) : null;
+        if (!\is_int($requests) || !self::intIn($requests, 1, Limit::MAX_REQUESTS) || $period === null) {
+            throw new Rejection($code);
+        }
+
+        return new Quota($requests, $period);
     }
 
     /** `requests` and `windowSeconds` of a limit object (route or policy); else a Rejection with `$code`. */

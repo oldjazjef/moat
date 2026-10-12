@@ -16,8 +16,8 @@ small **gate** on the website's own hosting. The browser calls the gate, and the
 - forwards **only the routes you approved**: exact method and path, a fixed upstream address,
   HTTPS only;
 - adds the API secret on the way out, so the secret never reaches the browser;
-- **limits** what a visitor can do: rate limits per visitor and in total, body size, content
-  type, and which websites may call it;
+- **limits** what a visitor can do: rate limits per visitor and in total, quotas per day or
+  month, body size, content type, and which websites may call it;
 - trusts nobody it does not have to. It accepts a new configuration only when it is signed with
   your key, and it has no admin endpoint on the internet.
 
@@ -26,10 +26,10 @@ Configuration is data, never code. Secrets are sealed for one gate and can be op
 The gate's own local policy always wins over anything it receives.
 
 > **Status (October 2026):** early development. Working today: Moat Core, the `moat` CLI, the PHP
-> gate (signed bundles, exact routing, SSRF guard, CORS, rate limits, locking a gate or a whole
-> environment) and Moat Desktop (project list, a view of each project, and editing environments,
+> gate (signed bundles, exact routing, SSRF guard, CORS, rate limits, request quotas per day or
+> month, locking a gate or a whole environment) and Moat Desktop (project list, a view of each project, and editing environments,
 > locks, routes and upstreams, sealing secrets, signing bundles). Not built yet: Moat Cloud,
-> quotas and budgets, the setup wizard. The full target is in
+> token and cost budgets for AI APIs, the setup wizard. The full target is in
 > [ANFORDERUNGEN.md](ANFORDERUNGEN.md) (German).
 
 ## How it fits together
@@ -164,11 +164,13 @@ deleted there. Without a real keychain the option is not shown at all.
 - method and exact path;
 - the upstream address it forwards to;
 - the websites allowed to call it;
-- its rate limit and maximum body size;
+- its rate limit, quota and maximum body size;
 - for each upstream, which sealed secret it sends (by name).
 
 **New route** opens a form with the route's fields: name, method, path on the gate, upstream,
-path at the upstream, maximum size, allowed websites (one per line) and an optional rate limit.
+path at the upstream, maximum size, allowed websites (one per line), an optional rate limit and
+an optional quota (requests per day or month for the whole route; the gate answers
+`429 quota_exceeded` once it is used up and counts again from midnight UTC or the 1st).
 **Edit** opens the same form for an existing route, **Switch off** disables a route without
 deleting it, and **Delete** asks once more before it removes the route. Values are checked by the
 same schema as every `moat.yaml`: a value the gate would refuse (a path with `..`, an `http://`

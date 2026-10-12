@@ -18,6 +18,7 @@ enum GateError: string
     case OriginForbidden = 'origin_forbidden';
     case PreflightRejected = 'preflight_rejected';
     case RateLimited = 'rate_limited';
+    case QuotaExceeded = 'quota_exceeded';
     case RateLimitUnavailable = 'rate_limit_unavailable';
     case RouteDisabled = 'route_disabled';
     case GateDisabled = 'gate_disabled';
@@ -41,7 +42,7 @@ enum GateError: string
             self::BodyTooLarge => 413,
             self::UnsupportedMediaType => 415,
             self::OriginForbidden, self::PreflightRejected => 403,
-            self::RateLimited => 429,
+            self::RateLimited, self::QuotaExceeded => 429,
             self::RouteDisabled, self::GateDisabled, self::GateNotConfigured, self::RateLimitUnavailable => 503,
             self::SecretUnavailable, self::Internal => 500,
             self::UpstreamTimeout => 504,

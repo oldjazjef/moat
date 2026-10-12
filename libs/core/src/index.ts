@@ -41,6 +41,7 @@ export {
 export {
   hitLimits,
   clientKey,
+  periodEnd,
   type Limit,
   type Window,
   type LimitResult,
@@ -51,6 +52,8 @@ export {
   isWebOrigin,
   hostKey,
   METHODS,
+  QUOTA_PERIODS,
+  type QuotaPeriod,
   type CompiledConfig,
   type CompiledRoute,
   type CompiledUpstream,

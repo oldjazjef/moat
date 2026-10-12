@@ -223,6 +223,50 @@
       </p>
       }
     </fieldset>
+    <fieldset class="flex flex-col gap-3 md:col-span-2">
+      <label class="flex items-center gap-2 text-sm font-medium">
+        <input type="checkbox" formControlName="quotaOn" data-route-quota />
+        {{ 'routes.form.quota' | translate }}
+      </label>
+      @if (form.controls.quotaOn.value) {
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-quota-requests">
+            {{ 'routes.form.requests' | translate }}
+          </label>
+          <input
+            hlmInput
+            id="route-quota-requests"
+            type="number"
+            min="1"
+            class="w-32"
+            formControlName="quotaRequests"
+            [attr.aria-invalid]="invalid('quotaRequests')"
+            [class.border-destructive]="invalid('quotaRequests')"
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-quota-period">
+            {{ 'routes.form.period' | translate }}
+          </label>
+          <select
+            hlmInput
+            id="route-quota-period"
+            formControlName="quotaPeriod"
+          >
+            @for (period of periods; track period) {
+            <option [value]="period">
+              {{ 'routes.form.periods.' + period | translate }}
+            </option>
+            }
+          </select>
+        </div>
+      </div>
+      <p class="text-muted-foreground text-xs">
+        {{ 'routes.form.quotaHint' | translate }}
+      </p>
+      }
+    </fieldset>
     @if (refused().size > 0) {
     <p class="text-destructive text-sm md:col-span-2" role="alert" data-refused>
       {{ 'routes.form.refused' | translate }}

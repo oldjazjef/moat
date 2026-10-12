@@ -22,7 +22,8 @@ Four components (ANFORDERUNGEN.md, header):
 > (`moat keygen|validate|policy suggest|gate add|assign|disable|enable|env add|disable|enable|secret seal|build|version`);
 > `conformance/vectors/` and `conformance/http/`; and `gates/php` as a working gate: single-file
 > build, CLI (`install|trust|policy|accept|status`), bundle acceptance (steps 1–10), exact routing,
-> the cURL upstream client with SSRF guard, origin binding/CORS, rate limits and the signed lock
+> the cURL upstream client with SSRF guard, origin binding/CORS, rate limits, request quotas per
+> calendar day/month (FR-31: route `quota`, policy `limits.quota`, `quota_exceeded`) and the signed lock
 > of a gate or a whole environment (`moat env|gate disable`, `gate_disabled`)
 > ([gates/php/README.md](gates/php/README.md)). **Moat Desktop, first surface:** Electron shell
 > with the API in-process (`apps/api`: the project list in `<MOAT_DATA_DIR>/projects.json`,
@@ -31,7 +32,7 @@ Four components (ANFORDERUNGEN.md, header):
 > Hilfe), and signing a gate's next bundle («Bundle signieren» → the main-process dialog of DT-15,
 > `BundleSigningService` + `planBundle` in core) and sealing secrets («Versiegeln» → the seal
 > window, `SecretSealingService` + `planSeal`; the value is typed only there). Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, setup wizard (FR-73),
-> quotas/budgets, lazy pull, setup mode, trust mode 2, the local file kill switch (SEC-15). Everything else below is
+> token/cost budgets (FR-31 for AI APIs), lazy pull, setup mode, trust mode 2, the local file kill switch (SEC-15). Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
 

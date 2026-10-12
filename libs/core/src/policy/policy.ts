@@ -3,6 +3,7 @@ import {
   hostKey,
   isOrigin,
   limitSchema,
+  quotaSchema,
   MAX_BODY_BYTES,
   MAX_TIMEOUT_MS,
   METHODS,
@@ -55,11 +56,14 @@ export const policySchema = z.strictObject({
    * T-21): a bundle can add stricter limits per route but never lift these. `perIp` counts each
    * client address (SEC-26: `REMOTE_ADDR` only), `total` all requests together. `maxClients`
    * bounds the counter store; when it is full, new clients are refused (SEC-27, fail closed).
+   * `quota` (optional, FR-31, T-07) caps all requests of the gate per calendar day or month: a
+   * bundle can add quotas per route, but cannot lift or remove this one.
    */
   limits: z.strictObject({
     perIp: limitSchema,
     total: limitSchema,
     maxClients: z.int().min(100).max(MAX_TRACKED_CLIENTS),
+    quota: quotaSchema.optional(),
   }),
   /**
    * Local test setups only (the conformance runner, a demo): send these `host[:port]`s to a fixed
@@ -132,7 +136,7 @@ export function checkPolicy(config: CompiledConfig, policy: Policy): void {
  * refuses every new client — cannot be reached by flooding. A counter is created only for a
  * request that passes the `total` limit, so per kind of per-IP counter (the policy's, and each
  * route limited per IP) at most `total.requests × (⌈window / total.windowSeconds⌉ + 1)` are alive
- * at once; plus one per route limited as a whole, plus `total` itself.
+ * at once; plus one per route limited as a whole, one per quota (route or policy), plus `total`.
  */
 export function counterCapacity(
   config: CompiledConfig,
@@ -142,7 +146,9 @@ export function counterCapacity(
   const live = (windowSeconds: number) =>
     total.requests * (Math.ceil(windowSeconds / total.windowSeconds) + 1);
   let count = 1 + live(perIp.windowSeconds);
+  if (policy.limits.quota !== undefined) count += 1;
   for (const route of Object.values(config.routes)) {
+    if (route.quota !== undefined) count += 1;
     if (route.rateLimit === null) continue;
     count +=
       route.rateLimit.per === 'ip' ? live(route.rateLimit.windowSeconds) : 1;
