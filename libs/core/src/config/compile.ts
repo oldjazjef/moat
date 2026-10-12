@@ -42,6 +42,17 @@ export function compileConfig(
       contentTypes: route.contentTypes ?? DEFAULT_CONTENT_TYPES,
       responseContentTypes: route.responseContentTypes ?? DEFAULT_CONTENT_TYPES,
       enabled: route.enabled ?? true,
+      origins: route.origins ?? [],
+      rateLimit:
+        route.rateLimit === undefined
+          ? null
+          : {
+              requests: route.rateLimit.requests,
+              windowSeconds:
+                (parseDuration(route.rateLimit.window) ??
+                  reject('config_invalid')) / 1000,
+              per: route.rateLimit.per ?? 'ip',
+            },
     };
   }
   return validateCompiledConfig({ version: 1, upstreams, routes }, secretNames);

@@ -9,6 +9,7 @@ final readonly class Route
     /**
      * @param list<string> $contentTypes
      * @param list<string> $responseContentTypes
+     * @param list<string> $origins browser origins allowed cross-origin (FR-15); empty = none
      */
     public function __construct(
         public string $name,
@@ -20,5 +21,7 @@ final readonly class Route
         public array $contentTypes,
         public array $responseContentTypes,
         public bool $enabled,
+        public array $origins,
+        public ?RouteLimit $rateLimit,
     ) {}
 }

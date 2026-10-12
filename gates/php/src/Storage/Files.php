@@ -55,4 +55,40 @@ final class Files
             throw new \RuntimeException('cannot replace a data file');
         }
     }
+
+    /**
+     * Runs `$critical` while holding an exclusive lock on `$path` (created with `$initial` when
+     * missing, so a guarded lock file stays guarded).
+     *
+     * @template T
+     *
+     * @param \Closure(): T $critical
+     *
+     * @return T
+     */
+    public static function withLock(string $path, string $initial, \Closure $critical): mixed
+    {
+        if (str_contains($path, '://')) {
+            throw new \RuntimeException('not a local path');
+        }
+        $handle = fopen($path, 'cb');
+        if ($handle === false) {
+            throw new \RuntimeException('cannot open a lock file');
+        }
+        try {
+            if (!flock($handle, LOCK_EX)) {
+                throw new \RuntimeException('cannot lock');
+            }
+            $stat = fstat($handle);
+            if ($stat !== false && $stat['size'] === 0) {
+                fwrite($handle, $initial);
+                fflush($handle);
+            }
+
+            return $critical();
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
+    }
 }

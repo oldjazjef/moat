@@ -28,7 +28,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -63,7 +65,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -100,7 +104,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -139,7 +145,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -177,7 +185,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -215,7 +225,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -253,7 +265,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -291,7 +305,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         },
         "extra": true
@@ -332,6 +348,8 @@
               "application/json"
             ],
             "enabled": true,
+            "origins": [],
+            "rateLimit": null,
             "script": "x"
           }
         }
@@ -372,7 +390,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -411,7 +431,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -450,7 +472,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -489,7 +513,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -528,7 +554,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -567,7 +595,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -606,7 +636,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -645,7 +677,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -684,7 +718,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -723,7 +759,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -762,7 +800,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -801,7 +841,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -840,7 +882,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -879,7 +923,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -918,7 +964,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -957,7 +1005,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -996,7 +1046,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1035,7 +1087,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1074,7 +1128,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1113,7 +1169,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1152,7 +1210,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1191,7 +1251,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1230,7 +1292,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1267,7 +1331,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1306,7 +1372,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1345,7 +1413,9 @@
             "responseContentTypes": [
               "Application/JSON"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1384,7 +1454,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": "yes"
+            "enabled": "yes",
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1423,7 +1495,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1462,7 +1536,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1499,7 +1575,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           },
           "newsletter-copy": {
             "method": "POST",
@@ -1513,7 +1591,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1552,7 +1632,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           },
           "newsletter-get": {
             "method": "GET",
@@ -1566,7 +1648,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1605,7 +1689,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1645,7 +1731,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1685,7 +1773,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1725,7 +1815,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1764,7 +1856,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1804,7 +1898,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1843,7 +1939,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1882,7 +1980,852 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "route with origins (FR-15)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [
+              "https://www.example.ch",
+              "https://shop.example.ch:8443",
+              "http://localhost:4200",
+              "http://127.0.0.1"
+            ],
+            "rateLimit": null
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "route without origins key",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "rateLimit": null
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "origin wildcard",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [
+              "*"
+            ],
+            "rateLimit": null
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "origin \"null\"",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [
+              "null"
+            ],
+            "rateLimit": null
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "origin with a trailing slash",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [
+              "https://www.example.ch/"
+            ],
+            "rateLimit": null
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "origin with a path",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [
+              "https://www.example.ch/shop"
+            ],
+            "rateLimit": null
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "plain http origin other than localhost",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [
+              "http://www.example.ch"
+            ],
+            "rateLimit": null
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "http localhost with port 80",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [
+              "http://localhost:80"
+            ],
+            "rateLimit": null
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "origin with upper-case host",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [
+              "https://WWW.example.ch"
+            ],
+            "rateLimit": null
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "17 origins",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [
+              "https://site0.example.ch",
+              "https://site1.example.ch",
+              "https://site2.example.ch",
+              "https://site3.example.ch",
+              "https://site4.example.ch",
+              "https://site5.example.ch",
+              "https://site6.example.ch",
+              "https://site7.example.ch",
+              "https://site8.example.ch",
+              "https://site9.example.ch",
+              "https://site10.example.ch",
+              "https://site11.example.ch",
+              "https://site12.example.ch",
+              "https://site13.example.ch",
+              "https://site14.example.ch",
+              "https://site15.example.ch",
+              "https://site16.example.ch"
+            ],
+            "rateLimit": null
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "rate limit per ip (FR-30)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": {
+              "requests": 5,
+              "windowSeconds": 60,
+              "per": "ip"
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "rate limit per route",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": {
+              "requests": 1000000,
+              "windowSeconds": 86400,
+              "per": "route"
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "route without rateLimit key",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": []
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "rate limit of 0 requests",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": {
+              "requests": 0,
+              "windowSeconds": 60,
+              "per": "ip"
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "rate limit window above a day",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": {
+              "requests": 5,
+              "windowSeconds": 86401,
+              "per": "ip"
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "rate limit window as a string",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": {
+              "requests": 5,
+              "windowSeconds": "60",
+              "per": "ip"
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "rate limit with an unknown scope",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": {
+              "requests": 5,
+              "windowSeconds": 60,
+              "per": "user"
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "rate limit without a scope",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": {
+              "requests": 5,
+              "windowSeconds": 60
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "rate limit with an extra key",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": {
+              "requests": 5,
+              "windowSeconds": 60,
+              "per": "ip",
+              "burst": 10
+            }
           }
         }
       },

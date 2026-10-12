@@ -15,6 +15,10 @@ enum GateError: string
     case PathInvalid = 'path_invalid';
     case BodyTooLarge = 'body_too_large';
     case UnsupportedMediaType = 'unsupported_media_type';
+    case OriginForbidden = 'origin_forbidden';
+    case PreflightRejected = 'preflight_rejected';
+    case RateLimited = 'rate_limited';
+    case RateLimitUnavailable = 'rate_limit_unavailable';
     case RouteDisabled = 'route_disabled';
     case GateNotConfigured = 'gate_not_configured';
     case SecretUnavailable = 'secret_unavailable';
@@ -35,7 +39,9 @@ enum GateError: string
             self::PathInvalid => 400,
             self::BodyTooLarge => 413,
             self::UnsupportedMediaType => 415,
-            self::RouteDisabled, self::GateNotConfigured => 503,
+            self::OriginForbidden, self::PreflightRejected => 403,
+            self::RateLimited => 429,
+            self::RouteDisabled, self::GateNotConfigured, self::RateLimitUnavailable => 503,
             self::SecretUnavailable, self::Internal => 500,
             self::UpstreamTimeout => 504,
             self::UpstreamForbidden, self::UpstreamUnreachable, self::UpstreamRedirect,

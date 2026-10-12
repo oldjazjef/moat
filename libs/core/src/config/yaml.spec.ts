@@ -42,8 +42,42 @@ describe('loadMoatYaml', () => {
       contentTypes: ['application/json'],
       responseContentTypes: ['application/json'],
       enabled: true,
+      origins: [],
+      rateLimit: null,
     });
   });
+
+  it('FR-15, FR-30: compiles origins and a rate limit window to seconds', () => {
+    const text = `${valid}    origins: ["https://www.example.ch"]
+    rateLimit: { requests: 5, window: "10m" }
+`;
+    expect(
+      compileConfig(loadMoatYaml(text), ['hubspot-token']).routes['newsletter'],
+    ).toMatchObject({
+      origins: ['https://www.example.ch'],
+      rateLimit: { requests: 5, windowSeconds: 600, per: 'ip' },
+    });
+  });
+
+  it.each([
+    ['a window below a second', '{ requests: 5, window: "500ms" }'],
+    ['a window above a day', '{ requests: 5, window: "2d" }'],
+    ['a window as a number', '{ requests: 5, window: 60 }'],
+    ['an unknown scope', '{ requests: 5, window: "1m", per: user }'],
+  ])('FR-30: rejects a rate limit with %s', (_name, limit) => {
+    expect(issues(`${valid}    rateLimit: ${limit}\n`).length).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it.each(['"*"', '"https://www.example.ch/"', '"http://www.example.ch"'])(
+    'FR-15: rejects the origin %s',
+    (origin) => {
+      expect(
+        issues(`${valid}    origins: [${origin}]\n`).length,
+      ).toBeGreaterThan(0);
+    },
+  );
 
   it('loads every recipe in recipes/ (FR-43)', () => {
     const text = readFileSync(

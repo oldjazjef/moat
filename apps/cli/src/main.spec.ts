@@ -187,6 +187,11 @@ describe('moat CLI', () => {
         maxBodyBytes: 65536,
         maxResponseBytes: 1048576,
         maxTimeoutMs: 30000,
+        limits: {
+          perIp: { requests: 30, windowSeconds: 60 },
+          total: { requests: 600, windowSeconds: 60 },
+          maxClients: 10000,
+        },
       }),
     );
     expect(

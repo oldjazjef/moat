@@ -8,8 +8,9 @@ use Moat\Gate\Storage\Files;
 
 /**
  * What the gate takes from a client request — and nothing else: method, raw path, content type,
- * declared length and (on demand, with a limit) the body. No client header, cookie or query
- * parameter is ever forwarded (SEC-43).
+ * declared length, the CORS headers (Origin, Access-Control-Request-*), the peer address and
+ * (on demand, with a limit) the body. No client header, cookie or query parameter is ever
+ * forwarded (SEC-43); X-Forwarded-For is never read (SEC-26).
  */
 final readonly class Request
 {
@@ -20,6 +21,10 @@ final readonly class Request
         public ?string $contentType,
         public ?int $contentLength,
         private \Closure $body,
+        public ?string $origin = null,
+        public ?string $requestMethod = null,
+        public ?string $requestHeaders = null,
+        public string $remoteAddr = '',
     ) {}
 
     /**
@@ -42,7 +47,17 @@ final readonly class Request
             \is_string($server['CONTENT_TYPE'] ?? null) && $server['CONTENT_TYPE'] !== '' ? $server['CONTENT_TYPE'] : null,
             preg_match('/^[0-9]{1,15}$/D', $length) === 1 ? (int) $length : null,
             Files::readInput(...),
+            self::header($server, 'HTTP_ORIGIN'),
+            self::header($server, 'HTTP_ACCESS_CONTROL_REQUEST_METHOD'),
+            self::header($server, 'HTTP_ACCESS_CONTROL_REQUEST_HEADERS'),
+            \is_string($server['REMOTE_ADDR'] ?? null) ? $server['REMOTE_ADDR'] : '',
         );
+    }
+
+    /** @param array<mixed> $server */
+    private static function header(array $server, string $name): ?string
+    {
+        return \is_string($server[$name] ?? null) ? $server[$name] : null;
     }
 
     /** The body, or a 413 once it exceeds `$maxBytes` — whatever Content-Length claimed. */

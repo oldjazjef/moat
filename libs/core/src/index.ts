@@ -33,8 +33,22 @@ export {
 export { normalisePath, MAX_PATH_LENGTH } from './http/path';
 export { mediaTypeOf, isAllowedContentType } from './http/content-type';
 export {
+  checkOrigin,
+  preflight,
+  PREFLIGHT_MAX_AGE,
+  type PreflightAnswer,
+} from './http/cors';
+export {
+  hitLimits,
+  clientKey,
+  type Limit,
+  type Window,
+  type LimitResult,
+} from './http/rate-limit';
+export {
   validateCompiledConfig,
   isOrigin,
+  isWebOrigin,
   hostKey,
   METHODS,
   type CompiledConfig,
@@ -58,6 +72,7 @@ export {
   checkPolicy,
   suggestPolicy,
   matchesPrefix,
+  DEFAULT_LIMITS,
   type Policy,
 } from './policy/policy';
 export {

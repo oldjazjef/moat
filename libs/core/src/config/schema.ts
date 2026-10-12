@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { MEDIA_TYPE } from '../http/content-type';
 import {
   compiledRouteSchema,
+  isWebOrigin,
+  LIMIT_SCOPES,
+  MAX_LIMIT_REQUESTS,
+  MAX_ORIGINS,
+  MAX_WINDOW_SECONDS,
   compiledUpstreamSchema,
   MAX_BODY_BYTES,
   MAX_TIMEOUT_MS,
@@ -55,6 +60,28 @@ export const routeSchema = z.strictObject({
     .max(8)
     .optional(),
   enabled: z.boolean().optional(),
+  /** Browser origins allowed to call this route from another site (FR-15), e.g. "https://www.example.ch". */
+  origins: z
+    .array(
+      z
+        .string()
+        .refine(isWebOrigin, 'an origin such as "https://www.example.ch"'),
+    )
+    .max(MAX_ORIGINS)
+    .optional(),
+  /** FR-30, e.g. `{requests: 5, window: "1m"}`; per client IP unless `per: route`. */
+  rateLimit: z
+    .strictObject({
+      requests: z.int().min(1).max(MAX_LIMIT_REQUESTS),
+      window: z.string().refine((value) => {
+        const ms = parseDuration(value);
+        return (
+          ms !== null && ms % 1000 === 0 && ms <= MAX_WINDOW_SECONDS * 1000
+        );
+      }, 'whole seconds such as "1m", at most "1d"'),
+      per: z.enum(LIMIT_SCOPES).optional(),
+    })
+    .optional(),
 });
 
 export const moatConfigSchema = z

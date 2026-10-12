@@ -62,7 +62,11 @@ final class HttpConformanceTest extends TestCase
             self::assertSubset(Vectors::map($expect['json']), json_decode($body, true), 'json');
         }
         foreach (Vectors::map($expect['headers'] ?? []) as $name => $value) {
-            self::assertSame($value, $headers[$name] ?? null, "header {$name}");
+            if ($value === '<any>') {
+                self::assertArrayHasKey($name, $headers, "header {$name}");
+            } else {
+                self::assertSame($value, $headers[$name] ?? null, "header {$name}");
+            }
         }
         self::assertSame(Vectors::int($expect['upstreamCalls']), $gate->upstreamCalls() - $before, 'upstream calls');
         foreach (explode("\n", $gate->secret) as $secret) {

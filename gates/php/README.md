@@ -25,13 +25,15 @@ This creates a data folder `moat-data-<random>/` next to the gate file, with `.h
 `web.config`, an empty `index.php`, and data files that stop PHP before their content (fetched over
 HTTP they answer 404 with an empty body):
 
-| File           | Content                                                                  |
-| -------------- | ------------------------------------------------------------------------ |
-| `identity.php` | gate id and the gate's X25519 box key (never leaves the server)          |
-| `trust.php`    | pinned signers and threshold (docs/CRYPTO.md §8)                         |
-| `policy.php`   | the local policy                                                         |
-| `bundle.php`   | the active bundle, exactly as received                                   |
-| `state.php`    | the highest version ever accepted (a deleted bundle reopens no rollback) |
+| File           | Content                                                                      |
+| -------------- | ---------------------------------------------------------------------------- |
+| `identity.php` | gate id and the gate's X25519 box key (never leaves the server)              |
+| `trust.php`    | pinned signers and threshold (docs/CRYPTO.md §8)                             |
+| `policy.php`   | the local policy                                                             |
+| `bundle.php`   | the active bundle, exactly as received                                       |
+| `state.php`    | the highest version ever accepted (a deleted bundle reopens no rollback)     |
+| `limits.php`   | rate-limit counters, keyed by hashes (no IP addresses), at most `maxClients` |
+| `lock.php`     | the lock that serialises updates to `limits.php`                             |
 
 `install` prints the gate id, the box key and the fingerprints. Compare them, then pin the gate
 in the project folder with the `moat gate add` line it prints.
@@ -41,7 +43,8 @@ in the project folder with the `moat gate add` line it prints.
 ```bash
 php moat-gate.php policy <policy.json>     # install the local policy (moat policy suggest);
                                            # it lists per host the paths, methods and the
-                                           # secrets that may be sent there (SEC-35)
+                                           # secrets that may be sent there (SEC-35), and the
+                                           # rate limits that always apply (SEC-14)
 php moat-gate.php accept <bundle.json>     # verify (steps 1–10) and activate a bundle
 php moat-gate.php trust --signer=<pk>[,…] [--threshold=n]   # replace the pinned signers
 php moat-gate.php status                   # fingerprints, policy, active bundle
@@ -71,17 +74,60 @@ body come back. Errors are `{"error":"<code>"}`:
 | Status | Code                                                                       |
 | ------ | -------------------------------------------------------------------------- |
 | 400    | `path_invalid`                                                             |
+| 403    | `origin_forbidden`, `preflight_rejected`                                   |
 | 404    | `not_found`                                                                |
 | 405    | `method_not_allowed` (with `Allow`)                                        |
 | 413    | `body_too_large`                                                           |
 | 415    | `unsupported_media_type`                                                   |
+| 429    | `rate_limited` (with `Retry-After`)                                        |
 | 500    | `secret_unavailable`, `internal_error`                                     |
 | 502    | `upstream_forbidden`, `upstream_unreachable`, `upstream_redirect`,         |
 |        | `upstream_content_type`, `upstream_too_large`, `upstream_reflected_secret` |
-| 503    | `gate_not_configured`, `route_disabled`                                    |
+| 503    | `gate_not_configured`, `route_disabled`, `rate_limit_unavailable`          |
 | 504    | `upstream_timeout`                                                         |
 
 The log gets these codes only, never a value.
+
+## Origins and CORS (FR-15)
+
+A route may list the browser origins allowed to call it from another site:
+
+```yaml
+routes:
+  newsletter:
+    origins: ['https://www.example.ch']
+```
+
+- A request whose `Origin` is not in the list gets `403 origin_forbidden`; nothing is forwarded.
+- A listed origin gets `Access-Control-Allow-Origin` with exactly that origin and `Vary: Origin`;
+  never `*`, never credentials.
+- A preflight (`OPTIONS` with `Origin` and `Access-Control-Request-Method`) is answered by the gate
+  itself: `204` when a route at that path lists the origin and has the method, and at most
+  `Content-Type` is requested; otherwise `403 preflight_rejected`.
+- A route without `origins` sends no CORS headers, so browsers on other sites cannot read its
+  answers or send it JSON.
+
+The website's own pages send an `Origin` too (on POST), so list the site itself when you list
+origins. A request without `Origin` passes: origin binding stops browsers, not scripts (T-01,
+SEC-58). Rate limits are what stops scripts.
+
+## Rate limits (FR-30, SEC-45)
+
+Two layers, both counted on the gate:
+
+1. **The local policy's `limits`** apply to every request, whatever the bundle says (SEC-14,
+   T-21): `perIp` per client address, `total` for all clients together. `moat policy suggest`
+   proposes 30 requests per minute per IP and 600 in total.
+2. **A route's own `rateLimit`** (`{requests: 5, window: '10m'}`, per IP or `per: route`) can
+   only make it stricter.
+
+A window opens with the first request and lasts its length. A request over a limit gets
+`429 rate_limited` with `Retry-After` and is not forwarded; refused requests do not count. The
+client is `REMOTE_ADDR` only, never `X-Forwarded-For` (SEC-26); IPv6 clients count per /64.
+
+The counters live in `limits.php`, at most `maxClients` of them. When the store is full, new
+clients get `503 rate_limit_unavailable` until old windows expire (SEC-27, fail closed). A damaged
+store refuses every request the same way; deleting `limits.php` resets it.
 
 ## The `testing` block
 
@@ -99,5 +145,5 @@ pnpm check:gate-php
 Unit tests, the shared vectors in `conformance/vectors/`, and `conformance/http/gate.json` against
 the built file under `php -S` with a fake HTTPS upstream (`tests/Http/`).
 
-Not built yet: CORS, rate limits and budgets, the lazy pull from the Cloud, setup mode, trust
-mode 2 (passkeys), the hardening check.
+Not built yet: quotas and budgets (FR-31), trusted proxies for the client address, the lazy pull
+from the Cloud, setup mode, trust mode 2 (passkeys), the hardening check.

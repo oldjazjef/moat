@@ -60,7 +60,7 @@ final class Kernel
 
             return;
         }
-        RequestHandler::handle(Request::fromServer($_SERVER), $bundle, $gate)->send();
+        RequestHandler::handle(Request::fromServer($_SERVER), $bundle, $gate, time())->send();
     }
 
     private static function missingExtension(): ?string

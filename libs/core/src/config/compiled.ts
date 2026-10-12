@@ -34,6 +34,11 @@ const RESERVED_HEADERS = new Set([
 
 export const MAX_BODY_BYTES = 10 * 1024 * 1024;
 export const MAX_TIMEOUT_MS = 60_000;
+export const MAX_ORIGINS = 16;
+/** Rate limits (FR-30): at most this many requests in a window of at most one day. */
+export const MAX_LIMIT_REQUESTS = 1_000_000;
+export const MAX_WINDOW_SECONDS = 86_400;
+export const LIMIT_SCOPES = ['ip', 'route'] as const;
 
 const name = z.string().regex(NAME);
 const mediaType = z.string().regex(MEDIA_TYPE);
@@ -56,6 +61,12 @@ const auth = z.discriminatedUnion('type', [
   }),
 ]);
 
+/** `requests` per `windowSeconds`, counted from the first request of a window (FR-30). */
+export const limitSchema = z.strictObject({
+  requests: z.int().min(1).max(MAX_LIMIT_REQUESTS),
+  windowSeconds: z.int().min(1).max(MAX_WINDOW_SECONDS),
+});
+
 export const compiledUpstreamSchema = z.strictObject({
   origin: z.string().refine(isOrigin),
   auth: z.union([auth, z.null()]),
@@ -71,6 +82,20 @@ export const compiledRouteSchema = z.strictObject({
   contentTypes: z.array(mediaType).min(1).max(8),
   responseContentTypes: z.array(mediaType).min(1).max(8),
   enabled: z.boolean(),
+  /**
+   * FR-15: the browser origins that may call this route cross-origin. Empty = no CORS answer; a
+   * request with an `Origin` outside a non-empty list is refused before anything is forwarded.
+   * Binds browsers only, not `curl` (T-01, SEC-58).
+   */
+  origins: z.array(z.string().refine(isWebOrigin)).max(MAX_ORIGINS),
+  /** FR-30: per client IP or for the whole route; null = only the local policy's limits. */
+  rateLimit: z.union([
+    z.strictObject({
+      ...limitSchema.shape,
+      per: z.enum(LIMIT_SCOPES),
+    }),
+    z.null(),
+  ]),
 });
 
 export const compiledConfigSchema = z.strictObject({
@@ -144,6 +169,20 @@ export function isOrigin(value: string): boolean {
   )
     return false;
   return !/^[0-9]+$/.test(labels.at(-1) ?? '');
+}
+
+/**
+ * A browser origin as a route lists it and a browser sends it: an HTTPS origin as isOrigin(), or
+ * `http://localhost[:port]` / `http://127.0.0.1[:port]` for local development. No wildcard, no
+ * path, no trailing "/".
+ */
+export function isWebOrigin(value: string): boolean {
+  if (isOrigin(value)) return true;
+  const match =
+    /^http:\/\/(?:localhost|127\.0\.0\.1)(?::([1-9][0-9]{0,4}))?$/.exec(value);
+  return (
+    match !== null && Number(match[1] ?? '80') <= 65535 && match[1] !== '80'
+  );
 }
 
 /** `host[:port]` of an origin — the key of the local policy's upstream allowlist. */

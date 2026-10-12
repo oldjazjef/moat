@@ -20,6 +20,7 @@ final readonly class Policy
         public int $maxBodyBytes,
         public int $maxResponseBytes,
         public int $maxTimeoutMs,
+        public PolicyLimits $limits,
         public bool $testing,
         public array $testResolve,
         public ?string $testCaFile,

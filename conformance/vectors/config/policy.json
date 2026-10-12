@@ -28,7 +28,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -49,7 +51,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": true
@@ -82,7 +95,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -103,7 +118,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": true
@@ -136,7 +162,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -157,7 +185,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": true
@@ -190,7 +229,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -211,7 +252,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": true
@@ -244,7 +296,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -265,7 +319,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -299,7 +364,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -320,7 +387,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -354,7 +432,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -375,7 +455,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -409,7 +500,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -430,7 +523,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -464,7 +568,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -485,7 +591,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -519,7 +636,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -540,7 +659,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -574,7 +704,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -595,7 +727,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -629,7 +772,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -651,6 +796,17 @@
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
         "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
         "allowAll": true
       },
       "expect": {
@@ -685,7 +841,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -706,7 +864,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -740,7 +909,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -759,7 +930,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -793,7 +975,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -814,7 +998,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -848,7 +1043,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -867,7 +1064,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -901,7 +1109,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -920,7 +1130,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -954,7 +1175,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -984,7 +1207,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -1026,7 +1260,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1047,7 +1283,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -1078,7 +1325,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1097,7 +1346,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": true
@@ -1130,7 +1390,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1148,7 +1410,18 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
-        "maxTimeoutMs": 15000
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
       },
       "expect": {
         "ok": false,
@@ -1182,7 +1455,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1203,11 +1478,487 @@
         },
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "policy without limits (SEC-14)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
         "maxTimeoutMs": 15000
       },
       "expect": {
         "ok": false,
         "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "policy limits without total",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "policy per-ip limit of 0 requests",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 0,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "policy limit with an extra key",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60,
+            "per": "ip"
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "policy store below 100 clients",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 99
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "policy store above 20 000 clients (SEC-27)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 20001
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "a looser route limit is allowed: the policy limits still apply (T-21)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": {
+              "requests": 1000000,
+              "windowSeconds": 1,
+              "per": "route"
+            }
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": true
       }
     },
     {
@@ -1237,7 +1988,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1259,6 +2012,17 @@
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
         "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
         "testing": {
           "resolve": {
             "api.hubapi.com": "127.0.0.1"
@@ -1297,7 +2061,9 @@
             "responseContentTypes": [
               "application/json"
             ],
-            "enabled": true
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
           }
         }
       },
@@ -1319,6 +2085,17 @@
         "maxBodyBytes": 65536,
         "maxResponseBytes": 1048576,
         "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
         "testing": {
           "resolve": {
             "api.hubapi.com": "10.0.0.5"

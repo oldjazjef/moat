@@ -1,0 +1,565 @@
+{
+  "description": "FR-15: origin binding and CORS. `origin` cases: a matched route and the request's Origin header (null = absent) → `{ok: true, allowOrigin}` (null = no CORS header) or `origin_forbidden`. `preflight` cases: OPTIONS with Origin and Access-Control-Request-Method (and -Headers, null = absent) on a path with these routes → the answer or `preflight_rejected`. Origins compare exactly; only Content-Type may be requested; credentials are never allowed.",
+  "origin": [
+    {
+      "name": "route without origins, no Origin header",
+      "route": {
+        "method": "POST",
+        "origins": []
+      },
+      "origin": null,
+      "expect": {
+        "ok": true,
+        "allowOrigin": null
+      }
+    },
+    {
+      "name": "route without origins ignores any Origin",
+      "route": {
+        "method": "POST",
+        "origins": []
+      },
+      "origin": "https://evil.example",
+      "expect": {
+        "ok": true,
+        "allowOrigin": null
+      }
+    },
+    {
+      "name": "listed origin",
+      "route": {
+        "method": "POST",
+        "origins": [
+          "https://www.example.ch"
+        ]
+      },
+      "origin": "https://www.example.ch",
+      "expect": {
+        "ok": true,
+        "allowOrigin": "https://www.example.ch"
+      }
+    },
+    {
+      "name": "no Origin header (not a browser, or same-origin GET)",
+      "route": {
+        "method": "POST",
+        "origins": [
+          "https://www.example.ch"
+        ]
+      },
+      "origin": null,
+      "expect": {
+        "ok": true,
+        "allowOrigin": null
+      }
+    },
+    {
+      "name": "other origin",
+      "route": {
+        "method": "POST",
+        "origins": [
+          "https://www.example.ch"
+        ]
+      },
+      "origin": "https://evil.example",
+      "expect": {
+        "ok": false,
+        "error": "origin_forbidden"
+      }
+    },
+    {
+      "name": "origin differs only in case",
+      "route": {
+        "method": "POST",
+        "origins": [
+          "https://www.example.ch"
+        ]
+      },
+      "origin": "https://WWW.example.ch",
+      "expect": {
+        "ok": false,
+        "error": "origin_forbidden"
+      }
+    },
+    {
+      "name": "origin with a trailing slash",
+      "route": {
+        "method": "POST",
+        "origins": [
+          "https://www.example.ch"
+        ]
+      },
+      "origin": "https://www.example.ch/",
+      "expect": {
+        "ok": false,
+        "error": "origin_forbidden"
+      }
+    },
+    {
+      "name": "origin \"null\" (sandboxed frame, file://)",
+      "route": {
+        "method": "POST",
+        "origins": [
+          "https://www.example.ch"
+        ]
+      },
+      "origin": "null",
+      "expect": {
+        "ok": false,
+        "error": "origin_forbidden"
+      }
+    },
+    {
+      "name": "origin with another port",
+      "route": {
+        "method": "POST",
+        "origins": [
+          "https://www.example.ch"
+        ]
+      },
+      "origin": "https://www.example.ch:8443",
+      "expect": {
+        "ok": false,
+        "error": "origin_forbidden"
+      }
+    },
+    {
+      "name": "plain http variant",
+      "route": {
+        "method": "POST",
+        "origins": [
+          "https://www.example.ch"
+        ]
+      },
+      "origin": "http://www.example.ch",
+      "expect": {
+        "ok": false,
+        "error": "origin_forbidden"
+      }
+    },
+    {
+      "name": "suffix attack",
+      "route": {
+        "method": "POST",
+        "origins": [
+          "https://www.example.ch"
+        ]
+      },
+      "origin": "https://www.example.ch.evil.example",
+      "expect": {
+        "ok": false,
+        "error": "origin_forbidden"
+      }
+    }
+  ],
+  "preflight": [
+    {
+      "name": "allowed method, no headers",
+      "routes": [
+        {
+          "method": "GET",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "POST",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "DELETE",
+          "origins": [
+            "https://admin.example.ch"
+          ]
+        }
+      ],
+      "origin": "https://www.example.ch",
+      "requestMethod": "POST",
+      "requestHeaders": null,
+      "expect": {
+        "ok": true,
+        "allowOrigin": "https://www.example.ch",
+        "allowMethods": [
+          "GET",
+          "POST"
+        ],
+        "allowHeaders": [
+          "Content-Type"
+        ],
+        "maxAge": 600
+      }
+    },
+    {
+      "name": "allowed method with Content-Type",
+      "routes": [
+        {
+          "method": "GET",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "POST",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "DELETE",
+          "origins": [
+            "https://admin.example.ch"
+          ]
+        }
+      ],
+      "origin": "https://www.example.ch",
+      "requestMethod": "POST",
+      "requestHeaders": "content-type",
+      "expect": {
+        "ok": true,
+        "allowOrigin": "https://www.example.ch",
+        "allowMethods": [
+          "GET",
+          "POST"
+        ],
+        "allowHeaders": [
+          "Content-Type"
+        ],
+        "maxAge": 600
+      }
+    },
+    {
+      "name": "header names are case-insensitive",
+      "routes": [
+        {
+          "method": "GET",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "POST",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "DELETE",
+          "origins": [
+            "https://admin.example.ch"
+          ]
+        }
+      ],
+      "origin": "https://www.example.ch",
+      "requestMethod": "POST",
+      "requestHeaders": "Content-Type",
+      "expect": {
+        "ok": true,
+        "allowOrigin": "https://www.example.ch",
+        "allowMethods": [
+          "GET",
+          "POST"
+        ],
+        "allowHeaders": [
+          "Content-Type"
+        ],
+        "maxAge": 600
+      }
+    },
+    {
+      "name": "empty header list items are skipped",
+      "routes": [
+        {
+          "method": "GET",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "POST",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "DELETE",
+          "origins": [
+            "https://admin.example.ch"
+          ]
+        }
+      ],
+      "origin": "https://www.example.ch",
+      "requestMethod": "GET",
+      "requestHeaders": " , content-type ,",
+      "expect": {
+        "ok": true,
+        "allowOrigin": "https://www.example.ch",
+        "allowMethods": [
+          "GET",
+          "POST"
+        ],
+        "allowHeaders": [
+          "Content-Type"
+        ],
+        "maxAge": 600
+      }
+    },
+    {
+      "name": "method of a route that does not list the origin",
+      "routes": [
+        {
+          "method": "GET",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "POST",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "DELETE",
+          "origins": [
+            "https://admin.example.ch"
+          ]
+        }
+      ],
+      "origin": "https://www.example.ch",
+      "requestMethod": "DELETE",
+      "requestHeaders": null,
+      "expect": {
+        "ok": false,
+        "error": "preflight_rejected"
+      }
+    },
+    {
+      "name": "method of no route",
+      "routes": [
+        {
+          "method": "GET",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "POST",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "DELETE",
+          "origins": [
+            "https://admin.example.ch"
+          ]
+        }
+      ],
+      "origin": "https://www.example.ch",
+      "requestMethod": "PUT",
+      "requestHeaders": null,
+      "expect": {
+        "ok": false,
+        "error": "preflight_rejected"
+      }
+    },
+    {
+      "name": "method in lower case",
+      "routes": [
+        {
+          "method": "GET",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "POST",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "DELETE",
+          "origins": [
+            "https://admin.example.ch"
+          ]
+        }
+      ],
+      "origin": "https://www.example.ch",
+      "requestMethod": "post",
+      "requestHeaders": null,
+      "expect": {
+        "ok": false,
+        "error": "preflight_rejected"
+      }
+    },
+    {
+      "name": "origin of no route",
+      "routes": [
+        {
+          "method": "GET",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "POST",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "DELETE",
+          "origins": [
+            "https://admin.example.ch"
+          ]
+        }
+      ],
+      "origin": "https://evil.example",
+      "requestMethod": "GET",
+      "requestHeaders": null,
+      "expect": {
+        "ok": false,
+        "error": "preflight_rejected"
+      }
+    },
+    {
+      "name": "an extra request header",
+      "routes": [
+        {
+          "method": "GET",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "POST",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "DELETE",
+          "origins": [
+            "https://admin.example.ch"
+          ]
+        }
+      ],
+      "origin": "https://www.example.ch",
+      "requestMethod": "POST",
+      "requestHeaders": "content-type, x-api-key",
+      "expect": {
+        "ok": false,
+        "error": "preflight_rejected"
+      }
+    },
+    {
+      "name": "Authorization is not allowed",
+      "routes": [
+        {
+          "method": "GET",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "POST",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "DELETE",
+          "origins": [
+            "https://admin.example.ch"
+          ]
+        }
+      ],
+      "origin": "https://www.example.ch",
+      "requestMethod": "GET",
+      "requestHeaders": "authorization",
+      "expect": {
+        "ok": false,
+        "error": "preflight_rejected"
+      }
+    },
+    {
+      "name": "Cookie is not allowed",
+      "routes": [
+        {
+          "method": "GET",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "POST",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "DELETE",
+          "origins": [
+            "https://admin.example.ch"
+          ]
+        }
+      ],
+      "origin": "https://www.example.ch",
+      "requestMethod": "GET",
+      "requestHeaders": "cookie",
+      "expect": {
+        "ok": false,
+        "error": "preflight_rejected"
+      }
+    },
+    {
+      "name": "a header name with a space",
+      "routes": [
+        {
+          "method": "GET",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "POST",
+          "origins": [
+            "https://www.example.ch"
+          ]
+        },
+        {
+          "method": "DELETE",
+          "origins": [
+            "https://admin.example.ch"
+          ]
+        }
+      ],
+      "origin": "https://www.example.ch",
+      "requestMethod": "POST",
+      "requestHeaders": "content type",
+      "expect": {
+        "ok": false,
+        "error": "preflight_rejected"
+      }
+    },
+    {
+      "name": "route without origins",
+      "routes": [
+        {
+          "method": "POST",
+          "origins": []
+        }
+      ],
+      "origin": "https://www.example.ch",
+      "requestMethod": "POST",
+      "requestHeaders": null,
+      "expect": {
+        "ok": false,
+        "error": "preflight_rejected"
+      }
+    }
+  ]
+}

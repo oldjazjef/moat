@@ -14,15 +14,10 @@ final readonly class Response
         public string $body,
     ) {}
 
-    /** @param list<string> $allow */
-    public static function error(GateError $error, array $allow = []): self
+    /** @param array<string, string> $headers */
+    public static function error(GateError $error, array $headers = []): self
     {
-        $headers = ['Content-Type' => 'application/json'];
-        if ($allow !== []) {
-            $headers['Allow'] = implode(', ', $allow);
-        }
-
-        return new self($error->status(), $headers, json_encode(['error' => $error->value], JSON_THROW_ON_ERROR) . "\n");
+        return new self($error->status(), ['Content-Type' => 'application/json'] + $headers, json_encode(['error' => $error->value], JSON_THROW_ON_ERROR) . "\n");
     }
 
     public function send(): void

@@ -1,0 +1,268 @@
+{
+  "description": "FR-30, SEC-26, SEC-45. `sequences`: requests at these unix times against these limits, starting with no counters → per request `{allowed, retryAfter}` (retryAfter 0 when allowed). A window opens with the first request and lasts windowSeconds; a refused request does not count; with several limits a request passes only if each has room, and then each counts it. `clients`: REMOTE_ADDR → the key a per-IP limit counts (IPv4 as is, IPv6 by /64 as `xxxx:xxxx:xxxx:xxxx::/64`, IPv4-mapped as IPv4), or null = not an address (the gate refuses the request).",
+  "sequences": [
+    {
+      "name": "two per minute",
+      "limits": [
+        {
+          "requests": 2,
+          "windowSeconds": 60
+        }
+      ],
+      "times": [
+        1000,
+        1001,
+        1002,
+        1059,
+        1060,
+        1061,
+        1062
+      ],
+      "expect": [
+        {
+          "allowed": true,
+          "retryAfter": 0
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0
+        },
+        {
+          "allowed": false,
+          "retryAfter": 58
+        },
+        {
+          "allowed": false,
+          "retryAfter": 1
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0
+        },
+        {
+          "allowed": false,
+          "retryAfter": 58
+        }
+      ]
+    },
+    {
+      "name": "refused requests do not count",
+      "limits": [
+        {
+          "requests": 2,
+          "windowSeconds": 60
+        }
+      ],
+      "times": [
+        0,
+        0,
+        0,
+        0,
+        59,
+        60
+      ],
+      "expect": [
+        {
+          "allowed": true,
+          "retryAfter": 0
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0
+        },
+        {
+          "allowed": false,
+          "retryAfter": 60
+        },
+        {
+          "allowed": false,
+          "retryAfter": 60
+        },
+        {
+          "allowed": false,
+          "retryAfter": 1
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0
+        }
+      ]
+    },
+    {
+      "name": "one per second",
+      "limits": [
+        {
+          "requests": 1,
+          "windowSeconds": 1
+        }
+      ],
+      "times": [
+        5,
+        5,
+        6,
+        6,
+        8
+      ],
+      "expect": [
+        {
+          "allowed": true,
+          "retryAfter": 0
+        },
+        {
+          "allowed": false,
+          "retryAfter": 1
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0
+        },
+        {
+          "allowed": false,
+          "retryAfter": 1
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0
+        }
+      ]
+    },
+    {
+      "name": "several limits: every one must have room, all count together",
+      "limits": [
+        {
+          "requests": 2,
+          "windowSeconds": 60
+        },
+        {
+          "requests": 3,
+          "windowSeconds": 3600
+        }
+      ],
+      "times": [
+        0,
+        1,
+        2,
+        60,
+        61,
+        120,
+        3600
+      ],
+      "expect": [
+        {
+          "allowed": true,
+          "retryAfter": 0
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0
+        },
+        {
+          "allowed": false,
+          "retryAfter": 58
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0
+        },
+        {
+          "allowed": false,
+          "retryAfter": 3539
+        },
+        {
+          "allowed": false,
+          "retryAfter": 3480
+        },
+        {
+          "allowed": true,
+          "retryAfter": 0
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "name": "IPv4",
+      "address": "203.0.113.7",
+      "expect": "203.0.113.7"
+    },
+    {
+      "name": "IPv4 with a leading zero",
+      "address": "203.0.113.07",
+      "expect": null
+    },
+    {
+      "name": "IPv4 out of range",
+      "address": "203.0.113.256",
+      "expect": null
+    },
+    {
+      "name": "IPv6 counts per /64",
+      "address": "2001:db8:1:2:3:4:5:6",
+      "expect": "2001:0db8:0001:0002::/64"
+    },
+    {
+      "name": "IPv6 compressed",
+      "address": "2001:db8::1",
+      "expect": "2001:0db8:0000:0000::/64"
+    },
+    {
+      "name": "IPv6 upper case",
+      "address": "2001:DB8:A::1",
+      "expect": "2001:0db8:000a:0000::/64"
+    },
+    {
+      "name": "IPv6 loopback",
+      "address": "::1",
+      "expect": "0000:0000:0000:0000::/64"
+    },
+    {
+      "name": "IPv4-mapped IPv6 counts as IPv4",
+      "address": "::ffff:203.0.113.7",
+      "expect": "203.0.113.7"
+    },
+    {
+      "name": "IPv4-mapped in hex",
+      "address": "::ffff:cb00:7107",
+      "expect": "203.0.113.7"
+    },
+    {
+      "name": "IPv6 with a zone id",
+      "address": "fe80::1%eth0",
+      "expect": null
+    },
+    {
+      "name": "two \"::\"",
+      "address": "2001::db8::1",
+      "expect": null
+    },
+    {
+      "name": "nine groups",
+      "address": "1:2:3:4:5:6:7:8:9",
+      "expect": null
+    },
+    {
+      "name": "\"::\" standing for no group",
+      "address": "1:2:3:4::5:6:7:8",
+      "expect": null
+    },
+    {
+      "name": "dotted IPv4 not at the end",
+      "address": "::1.2.3.4:1",
+      "expect": null
+    },
+    {
+      "name": "empty",
+      "address": "",
+      "expect": null
+    },
+    {
+      "name": "a host name",
+      "address": "localhost",
+      "expect": null
+    }
+  ]
+}

@@ -158,6 +158,38 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "origins": {
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rateLimit": {
+            "type": "object",
+            "properties": {
+              "requests": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000000
+              },
+              "window": {
+                "type": "string"
+              },
+              "per": {
+                "type": "string",
+                "enum": [
+                  "ip",
+                  "route"
+                ]
+              }
+            },
+            "required": [
+              "requests",
+              "window"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [

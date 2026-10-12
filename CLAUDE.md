@@ -21,8 +21,9 @@ Four components (ANFORDERUNGEN.md, header):
 > content-type rules); `apps/cli` (`moat keygen|validate|policy suggest|gate add|secret seal|build`);
 > `conformance/vectors/` and `conformance/http/`; and `gates/php` as a working gate: single-file
 > build, CLI (`install|trust|policy|accept|status`), bundle acceptance (steps 1–10), exact routing,
-> the cURL upstream client with SSRF guard ([gates/php/README.md](gates/php/README.md)). Not yet:
-> Cloud, Desktop, CORS, rate limits, lazy pull, setup mode, trust mode 2. Everything else below is
+> the cURL upstream client with SSRF guard, origin binding/CORS and rate limits
+> ([gates/php/README.md](gates/php/README.md)). Not yet: Cloud, Desktop, quotas/budgets, lazy
+> pull, setup mode, trust mode 2. Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
 
