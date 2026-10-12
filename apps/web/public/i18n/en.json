@@ -16,7 +16,10 @@
     "reload": "Reload",
     "loading": "Loading …",
     "loadError": "The project could not be read. Try again with “Reload”.",
-    "toOverview": "To the overview"
+    "toOverview": "To the overview",
+    "actionsFor": "Actions for {{name}}",
+    "actions": "Actions",
+    "cancel": "Cancel"
   },
   "projects": {
     "title": "Projects",
@@ -405,7 +408,7 @@
         "purpose": "A route is an address on your gate that forwards exactly one kind of request to an upstream. The gate refuses everything else.",
         "where": "Project › Routes",
         "steps": {
-          "write": "Under “Routes”, click “New route” and fill in method, path, upstream and target path. “Edit” changes a route, “Switch off” disables it without deleting it. If you prefer your editor, write it into moat.yaml directly.",
+          "write": "Under “Routes”, click “New route” and fill in method, path, upstream and target path. The three-dot menu at the end of each row has “Edit”, “Switch off” (disables the route without deleting it) and “Delete”. If you prefer your editor, write it into moat.yaml directly.",
           "recipe": "For common cases there are recipes, for example the newsletter sign-up with HubSpot.",
           "origins": "If another website calls the route in a browser, add it under “Allowed websites” (in moat.yaml: `origins`). Without an entry, browsers refuse other websites.",
           "bundle": "A new or changed route applies on the gate only with the next bundle: `moat build <gate>`, upload it and accept it.",

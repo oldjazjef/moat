@@ -5,6 +5,7 @@ import type {
 } from '../../../../core/api/project.types';
 import { ProjectEdits } from '../../../../core/project/project-edits.service';
 import { ProjectResource } from '../../../../core/project/project-resource.service';
+import type { RowAction } from '../../../../shared/components/row-actions';
 import { durationParts, sizeParts } from '../../../../shared/format/duration';
 
 export interface RouteRow {
@@ -120,6 +121,42 @@ export class RoutesPageService {
 
   close(): void {
     this.editing.set(undefined);
+  }
+
+  /** «Bearbeiten», «Ausschalten»/«Einschalten», «Löschen» (asks once more, see remove). */
+  routeActions(row: RouteRow): readonly RowAction[] {
+    return [
+      { id: 'edit', labelKey: 'routes.edit' },
+      row.route.enabled
+        ? { id: 'disable', labelKey: 'routes.switchOff' }
+        : { id: 'enable', labelKey: 'routes.switchOn' },
+      { id: 'remove', labelKey: 'routes.remove', destructive: true },
+    ];
+  }
+
+  routeAction(row: RouteRow, action: string): void {
+    if (action === 'edit') this.open(row);
+    else if (action === 'disable') void this.setEnabled(row, false);
+    else if (action === 'enable') void this.setEnabled(row, true);
+    else if (action === 'remove') void this.remove(row);
+  }
+
+  /** An upstream that routes still call cannot be deleted: «Löschen» is shown, but disabled. */
+  upstreamActions(row: UpstreamRow): readonly RowAction[] {
+    return [
+      { id: 'edit', labelKey: 'routes.edit' },
+      {
+        id: 'remove',
+        labelKey: 'routes.remove',
+        destructive: true,
+        disabled: row.callers.length > 0,
+      },
+    ];
+  }
+
+  upstreamAction(row: UpstreamRow, action: string): void {
+    if (action === 'edit') this.openUpstream(row);
+    else if (action === 'remove') void this.removeUpstream(row);
   }
 
   setEnabled(row: RouteRow, enabled: boolean): Promise<boolean> {

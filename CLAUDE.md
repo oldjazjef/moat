@@ -65,6 +65,14 @@ Angular 22.2 standalone + zoneless, **spartan.ng** helm components in `libs/ui`,
 typed reactive forms + Zod, `httpResource` + ActionRunner, ngx-translate (`de-CH` reference +
 `en`), Inter self-hosted — exactly as lazy-koins. Selector prefix **`mt`**.
 
+**Actions in tables and lists** (standard, decided 12.10.2026): a row's actions always sit at its
+right end — in a table the last column, `class="mt-actions-cell"` (pinned to the right edge while
+the table scrolls sideways), in a list the end of the item. One action is a plain button; two or
+more go into a menu behind a "…" icon button. Use `mt-row-actions` (`shared/components/row-actions`,
+on the vendored `@moat/ui/dropdown-menu`) for both cases, never loose link buttons under a name. An
+action that is not possible right now stays in the menu, disabled, and the row says why. A
+destructive action asks once more in the same cell («Wirklich löschen» + «Abbrechen»).
+
 ### Cloud API (`apps/api`)
 
 NestJS 11 (Express), **Prisma 7** with driver adapters, `@nestjs/cqrs`, `@nestjs/swagger` +

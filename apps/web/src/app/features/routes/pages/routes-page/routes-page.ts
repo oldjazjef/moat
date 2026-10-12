@@ -7,6 +7,7 @@ import { HlmTableImports } from '@moat/ui/table';
 import { HelpLink } from '../../../help/components/help-link';
 import { RouteForm } from '../../components/route-form';
 import { UpstreamForm } from '../../components/upstream-form';
+import { RowActions } from '../../../../shared/components/row-actions';
 import { RoutesPageService } from './routes-page.service';
 
 @Component({
@@ -17,6 +18,7 @@ import { RoutesPageService } from './routes-page.service';
     HelpLink,
     RouteForm,
     UpstreamForm,
+    RowActions,
     HlmBadge,
     ...HlmButtonImports,
     ...HlmTableImports,

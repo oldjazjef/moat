@@ -151,6 +151,14 @@
     @apply bg-card overflow-x-auto rounded-lg border;
   }
 
+  /*
+   * The actions column of a table (CLAUDE.md, Conventions): last cell, pinned to the right edge
+   * while the table scrolls sideways, as narrow as its content.
+   */
+  .mt-actions-cell {
+    @apply bg-card sticky right-0 w-px text-end whitespace-nowrap;
+  }
+
   /* Label/value pairs, e.g. a gate's identity. */
   .mt-facts {
     @apply grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm;

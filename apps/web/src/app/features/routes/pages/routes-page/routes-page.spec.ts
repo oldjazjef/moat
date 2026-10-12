@@ -11,6 +11,25 @@ import { RoutesPage } from './routes-page';
 const text = (el: HTMLElement, selector: string) =>
   el.querySelector(selector)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 
+/** Opens the row's "…" menu (rendered in the overlay, outside the page) and returns its item. */
+async function menuItem(
+  harness: Parameters<typeof settle>[0],
+  row: Element,
+  action: string,
+): Promise<HTMLButtonElement> {
+  (row.querySelector('[data-row-actions]') as HTMLButtonElement).click();
+  await settle(harness);
+  const item = document.querySelector(
+    `[data-row-actions-menu] [data-action="${action}"]`,
+  );
+  if (!(item instanceof HTMLButtonElement)) throw new Error(`no ${action}`);
+  return item;
+}
+const routeRow = (el: HTMLElement, name: string) =>
+  el.querySelector(`[data-route-name="${name}"]`) as HTMLElement;
+const upstreamRow = (el: HTMLElement, name: string) =>
+  el.querySelector(`[data-upstream-name="${name}"]`) as HTMLElement;
+
 describe('RoutesPage', () => {
   it('shows each route as the gate enforces it, and the upstream with its secret by name', async () => {
     const { el } = await openProjectTab('routes', RoutesPage, PROJECT);
@@ -95,7 +114,7 @@ describe('RoutesPage', () => {
 
   it('opens a route with its values in moat.yaml spelling and marks the fields the core refused', async () => {
     const { el, harness } = await openProjectTab('routes', RoutesPage, PROJECT);
-    (el.querySelector('[data-route-edit]') as HTMLButtonElement).click();
+    (await menuItem(harness, routeRow(el, 'newsletter'), 'edit')).click();
     await settle(harness);
     const value = (selector: string) =>
       (el.querySelector(selector) as HTMLInputElement).value;
@@ -134,7 +153,12 @@ describe('RoutesPage', () => {
 
   it('switches a route off, and deletes it only on the second click', async () => {
     const { el, harness } = await openProjectTab('routes', RoutesPage, PROJECT);
-    (el.querySelector('[data-route-disable]') as HTMLButtonElement).click();
+    // Actions sit in the last cell, behind one "…" button (CLAUDE.md, Conventions).
+    const cells = routeRow(el, 'newsletter').querySelectorAll('td');
+    expect(cells[cells.length - 1]?.hasAttribute('data-route-actions')).toBe(
+      true,
+    );
+    (await menuItem(harness, routeRow(el, 'newsletter'), 'disable')).click();
     const off = expectEdit();
     expect(off.request.body).toEqual({
       base: 'a'.repeat(64),
@@ -144,7 +168,7 @@ describe('RoutesPage', () => {
     off.flush(PROJECT);
     await settle(harness);
 
-    (el.querySelector('[data-route-remove]') as HTMLButtonElement).click();
+    (await menuItem(harness, routeRow(el, 'newsletter'), 'remove')).click();
     await settle(harness);
     TestBed.inject(HttpTestingController).expectNone(
       `/api/projects/${PROJECT.id}/config/edits`,
@@ -209,7 +233,7 @@ describe('RoutesPage', () => {
 
   it('opens an upstream with its values and marks the field the core refused', async () => {
     const { el, harness } = await openProjectTab('routes', RoutesPage, PROJECT);
-    (el.querySelector('[data-upstream-edit]') as HTMLButtonElement).click();
+    (await menuItem(harness, upstreamRow(el, 'hubspot'), 'edit')).click();
     await settle(harness);
     const value = (selector: string) =>
       (el.querySelector(selector) as HTMLInputElement).value;
@@ -276,16 +300,19 @@ describe('RoutesPage', () => {
     const used = el.querySelector(
       '[data-upstream-name="hubspot"]',
     ) as HTMLElement;
-    expect(used.querySelector('[data-upstream-remove]')).toBeNull();
+    const blocked = await menuItem(harness, used, 'remove');
+    expect(blocked.getAttribute('aria-disabled')).toBe('true');
+    blocked.click();
+    document.body.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
     expect(text(used, '[data-upstream-callers]')).toBe(
       'Benutzt von newsletter',
     );
     const spare = el.querySelector(
       '[data-upstream-name="spare"]',
     ) as HTMLElement;
-    (
-      spare.querySelector('[data-upstream-remove]') as HTMLButtonElement
-    ).click();
+    (await menuItem(harness, spare, 'remove')).click();
     await settle(harness);
     TestBed.inject(HttpTestingController).expectNone(
       `/api/projects/${PROJECT.id}/config/edits`,

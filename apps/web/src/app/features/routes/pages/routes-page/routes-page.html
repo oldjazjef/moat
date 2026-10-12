@@ -59,6 +59,9 @@
           <th hlmTh>{{ 'routes.columns.target' | translate }}</th>
           <th hlmTh>{{ 'routes.columns.origins' | translate }}</th>
           <th hlmTh>{{ 'routes.columns.rateLimit' | translate }}</th>
+          <th hlmTh class="mt-actions-cell">
+            <span class="sr-only">{{ 'common.actions' | translate }}</span>
+          </th>
         </tr>
       </thead>
       <tbody hlmTBody>
@@ -71,73 +74,6 @@
               {{ 'routes.disabled' | translate }}
             </span>
             }
-            <div class="mt-1 flex flex-wrap gap-x-3" data-route-actions>
-              <button
-                hlmBtn
-                variant="link"
-                size="sm"
-                class="h-auto px-0 text-xs"
-                type="button"
-                data-route-edit
-                [disabled]="service.edits.busy()"
-                (click)="service.open(row)"
-              >
-                {{ 'routes.edit' | translate }}
-              </button>
-              @if (row.route.enabled) {
-              <button
-                hlmBtn
-                variant="link"
-                size="sm"
-                class="h-auto px-0 text-xs"
-                type="button"
-                data-route-disable
-                [disabled]="service.edits.busy()"
-                (click)="service.setEnabled(row, false)"
-              >
-                {{ 'routes.switchOff' | translate }}
-              </button>
-              } @else {
-              <button
-                hlmBtn
-                variant="link"
-                size="sm"
-                class="h-auto px-0 text-xs"
-                type="button"
-                data-route-enable
-                [disabled]="service.edits.busy()"
-                (click)="service.setEnabled(row, true)"
-              >
-                {{ 'routes.switchOn' | translate }}
-              </button>
-              } @if (service.confirmingRemove() === row.name) {
-              <button
-                hlmBtn
-                variant="link"
-                size="sm"
-                class="text-destructive h-auto px-0 text-xs"
-                type="button"
-                data-route-remove-confirm
-                [disabled]="service.edits.busy()"
-                (click)="service.remove(row)"
-              >
-                {{ 'routes.removeConfirm' | translate }}
-              </button>
-              } @else {
-              <button
-                hlmBtn
-                variant="link"
-                size="sm"
-                class="h-auto px-0 text-xs"
-                type="button"
-                data-route-remove
-                [disabled]="service.edits.busy()"
-                (click)="service.remove(row)"
-              >
-                {{ 'routes.remove' | translate }}
-              </button>
-              }
-            </div>
           </td>
           <td hlmTd>
             <span class="mt-code">
@@ -172,6 +108,40 @@
             <span class="text-muted-foreground text-xs">
               {{ 'routes.rate.policyOnly' | translate }}
             </span>
+            }
+          </td>
+          <td hlmTd class="mt-actions-cell" data-route-actions>
+            @if (service.confirmingRemove() === row.name) {
+            <span class="inline-flex gap-1">
+              <button
+                hlmBtn
+                variant="destructive"
+                size="sm"
+                type="button"
+                data-route-remove-confirm
+                [disabled]="service.edits.busy()"
+                (click)="service.remove(row)"
+              >
+                {{ 'routes.removeConfirm' | translate }}
+              </button>
+              <button
+                hlmBtn
+                variant="ghost"
+                size="sm"
+                type="button"
+                data-remove-cancel
+                (click)="service.confirmingRemove.set(null)"
+              >
+                {{ 'common.cancel' | translate }}
+              </button>
+            </span>
+            } @else {
+            <mt-row-actions
+              [actions]="service.routeActions(row)"
+              [name]="row.name"
+              [disabled]="service.edits.busy()"
+              (run)="service.routeAction(row, $event)"
+            />
             }
           </td>
         </tr>
@@ -216,6 +186,9 @@
           <th hlmTh>{{ 'routes.columns.origin' | translate }}</th>
           <th hlmTh>{{ 'routes.columns.auth' | translate }}</th>
           <th hlmTh>{{ 'routes.columns.timeout' | translate }}</th>
+          <th hlmTh class="mt-actions-cell">
+            <span class="sr-only">{{ 'common.actions' | translate }}</span>
+          </th>
         </tr>
       </thead>
       <tbody hlmTBody>
@@ -223,52 +196,15 @@
         <tr hlmTr data-upstream [attr.data-upstream-name]="row.name">
           <td hlmTd>
             <span class="mt-code font-medium">{{ row.name }}</span>
-            <div class="mt-1 flex flex-wrap gap-x-3" data-upstream-actions>
-              <button
-                hlmBtn
-                variant="link"
-                size="sm"
-                class="h-auto px-0 text-xs"
-                type="button"
-                data-upstream-edit
-                [disabled]="service.edits.busy()"
-                (click)="service.openUpstream(row)"
-              >
-                {{ 'routes.edit' | translate }}
-              </button>
-              @if (row.callers.length > 0) {
-              <span class="text-muted-foreground text-xs" data-upstream-callers>
-                {{ 'routes.upstreamInUse' | translate: { routes:
-                row.callers.join(', ') } }}
-              </span>
-              } @else if (service.confirmingUpstreamRemove() === row.name) {
-              <button
-                hlmBtn
-                variant="link"
-                size="sm"
-                class="text-destructive h-auto px-0 text-xs"
-                type="button"
-                data-upstream-remove-confirm
-                [disabled]="service.edits.busy()"
-                (click)="service.removeUpstream(row)"
-              >
-                {{ 'routes.removeConfirm' | translate }}
-              </button>
-              } @else {
-              <button
-                hlmBtn
-                variant="link"
-                size="sm"
-                class="h-auto px-0 text-xs"
-                type="button"
-                data-upstream-remove
-                [disabled]="service.edits.busy()"
-                (click)="service.removeUpstream(row)"
-              >
-                {{ 'routes.remove' | translate }}
-              </button>
-              }
-            </div>
+            @if (row.callers.length > 0) {
+            <span
+              class="text-muted-foreground block text-xs"
+              data-upstream-callers
+            >
+              {{ 'routes.upstreamInUse' | translate: { routes:
+              row.callers.join(', ') } }}
+            </span>
+            }
           </td>
           <td hlmTd class="mt-code">{{ row.upstream.origin }}</td>
           <td hlmTd>
@@ -282,6 +218,40 @@
           <td hlmTd>
             {{ 'routes.duration' | translate: { value: row.timeout.value, unit:
             (row.timeout.unitKey | translate) } }}
+          </td>
+          <td hlmTd class="mt-actions-cell" data-upstream-actions>
+            @if (service.confirmingUpstreamRemove() === row.name) {
+            <span class="inline-flex gap-1">
+              <button
+                hlmBtn
+                variant="destructive"
+                size="sm"
+                type="button"
+                data-upstream-remove-confirm
+                [disabled]="service.edits.busy()"
+                (click)="service.removeUpstream(row)"
+              >
+                {{ 'routes.removeConfirm' | translate }}
+              </button>
+              <button
+                hlmBtn
+                variant="ghost"
+                size="sm"
+                type="button"
+                data-remove-cancel
+                (click)="service.confirmingUpstreamRemove.set(null)"
+              >
+                {{ 'common.cancel' | translate }}
+              </button>
+            </span>
+            } @else {
+            <mt-row-actions
+              [actions]="service.upstreamActions(row)"
+              [name]="row.name"
+              [disabled]="service.edits.busy()"
+              (run)="service.upstreamAction(row, $event)"
+            />
+            }
           </td>
         </tr>
         }
