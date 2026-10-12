@@ -15,7 +15,7 @@ Four components (ANFORDERUNGEN.md, header):
 - **Moat Gate** (`gates/php` first, later `gates/node`, `gates/dotnet`): runs on the customer's
   hosting, enforces everything locally, trusts nobody it does not have to.
 
-> **Status (12.10.2026): requirements v0.4 + threat model v0.1 + this setup.** No code yet. The stack and the
+> **Status (12.10.2026): requirements v0.4 + threat model v0.1 + crypto spec v0.1 + this setup.** No code yet. The stack and the
 > conventions below are the target; each section becomes concrete when the code lands. Update
 > this file whenever the code makes a section concrete or wrong.
 
@@ -73,7 +73,7 @@ Nest, no Prisma. The trustworthy path for signing and sealing (SEC-37).
 |              |                                                                                    |
 | ------------ | ---------------------------------------------------------------------------------- |
 | PHP          | **≥ 8.2** at runtime (shared hosting); CI matrix 8.2 · 8.3 · 8.4 · 8.5             |
-| Extensions   | `sodium`, `curl`, `json`, `hash` — checked at boot, fail closed with a clear error |
+| Extensions   | `sodium`, `curl`, `json`, `hash` (+ `openssl` only if mode 2 is pinned) — checked at boot |
 | Runtime deps | **none** — Composer is for dev tools only (`require` = `php` + `ext-*`)            |
 | Style        | **PER Coding Style 2.0** via PHP-CS-Fixer                                          |
 | Analysis     | **PHPStan level max** + strict-rules + disallowed-calls (see PHP)                  |
@@ -170,22 +170,14 @@ When a requirement and a request conflict, stop and ask. Security reviews: `/sec
 every PR that touches `libs/core/src/{bundle,crypto,policy}`, `gates/**`, auth, or the desktop's
 IPC/protocol.
 
-## Crypto defaults (until the crypto spec exists, ANFORDERUNGEN.md §5.3)
+## Crypto
 
-Proposed, not final — change them only together with `conformance/vectors/` and both
-implementations:
-
-- Signatures: **Ed25519** (`crypto_sign_detached`). Key ids = first 16 bytes of BLAKE2b of the
-  public key, base64url.
-- Bundle: JSON envelope `{ "v": 1, "kid", "payload": <base64url of canonical JSON>, "sig" }`;
-  canonical JSON = **RFC 8785 (JCS)**. The payload holds `gateId`, `version`, optional
-  `expiresAt` (SEC-05, default none) and the config.
-- Sealed secrets: X25519 ECDH with the gate key + HKDF-SHA256 → **XChaCha20-Poly1305-IETF**,
-  associated data = `moat:secret:v1|<gateId>|<secretName>` (SEC-33). Not `crypto_box_seal` — it
-  has no associated data.
-- Key files (trust mode 1): **Argon2id** (`crypto_pwhash`, moderate limits) wrapping the Ed25519
-  secret key; format versioned.
-- Encoding: base64url without padding everywhere in JSON.
+**[docs/CRYPTO.md](docs/CRYPTO.md) is the spec** (formats, verification order, enrollment, release
+signing, test vectors). Change it only together with `conformance/vectors/crypto/` and every
+implementation. In short: Ed25519 signatures over `"moat:bundle:v1\n" ‖ payloadBytes` with JCS
+payloads; secrets sealed with X25519 + keyed BLAKE2b + XChaCha20-Poly1305, AD bound to gate id,
+name and secret version; key files with Argon2id; base64url without padding. Passkeys (mode 2)
+are still an open decision there (§12).
 
 ## YAML standards
 
@@ -259,7 +251,7 @@ Shared hosting is the hardest target (H1, ANFORDERUNGEN.md §2.5). Write for it.
   lock (§4.3), permissions as tight as the host allows; never write into the gate's own code
   file.
 - **Crypto**: ext-sodium only (`sodium_crypto_sign_verify_detached`, `sodium_crypto_aead_*`,
-  `sodium_crypto_scalarmult`), `hash_hkdf`, `hash_equals`, `random_bytes`, `sodium_memzero`.
+  `sodium_crypto_scalarmult`, `sodium_crypto_generichash`), `hash_equals`, `random_bytes`, `sodium_memzero`.
 - **Style/analysis**: PHP-CS-Fixer with `@PER-CS2.0` + `@PHP82Migration` (`.php-cs-fixer.dist.php`),
   PHPStan level `max` with `phpstan-strict-rules` and `phpstan-deprecation-rules`, zero baseline
   entries (a baseline may only shrink, like the lint budget). Psalm is not used.
@@ -350,7 +342,7 @@ checksums + SBOM (SEC-60, SEC-61), images to ghcr, desktop installers per releas
 
 ## Open decisions — ask, don't decide
 
-- **Crypto spec** (ANFORDERUNGEN.md §5.3) — the defaults above are proposals.
+- **Passkeys / mode 2** (docs/CRYPTO.md §12).
 - **Default trust mode** in the Cloud (§5.4) and the product wording (§5.5).
 - **Desktop signing / auto-update** (same open point as lazy-koins).
 - **Threat model**: v0.1 in [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) (cite threats as `T-20`);
