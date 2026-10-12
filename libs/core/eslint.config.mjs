@@ -20,19 +20,22 @@ const FRAMEWORKS = {
     'libs/core is pure TypeScript: no Angular, Nest or Prisma. Hand data in from the caller instead.',
 };
 
+// Bare module names go in `paths` (exact match): as `patterns` they would also match core's own
+// folders (./crypto, ./http).
+const IO_MODULES = [
+  'fs',
+  'path',
+  'http',
+  'https',
+  'net',
+  'child_process',
+  'crypto',
+  'axios',
+  'undici',
+];
+
 const IO = {
-  group: [
-    'node:*',
-    'fs',
-    'fs/*',
-    'path',
-    'http',
-    'https',
-    'net',
-    'child_process',
-    'axios',
-    'undici',
-  ],
+  group: ['node:*', 'fs/*'],
   message:
     'libs/core does no I/O — no file system, no network. The caller reads files and fetches bundles, then hands the bytes in.',
 };
@@ -49,9 +52,8 @@ export default [
     rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',
-        // `crypto` is a path, not a pattern: a pattern would also match core's own ./crypto/.
         {
-          paths: [{ name: 'crypto', message: IO.message }],
+          paths: IO_MODULES.map((name) => ({ name, message: IO.message })),
           patterns: [FRAMEWORKS, IO, APPS],
         },
       ],

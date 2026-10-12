@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc"
+  },
+  "include": ["src/**/*.ts", "../../libs/core/src/encoding/text-codec.d.ts"],
+  "exclude": ["src/**/*.spec.ts"]
+}

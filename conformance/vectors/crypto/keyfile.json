@@ -1,0 +1,215 @@
+{
+  "description": "Key files (docs/CRYPTO.md §6), opened by Desktop and CLI — gates never see one. `keyfile_invalid`: malformed, KDF below the open floor (ops 2, 64 MiB) or above 1 GiB, or seed/pk/kid disagree. `keyfile_locked`: wrong passphrase or tampered ciphertext.",
+  "notice": "TEST ONLY — the seed, salt and nonce are derived from public labels.",
+  "cases": [
+    {
+      "name": "opens",
+      "file": {
+        "moat": "keyfile",
+        "v": 1,
+        "alg": "ed25519",
+        "kid": "Y4EZat0VwWLZuxIPA_XllA",
+        "pk": "vTFr5ruYsFmfB1H2y71ktV3rFQIAkdslgpvlnqdjJek",
+        "kdf": {
+          "alg": "argon2id13",
+          "ops": 2,
+          "mem": 67108864,
+          "salt": "QM_HuKzfyNbht7kBbUt8AQ"
+        },
+        "nonce": "UXoRLUFL-pWyf-TAprhjQth7kk8CDWTv",
+        "ct": "3z0aB3-D47Un6QGccKFJ5_cXdLgrDyEQXsKCnmoQUnHEAbDrHWGius0moFN9Q5Nu"
+      },
+      "passphrase": "correct horse battery staple (TEST ONLY)",
+      "expect": {
+        "ok": true,
+        "kid": "Y4EZat0VwWLZuxIPA_XllA",
+        "pk": "vTFr5ruYsFmfB1H2y71ktV3rFQIAkdslgpvlnqdjJek"
+      }
+    },
+    {
+      "name": "wrong passphrase",
+      "file": {
+        "moat": "keyfile",
+        "v": 1,
+        "alg": "ed25519",
+        "kid": "Y4EZat0VwWLZuxIPA_XllA",
+        "pk": "vTFr5ruYsFmfB1H2y71ktV3rFQIAkdslgpvlnqdjJek",
+        "kdf": {
+          "alg": "argon2id13",
+          "ops": 2,
+          "mem": 67108864,
+          "salt": "QM_HuKzfyNbht7kBbUt8AQ"
+        },
+        "nonce": "UXoRLUFL-pWyf-TAprhjQth7kk8CDWTv",
+        "ct": "3z0aB3-D47Un6QGccKFJ5_cXdLgrDyEQXsKCnmoQUnHEAbDrHWGius0moFN9Q5Nu"
+      },
+      "passphrase": "wrong",
+      "expect": {
+        "ok": false,
+        "error": "keyfile_locked"
+      }
+    },
+    {
+      "name": "tampered ciphertext",
+      "file": {
+        "moat": "keyfile",
+        "v": 1,
+        "alg": "ed25519",
+        "kid": "Y4EZat0VwWLZuxIPA_XllA",
+        "pk": "vTFr5ruYsFmfB1H2y71ktV3rFQIAkdslgpvlnqdjJek",
+        "kdf": {
+          "alg": "argon2id13",
+          "ops": 2,
+          "mem": 67108864,
+          "salt": "QM_HuKzfyNbht7kBbUt8AQ"
+        },
+        "nonce": "UXoRLUFL-pWyf-TAprhjQth7kk8CDWTv",
+        "ct": "Az0aB3-D47Un6QGccKFJ5_cXdLgrDyEQXsKCnmoQUnHEAbDrHWGius0moFN9Q5Nu"
+      },
+      "passphrase": "correct horse battery staple (TEST ONLY)",
+      "expect": {
+        "ok": false,
+        "error": "keyfile_locked"
+      }
+    },
+    {
+      "name": "kid of another key",
+      "file": {
+        "moat": "keyfile",
+        "v": 1,
+        "alg": "ed25519",
+        "kid": "Y4EZat0VwWLZuxIPA_XllA",
+        "pk": "RFNG-04_Y72IM8iEuBwlXao-4YMVlxG6yzHRsLFf1hg",
+        "kdf": {
+          "alg": "argon2id13",
+          "ops": 2,
+          "mem": 67108864,
+          "salt": "QM_HuKzfyNbht7kBbUt8AQ"
+        },
+        "nonce": "UXoRLUFL-pWyf-TAprhjQth7kk8CDWTv",
+        "ct": "3z0aB3-D47Un6QGccKFJ5_cXdLgrDyEQXsKCnmoQUnHEAbDrHWGius0moFN9Q5Nu"
+      },
+      "passphrase": "correct horse battery staple (TEST ONLY)",
+      "expect": {
+        "ok": false,
+        "error": "keyfile_invalid"
+      }
+    },
+    {
+      "name": "ops below the floor",
+      "file": {
+        "moat": "keyfile",
+        "v": 1,
+        "alg": "ed25519",
+        "kid": "Y4EZat0VwWLZuxIPA_XllA",
+        "pk": "vTFr5ruYsFmfB1H2y71ktV3rFQIAkdslgpvlnqdjJek",
+        "kdf": {
+          "alg": "argon2id13",
+          "ops": 1,
+          "mem": 67108864,
+          "salt": "QM_HuKzfyNbht7kBbUt8AQ"
+        },
+        "nonce": "UXoRLUFL-pWyf-TAprhjQth7kk8CDWTv",
+        "ct": "3z0aB3-D47Un6QGccKFJ5_cXdLgrDyEQXsKCnmoQUnHEAbDrHWGius0moFN9Q5Nu"
+      },
+      "passphrase": "correct horse battery staple (TEST ONLY)",
+      "expect": {
+        "ok": false,
+        "error": "keyfile_invalid"
+      }
+    },
+    {
+      "name": "memory below the floor",
+      "file": {
+        "moat": "keyfile",
+        "v": 1,
+        "alg": "ed25519",
+        "kid": "Y4EZat0VwWLZuxIPA_XllA",
+        "pk": "vTFr5ruYsFmfB1H2y71ktV3rFQIAkdslgpvlnqdjJek",
+        "kdf": {
+          "alg": "argon2id13",
+          "ops": 2,
+          "mem": 33554432,
+          "salt": "QM_HuKzfyNbht7kBbUt8AQ"
+        },
+        "nonce": "UXoRLUFL-pWyf-TAprhjQth7kk8CDWTv",
+        "ct": "3z0aB3-D47Un6QGccKFJ5_cXdLgrDyEQXsKCnmoQUnHEAbDrHWGius0moFN9Q5Nu"
+      },
+      "passphrase": "correct horse battery staple (TEST ONLY)",
+      "expect": {
+        "ok": false,
+        "error": "keyfile_invalid"
+      }
+    },
+    {
+      "name": "absurd memory",
+      "file": {
+        "moat": "keyfile",
+        "v": 1,
+        "alg": "ed25519",
+        "kid": "Y4EZat0VwWLZuxIPA_XllA",
+        "pk": "vTFr5ruYsFmfB1H2y71ktV3rFQIAkdslgpvlnqdjJek",
+        "kdf": {
+          "alg": "argon2id13",
+          "ops": 2,
+          "mem": 4294967296,
+          "salt": "QM_HuKzfyNbht7kBbUt8AQ"
+        },
+        "nonce": "UXoRLUFL-pWyf-TAprhjQth7kk8CDWTv",
+        "ct": "3z0aB3-D47Un6QGccKFJ5_cXdLgrDyEQXsKCnmoQUnHEAbDrHWGius0moFN9Q5Nu"
+      },
+      "passphrase": "correct horse battery staple (TEST ONLY)",
+      "expect": {
+        "ok": false,
+        "error": "keyfile_invalid"
+      }
+    },
+    {
+      "name": "other KDF",
+      "file": {
+        "moat": "keyfile",
+        "v": 1,
+        "alg": "ed25519",
+        "kid": "Y4EZat0VwWLZuxIPA_XllA",
+        "pk": "vTFr5ruYsFmfB1H2y71ktV3rFQIAkdslgpvlnqdjJek",
+        "kdf": {
+          "alg": "scrypt",
+          "ops": 2,
+          "mem": 67108864,
+          "salt": "QM_HuKzfyNbht7kBbUt8AQ"
+        },
+        "nonce": "UXoRLUFL-pWyf-TAprhjQth7kk8CDWTv",
+        "ct": "3z0aB3-D47Un6QGccKFJ5_cXdLgrDyEQXsKCnmoQUnHEAbDrHWGius0moFN9Q5Nu"
+      },
+      "passphrase": "correct horse battery staple (TEST ONLY)",
+      "expect": {
+        "ok": false,
+        "error": "keyfile_invalid"
+      }
+    },
+    {
+      "name": "extra field",
+      "file": {
+        "moat": "keyfile",
+        "v": 1,
+        "alg": "ed25519",
+        "kid": "Y4EZat0VwWLZuxIPA_XllA",
+        "pk": "vTFr5ruYsFmfB1H2y71ktV3rFQIAkdslgpvlnqdjJek",
+        "kdf": {
+          "alg": "argon2id13",
+          "ops": 2,
+          "mem": 67108864,
+          "salt": "QM_HuKzfyNbht7kBbUt8AQ"
+        },
+        "nonce": "UXoRLUFL-pWyf-TAprhjQth7kk8CDWTv",
+        "ct": "3z0aB3-D47Un6QGccKFJ5_cXdLgrDyEQXsKCnmoQUnHEAbDrHWGius0moFN9Q5Nu",
+        "note": "x"
+      },
+      "passphrase": "correct horse battery staple (TEST ONLY)",
+      "expect": {
+        "ok": false,
+        "error": "keyfile_invalid"
+      }
+    }
+  ]
+}

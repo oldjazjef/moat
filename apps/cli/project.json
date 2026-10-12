@@ -1,0 +1,28 @@
+{
+  "name": "cli",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/cli/src",
+  "projectType": "application",
+  "tags": ["scope:cli"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "outputs": ["{workspaceRoot}/dist/apps/cli"],
+      "options": {
+        "command": "node apps/cli/build.mjs",
+        "cwd": "."
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "options": {
+        "command": "tsc -p apps/cli/tsconfig.app.json --noEmit && tsc -p apps/cli/tsconfig.spec.json --noEmit",
+        "cwd": "."
+      }
+    }
+  }
+}

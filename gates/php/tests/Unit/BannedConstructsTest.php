@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Moat\Gate\Tests\Unit;
 
+use Moat\Gate\Build\Builder;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -31,6 +32,34 @@ final class BannedConstructsTest extends TestCase
     {
         $code = file_get_contents($path);
         self::assertIsString($code);
+        self::assertSame([], self::banned($code));
+    }
+
+    /** The built single file is what ships: scan it too (SEC-21). */
+    public function testNoBannedConstructInTheBuiltGate(): void
+    {
+        $code = Builder::build(\dirname(__DIR__, 2) . '/src', '0.0.0-test', 'test');
+        self::assertSame([], self::banned($code));
+        $kinds = array_map(static fn(array|string $token): int => \is_array($token) ? $token[0] : 0, token_get_all($code));
+        $counts = array_count_values($kinds);
+        self::assertSame(1, $counts[T_OPEN_TAG] ?? 0, 'one open tag');
+        self::assertArrayNotHasKey(T_CLOSE_TAG, $counts, 'no closing tag');
+        self::assertArrayNotHasKey(T_INLINE_HTML, $counts, 'no inline output');
+    }
+
+    public function testSec60TheBuildIsReproducibleAndCarriesItsHash(): void
+    {
+        $src = \dirname(__DIR__, 2) . '/src';
+        $code = Builder::build($src, '1.2.3', 'abc123');
+        self::assertSame($code, Builder::build($src, '1.2.3', 'abc123'));
+        [$header, $body] = explode(Builder::SEPARATOR, $code, 2);
+        self::assertStringContainsString('sha256 of everything after the header: ' . hash('sha256', $body), $header);
+        self::assertStringContainsString('// version: 1.2.3', $header);
+    }
+
+    /** @return list<string> */
+    private static function banned(string $code): array
+    {
         $tokens = array_values(array_filter(
             token_get_all($code),
             static fn(array|string $token): bool => !\is_array($token) || !\in_array($token[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true),
@@ -54,6 +83,6 @@ final class BannedConstructsTest extends TestCase
                 }
             }
         }
-        self::assertSame([], $found);
+        return $found;
     }
 }

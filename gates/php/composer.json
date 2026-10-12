@@ -25,6 +25,7 @@
   },
   "autoload-dev": {
     "psr-4": {
+      "Moat\\Gate\\Build\\": "build/",
       "Moat\\Gate\\Tests\\": "tests/"
     }
   },
@@ -40,7 +41,8 @@
     "cs:fix": "php-cs-fixer fix",
     "phpstan": "phpstan analyse --no-progress --memory-limit=1G",
     "test": "phpunit",
-    "conformance": "phpunit --testsuite conformance",
+    "conformance": "phpunit --testsuite conformance,http",
+    "build": "php build/build.php",
     "check": [
       "@composer validate --strict",
       "@cs",

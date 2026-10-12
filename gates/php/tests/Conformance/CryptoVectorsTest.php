@@ -25,31 +25,31 @@ final class CryptoVectorsTest extends TestCase
     /** @return iterable<string, array{array<string, mixed>}> */
     public static function base64url(): iterable
     {
-        return Vectors::cases('base64url.json');
+        return Vectors::cases('crypto/base64url.json');
     }
 
     /** @return iterable<string, array{array<string, mixed>}> */
     public static function json(): iterable
     {
-        return Vectors::cases('json.json');
+        return Vectors::cases('crypto/json.json');
     }
 
     /** @return iterable<string, array{array<string, mixed>}> */
     public static function kid(): iterable
     {
-        return Vectors::cases('kid.json');
+        return Vectors::cases('crypto/kid.json');
     }
 
     /** @return iterable<string, array{array<string, mixed>}> */
     public static function bundle(): iterable
     {
-        return Vectors::cases('bundle.json');
+        return Vectors::cases('crypto/bundle.json');
     }
 
     /** @return iterable<string, array{array<string, mixed>}> */
     public static function secret(): iterable
     {
-        return Vectors::cases('secret.json');
+        return Vectors::cases('crypto/secret.json');
     }
 
     /** @param array<string, mixed> $case */
@@ -90,7 +90,7 @@ final class CryptoVectorsTest extends TestCase
     public function testBundle(array $case): void
     {
         $signers = [];
-        foreach (Vectors::list(Vectors::load('bundle.json')['signers'] ?? null) as $signer) {
+        foreach (Vectors::list(Vectors::load('crypto/bundle.json')['signers'] ?? null) as $signer) {
             $signer = Vectors::map($signer);
             $signers[Vectors::string($signer['name'])] = Vectors::string($signer['publicKey']);
         }
@@ -129,7 +129,7 @@ final class CryptoVectorsTest extends TestCase
     #[DataProvider('secret')]
     public function testSecret(array $case): void
     {
-        $gate = Vectors::map(Vectors::load('secret.json')['gate'] ?? null);
+        $gate = Vectors::map(Vectors::load('crypto/secret.json')['gate'] ?? null);
         $gateSecretKey = Base64Url::decode($gate['secretKey']);
         // The sealed object reaches the gate inside a bundle: decode it the way the gate does.
         $sealed = StrictJson::decode(json_encode($case['sealed'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));

@@ -1,0 +1,146 @@
+{
+  "description": "FR-18: is the Content-Type header value allowed by the route? Media type = the part before \";\", without spaces and tabs around it, ASCII lower-cased; exact match against the list.",
+  "cases": [
+    {
+      "name": "exact",
+      "header": "application/json",
+      "allowed": [
+        "application/json"
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "parameters are ignored",
+      "header": "application/json; charset=utf-8",
+      "allowed": [
+        "application/json"
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "no space before parameter",
+      "header": "application/json;charset=utf-8",
+      "allowed": [
+        "application/json"
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "case-insensitive",
+      "header": "Application/JSON",
+      "allowed": [
+        "application/json"
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "spaces and tabs around",
+      "header": " \tapplication/json\t ",
+      "allowed": [
+        "application/json"
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "other media type",
+      "header": "text/plain",
+      "allowed": [
+        "application/json"
+      ],
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "name": "suffix type is a different type",
+      "header": "application/merge-patch+json",
+      "allowed": [
+        "application/json"
+      ],
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "name": "allowed when listed",
+      "header": "application/merge-patch+json",
+      "allowed": [
+        "application/json",
+        "application/merge-patch+json"
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "empty",
+      "header": "",
+      "allowed": [
+        "application/json"
+      ],
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "name": "wildcard",
+      "header": "application/*",
+      "allowed": [
+        "application/json"
+      ],
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "name": "list",
+      "header": "application/json, text/plain",
+      "allowed": [
+        "application/json"
+      ],
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "name": "no subtype",
+      "header": "application",
+      "allowed": [
+        "application/json"
+      ],
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "name": "kelvin sign is not k",
+      "header": "application/jsonK",
+      "allowed": [
+        "application/jsonk"
+      ],
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "name": "vertical tab is not whitespace",
+      "header": "\u000bapplication/json",
+      "allowed": [
+        "application/json"
+      ],
+      "expect": {
+        "ok": false
+      }
+    }
+  ]
+}

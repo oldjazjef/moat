@@ -1,0 +1,743 @@
+{
+  "description": "Request-level cases against a running gate (SEC-41 to SEC-46, FR-18): the gate file under a web server, with this config and policy accepted, calls a fake HTTPS upstream on 127.0.0.1. The runner replaces {port} with the fake upstream's port and {caFile} with its certificate, seals `secrets` for the gate and signs the bundle. The fake upstream answers by path: /echo returns what it received as JSON {method, path, query, headers (lower-case names), body}, with every occurrence of the secret replaced by <SECRET>; /redirect answers 302; /html text/html; /big 100 000 bytes of JSON; /slow waits 2 s; /reflect returns the Authorization header as is; /set-cookie adds Set-Cookie and X-Upstream; /status/<code> answers that status. `expect.json` is a subset of the client's JSON answer (null = key absent), `expect.headers` of its headers (null = absent), `upstreamCalls` counts requests the fake upstream saw. The secret must never appear in an answer or in the gate's log.",
+  "config": {
+    "version": 1,
+    "upstreams": {
+      "fake": {
+        "origin": "https://upstream.test:{port}",
+        "auth": {
+          "type": "bearer",
+          "secret": "api-token"
+        },
+        "timeoutMs": 5000
+      },
+      "fake-header": {
+        "origin": "https://upstream.test:{port}",
+        "auth": {
+          "type": "header",
+          "name": "X-Api-Key",
+          "secret": "api-token"
+        },
+        "timeoutMs": 5000
+      },
+      "fake-query": {
+        "origin": "https://upstream.test:{port}",
+        "auth": {
+          "type": "query",
+          "param": "key",
+          "secret": "api-token"
+        },
+        "timeoutMs": 5000
+      },
+      "fake-slow": {
+        "origin": "https://upstream.test:{port}",
+        "auth": null,
+        "timeoutMs": 500
+      },
+      "loopback": {
+        "origin": "https://localhost:{port}",
+        "auth": null,
+        "timeoutMs": 5000
+      }
+    },
+    "routes": {
+      "newsletter": {
+        "method": "POST",
+        "path": "/newsletter",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 1024,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true
+      },
+      "status": {
+        "method": "GET",
+        "path": "/status",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true
+      },
+      "header-auth": {
+        "method": "GET",
+        "path": "/header-auth",
+        "upstream": "fake-header",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true
+      },
+      "query-auth": {
+        "method": "GET",
+        "path": "/query-auth",
+        "upstream": "fake-query",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true
+      },
+      "redirect": {
+        "method": "GET",
+        "path": "/redirect",
+        "upstream": "fake",
+        "upstreamPath": "/redirect",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true
+      },
+      "html": {
+        "method": "GET",
+        "path": "/html",
+        "upstream": "fake",
+        "upstreamPath": "/html",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true
+      },
+      "big": {
+        "method": "GET",
+        "path": "/big",
+        "upstream": "fake",
+        "upstreamPath": "/big",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true
+      },
+      "slow": {
+        "method": "GET",
+        "path": "/slow",
+        "upstream": "fake-slow",
+        "upstreamPath": "/slow",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true
+      },
+      "reflect": {
+        "method": "GET",
+        "path": "/reflect",
+        "upstream": "fake",
+        "upstreamPath": "/reflect",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true
+      },
+      "set-cookie": {
+        "method": "GET",
+        "path": "/set-cookie",
+        "upstream": "fake",
+        "upstreamPath": "/set-cookie",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true
+      },
+      "fail": {
+        "method": "GET",
+        "path": "/fail",
+        "upstream": "fake",
+        "upstreamPath": "/status/500",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true
+      },
+      "empty": {
+        "method": "DELETE",
+        "path": "/empty",
+        "upstream": "fake",
+        "upstreamPath": "/status/204",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true
+      },
+      "disabled": {
+        "method": "GET",
+        "path": "/disabled",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": false
+      },
+      "loopback": {
+        "method": "GET",
+        "path": "/loopback",
+        "upstream": "loopback",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true
+      }
+    }
+  },
+  "policy": {
+    "v": 1,
+    "upstreams": {
+      "upstream.test:{port}": {
+        "pathPrefixes": [
+          "/echo",
+          "/redirect",
+          "/html",
+          "/big",
+          "/slow",
+          "/reflect",
+          "/set-cookie",
+          "/status"
+        ],
+        "methods": ["GET", "POST", "DELETE"],
+        "secrets": ["api-token"]
+      },
+      "localhost:{port}": {
+        "pathPrefixes": ["/echo"],
+        "methods": ["GET"],
+        "secrets": []
+      }
+    },
+    "maxBodyBytes": 1024,
+    "maxResponseBytes": 65536,
+    "maxTimeoutMs": 5000,
+    "testing": {
+      "resolve": {
+        "upstream.test:{port}": "127.0.0.1"
+      },
+      "caFile": "{caFile}"
+    }
+  },
+  "secrets": {
+    "api-token": "TEST-ONLY-planted-secret-7f3a9c"
+  },
+  "cases": [
+    {
+      "name": "forwards a POST with the bearer secret and nothing else from the client",
+      "request": {
+        "method": "POST",
+        "path": "/newsletter",
+        "headers": {
+          "Content-Type": "application/json",
+          "Cookie": "session=abc",
+          "Authorization": "Bearer client-supplied",
+          "X-Forwarded-For": "10.0.0.1",
+          "X-Custom": "1",
+          "Origin": "https://evil.example"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "set-cookie": null,
+          "x-content-type-options": "nosniff",
+          "cache-control": "no-store",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'; form-action 'none'; sandbox"
+        },
+        "upstreamCalls": 1,
+        "json": {
+          "method": "POST",
+          "path": "/echo",
+          "query": "",
+          "headers": {
+            "authorization": "Bearer <SECRET>",
+            "content-type": "application/json",
+            "accept": "application/json",
+            "user-agent": "moat-gate",
+            "cookie": null,
+            "x-forwarded-for": null,
+            "x-custom": null,
+            "origin": null,
+            "referer": null
+          },
+          "body": "{\"email\":\"a@example.com\"}"
+        }
+      }
+    },
+    {
+      "name": "content type parameters are accepted, only the media type is forwarded",
+      "request": {
+        "method": "POST",
+        "path": "/newsletter",
+        "headers": {
+          "Content-Type": "Application/JSON; charset=utf-8"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "json": {
+          "method": "POST",
+          "path": "/echo",
+          "query": "",
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"email\":\"a@example.com\"}"
+        }
+      }
+    },
+    {
+      "name": "the client's query string is not forwarded",
+      "request": {
+        "method": "GET",
+        "path": "/status?key=evil&x=1",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "json": {
+          "method": "GET",
+          "path": "/echo",
+          "query": "",
+          "headers": {
+            "authorization": "Bearer <SECRET>",
+            "content-type": null
+          },
+          "body": ""
+        }
+      }
+    },
+    {
+      "name": "header auth",
+      "request": {
+        "method": "GET",
+        "path": "/header-auth",
+        "headers": {
+          "X-Api-Key": "client-supplied"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "json": {
+          "method": "GET",
+          "path": "/echo",
+          "query": "",
+          "headers": {
+            "x-api-key": "<SECRET>",
+            "authorization": null
+          },
+          "body": ""
+        }
+      }
+    },
+    {
+      "name": "query auth replaces any client query",
+      "request": {
+        "method": "GET",
+        "path": "/query-auth?key=evil",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "json": {
+          "method": "GET",
+          "path": "/echo",
+          "query": "key=<SECRET>",
+          "headers": {
+            "authorization": null
+          },
+          "body": ""
+        }
+      }
+    },
+    {
+      "name": "an escaped unreserved character matches the decoded route",
+      "request": {
+        "method": "POST",
+        "path": "/%6Eewsletter",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "json": {
+          "method": "POST",
+          "path": "/echo",
+          "query": "",
+          "body": "{\"email\":\"a@example.com\"}"
+        }
+      }
+    },
+    {
+      "name": "unknown route",
+      "request": {
+        "method": "GET",
+        "path": "/admin",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "no route path after the gate file",
+      "request": {
+        "method": "GET",
+        "path": "",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "exact matching: a trailing slash is another path",
+      "request": {
+        "method": "POST",
+        "path": "/newsletter/",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "exact matching: no prefix match",
+      "request": {
+        "method": "POST",
+        "path": "/newsletter/extra",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "wrong method lists the allowed one",
+      "request": {
+        "method": "PUT",
+        "path": "/newsletter",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 405,
+        "error": "method_not_allowed",
+        "headers": {
+          "allow": "POST"
+        },
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "OPTIONS is not a route method",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/newsletter",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 405,
+        "error": "method_not_allowed",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "dot-dot segment",
+      "request": {
+        "method": "POST",
+        "path": "/status/../newsletter",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 400,
+        "error": "path_invalid",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "encoded slash",
+      "request": {
+        "method": "POST",
+        "path": "/news%2Fletter",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 400,
+        "error": "path_invalid",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "encoded dot-dot",
+      "request": {
+        "method": "GET",
+        "path": "/status/%2e%2e",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 400,
+        "error": "path_invalid",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "encoded CRLF",
+      "request": {
+        "method": "GET",
+        "path": "/status%0d%0aX-Injected:%201",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 400,
+        "error": "path_invalid",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "body over the route limit",
+      "request": {
+        "method": "POST",
+        "path": "/newsletter",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"pad\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}"
+      },
+      "expect": {
+        "status": 413,
+        "error": "body_too_large",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "body on a route that takes none",
+      "request": {
+        "method": "GET",
+        "path": "/status",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{}"
+      },
+      "expect": {
+        "status": 413,
+        "error": "body_too_large",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "wrong content type",
+      "request": {
+        "method": "POST",
+        "path": "/newsletter",
+        "headers": {
+          "Content-Type": "text/plain"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 415,
+        "error": "unsupported_media_type",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "missing content type",
+      "request": {
+        "method": "POST",
+        "path": "/newsletter",
+        "headers": {},
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 415,
+        "error": "unsupported_media_type",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "disabled route (kill switch)",
+      "request": {
+        "method": "GET",
+        "path": "/disabled",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 503,
+        "error": "route_disabled",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "redirects are not followed",
+      "request": {
+        "method": "GET",
+        "path": "/redirect",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 502,
+        "error": "upstream_redirect",
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "an upstream answer of another media type is not passed on",
+      "request": {
+        "method": "GET",
+        "path": "/html",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 502,
+        "error": "upstream_content_type",
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "an upstream answer over the policy's size limit",
+      "request": {
+        "method": "GET",
+        "path": "/big",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 502,
+        "error": "upstream_too_large",
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "upstream timeout",
+      "request": {
+        "method": "GET",
+        "path": "/slow",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 504,
+        "error": "upstream_timeout",
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "an upstream that echoes the secret",
+      "request": {
+        "method": "GET",
+        "path": "/reflect",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 502,
+        "error": "upstream_reflected_secret",
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "upstream headers are not passed on",
+      "request": {
+        "method": "GET",
+        "path": "/set-cookie",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "headers": {
+          "set-cookie": null,
+          "x-upstream": null,
+          "content-type": "application/json"
+        },
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "an upstream error status is passed on",
+      "request": {
+        "method": "GET",
+        "path": "/fail",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 500,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "an empty upstream answer",
+      "request": {
+        "method": "DELETE",
+        "path": "/empty",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 204,
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "an upstream host that resolves to loopback is refused",
+      "request": {
+        "method": "GET",
+        "path": "/loopback",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 502,
+        "error": "upstream_forbidden",
+        "upstreamCalls": 0
+      }
+    }
+  ]
+}

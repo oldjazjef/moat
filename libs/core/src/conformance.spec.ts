@@ -12,6 +12,11 @@ import { MoatRejection } from './errors';
 import { verifyBundle, type PinnedSigner } from './bundle/bundle';
 import { parseStrictJson, type JsonValue } from './json/strict-json';
 import { openSecret } from './secrets/seal';
+import { normalisePath } from './http/path';
+import { isAllowedContentType } from './http/content-type';
+import { validateCompiledConfig } from './config/compiled';
+import { checkPolicy, parsePolicy } from './policy/policy';
+import { openKeyFile } from './crypto/keyfile';
 
 /**
  * The shared vectors in conformance/vectors/crypto/ (docs/CRYPTO.md §11) — the same files the PHP
@@ -23,7 +28,7 @@ import { openSecret } from './secrets/seal';
  */
 const VECTOR_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../../../conformance/vectors/crypto',
+  '../../../conformance/vectors',
 );
 const WRITE = process.env['MOAT_WRITE_VECTORS'] === '1';
 
@@ -62,8 +67,8 @@ async function outcome(
 // Built (and with MOAT_WRITE_VECTORS=1 written) before the cases below are collected from disk.
 const built = await buildVectors();
 if (WRITE) {
-  mkdirSync(VECTOR_DIR, { recursive: true });
   for (const [file, content] of Object.entries(built)) {
+    mkdirSync(path.dirname(path.join(VECTOR_DIR, file)), { recursive: true });
     writeFileSync(path.join(VECTOR_DIR, file), serialise(content));
   }
 }
@@ -79,10 +84,10 @@ describe('conformance vectors', () => {
     },
   );
 
-  describe('base64url.json', () => {
+  describe('crypto/base64url.json', () => {
     const { cases } = load<{
       cases: { name: string; input: string; expect: Expect }[];
-    }>('base64url.json');
+    }>('crypto/base64url.json');
     it.each(cases)('$name', async ({ input, expect: expected }) => {
       const result = await outcome(() => hex(fromBase64Url(input)));
       if (expected.ok)
@@ -91,7 +96,7 @@ describe('conformance vectors', () => {
     });
   });
 
-  describe('json.json', () => {
+  describe('crypto/json.json', () => {
     const { cases } = load<{
       cases: {
         name: string;
@@ -99,7 +104,7 @@ describe('conformance vectors', () => {
         inputHex?: string;
         expect: Expect;
       }[];
-    }>('json.json');
+    }>('crypto/json.json');
     it.each(cases)('$name', async ({ input, inputHex, expect: expected }) => {
       const bytes =
         inputHex === undefined ? utf8(input ?? '') : fromHex(inputHex);
@@ -108,16 +113,16 @@ describe('conformance vectors', () => {
     });
   });
 
-  describe('jcs.json', () => {
+  describe('crypto/jcs.json', () => {
     const { cases } = load<{
       cases: { name: string; input: JsonValue; canonical: string }[];
-    }>('jcs.json');
+    }>('crypto/jcs.json');
     it.each(cases)('$name', ({ input, canonical }) => {
       expect(canonicalJson(input)).toBe(canonical);
     });
   });
 
-  describe('kid.json', () => {
+  describe('crypto/kid.json', () => {
     const { cases } = load<{
       cases: {
         name: string;
@@ -126,7 +131,7 @@ describe('conformance vectors', () => {
         kid: string;
         fingerprint: string;
       }[];
-    }>('kid.json');
+    }>('crypto/kid.json');
     it.each(cases)('$name', async (item) => {
       const publicKey = fromBase64Url(item.publicKey);
       expect(await keyId(item.alg, publicKey)).toBe(item.kid);
@@ -134,7 +139,7 @@ describe('conformance vectors', () => {
     });
   });
 
-  describe('bundle.json', () => {
+  describe('crypto/bundle.json', () => {
     const vectors = load<{
       signers: {
         name: string;
@@ -156,7 +161,7 @@ describe('conformance vectors', () => {
         };
         expect: Expect;
       }[];
-    }>('bundle.json');
+    }>('crypto/bundle.json');
     const signers = new Map(
       vectors.signers.map((signer) => [signer.name, signer]),
     );
@@ -201,7 +206,7 @@ describe('conformance vectors', () => {
     );
   });
 
-  describe('secret.json', () => {
+  describe('crypto/secret.json', () => {
     const vectors = load<{
       gate: { secretKey: string };
       cases: {
@@ -211,7 +216,7 @@ describe('conformance vectors', () => {
         secretName: string;
         expect: Expect;
       }[];
-    }>('secret.json');
+    }>('crypto/secret.json');
     const gateSecretKey = fromBase64Url(vectors.gate.secretKey);
 
     it.each(vectors.cases)(
@@ -225,5 +230,91 @@ describe('conformance vectors', () => {
         else expect(result).toEqual(expected);
       },
     );
+  });
+
+  describe('http/path.json', () => {
+    const { cases } = load<{
+      cases: { name: string; input: string; expect: Expect }[];
+    }>('http/path.json');
+    it.each(cases)('$name', async ({ input, expect: expected }) => {
+      const result = await outcome(() => normalisePath(input));
+      expect(result.ok ? { ok: true, path: result.value } : result).toEqual(
+        expected,
+      );
+    });
+  });
+
+  describe('http/content-type.json', () => {
+    const { cases } = load<{
+      cases: {
+        name: string;
+        header: string;
+        allowed: string[];
+        expect: { ok: boolean };
+      }[];
+    }>('http/content-type.json');
+    it.each(cases)('$name', ({ header, allowed, expect: expected }) => {
+      expect(isAllowedContentType(header, allowed)).toBe(expected.ok);
+    });
+  });
+
+  describe('config/config.json', () => {
+    const { cases } = load<{
+      cases: {
+        name: string;
+        config: JsonValue;
+        secrets: string[];
+        expect: Expect;
+      }[];
+    }>('config/config.json');
+    it.each(cases)('$name', async ({ config, secrets, expect: expected }) => {
+      const result = await outcome(() =>
+        validateCompiledConfig(config, secrets),
+      );
+      expect(result.ok ? { ok: true } : result).toEqual(expected);
+    });
+  });
+
+  describe('config/policy.json', () => {
+    const { cases } = load<{
+      cases: {
+        name: string;
+        config: JsonValue;
+        policy: JsonValue;
+        expect: Expect;
+      }[];
+    }>('config/policy.json');
+    it.each(cases)('$name', async ({ config, policy, expect: expected }) => {
+      const result = await outcome(() =>
+        checkPolicy(
+          validateCompiledConfig(config, ['hubspot-token']),
+          parsePolicy(policy),
+        ),
+      );
+      expect(result.ok ? { ok: true } : result).toEqual(expected);
+    });
+  });
+
+  describe('crypto/keyfile.json', () => {
+    const { cases } = load<{
+      cases: {
+        name: string;
+        file: unknown;
+        passphrase: string;
+        expect: Expect;
+      }[];
+    }>('crypto/keyfile.json');
+    it.each(cases)('$name', async ({ file, passphrase, expect: expected }) => {
+      const result = await outcome(async () => {
+        const signer = await openKeyFile(file, passphrase);
+        return {
+          kid: signer.kid,
+          pk: Buffer.from(signer.publicKey).toString('base64url'),
+        };
+      });
+      expect(
+        result.ok ? { ok: true, ...(result.value as object) } : result,
+      ).toEqual(expected);
+    });
   });
 });
