@@ -15,7 +15,7 @@ Four components (ANFORDERUNGEN.md, header):
 - **Moat Gate** (`gates/php` first, later `gates/node`, `gates/dotnet`): runs on the customer's
   hosting, enforces everything locally, trusts nobody it does not have to.
 
-> **Status (12.10.2026): requirements v0.3 + this setup.** No code yet. The stack and the
+> **Status (12.10.2026): requirements v0.4 + threat model v0.1 + this setup.** No code yet. The stack and the
 > conventions below are the target; each section becomes concrete when the code lands. Update
 > this file whenever the code makes a section concrete or wrong.
 
@@ -353,8 +353,8 @@ checksums + SBOM (SEC-60, SEC-61), images to ghcr, desktop installers per releas
 - **Crypto spec** (ANFORDERUNGEN.md §5.3) — the defaults above are proposals.
 - **Default trust mode** in the Cloud (§5.4) and the product wording (§5.5).
 - **Desktop signing / auto-update** (same open point as lazy-koins).
-- **Threat model**: v0.1 in [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) (cite threats as `T-20`).
-  Its proposed requirements (§8) are not in ANFORDERUNGEN.md yet — ask before building on them.
+- **Threat model**: v0.1 in [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) (cite threats as `T-20`);
+  its proposals are requirements since v0.4. New features update it (new threat → new `T-…`).
 
 ## Conventions carried over from lazy-koins
 

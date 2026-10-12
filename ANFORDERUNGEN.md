@@ -1,4 +1,4 @@
-# Moat: Anforderungen (v0.3)
+# Moat: Anforderungen (v0.4)
 
 **Produkt:** API-Management für Websites auf normalem Hosting: Secrets verwalten, Proxy, Endpunkt-Gating.
 **Komponenten:**
@@ -7,6 +7,22 @@
 - **Moat Cloud:** SaaS oder self-hosted (Docker/K8s), Verwaltung, Teams, Monitoring.
 - **Moat Gate:** läuft auf dem Hosting des Kunden.
 **Priorität:** **M** = MVP, **S** = bald danach, **K** = später.
+
+## Änderungen gegenüber v0.3
+
+Quelle: [Threat Model v0.1](docs/THREAT-MODEL.md), Abschnitt 8. Die `T-…`-Nummern verweisen dorthin.
+
+| Thema | Entscheidung |
+|---|---|
+| Secret Laundering in Modus 0 | Lokale Policy kann Pfade, Methoden und Limit-Obergrenzen festlegen (SEC-14). |
+| Kill-Switch ohne Cloud | Lokaler Kill-Switch per Datei (SEC-15). |
+| Client-IP, Rate-Limit-Speicher | SEC-26, SEC-27. |
+| Enrollment ohne Admin-Interface | Einmaliger, tokengeschützter Setup-Modus (SEC-28). |
+| Secret-Echo, Content-Type | SEC-39, FR-18. |
+| Shared Hosting | Hardening-Check erkennt gemeinsamen Ausführungsbenutzer (SEC-49a). |
+| Ehrlichkeit Browser | Browser-Signieren und Secret-Eingabe im Browser als schwächer gekennzeichnet (SEC-58). |
+| Audit, Lieferkette | SEC-59, SEC-65, SEC-66; Default-Update-Modus des Gates ist „benachrichtigen“. |
+| Moat Desktop | DT-15 bis DT-17. |
 
 ## Änderungen gegenüber v0.2
 
@@ -79,6 +95,8 @@ Regeln:
 | SEC-11 | Die Cloud-Config kann die Policy nur **einschränken**, nie erweitern. Ein Upstream ausserhalb der lokalen Allowlist wird abgelehnt, auch bei gültiger Signatur. | M |
 | SEC-12 | Die Policy ist wenn möglich ausserhalb des Webroots und für den Webserver-Prozess nicht beschreibbar (siehe Härtungsstufen 2.5). | S |
 | SEC-13 | Policy-Änderungen erfolgen **nur lokal** (Datei, Env oder Installer), nie über die Cloud. | M |
+| SEC-14 | Die lokale Policy kann pro Upstream **erlaubte Pfad-Präfixe und Methoden** festlegen sowie **Obergrenzen** für Rate Limits, Quoten und Budgets. Die Cloud-Config bleibt immer darunter. Recipes liefern passende Policy-Vorschläge mit (gegen Secret Laundering, T-20/T-21). | M |
+| SEC-15 | **Lokaler Kill-Switch** per Datei, pro Gate und pro Route, sofort wirksam und unabhängig von der Cloud. Das Gate meldet, wenn die aktive Config älter als ein einstellbarer Wert ist (T-23). | M |
 
 ### 2.3 Keine Code-Injektion
 
@@ -86,9 +104,12 @@ Regeln:
 |---|---|---|
 | SEC-20 | Konfiguration ist **rein deklarativ** (JSON Schema, `additionalProperties: false`). Keine Skripte, Expressions, `eval`, dynamische Includes oder Template-Engines mit Codeausführung. | M |
 | SEC-21 | Das Gate ist ein **fest ausgeliefertes, signiertes Artefakt**. Die Cloud kann es nicht überschreiben, nachladen oder erweitern. | M |
-| SEC-22 | **Gate-Updates sind vom Config-Kanal getrennt.** Update-Modus pro Gate: **aus** (nur manuell durch den Kunden), **benachrichtigen** (Gate meldet eine neue Version, Kunde installiert), **auto** (Pull aus Release-Kanal mit Signaturprüfung gegen einen im Gate fest eingebauten Release-Key). Updates kommen nie über den Config-Kanal der Cloud. | M |
+| SEC-22 | **Gate-Updates sind vom Config-Kanal getrennt.** Update-Modus pro Gate: **aus** (nur manuell durch den Kunden), **benachrichtigen** (Gate meldet eine neue Version, Kunde installiert), **auto** (Pull aus Release-Kanal mit Signaturprüfung gegen einen im Gate fest eingebauten Release-Key). **Default: benachrichtigen** (SEC-66). Updates kommen nie über den Config-Kanal der Cloud. | M |
 | SEC-23 | Eigene Logik nur über vordefinierte, getestete Bausteine (Feld umbenennen, Wert aus Secret einsetzen, Feld entfernen), nicht über frei programmierbare Regeln. | M |
 | SEC-24 | Parser-Härtung: Grössen- und Tiefenlimits, keine externen Referenzen (`$ref` auf URLs, XML-Entities). | M |
+| SEC-26 | Die Client-IP stammt aus `REMOTE_ADDR`. `X-Forwarded-For` und ähnliche Header gelten nur, wenn die lokale Policy vertrauenswürdige Proxies nennt (T-02). | M |
+| SEC-27 | Der Speicher für Rate Limits und Budgets ist in der Grösse begrenzt und hat eine Eviction. Bei Überlauf gilt Fail-Closed (T-09). | M |
+| SEC-28 | **Enrollment-Setup-Modus:** Für die Fingerprint-Anzeige (SEC-32) gibt es einen einmaligen Setup-Modus, geschützt durch ein Setup-Token aus der lokalen Installationsdatei. Er schaltet sich nach der Bestätigung oder nach kurzer Zeit dauerhaft ab und kann nur lokal wieder aktiviert werden. Alternativ: Fingerprint über CLI/SSH oder eine Datei. Ausser diesem Modus gilt SEC-40 unverändert. | M |
 | SEC-25 | **Manueller Betrieb ist erstklassig:** Das Gate funktioniert vollständig mit manuell abgelegten Dateien (Gate-Artefakt und Config-Bundle). Der Pull von Updates und Configs lässt sich jeweils komplett abschalten. | M |
 
 ### 2.4 Secrets
@@ -103,6 +124,7 @@ Regeln:
 | SEC-35 | Secrets werden nur an **vorab definierte Upstreams** gesendet (Bindung Secret → Upstream-Host). | M |
 | SEC-36 | Secret-Rotation ohne Downtime (zwei aktive Versionen übergangsweise). | S |
 | SEC-37 | Das Browser-Verschlüsseln schützt nur, wenn der ausgelieferte JS-Code vertrauenswürdig ist. Daher gibt es einen **CLI-Weg mit reproduzierbar gebautem Client**. Das Dashboard weist darauf hin. In **Moat Desktop** läuft Verschlüsselung und Signierung lokal, das Problem entfällt dort. | M |
+| SEC-39 | Das Gate entfernt Secret-Werte aus allen Upstream-Antworten, Fehlermeldungen und Logs, auch wenn ein Upstream sie zurückspiegelt (T-05). | M |
 | SEC-38 | Secrets können alternativ **direkt auf dem Gate** hinterlegt werden (Datei/Env), ohne dass sie je in die Cloud gelangen ("Local-only Secret"). | M |
 
 ### 2.5 Gate-Laufzeit und Härtungsstufen
@@ -126,6 +148,7 @@ Regeln:
 | SEC-46 | Fail-Closed bei Parsing-Fehlern, ungültiger Config oder fehlendem Secret. | M |
 | SEC-47 | Gate-Logs enthalten keine Bodies, Tokens oder personenbezogenen Daten (konfigurierbare Redaction). | M |
 | SEC-48 | Gate-zu-Cloud: TLS mit Pinning oder mTLS als Zusatzschutz. | M |
+| SEC-49a | Der Hardening-Check erkennt einen gemeinsamen Ausführungsbenutzer mehrerer Websites und fehlendes `open_basedir` und stuft das Gate dann als „H1, ungeeignet für Secrets“ ein (T-41). | M |
 | SEC-49 | **Hardening-Check** (Installer/CLI/Dashboard): prüft Erreichbarkeit der Config- und Schlüsseldateien von aussen, Schreibrechte, PHP-Einstellungen, Env-Verfügbarkeit, und gibt Härtungsstufe plus Empfehlungen aus. | M |
 
 ### 2.6 Moat Cloud (Schadensbegrenzung)
@@ -139,6 +162,8 @@ Regeln:
 | SEC-54 | API-Tokens sind scoped, kurzlebig und widerrufbar. | M |
 | SEC-55 | Gate-Anmeldung mit **gate-eigenem Schlüssel**, kein gemeinsames Shared-Secret. Ein gestohlenes Gate-Credential betrifft nur dieses Gate. | M |
 | SEC-56 | Betriebszugriffe (Just-in-time, MFA, Protokollierung), Infrastruktur-Secrets in einem Vault. | S |
+| SEC-58 | **Ehrliche Kennzeichnung:** Das Produkt zeigt, dass Signieren und Secret-Eingabe im Browser nicht gegen eine aktiv kompromittierte Cloud schützen (T-25, T-30) und dass Origin-Bindung nur gegen Browser wirkt (T-01). Empfohlener Weg für volle Garantie: Moat Desktop oder CLI. | M |
+| SEC-59 | Signierte **Audit-Checkpoints** werden regelmässig an den Kunden exportiert oder per Webhook zugestellt, damit eine kompromittierte Cloud das Audit-Log nicht unbemerkt neu schreiben kann (T-34). | S |
 | SEC-57 | Self-Hosted: gleiche Sicherheitsarchitektur, keine Abhängigkeit von Betreiber-Schlüsseln, Hardening-Guide (non-root, read-only FS, NetworkPolicies). | M |
 
 ### 2.7 Lieferkette und Prozess
@@ -149,6 +174,8 @@ Regeln:
 | SEC-61 | SBOM, Dependency-Scanning, minimale Abhängigkeiten im Gate. | M |
 | SEC-62 | Formales **Threat Model** (STRIDE) vor der Implementierung, Review bei grösseren Features. | M |
 | SEC-63 | Fuzzing der Parser, SSRF-/Smuggling-Testsuite, Conformance-Tests für alle Gate-Targets. | M |
+| SEC-65 | Gate-Artefakt und Release-Fingerprints sind gegen eine von der Cloud **unabhängige Quelle** prüfbar (z. B. GitHub-Release). Der Installer prüft die Release-Signatur (T-22, T-63). | M |
+| SEC-66 | Release-Schlüssel offline bzw. im HSM mit **M-of-N-Signatur**, Einträge in einem Transparenz-Log, gestaffelter Rollout von Gate-Updates (T-60). | M |
 | SEC-64 | Externer Penetrationstest vor Launch, Responsible-Disclosure (`security.txt`), später Bug Bounty. | S |
 
 ### 2.8 Abnahmekriterien (Compromise-Test)
@@ -192,6 +219,7 @@ Möglich bleibt: Updates zurückhalten.
 | FR-14 | Response-Filterung: nur definierte Felder an den Client. | S |
 | FR-15 | Gating pro Route: Origin/CORS, Methoden, Zeitfenster, Feature-Flags, aktiv/inaktiv. | M |
 | FR-16 | Client-Zugriffsschutz: öffentlich, Origin-gebunden, API-Key, JWT/OIDC, Captcha/Turnstile, Honeypot. | M/S |
+| FR-18 | Content-Type-Allowlist pro Route (Default: JSON) und `X-Content-Type-Options: nosniff` an den Client (T-13). | M |
 | FR-17 | Caching pro Route (TTL, Vary). | S |
 
 ### 3.3 Secrets und Upstreams
@@ -264,6 +292,9 @@ Moat Desktop ist die Control Plane ohne Server. Sie arbeitet immer in Vertrauens
 | DT-11 | **Gate-Pull von eigenem Ort:** Das Gate kann signierte Bundles von einer statischen URL (S3, eigener Webspace) holen. Der Speicherort muss nicht vertrauenswürdig sein, das Gate prüft die Signatur. | M |
 | DT-12 | **Logs ohne Cloud:** Das Gate schreibt lokal, Desktop holt Logs bei Bedarf ab. Live-Dashboards und Alerts gibt es nur mit Cloud und sind im Produkt entsprechend gekennzeichnet. | S |
 | DT-13 | Geteilte Backends (externe DB, Dateispeicher) nutzen **optimistische Sperren** über die monotone Versionsnummer (SEC-04) und erkennen Konflikte. | S |
+| DT-15 | Signieren nur nach Bestätigung in einem **vom Main-Prozess gerenderten Dialog** mit Diff der Änderungen, nie direkt aus dem Renderer (T-51, T-53). | M |
+| DT-16 | Die lokale API prüft den `Host`-Header exakt (Schutz gegen DNS-Rebinding, T-52). | M |
+| DT-17 | Import-Härtung: Schlüssel wie `__proto__`/`constructor` werden abgelehnt, Objekte ohne Prototyp, Zip-Slip-Schutz beim Paket-Import (T-50). | M |
 | DT-14 | **Teamarbeit ohne Cloud** im MVP über Git (Projektordner). Geteilte DB mit Rollen erst später. | M/K |
 
 **Speicher-Backends:**
@@ -287,9 +318,9 @@ Moat Desktop ist die Control Plane ohne Server. Sie arbeitet immer in Vertrauens
 
 ## 5. Offene Punkte (nächster Schritt)
 
-1. **Threat Model (STRIDE)** pro Vertrauensmodus (0 bis 3), pro Härtungsstufe (H1 bis H3) und für Moat Desktop (lokale Angriffe, bösartige Projektdateien, Supply Chain).
-2. **Tech-Stack** für Cloud, Gate (PHP zuerst, dependency-arm), CLI, Core-Bibliothek und Desktop-App. Dabei **Electron vs. Tauri**: Electron hat die grössere Angriffsfläche (Chromium plus Node) bei bekanntem Ökosystem, Tauri ist schlanker und sicherheitsorientierter, verlangt aber Rust-Anteil. Die Anforderungen DT-01 bis DT-14 gelten für beide. Der Core muss in der gewählten Sprache für Desktop, Cloud und CLI wiederverwendbar sein.
-3. **Kryptografie-Details:** Algorithmen, Key-Datei-Format (Passphrase-KDF), Bundle-Format, Enrollment-Protokoll.
+1. ~~Threat Model~~: v0.1 erstellt ([docs/THREAT-MODEL.md](docs/THREAT-MODEL.md)), Vorschläge in v0.4 übernommen.
+2. ~~Tech-Stack~~: entschieden, gleicher Stack wie lazy-koins, Desktop mit Electron (siehe CLAUDE.md).
+3. **Kryptografie-Details:** Algorithmen, Key-Datei-Format (Passphrase-KDF), Bundle-Format, Enrollment-Protokoll (SEC-28). Neu aus dem Threat Model: Passkeys (Modus 2) signieren im WebAuthn-Format und meist mit **ES256 (P-256)**, nicht Ed25519. Das Gate müsste dann `ext-openssl` voraussetzen.
 4. **Default-Modus:** Modus 0 ist am einfachsten. Frage, ob beim Setup aktiv zu Modus 1 geraten wird (z. B. bei Secrets mit Schreibrechten wie KI-APIs mit Budget).
 5. **Produktwording** für Vertrauensmodi und Härtungsstufen, damit Nicht-Techniker sie verstehen.
 6. **Teamarbeit ohne Cloud:** Reicht Git im MVP (DT-14), oder braucht es früh eine geteilte DB mit Rollen?

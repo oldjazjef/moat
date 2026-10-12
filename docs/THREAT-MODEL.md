@@ -1,6 +1,6 @@
 # Moat: Threat Model (v0.1)
 
-Grundlage: [ANFORDERUNGEN.md](../ANFORDERUNGEN.md) v0.3. Methode: STRIDE pro Vertrauensgrenze, dann
+Grundlage: [ANFORDERUNGEN.md](../ANFORDERUNGEN.md) v0.3 (die Vorschläge aus Abschnitt 8 stehen seit v0.4 dort). Methode: STRIDE pro Vertrauensgrenze, dann
 pro Vertrauensmodus (0 bis 3), Härtungsstufe (H1 bis H3) und für Moat Desktop. Bedrohungen tragen
 IDs (`T-…`), Gegenmassnahmen verweisen auf die Anforderungen. Wo eine Anforderung fehlt oder zu
 schwach ist, steht ein **Vorschlag** (`neu: …`), gesammelt in Abschnitt 8.
@@ -188,6 +188,8 @@ ausgelieferten JS, und das kontrolliert die Cloud.
    nicht „auto“.
 
 ## 8. Vorgeschlagene neue Anforderungen
+
+Alle übernommen in [ANFORDERUNGEN.md](../ANFORDERUNGEN.md) v0.4.
 
 | ID | Anforderung | Prio | Grund |
 |---|---|---|---|
