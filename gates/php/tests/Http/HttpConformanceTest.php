@@ -94,12 +94,16 @@ final class HttpConformanceTest extends TestCase
         if (!isset(Vectors::map($request['headers'])['Content-Type'])) {
             $sent[] = 'Content-Type:';
         }
+        $method = Vectors::string($request['method']);
+        if ($method === '') {
+            throw new \RuntimeException('a case without a method');
+        }
         $curl = curl_init($baseUrl . Vectors::string($request['path']));
         if ($curl === false) {
             throw new \RuntimeException('curl_init failed');
         }
         $options = [
-            CURLOPT_CUSTOMREQUEST => Vectors::string($request['method']),
+            CURLOPT_CUSTOMREQUEST => $method,
             CURLOPT_HTTPHEADER => [...$sent, 'Expect:'],
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_PATH_AS_IS => true,

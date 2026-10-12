@@ -155,7 +155,10 @@ final class GateFixture
         ];
     }
 
-    /** @param array<string, array<string, int|string>> $sealed */
+    /**
+     * @param array<string, array<string, int|string>> $sealed
+     * @param non-empty-string                         $signer an Ed25519 key pair
+     */
     public static function bundle(mixed $config, array $sealed, string $gateId, string $signer, int $version = 1): string
     {
         $payload = self::encode([
@@ -211,7 +214,9 @@ final class GateFixture
         if ($key === false) {
             throw new \RuntimeException('cannot create a test key');
         }
-        $csr = openssl_csr_new(['commonName' => 'upstream.test (TEST ONLY)'], $key, $options);
+        // openssl_csr_new takes the key by reference; keep $key's type for the calls below.
+        $csrKey = $key;
+        $csr = openssl_csr_new(['commonName' => 'upstream.test (TEST ONLY)'], $csrKey, $options);
         if (!$csr instanceof \OpenSSLCertificateSigningRequest) {
             throw new \RuntimeException('cannot create a test CSR');
         }

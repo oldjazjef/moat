@@ -47,7 +47,8 @@ final class AddressGuard
      */
     public static function isPublic(string $address): bool
     {
-        if (filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE | FILTER_FLAG_GLOBAL_RANGE) === false) {
+        $flags = FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE | FILTER_FLAG_GLOBAL_RANGE;
+        if (filter_var($address, FILTER_VALIDATE_IP, ['flags' => $flags]) === false) {
             return false;
         }
         $packed = inet_pton($address);

@@ -8,6 +8,7 @@ namespace Moat\Gate\Upstream;
 final readonly class UpstreamRequest
 {
     /**
+     * @param non-empty-string      $method
      * @param array<string, string> $headers  exactly the headers to send
      * @param list<string>          $accept   allowed response media types
      */

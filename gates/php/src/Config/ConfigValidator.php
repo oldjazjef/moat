@@ -121,6 +121,9 @@ final class ConfigValidator
             self::fail();
         }
         $type = \is_string($value->get('type')) ? AuthType::tryFrom($value->get('type')) : null;
+        if ($type === null) {
+            self::fail();
+        }
         $secret = $value->get('secret');
         $name = '';
         $valid = match ($type) {
@@ -132,9 +135,8 @@ final class ConfigValidator
             AuthType::Query => $value->hasExactKeys('type', 'param', 'secret')
                 && \is_string($name = $value->get('param'))
                 && preg_match(self::QUERY_PARAM, $name) === 1,
-            null => false,
         };
-        if (!$valid || $type === null || !\is_string($secret) || preg_match(self::NAME, $secret) !== 1 || !\is_string($name)) {
+        if (!$valid || !\is_string($secret) || preg_match(self::NAME, $secret) !== 1 || !\is_string($name)) {
             self::fail();
         }
 

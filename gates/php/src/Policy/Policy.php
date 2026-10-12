@@ -13,6 +13,7 @@ final readonly class Policy
     /**
      * @param array<string, PolicyUpstream> $upstreams by `host[:port]`
      * @param array<string, string>         $testResolve `host[:port]` → loopback IP (testing only)
+     * @param ?non-empty-string             $testCaFile
      */
     public function __construct(
         public array $upstreams,

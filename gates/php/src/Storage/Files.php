@@ -17,7 +17,7 @@ final class Files
         if (!is_file($path) || str_contains($path, '://')) {
             return null;
         }
-        $bytes = file_get_contents($path, false, null, 0, $maxBytes + 1);
+        $bytes = file_get_contents($path, false, null, 0, max(0, $maxBytes) + 1);
 
         return $bytes === false ? null : $bytes;
     }
@@ -25,7 +25,7 @@ final class Files
     /** The request body, at most `$maxBytes` + 1 bytes. */
     public static function readInput(int $maxBytes): string
     {
-        $bytes = file_get_contents('php://input', false, null, 0, $maxBytes + 1);
+        $bytes = file_get_contents('php://input', false, null, 0, max(0, $maxBytes) + 1);
 
         return $bytes === false ? '' : $bytes;
     }

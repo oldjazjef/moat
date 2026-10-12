@@ -23,7 +23,7 @@ if ($server === false) {
 $name = (string) stream_socket_get_name($server, false);
 file_put_contents($portFile, substr($name, (int) strrpos($name, ':') + 1));
 
-while (true) {
+for (;;) {
     $connection = stream_socket_accept($server, -1);
     if ($connection === false) {
         continue;
@@ -42,7 +42,7 @@ while (true) {
     $body = '';
     $length = (int) ($headers['content-length'] ?? '0');
     while (strlen($body) < $length && !feof($connection)) {
-        $chunk = fread($connection, $length - strlen($body));
+        $chunk = fread($connection, max(1, $length - strlen($body)));
         if ($chunk === false || $chunk === '') {
             break;
         }

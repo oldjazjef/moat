@@ -100,7 +100,7 @@ final class UpstreamClient
         if ($ok === false || $errno !== 0) {
             throw new Failure($errno === CURLE_OPERATION_TIMEDOUT ? GateError::UpstreamTimeout : GateError::UpstreamUnreachable);
         }
-        if (!\is_int($status) || $status < 200 || $status > 599) {
+        if ($status < 200 || $status > 599) {
             throw new Failure(GateError::UpstreamUnreachable);
         }
         if ($status >= 300 && $status < 400) {

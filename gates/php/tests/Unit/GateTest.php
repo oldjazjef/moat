@@ -21,6 +21,7 @@ final class GateTest extends TestCase
         . '"maxBodyBytes":4096,"maxResponseBytes":65536,"maxTimeoutMs":10000}';
 
     private string $dir;
+    /** @var non-empty-string */
     private string $signer;
     private Identity $identity;
 
@@ -135,7 +136,10 @@ final class GateTest extends TestCase
         Gate::open($this->dir)->active(time());
     }
 
-    /** @param array<string, array<string, int|string>>|null $sealed */
+    /**
+     * @param ?non-empty-string                             $signer
+     * @param array<string, array<string, int|string>>|null $sealed
+     */
     private function bundle(int $version, ?string $gateId = null, ?string $signer = null, string $path = '/v1/contacts', ?array $sealed = null): string
     {
         $gateId ??= $this->identity->gateId;
@@ -152,6 +156,7 @@ final class GateTest extends TestCase
         return GateFixture::bundle($config, $sealed, $gateId, $signer ?? $this->signer, $version);
     }
 
+    /** @param non-empty-string $signer */
     private static function trust(string $gateId, string $signer): string
     {
         return (new Trust($gateId, 1, 1, [new PinnedSigner(sodium_crypto_sign_publickey($signer))]))->encode();
