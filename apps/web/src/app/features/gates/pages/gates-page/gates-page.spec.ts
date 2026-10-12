@@ -75,7 +75,9 @@ describe('GatesPage', () => {
     expect(text(locked.el, '[data-lock-reason]')).toContain(
       'Dieses Gate ist gesperrt.',
     );
-    expect(text(locked.el, '[data-bundle]')).toBe('Version 3, mit Sperre gebaut');
+    expect(text(locked.el, '[data-bundle]')).toBe(
+      'Version 3, mit Sperre gebaut',
+    );
     expect(text(locked.el, '[data-environment]')).toBe('Ohne Umgebung');
     expect(locked.el.querySelector('[data-lock-pending]')).toBeNull();
   });
