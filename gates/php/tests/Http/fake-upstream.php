@@ -41,8 +41,8 @@ while (true) {
     }
     $body = '';
     $length = (int) ($headers['content-length'] ?? '0');
-    while (\strlen($body) < $length && !feof($connection)) {
-        $chunk = fread($connection, $length - \strlen($body));
+    while (strlen($body) < $length && !feof($connection)) {
+        $chunk = fread($connection, $length - strlen($body));
         if ($chunk === false || $chunk === '') {
             break;
         }
@@ -87,7 +87,7 @@ while (true) {
         $answer = '{}';
     }
     $head = "HTTP/1.1 {$status} X\r\n" . ($answer === '' ? '' : "Content-Type: {$type}\r\n")
-        . 'Content-Length: ' . \strlen($answer) . "\r\nConnection: close\r\n";
+        . 'Content-Length: ' . strlen($answer) . "\r\nConnection: close\r\n";
     foreach ($extra as $header) {
         $head .= $header . "\r\n";
     }
