@@ -6,7 +6,6 @@
   "require": {
     "php": ">=8.2",
     "ext-curl": "*",
-    "ext-filter": "*",
     "ext-hash": "*",
     "ext-json": "*",
     "ext-sodium": "*"

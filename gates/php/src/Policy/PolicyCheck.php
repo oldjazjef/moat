@@ -148,7 +148,7 @@ final class PolicyCheck
         }
     }
 
-    /** @return array{array<string, string>, ?string} */
+    /** @return array{array<string, string>, ?non-empty-string} */
     private static function testing(mixed $value): array
     {
         if (!$value instanceof JsonObject || !$value->hasExactKeys('resolve', 'caFile')) {
@@ -156,8 +156,13 @@ final class PolicyCheck
         }
         $resolve = $value->get('resolve');
         $caFile = $value->get('caFile');
-        if (!$resolve instanceof JsonObject || ($caFile !== null && (!\is_string($caFile) || $caFile === '' || \strlen($caFile) > 4096))) {
+        if (!$resolve instanceof JsonObject) {
             self::invalid();
+        }
+        if ($caFile !== null) {
+            if (!\is_string($caFile) || $caFile === '' || \strlen($caFile) > 4096) {
+                self::invalid();
+            }
         }
         $map = [];
         foreach ($resolve->keys() as $hostKey) {

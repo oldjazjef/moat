@@ -42,6 +42,11 @@ final class AddressGuardTest extends TestCase
         yield 'local-use NAT64' => ['64:ff9b:1::a00:1', false];
         yield 'SIIT ::ffff:0:0/96' => ['::ffff:0:7f00:1', false];
         yield '6to4 of a public address' => ['2002:5db8:d822::1', true];
+        yield 'IPv6 documentation' => ['2001:db8::1', false];
+        yield 'broadcast' => ['255.255.255.255', false];
+        yield '172.31 private' => ['172.31.255.255', false];
+        yield '172.32 public' => ['172.32.0.1', true];
+        yield 'benchmarking' => ['198.19.0.1', false];
     }
 
     #[DataProvider('addresses')]

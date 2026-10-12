@@ -19,7 +19,7 @@ use Moat\Gate\Runtime\RequestHandler;
  */
 final class Kernel
 {
-    public const REQUIRED_EXTENSIONS = ['sodium', 'curl', 'json', 'hash', 'filter'];
+    public const REQUIRED_EXTENSIONS = ['sodium', 'curl', 'json', 'hash'];
 
     public static function run(string $gateFile): void
     {

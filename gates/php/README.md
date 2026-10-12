@@ -1,7 +1,6 @@
 # Moat Gate for PHP
 
-The gate runs on the website's own hosting (PHP ≥ 8.2 with `sodium`, `curl`, `json`, `hash`,
-`filter`). It holds the API secrets, accepts only bundles signed by the keys pinned on the server,
+The gate runs on the website's own hosting (PHP ≥ 8.2 with `sodium`, `curl`, `json`, `hash`). It holds the API secrets, accepts only bundles signed by the keys pinned on the server,
 and forwards exactly the routes in the bundle that also fit the local policy. It has no inbound
 management endpoint (SEC-40): everything below happens on the server's command line.
 
