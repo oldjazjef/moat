@@ -1,0 +1,216 @@
+# Moat: Threat Model (v0.1)
+
+Grundlage: [ANFORDERUNGEN.md](../ANFORDERUNGEN.md) v0.3. Methode: STRIDE pro Vertrauensgrenze, dann
+pro Vertrauensmodus (0 bis 3), Härtungsstufe (H1 bis H3) und für Moat Desktop. Bedrohungen tragen
+IDs (`T-…`), Gegenmassnahmen verweisen auf die Anforderungen. Wo eine Anforderung fehlt oder zu
+schwach ist, steht ein **Vorschlag** (`neu: …`), gesammelt in Abschnitt 8.
+
+Bewertung: **H** = hoch (realistisch und schwerwiegend), **M** = mittel, **N** = niedrig.
+
+---
+
+## 1. Schutzgüter
+
+| ID | Schutzgut | Wo es liegt |
+|---|---|---|
+| A1 | Upstream-Secrets im Klartext (API-Keys, OAuth-Tokens) | nur im Gate zur Laufzeit; beim Eingeben im Client |
+| A2 | Privater Gate-Schlüssel (entschlüsselt A1) | Gate-Dateisystem / Env |
+| A3 | Kunden-Signaturschlüssel (Modus 1 bis 3) | Key-Datei, OS-Keychain, Passkey, Signer-Dienst |
+| A4 | Cloud-Signaturschlüssel (Modus 0) | Moat Cloud |
+| A5 | Lokale Policy, gepinnte Schlüssel, Vertrauensmodus | Gate-Dateisystem / Env |
+| A6 | Aktives Bundle und Versionszähler | Gate-Dateisystem |
+| A7 | Gate-Code (Artefakt) | Hosting des Kunden |
+| A8 | Release-Signaturschlüssel von Moat | Release-Infrastruktur |
+| A9 | Budget- und Rate-Limit-Zustand | Gate-Dateisystem |
+| A10 | Daten der Website-Besucher (Formulare, IPs) | Requests, Logs |
+| A11 | Audit- und Request-Logs | Gate, Cloud, Desktop |
+| A12 | Cloud-Accounts, Sessions, API-Tokens | Moat Cloud |
+| A13 | Deploy-Zugangsdaten (SFTP, Git) | Moat Desktop (Keychain) |
+
+## 2. Akteure
+
+| ID | Akteur | Fähigkeiten |
+|---|---|---|
+| X1 | Anonymer Angreifer im Internet | beliebige HTTP-Requests ans Gate, viele IPs |
+| X2 | Missbräuchlicher Besucher / Bot | nutzt öffentliche Routen legitim, aber massenhaft (Budget) |
+| X3 | **Kompromittierte Moat Cloud** | volle Kontrolle über DB, Code, ausgeliefertes JS, Admin-Accounts (Referenzszenario §1) |
+| X4 | Anderer Cloud-Mandant | gültiger Account, versucht fremde Daten zu erreichen |
+| X5 | Mitbewohner auf dem Shared Hosting | anderer Kunde auf demselben Server, eigener PHP-Code |
+| X6 | Angreifer mit Zugriff auf denselben Hosting-Account | z. B. über eine Lücke in WordPress auf derselben Website |
+| X7 | Netzwerk-Angreifer | MITM zwischen Gate, Cloud und Upstream |
+| X8 | Kompromittierter oder bösartiger Upstream | kontrolliert Antworten, Redirects, DNS des Upstreams |
+| X9 | Bösartige Projektdatei / Recipe / Bundle-Import | Datei, die ein Benutzer in Desktop oder Cloud öffnet |
+| X10 | Malware auf dem Rechner des Admins | liest Dateien, Keychain-Zugriff im Benutzerkontext |
+| X11 | Lieferketten-Angreifer | npm-/Composer-Paket, CI, Release-Prozess |
+
+## 3. Vertrauensgrenzen
+
+```
+ Besucher ──TB1──▶ Gate ──TB2──▶ Upstream (HubSpot, OpenAI, …)
+                    ▲  ▲
+          TB3 Bundles│  │TB5 Dateisystem / Prozesse auf dem Host
+                    │
+ Admin-Client ─TB4─▶ Moat Cloud ◀─TB8─▶ andere Mandanten
+ (Browser/CLI/Desktop)
+ Desktop: Renderer ─TB6─▶ Main-Prozess / In-Process-API
+ Build/CI ─TB7─▶ Gate-Artefakt, CLI, Desktop, Images
+```
+
+---
+
+## 4. Bedrohungen pro Vertrauensgrenze
+
+### TB1: Internet → Gate
+
+| ID | STRIDE | Bedrohung | Gegenmassnahme | Rest |
+|---|---|---|---|---|
+| T-01 | S | Gefälschter `Origin`-Header: Origin-Bindung hält nur Browser auf, nicht `curl`. | FR-15/FR-16; Captcha/Turnstile für öffentliche Formulare. **neu: SEC-58** (UI kennzeichnet Origin-Bindung als reinen Browserschutz). | M |
+| T-02 | S | Gefälschtes `X-Forwarded-For` umgeht IP-Rate-Limits. | **neu: SEC-26** (vertrauenswürdige Proxies nur aus der lokalen Policy, sonst `REMOTE_ADDR`). | H ohne SEC-26 |
+| T-03 | T | Pfad-Tricks (`../`, `%2e%2e`, doppelte Kodierung, `;`, Null-Byte) erreichen andere Upstream-Pfade. | SEC-42, exakte Routen, Conformance-Korpus. | N |
+| T-04 | T | CRLF oder Steuerzeichen in Werten, die in Upstream-Header fliessen. | SEC-44; Gate baut Upstream-Requests neu auf. | N |
+| T-05 | I | Upstream spiegelt das Secret in Fehlermeldungen (manche APIs geben den Auth-Header zurück). | FR-14 ist nur **S**. **neu: SEC-39** (Gate entfernt den Secret-Wert aus jeder Antwort und jedem Fehler, M). | H ohne SEC-39 |
+| T-06 | I | Detaillierte Fehler verraten Upstream, Routen oder Konfiguration. | SEC-46: generische Fehlercodes, Details nur im lokalen Log. | N |
+| T-07 | D | **Denial of Wallet:** Bots verbrennen das KI-Budget über viele IPs. | FR-30/31 lokal (SEC-45); globales Tagesbudget pro Route zusätzlich zum Pro-IP-Limit; Turnstile. | M |
+| T-08 | D | Langsame Upstreams blockieren die wenigen PHP-Worker auf Shared Hosting. | Timeouts (SEC-44), Concurrency-Limit pro Route. | M |
+| T-09 | D | Rate-Limit-Speicher läuft voll (ein Zähler pro IP, Millionen IPs) und füllt den Webspace. | **neu: SEC-27** (begrenzter Speicher, Eviction, Fail-Closed bei Überlauf). | M |
+| T-10 | E | Request Smuggling über Proxy-Ketten vor dem Gate. | Gate ist kein Reverse-Proxy auf Byte-Ebene; strikte Validierung (SEC-44). | N |
+
+### TB2: Gate → Upstream
+
+| ID | STRIDE | Bedrohung | Gegenmassnahme | Rest |
+|---|---|---|---|---|
+| T-11 | S/E | SSRF über DNS-Rebinding oder einen Upstream-Host, der auf interne IPs zeigt. | SEC-41, IP-Prüfung + `CURLOPT_RESOLVE`. | N |
+| T-12 | I | Upstream leitet um (`302` auf Angreifer-Host) und das Secret geht mit. | Keine Redirects (SEC-41). | N |
+| T-13 | T | Bösartiger Upstream (X8) liefert HTML/JS, die Website hat dann XSS über das Gate. | **neu: FR-18** (Content-Type-Allowlist pro Route, Default JSON; `X-Content-Type-Options: nosniff`). | M |
+| T-14 | I | MITM auf dem Weg zum Upstream. | TLS-Prüfung immer an, nicht abschaltbar. | N |
+| T-15 | E | Ein Secret ist an einen Host gebunden, der selbst einen Open Redirect oder einen Proxy-Endpunkt anbietet. | Exakte Pfade pro Route; keine Wildcard-Hosts. | N |
+
+### TB3: Gate ↔ Cloud (Bundles) — nach Vertrauensmodus
+
+**Modus 0 (Managed).** Eine kompromittierte Cloud (X3) erzeugt gültige Bundles. SEC-11 begrenzt
+sie auf die lokale Policy. Die Policy kennt heute aber nur **Hosts, Methoden und Body-Grösse**.
+
+| ID | STRIDE | Bedrohung | Gegenmassnahme | Rest |
+|---|---|---|---|---|
+| T-20 | E | **Secret Laundering:** X3 legt eine öffentliche Route an, die jeden Pfad an `api.hubapi.com` weiterreicht und das gebundene Secret anhängt. Damit hat der Angreifer vollen API-Zugriff mit dem Token des Kunden (CRM auslesen, KI-Budget verbrennen), **ohne das Secret zu kennen**. Das ist innerhalb von SEC-11 erlaubt. | **neu: SEC-14** (lokale Policy kann pro Upstream Pfad-Präfixe und Methoden festlegen sowie Obergrenzen für Rate Limits und Budgets setzen). Dazu Tokens beim Anbieter mit minimalem Scope (Recipes, Doku). | **H** in Modus 0 |
+| T-21 | T | X3 erhöht Rate Limits oder Budgets. | SEC-14 (Obergrenzen lokal). | H ohne SEC-14 |
+| T-22 | S | Erstinstallation: Das Installationspaket mit dem gepinnten Cloud-Schlüssel kommt von der Cloud. Ist die Cloud **bei der Installation** schon kompromittiert, ist alles verloren (Trust on First Use). | **neu: SEC-65** (Gate-Artefakt und Fingerprints gegen eine unabhängige Quelle prüfbar, z. B. GitHub-Release). | M |
+
+**Modus 1 bis 3.** X3 kann keine gültigen Bundles erzeugen. Es bleibt:
+
+| ID | STRIDE | Bedrohung | Gegenmassnahme | Rest |
+|---|---|---|---|---|
+| T-23 | D/T | **Unterdrückter Kill-Switch:** Der Kunde sperrt eine Route, X3 liefert das neue Bundle nie aus. Das Gate läuft mit der alten, offenen Config weiter. „Updates zurückhalten“ ist im Referenzszenario erlaubt, aber dieser Fall ist sicherheitsrelevant. | **neu: SEC-15** (lokaler Kill-Switch per Datei, ohne Cloud wirksam); optional SEC-05 Ablauf als Lebenszeichen; Gate meldet „Config älter als X“. | M |
+| T-24 | T | Rollback nach Datenverlust: Hoster spielt ein Backup ein, der Versionszähler fällt zurück, X3 spielt ein altes Bundle ein. | Akzeptiert (setzt X3 und ein Backup-Restore voraus). Hardening-Check meldet Zählerrücksprung. | N |
+| T-25 | S | **Signieren im Browser (Modus 1 und 2):** Das JS kommt von der Cloud. Bösartiges JS lässt den Benutzer eine andere Config signieren als die angezeigte. Bei Modus 1 kann es zusätzlich Key-Datei und Passphrase abgreifen. Bei Modus 2 (Passkey) signiert der Authenticator, was das JS ihm gibt. **Gegen eine aktiv kompromittierte Cloud ist Signieren im Browser also nicht besser als Modus 0.** | SEC-37 benennt es für Modus 1; **neu: SEC-58** (Produkt kennzeichnet Browser-Signieren ehrlich, empfiehlt Desktop/CLI). Signieren mit Passkey braucht ausserdem eine Lösung in der Krypto-Spezifikation (siehe 7.2). | **H** im Browser |
+| T-26 | S | Gestohlene Gate-Zugangsdaten zur Cloud: Ein Dritter gibt sich als Gate aus und bezieht Bundles oder schickt falsche Logs. | SEC-55 (Bundles enthalten nur Ciphertext); Logs als „vom Gate gemeldet“ kennzeichnen. | N |
+
+### TB4/TB8: Admin-Client → Cloud, Mandanten
+
+| ID | STRIDE | Bedrohung | Gegenmassnahme | Rest |
+|---|---|---|---|---|
+| T-30 | I | **Neue Secrets abgreifen:** Bei Eingabe im Browser liefert X3 bösartiges JS, das den Klartext mitliest, oder einen falschen Gate-Public-Key zum Versiegeln. SEC-31 schützt nur gegen eine **passiv** kompromittierte Cloud (DB-Dump, Backup), nicht gegen eine aktiv manipulierte. | SEC-38 (Local-only Secrets), Versiegeln in CLI/Desktop mit lokal gepinntem Gate-Key; **neu: SEC-58** (ehrliche Kennzeichnung). | **H** im Browser |
+| T-31 | E | Account-Übernahme (Phishing, Credential Stuffing): In Modus 0 reicht das für eine Config-Änderung. | SEC-51 (MFA, Passkeys), SEC-52 (eigene Freigabe-Berechtigung), Benachrichtigung bei jeder Freigabe. | M |
+| T-32 | E | Gespeichertes XSS im Dashboard, z. B. über Routennamen oder gemeldete Gate-Logs (Pfad, User-Agent des Besuchers). Wirkt wie T-25/T-30. | Strenge CSP, Angular-Escaping, Trusted Types; Gate kürzt und normalisiert gemeldete Felder. | M |
+| T-33 | I | IDOR / Zugriff auf fremde Mandanten. | SEC-50, 404 statt 403, Cross-Tenant-Suite. | N |
+| T-34 | R | Audit-Log wird zusammen mit der DB umgeschrieben; die Hash-Kette allein hilft nicht, wenn X3 die ganze Kette neu rechnet. | **neu: SEC-59** (regelmässige signierte Checkpoints, an den Kunden exportiert oder per Webhook zugestellt). | M |
+
+### TB5: Gate-Dateisystem und Host — nach Härtungsstufe
+
+| ID | STRIDE | Bedrohung | Stufe | Gegenmassnahme | Rest |
+|---|---|---|---|---|---|
+| T-40 | I | Datendateien (Schlüssel, Bundle, Secrets) sind über HTTP abrufbar. | H1 | `exit; __halt_compiler();`-Präfix, Deny-Dateien, Zufallsnamen, Hardening-Check von aussen (SEC-49). | N |
+| T-41 | I | **Mitbewohner (X5)** liest die Dateien direkt, weil alle Websites als derselbe Systembenutzer laufen (mod_php, gemeinsames `www-data`, kein `open_basedir`). | H1 | Kann das Gate nicht verhindern. **neu: SEC-49a** (Hardening-Check erkennt gemeinsamen Ausführungsbenutzer und fehlendes `open_basedir` und stuft auf „H1, ungeeignet für Secrets“ herab). | **H** auf solchen Hostern |
+| T-42 | E | **Angreifer im selben Hosting-Account (X6)**, z. B. über ein WordPress-Plugin: liest Gate-Schlüssel und Secrets, ändert Policy und gepinnte Schlüssel. | H1, H2 | Ausserhalb dessen, was ein Gate verhindern kann. Ehrlich dokumentieren. H2 (Schlüssel ausserhalb des Webroots, read-only) erschwert, H3 (eigener Container) trennt. | **H** (akzeptiert, dokumentiert) |
+| T-43 | I | Verschlüsselte Secrets mit dem Schlüssel im selben Ordner (H1) schützen nur gegen Abruf von aussen, nicht gegen Dateizugriff. | H1 | Ehrlich in der UI (§1.5); H2-Anleitung. | M |
+| T-44 | T | Gleichzeitige Requests beschädigen Bundle oder Zähler. | alle | Atomare Writes, `flock` (CLAUDE.md, PHP-Standards). | N |
+
+### TB6: Moat Desktop
+
+| ID | STRIDE | Bedrohung | Gegenmassnahme | Rest |
+|---|---|---|---|---|
+| T-50 | E | Bösartige Projektdatei oder bösartiges Recipe (X9): YAML-Bombe, sehr tiefe Strukturen, `__proto__`-Schlüssel (Prototype Pollution im TS-Core). | Kein Anker/Alias, Grössen- und Tiefenlimits (SEC-24), Zod strict; **neu: DT-17** (Objekte ohne Prototyp, `__proto__`/`constructor` als Schlüssel abgelehnt, Zip-Slip-Schutz bei Paket-Import). | M |
+| T-51 | E | Renderer-XSS (z. B. über einen Routennamen) ruft per IPC „Signieren“ auf. | DT-08; **neu: DT-15** (Signieren nur nach Bestätigung in einem vom Main-Prozess gerenderten Dialog mit Diff, nicht im Renderer). | M |
+| T-52 | S | Andere Programme oder Webseiten sprechen die lokale API auf 127.0.0.1 an (auch per DNS-Rebinding). | Zugriffstoken pro Start (wie lazy-koins); **neu: DT-16** (`Host`-Header muss exakt passen). | N |
+| T-53 | T | Teammitglied pusht eine manipulierte `moat.yaml` ins gemeinsame Git, ein anderes signiert sie ungeprüft. | DT-15 (Diff vor dem Signieren), Signatur nennt Signierenden im Audit. | M |
+| T-54 | T | Admin der externen DB (DT-03) tauscht gespeicherte Gate-Public-Keys aus. | Gate-Keys werden lokal gepinnt (Fingerprint-Bestätigung), nicht aus der DB übernommen. | N |
+| T-55 | I | Malware auf dem Rechner (X10) liest Key-Datei, Deploy-Zugangsdaten, Keychain. | Ausserhalb des Scopes; Modus 2 (Hardware-Key) als Schutz vor Diebstahl. | M (akzeptiert) |
+
+### TB7: Lieferkette
+
+| ID | STRIDE | Bedrohung | Gegenmassnahme | Rest |
+|---|---|---|---|---|
+| T-60 | T | **Release-Schlüssel kompromittiert:** Jedes Gate mit Update-Modus „auto“ installiert einen Backdoor-Build. Grösster denkbarer Schaden. | SEC-60; **neu: SEC-66** (Release-Schlüssel offline/HSM, M-of-N-Signatur, Transparenz-Log, gestaffelter Rollout, Default-Update-Modus „benachrichtigen“). | **H** ohne SEC-66 |
+| T-61 | T | Kompromittiertes npm-Paket in Core/CLI/Desktop. | SEC-61, Lockfile, minimale Abhängigkeiten im Core, `allowBuilds` (wie lazy-koins). | M |
+| T-62 | T | Composer-Dev-Abhängigkeit kompromittiert. | Gate liefert `vendor/` nie aus; Build-Datei wird auf verbotene Aufrufe geprüft (CLAUDE.md). | N |
+| T-63 | T | Backdoor-Gate über den Download in der Cloud (X3 liefert ein manipuliertes Artefakt aus). | SEC-21; **neu: SEC-65** (Prüfung gegen unabhängige Quelle, Installer prüft Release-Signatur). | M |
+
+---
+
+## 5. Zusammenfassung pro Vertrauensmodus
+
+| Was eine kompromittierte Cloud kann | Modus 0 | Modus 1/2 im Browser | Modus 1/2 in Desktop/CLI | Modus 3 |
+|---|---|---|---|---|
+| Code auf dem Gate ausführen | nein | nein | nein | nein |
+| Gespeicherte Secrets lesen (DB-Dump) | nein | nein | nein | nein |
+| **Neu eingegebene Secrets lesen** | ja (T-30) | ja (T-30) | nein | nein |
+| Secret an fremden Host senden | nein | nein | nein | nein |
+| **Token des Kunden innerhalb erlaubter Hosts missbrauchen** | ja, ohne SEC-14 (T-20) | ja, über T-25 | nein | nein |
+| Config ändern | ja, innerhalb Policy | ja, über T-25 | nein | nein |
+| Kill-Switch unterdrücken | ja | ja | ja, ohne SEC-15 (T-23) | ja, ohne SEC-15 |
+| Updates zurückhalten | ja | ja | ja | ja |
+
+Die zentrale Erkenntnis: **Die volle Garantie aus §2.8 gilt nur, wenn Signieren und Versiegeln
+ausserhalb des Browsers passieren** (Desktop, CLI, eigener Signer). Im Browser hängt alles am
+ausgelieferten JS, und das kontrolliert die Cloud.
+
+## 6. Zusammenfassung pro Härtungsstufe
+
+| Stufe | Schützt gegen | Schützt nicht gegen |
+|---|---|---|
+| H1 | Abruf der Dateien von aussen (X1), kompromittierte Cloud (je nach Modus) | Mitbewohner bei gemeinsamem Ausführungsbenutzer (T-41), Angreifer im selben Account (T-42) |
+| H2 | zusätzlich: versehentliches Ausliefern, Schreibzugriff des Webservers auf Policy | Angreifer im selben Account mit Shell (T-42) |
+| H3 | zusätzlich: andere Anwendungen auf demselben Host | Kompromittierung des Containers selbst |
+
+## 7. Offene Punkte aus dem Threat Model
+
+1. **Enrollment ohne Admin-Interface:** SEC-32 verlangt, dass der Fingerprint „auf dem Gate“
+   angezeigt wird, SEC-40 verbietet jedes eingehende Management-Interface. Vorschlag
+   **neu: SEC-28**: Ein einmaliger Setup-Modus, geschützt durch ein Setup-Token aus der lokalen
+   Installationsdatei, zeigt den Fingerprint an und schaltet sich nach der Bestätigung oder nach
+   kurzer Zeit dauerhaft ab. Alternative: Fingerprint nur über CLI/SSH oder eine Datei, die der
+   Admin per FTP liest.
+2. **Passkeys (Modus 2):** WebAuthn signiert nicht direkt das Bundle, sondern
+   `authenticatorData` plus Hash der Client-Daten, und Passkeys nutzen fast immer **ES256
+   (P-256)**, nicht Ed25519. Das Gate müsste das WebAuthn-Format und ECDSA P-256 prüfen, was
+   `ext-openssl` braucht (heute nur `ext-sodium` vorgesehen). Gehört in die Krypto-Spezifikation.
+3. **Default-Update-Modus des Gates:** Wegen T-60 sollte der Default „benachrichtigen“ sein,
+   nicht „auto“.
+
+## 8. Vorgeschlagene neue Anforderungen
+
+| ID | Anforderung | Prio | Grund |
+|---|---|---|---|
+| SEC-14 | Lokale Policy kann pro Upstream **Pfad-Präfixe und Methoden** festlegen und **Obergrenzen für Rate Limits und Budgets** setzen. Die Cloud-Config bleibt darunter. | M | T-20, T-21 |
+| SEC-15 | **Lokaler Kill-Switch** per Datei (pro Gate und pro Route), sofort wirksam, unabhängig von der Cloud. Gate meldet, wenn die aktive Config älter als ein einstellbarer Wert ist. | M | T-23 |
+| SEC-26 | Client-IP nur aus `REMOTE_ADDR`, ausser die lokale Policy nennt vertrauenswürdige Proxies. | M | T-02 |
+| SEC-27 | Rate-Limit- und Budget-Speicher ist in Grösse begrenzt, mit Eviction; bei Überlauf Fail-Closed. | M | T-09 |
+| SEC-28 | Einmaliger, tokengeschützter Setup-Modus für das Enrollment, danach dauerhaft aus (siehe 7.1). | M | SEC-32 vs. SEC-40 |
+| SEC-39 | Gate entfernt Secret-Werte aus allen Upstream-Antworten, Fehlern und Logs. | M | T-05 |
+| SEC-49a | Hardening-Check erkennt gemeinsamen Ausführungsbenutzer und fehlendes `open_basedir` und stuft entsprechend herab. | M | T-41 |
+| SEC-58 | Ehrliche Kennzeichnung im Produkt: Browser-Signieren und Secret-Eingabe im Browser schützen nicht gegen eine aktiv kompromittierte Cloud; Origin-Bindung schützt nur gegen Browser. Empfohlener Weg: Desktop/CLI. | M | T-01, T-25, T-30 |
+| SEC-59 | Signierte Audit-Checkpoints, die regelmässig an den Kunden exportiert werden. | S | T-34 |
+| SEC-65 | Gate-Artefakt und Release-Fingerprints sind gegen eine von der Cloud unabhängige Quelle prüfbar; der Installer prüft die Release-Signatur. | M | T-22, T-63 |
+| SEC-66 | Release-Schlüssel offline/HSM mit M-of-N-Signatur, Transparenz-Log, gestaffelter Rollout; Default-Update-Modus „benachrichtigen“. | M | T-60 |
+| FR-18 | Content-Type-Allowlist pro Route (Default JSON), `nosniff` an den Client. | M | T-13 |
+| DT-15 | Signieren nur nach Bestätigung in einem Main-Prozess-Dialog mit Diff der Änderungen. | M | T-51, T-53 |
+| DT-16 | Lokale API prüft den `Host`-Header exakt (Schutz gegen DNS-Rebinding). | M | T-52 |
+| DT-17 | Import-Härtung: keine Prototyp-Schlüssel, Objekte ohne Prototyp, Zip-Slip-Schutz. | M | T-50 |
+
+## 9. Bewusst akzeptierte Restrisiken
+
+- Kompromittierung des Hosting-Accounts, auf dem das Gate läuft (T-42).
+- Malware auf dem Rechner des Admins (T-55).
+- Zurückhalten von Updates durch eine kompromittierte Cloud (ausser Kill-Switch, siehe SEC-15).
+- Modus 0 bleibt ein Komfortmodus: Mit SEC-14 ist der Schaden auf die lokal erlaubten Pfade und
+  Limits begrenzt, aber nicht null.

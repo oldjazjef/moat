@@ -353,7 +353,8 @@ checksums + SBOM (SEC-60, SEC-61), images to ghcr, desktop installers per releas
 - **Crypto spec** (ANFORDERUNGEN.md §5.3) — the defaults above are proposals.
 - **Default trust mode** in the Cloud (§5.4) and the product wording (§5.5).
 - **Desktop signing / auto-update** (same open point as lazy-koins).
-- **Threat model** (§5.1) comes before the first gate code.
+- **Threat model**: v0.1 in [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) (cite threats as `T-20`).
+  Its proposed requirements (§8) are not in ANFORDERUNGEN.md yet — ask before building on them.
 
 ## Conventions carried over from lazy-koins
 
