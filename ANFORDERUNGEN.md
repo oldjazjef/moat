@@ -1,4 +1,4 @@
-# Moat: Anforderungen (v0.4)
+# Moat: Anforderungen (v0.5)
 
 **Produkt:** API-Management für Websites auf normalem Hosting: Secrets verwalten, Proxy, Endpunkt-Gating.
 **Komponenten:**
@@ -7,6 +7,14 @@
 - **Moat Cloud:** SaaS oder self-hosted (Docker/K8s), Verwaltung, Teams, Monitoring.
 - **Moat Gate:** läuft auf dem Hosting des Kunden.
 **Priorität:** **M** = MVP, **S** = bald danach, **K** = später.
+
+## Änderungen gegenüber v0.4
+
+| Thema | Entscheidung |
+|---|---|
+| Produktwording | Feste Bezeichnungen für Vertrauensmodi und Härtungsstufen, jeweils mit einem Satz, was eine gehackte Cloud könnte (Abschnitt 2.9). |
+| Teamarbeit ohne Cloud | MVP über Git im Projektordner; geteilte DB mit Rollen erst später (DT-14, DT-18). |
+| Default-Vertrauensmodus | Vorschlag in Abschnitt 2.9, Entscheid offen. |
 
 ## Änderungen gegenüber v0.3
 
@@ -194,6 +202,30 @@ Möglich bleibt: Updates zurückhalten.
 
 ---
 
+### 2.9 Produktbezeichnungen und Default-Modus
+
+Die UI benutzt **nur** diese Bezeichnungen (de-CH / en). Jede Stufe zeigt den Satz „Wenn Moat Cloud
+gehackt wird …“ an, damit die Garantie ehrlich bleibt (§1.5, SEC-58).
+
+| Intern | Bezeichnung (de / en) | Kurzbeschreibung in der UI | „Wenn Moat Cloud gehackt wird …“ |
+|---|---|---|---|
+| Modus 0 | **Bequem** / *Convenient* | Moat Cloud gibt Änderungen frei. | … kann ein Angreifer deine Routen innerhalb der lokalen Grenzen deines Gates ändern. Secrets lesen oder Code ausführen kann er nicht. |
+| Modus 1 | **Signiert** / *Signed* | Du gibst jede Änderung mit deiner Schlüsseldatei frei. | … kann ein Angreifer nichts ändern. Im Browser gilt das nur eingeschränkt, volle Garantie mit Moat Desktop oder CLI. |
+| Modus 2 | **Signiert mit Passkey** / *Signed with passkey* | Du gibst jede Änderung mit Passkey oder Sicherheitsschlüssel frei. | wie „Signiert“, zusätzlich kann dein Schlüssel nicht gestohlen werden. |
+| Modus 3 | **Eigene Freigabe** / *Own signer* | Dein eigener Dienst oder deine CI gibt frei. | … kann ein Angreifer nichts ändern. |
+| H1 | **Basis** / *Basic* | Läuft im Webspace, geschützt durch Zugriffsregeln. | — (betrifft das Hosting) |
+| H1, gemeinsamer Benutzer | **Unsicher für Secrets** / *Unsafe for secrets* | Andere Websites auf diesem Server könnten die Dateien lesen (SEC-49a). | — |
+| H2 | **Gut** / *Good* | Schlüssel und Policy liegen ausserhalb des Webspace. | — |
+| H3 | **Stark** / *Strong* | Eigener Container oder Server, nur lesbares Dateisystem. | — |
+
+**Default-Vertrauensmodus (Vorschlag, Entscheid offen):**
+
+| ID | Anforderung | Prio |
+|---|---|---|
+| FR-46 | In Moat Cloud ist **Bequem** (Modus 0) der Default beim Anlegen eines Gates. Moat Desktop ist immer mindestens **Signiert**. | M |
+| FR-47 | Der Setup-Assistent empfiehlt aktiv **Signiert**, sobald eine Route ein Secret mit Schreibrechten oder ein KI-Budget nutzt, und bietet den Wechsel mit einem Klick an (Wechsel braucht trotzdem die lokale Bestätigung, SEC-06). | M |
+| FR-48 | In **Bequem** verlangt Moat beim Anlegen eines Upstreams eine lokale Pfad-Policy (SEC-14). Recipes liefern sie mit; ohne sie wird kein Secret an diesen Upstream gebunden. | M |
+
 ## 3. Funktionale Anforderungen
 
 ### 3.1 Projekte und Gates
@@ -295,7 +327,8 @@ Moat Desktop ist die Control Plane ohne Server. Sie arbeitet immer in Vertrauens
 | DT-15 | Signieren nur nach Bestätigung in einem **vom Main-Prozess gerenderten Dialog** mit Diff der Änderungen, nie direkt aus dem Renderer (T-51, T-53). | M |
 | DT-16 | Die lokale API prüft den `Host`-Header exakt (Schutz gegen DNS-Rebinding, T-52). | M |
 | DT-17 | Import-Härtung: Schlüssel wie `__proto__`/`constructor` werden abgelehnt, Objekte ohne Prototyp, Zip-Slip-Schutz beim Paket-Import (T-50). | M |
-| DT-14 | **Teamarbeit ohne Cloud** im MVP über Git (Projektordner). Geteilte DB mit Rollen erst später. | M/K |
+| DT-14 | **Teamarbeit ohne Cloud** im MVP über Git (Projektordner): `moat.yaml` und signierte Bundles im Repo, Secrets nur versiegelt, Signieren lokal pro Person. Geteilte DB mit Rollen erst später. | M |
+| DT-18 | Geteilte externe DB mit Rollen und Freigabe-Workflow für Teams ohne Cloud. | K |
 
 **Speicher-Backends:**
 
@@ -321,6 +354,6 @@ Moat Desktop ist die Control Plane ohne Server. Sie arbeitet immer in Vertrauens
 1. ~~Threat Model~~: v0.1 erstellt ([docs/THREAT-MODEL.md](docs/THREAT-MODEL.md)), Vorschläge in v0.4 übernommen.
 2. ~~Tech-Stack~~: entschieden, gleicher Stack wie lazy-koins, Desktop mit Electron (siehe CLAUDE.md).
 3. ~~Kryptografie-Details~~: Spezifikation v0.1 in [docs/CRYPTO.md](docs/CRYPTO.md); Passkeys werden vom Gate als WebAuthn/ES256 geprüft.
-4. **Default-Modus:** Modus 0 ist am einfachsten. Frage, ob beim Setup aktiv zu Modus 1 geraten wird (z. B. bei Secrets mit Schreibrechten wie KI-APIs mit Budget).
-5. **Produktwording** für Vertrauensmodi und Härtungsstufen, damit Nicht-Techniker sie verstehen.
-6. **Teamarbeit ohne Cloud:** Reicht Git im MVP (DT-14), oder braucht es früh eine geteilte DB mit Rollen?
+4. **Default-Modus:** Vorschlag in 2.9 (FR-46 bis FR-48), Entscheid offen.
+5. ~~Produktwording~~: Abschnitt 2.9.
+6. ~~Teamarbeit ohne Cloud~~: Git im MVP (DT-14), geteilte DB später (DT-18).

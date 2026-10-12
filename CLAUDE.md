@@ -15,7 +15,7 @@ Four components (ANFORDERUNGEN.md, header):
 - **Moat Gate** (`gates/php` first, later `gates/node`, `gates/dotnet`): runs on the customer's
   hosting, enforces everything locally, trusts nobody it does not have to.
 
-> **Status (12.10.2026): requirements v0.4 + threat model v0.1 + crypto spec v0.1 + this setup.** No code yet. The stack and the
+> **Status (12.10.2026): requirements v0.5 + threat model v0.1 + crypto spec v0.1 + this setup.** No code yet. The stack and the
 > conventions below are the target; each section becomes concrete when the code lands. Update
 > this file whenever the code makes a section concrete or wrong.
 
@@ -164,7 +164,8 @@ touches any of them names the IDs in its PR description.
 11. **Constant-time comparisons** for anything secret (`hash_equals`, `sodium.memcmp`), CSPRNG
     only (`random_bytes`, `sodium.randombytes_buf`), no home-made crypto, no other crypto library.
 12. **Honesty in the product** (§1.5): the UI shows the trust mode and hardening level that is
-    actually in force — never a stronger claim.
+    actually in force — never a stronger claim — with exactly the labels and "if Moat Cloud is
+    hacked …" sentences of ANFORDERUNGEN.md §2.9 (i18n keys, no other wording).
 
 When a requirement and a request conflict, stop and ask. Security reviews: `/security-review` on
 every PR that touches `libs/core/src/{bundle,crypto,policy}`, `gates/**`, auth, or the desktop's
@@ -343,7 +344,7 @@ checksums + SBOM (SEC-60, SEC-61), images to ghcr, desktop installers per releas
 
 ## Open decisions — ask, don't decide
 
-- **Default trust mode** in the Cloud (§5.4) and the product wording (§5.5).
+- **Default trust mode** in the Cloud (proposal FR-46–FR-48 in ANFORDERUNGEN.md §2.9).
 - **Desktop signing / auto-update** (same open point as lazy-koins).
 - **Threat model**: v0.1 in [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) (cite threats as `T-20`);
   its proposals are requirements since v0.4. New features update it (new threat → new `T-…`).
