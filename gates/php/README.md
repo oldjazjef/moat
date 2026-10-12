@@ -146,7 +146,11 @@ request that passes `total` (plus one per quota), so the gate can compute how ma
 whose limits could need more than `maxClients` is rejected (`policy_violation`), and `moat policy
 suggest` sizes `maxClients` to fit. A flood therefore cannot fill the store. Should it still be
 full, damaged, or locked for more than 250 ms, the request gets `503 rate_limit_unavailable`
-(SEC-27, fail closed); deleting `limits.php` resets it.
+(SEC-27, fail closed); deleting `limits.php` resets it. A route's counters belong to the route
+limits of the bundle in force: a bundle that changes a route's name, rate limit or quota starts
+the route counters afresh, so counters of earlier bundles (a quota's lasts up to a month) cannot
+fill the store. The policy's counters keep running. The first request after updating from a gate
+without quotas starts the store afresh.
 
 ## The `testing` block
 

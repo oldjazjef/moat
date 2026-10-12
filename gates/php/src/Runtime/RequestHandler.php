@@ -93,16 +93,16 @@ final class RequestHandler
         $counters = [['ip ' . $client, $limits->perIp], ['total', $limits->total]];
         if ($route->rateLimit !== null) {
             $scope = $route->rateLimit->per === LimitScope::Ip ? $client : '*';
-            $counters[] = ['route ' . $route->name . ' ' . $scope, $route->rateLimit->limit];
+            $counters[] = ['route ' . $route->name . ' ' . $scope, $route->rateLimit->limit, true];
         }
         if ($limits->quota !== null) {
             $counters[] = ['quota ' . $limits->quota->period->value, $limits->quota];
         }
         if ($route->quota !== null) {
-            $counters[] = ['quota route ' . $route->name . ' ' . $route->quota->period->value, $route->quota];
+            $counters[] = ['quota route ' . $route->name . ' ' . $route->quota->period->value, $route->quota, true];
         }
         try {
-            $refusal = RateLimiter::hit($gate->data, $counters, $limits->maxClients, $now);
+            $refusal = RateLimiter::hit($gate->data, $counters, $limits->maxClients, $now, RateLimiter::routeLimitsId($bundle->config->routes));
         } catch (\Exception) {
             // Store full, damaged, locked too long or not writable: fail closed (SEC-27, SEC-46).
             throw new Failure(GateError::RateLimitUnavailable);
