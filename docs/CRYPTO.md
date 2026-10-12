@@ -168,9 +168,9 @@ Datei mit Endung `.moatkey`:
 ## 7. Passkeys (Vertrauensmodus 2)
 
 Passkeys signieren nicht das Bundle direkt, sondern das WebAuthn-Format, und fast immer mit
-**ES256 (ECDSA P-256)**. Es gibt zwei Wege; **Entscheid offen**, Empfehlung Variante A.
+**ES256 (ECDSA P-256)**. **Entschieden (12.10.2026): Variante A.** Variante B bleibt als verworfene Alternative dokumentiert.
 
-**Variante A: Gate prüft die WebAuthn-Signatur (empfohlen).**
+**Variante A: Gate prüft die WebAuthn-Signatur (gewählt).**
 Der Schlüssel verlässt den Authenticator nie, wie in den Anforderungen versprochen.
 
 - Beim Signieren: `challenge = SHA-256(M)` (M aus 4.2), `userVerification: "required"`.
@@ -188,7 +188,7 @@ Der Schlüssel verlässt den Authenticator nie, wie in den Anforderungen verspro
   und verweigert sonst den Dienst. `ext-openssl` ist auf Shared Hosting praktisch überall
   vorhanden.
 
-**Variante B: Passkey entsperrt eine Ed25519-Key-Datei (PRF-Erweiterung).**
+**Variante B (verworfen): Passkey entsperrt eine Ed25519-Key-Datei (PRF-Erweiterung).**
 Der Passkey liefert über die WebAuthn-PRF-Erweiterung ein Geheimnis, das die Key-Datei aus
 Abschnitt 6 statt einer Passphrase entschlüsselt. Das Gate bleibt bei reinem Ed25519.
 
@@ -266,7 +266,7 @@ Ausgaben für:
   manipulierter Ciphertext; Null-`epk`
 - Key-Datei: korrekte Passphrase; falsche Passphrase; zu schwache KDF-Parameter; `kid` passt
   nicht zum Seed
-- WebAuthn (falls Variante A): gültig; falsche Challenge; falscher Origin; falscher `rpIdHash`;
+- WebAuthn: gültig; falsche Challenge; falscher Origin; falscher `rpIdHash`;
   UV nicht gesetzt
 - Gate-Auth: gültig; `ts` ausserhalb des Fensters; Wiederholung
 - Release-Manifest: 2 von 3 gültig; 1 von 3; falscher Hash; Downgrade
@@ -274,7 +274,6 @@ Ausgaben für:
 Nicht-deterministische Schritte (Nonces, ephemere Schlüssel) sind in den Vektoren fixiert;
 die Implementierungen bieten dafür eine nur in Tests erreichbare Injektion.
 
-## 12. Offene Entscheide
+## 12. Entscheide
 
-1. **Passkeys:** Variante A (Gate prüft WebAuthn, braucht `ext-openssl` bei Modus 2) oder
-   Variante B (Passkey entsperrt Key-Datei per PRF).
+1. **Passkeys:** Variante A, das Gate prüft WebAuthn/ES256 und braucht `ext-openssl`, wenn Modus 2 gepinnt ist (12.10.2026).

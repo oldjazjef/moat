@@ -320,7 +320,7 @@ Moat Desktop ist die Control Plane ohne Server. Sie arbeitet immer in Vertrauens
 
 1. ~~Threat Model~~: v0.1 erstellt ([docs/THREAT-MODEL.md](docs/THREAT-MODEL.md)), Vorschläge in v0.4 übernommen.
 2. ~~Tech-Stack~~: entschieden, gleicher Stack wie lazy-koins, Desktop mit Electron (siehe CLAUDE.md).
-3. **Kryptografie-Details:** Spezifikation v0.1 in [docs/CRYPTO.md](docs/CRYPTO.md). Offen ist nur noch der Weg für Passkeys (Modus 2, §12 dort).
+3. ~~Kryptografie-Details~~: Spezifikation v0.1 in [docs/CRYPTO.md](docs/CRYPTO.md); Passkeys werden vom Gate als WebAuthn/ES256 geprüft.
 4. **Default-Modus:** Modus 0 ist am einfachsten. Frage, ob beim Setup aktiv zu Modus 1 geraten wird (z. B. bei Secrets mit Schreibrechten wie KI-APIs mit Budget).
 5. **Produktwording** für Vertrauensmodi und Härtungsstufen, damit Nicht-Techniker sie verstehen.
 6. **Teamarbeit ohne Cloud:** Reicht Git im MVP (DT-14), oder braucht es früh eine geteilte DB mit Rollen?

@@ -176,8 +176,8 @@ IPC/protocol.
 signing, test vectors). Change it only together with `conformance/vectors/crypto/` and every
 implementation. In short: Ed25519 signatures over `"moat:bundle:v1\n" ‖ payloadBytes` with JCS
 payloads; secrets sealed with X25519 + keyed BLAKE2b + XChaCha20-Poly1305, AD bound to gate id,
-name and secret version; key files with Argon2id; base64url without padding. Passkeys (mode 2)
-are still an open decision there (§12).
+name and secret version; key files with Argon2id; base64url without padding. Passkeys (mode 2):
+the gate verifies WebAuthn ES256 itself (decided 12.10.2026, §7).
 
 ## YAML standards
 
@@ -339,10 +339,10 @@ checksums + SBOM (SEC-60, SEC-61), images to ghcr, desktop installers per releas
   New files need no license header; third-party code must be MIT-compatible.
 - **Cloud auth without Firebase** (12.10.2026, see Auth).
 - **Desktop = Electron** (same stack as lazy-koins, see Desktop).
+- **Passkeys: the gate verifies WebAuthn ES256** (12.10.2026, docs/CRYPTO.md §7).
 
 ## Open decisions — ask, don't decide
 
-- **Passkeys / mode 2** (docs/CRYPTO.md §12).
 - **Default trust mode** in the Cloud (§5.4) and the product wording (§5.5).
 - **Desktop signing / auto-update** (same open point as lazy-koins).
 - **Threat model**: v0.1 in [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) (cite threats as `T-20`);
