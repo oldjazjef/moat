@@ -341,9 +341,15 @@ checksums + SBOM (SEC-60, SEC-61), images to ghcr, desktop installers per releas
 - If a secret was ever committed: revoke and rotate first, history scrubbing after.
 - Security reports: GitHub private vulnerability reporting ([SECURITY.md](SECURITY.md)).
 
+## Decisions
+
+- **License = MIT** for the whole repo (decided 12.10.2026, instead of the earlier FSL plan).
+  New files need no license header; third-party code must be MIT-compatible.
+- **Cloud auth without Firebase** (12.10.2026, see Auth).
+- **Desktop = Electron** (same stack as lazy-koins, see Desktop).
+
 ## Open decisions — ask, don't decide
 
-- **License**: the repo is MIT; the product plan was FSL for the gate and a proprietary Cloud.
 - **Crypto spec** (ANFORDERUNGEN.md §5.3) — the defaults above are proposals.
 - **Default trust mode** in the Cloud (§5.4) and the product wording (§5.5).
 - **Desktop signing / auto-update** (same open point as lazy-koins).
