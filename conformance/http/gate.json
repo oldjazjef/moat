@@ -941,7 +941,8 @@
           "access-control-allow-methods": "GET, POST",
           "access-control-allow-headers": "Content-Type",
           "access-control-max-age": "600",
-          "access-control-allow-credentials": null
+          "access-control-allow-credentials": null,
+          "content-type": null
         },
         "upstreamCalls": 0
       }
