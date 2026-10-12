@@ -1,0 +1,27 @@
+# Prettier owns YAML formatting; yamllint checks what Prettier does not (see CLAUDE.md, YAML standards).
+extends: default
+
+ignore: |
+  node_modules/
+  dist/
+  pnpm-lock.yaml
+  libs/ui/
+
+rules:
+  document-start: disable
+  line-length: disable
+  indentation: disable
+  comments: disable
+  comments-indentation: disable
+  brackets: disable
+  braces: disable
+  truthy:
+    allowed-values: ['true', 'false']
+    check-keys: false
+  key-duplicates: enable
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
+  anchors:
+    forbid-undeclared-aliases: true
+    forbid-duplicated-anchors: true
