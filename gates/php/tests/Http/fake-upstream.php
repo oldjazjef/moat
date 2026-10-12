@@ -6,11 +6,12 @@ declare(strict_types=1);
 // at a time on 127.0.0.1, TLS with the runner's TEST ONLY certificate. Never a real API.
 // php fake-upstream.php <cert.pem> <key.pem> <port file> <log file> <secret>
 
-if ($argc !== 6) {
+$args = is_array($_SERVER['argv'] ?? null) ? array_values(array_filter($_SERVER['argv'], is_string(...))) : [];
+if (count($args) !== 6) {
     fwrite(STDERR, "usage: fake-upstream.php <cert> <key> <port file> <log file> <secret>\n");
     exit(2);
 }
-[, $cert, $key, $portFile, $logFile, $secret] = $argv;
+[, $cert, $key, $portFile, $logFile, $secret] = $args;
 // Failed handshakes and broken connections are expected: ignore their warnings.
 set_error_handler(static fn(): bool => true);
 
