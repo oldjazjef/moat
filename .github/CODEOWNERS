@@ -1,0 +1,13 @@
+# Everything needs my review
+*                     @oldjazjef
+
+# Extra care for workflows, agent config, the secret guard and the security core
+/.github/workflows/   @oldjazjef
+/.claude/             @oldjazjef
+/.githooks/           @oldjazjef
+/.gitignore           @oldjazjef
+/libs/core/src/crypto/ @oldjazjef
+/libs/core/src/bundle/ @oldjazjef
+/libs/core/src/policy/ @oldjazjef
+/gates/               @oldjazjef
+/conformance/         @oldjazjef

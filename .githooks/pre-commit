@@ -1,0 +1,10 @@
+#!/bin/sh
+# Keys, key files, .env files and private/ must never be committed — not even with `git add -f`.
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+bad=$(printf '%s\n' "$staged" | grep -E '(^|/)\.env(\..*)?$|\.(key|pem|moatkey)$|^private/' | grep -vE '(^|/)\.env\.example$')
+if [ -n "$bad" ]; then
+  echo "pre-commit: refusing to commit secrets or key material:" >&2
+  printf '  %s\n' $bad >&2
+  echo "            unstage them with: git restore --staged <path>" >&2
+  exit 1
+fi

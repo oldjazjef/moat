@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm check)",
+      "Bash(pnpm check:gate-php)",
+      "Bash(pnpm check:all)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm conformance)",
+      "Bash(pnpm schema)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm nx:*)",
+      "Bash(composer --working-dir=gates/php:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git commit --no-verify:*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/*.moatkey)",
+      "Read(./private/**)"
+    ]
+  }
+}

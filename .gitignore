@@ -1,0 +1,17 @@
+node_modules/
+dist/
+tmp/
+.nx/
+coverage/
+.data/
+private/
+gates/php/vendor/
+gates/php/.phpunit.cache/
+gates/php/.php-cs-fixer.cache
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.moatkey
+.DS_Store
