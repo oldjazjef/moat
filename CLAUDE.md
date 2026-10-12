@@ -19,7 +19,7 @@ Four components (ANFORDERUNGEN.md, header):
 > the Nx/pnpm workspace; `libs/core` (encodings, strict JSON, JCS, key ids, bundle sign/verify and
 > building, sealed secrets, key files, the `moat.yaml` schema and loader, local policy, path and
 > content-type rules, environments and locks, comment-preserving `moat.yaml` edits); `apps/cli`
-> (`moat keygen|validate|policy suggest|gate add|assign|disable|enable|env add|disable|enable|secret seal|build`);
+> (`moat keygen|validate|policy suggest|gate add|assign|disable|enable|env add|disable|enable|secret seal|build|version`);
 > `conformance/vectors/` and `conformance/http/`; and `gates/php` as a working gate: single-file
 > build, CLI (`install|trust|policy|accept|status`), bundle acceptance (steps 1–10), exact routing,
 > the cURL upstream client with SSRF guard, origin binding/CORS, rate limits and the signed lock
@@ -29,7 +29,7 @@ Four components (ANFORDERUNGEN.md, header):
 > `GET /api/projects`, `GET|DELETE /api/projects/:id`, project folders read-only) and the Angular
 > UI (`apps/web`: Projekte → workspace with Übersicht incl. Umgebungen, Gates with lock state, Routen;
 > Hilfe). Writing still goes
-> through the CLI. Not yet: Cloud, desktop editing/signing, setup wizard (FR-73),
+> through the CLI. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, desktop editing/signing, setup wizard (FR-73),
 > quotas/budgets, lazy pull, setup mode, trust mode 2, the local file kill switch (SEC-15). Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
@@ -396,8 +396,21 @@ integration specs (`*.integration.spec.ts`) against real databases are separate.
 **`gate-php`** (matrix 8.2–8.5, `shivammathur/setup-php`, `pnpm check:gate-php`), `conformance`,
 `security` (CodeQL, Semgrep, osv-scanner, gitleaks, Trivy) and `dast` (ZAP baseline on PRs, full
 scan nightly against Cloud and gate). The gate lives in
-`package.json` — add checks there, never to the YAML alone. Release: signed gate artifact +
+`package.json` — add checks there, never to the YAML alone. Release target: signed gate artifact +
 checksums + SBOM (SEC-60, SEC-61), images to ghcr, desktop installers per release (as lazy-koins).
+
+As built: **`.github/workflows/release.yml`**, `workflow_dispatch` on `main` only (input `bump`
+patch/minor/major or an exact `version`). `prepare` refuses a commit without a green `ci.yml` run
+or with an existing tag/release, then creates a **draft**; `gate-and-cli` and `desktop` (ubuntu,
+windows, macos) upload into it with `gh release upload`; `publish` adds `SHA256SUMS.txt` and
+`.github/release-notes.md` and publishes (that creates the tag); `discard` deletes the draft on
+failure. The version reaches the artifacts through `MOAT_VERSION` (+ `MOAT_COMMIT`):
+`gates/php/build/build.php --version --commit`, `apps/cli/build.mjs` (esbuild `define`, printed
+by `moat version`; `0.0.0-dev (unknown)` outside a release) and `apps/desktop/scripts/stage.mjs`
+(the app manifest, hence the installer names). **Unsigned** (`CSC_IDENTITY_AUTO_DISCOVERY=false`,
+no gate release signature, no SBOM) until the signing decision is made. Actions are pinned to the
+same SHAs as `ci.yml`; artifacts move through `gh`, not upload/download-artifact. Check workflow
+changes with `actionlint` (not yet part of `pnpm check`).
 
 ## Secrets (repository)
 

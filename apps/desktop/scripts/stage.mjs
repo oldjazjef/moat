@@ -93,10 +93,15 @@ const electronVersion = JSON.parse(
   ),
 ).version;
 
+// The release workflow sets MOAT_VERSION (X.Y.Z): the app's and the installers' version.
+const version = process.env.MOAT_VERSION ?? '0.0.0';
+if (!/^\d+\.\d+\.\d+$/.test(version))
+  throw new Error(`MOAT_VERSION must look like 1.2.3 (got ${version})`);
+
 const manifest = {
   name: 'moat-desktop',
   productName: 'Moat',
-  version: '0.0.0',
+  version,
   description: 'Moat Desktop: API management without a server',
   author: 'Moat',
   license: 'MIT',

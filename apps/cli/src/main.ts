@@ -19,8 +19,16 @@ import {
   type Options,
 } from './commands';
 
+/** Set by apps/cli/build.mjs from MOAT_VERSION / MOAT_COMMIT (the release workflow). */
+declare const MOAT_BUILD: { version: string; commit: string } | undefined;
+const BUILD =
+  typeof MOAT_BUILD === 'undefined'
+    ? { version: '0.0.0-dev', commit: 'unknown' }
+    : MOAT_BUILD;
+
 const HELP = `moat — Moat CLI (sign and seal locally; nothing here talks to a server)
 
+  moat version                                       version and build commit of this CLI
   moat keygen <file.moatkey>                         new signing key (trust mode 1)
   moat validate [--config moat.yaml] [--policy p.json]
   moat policy suggest [--config moat.yaml]           narrowest gate policy for the config
@@ -45,6 +53,8 @@ type Command = (
 ) => Promise<void>;
 
 const COMMANDS: Record<string, Command> = {
+  version: async (context) =>
+    context.out(`moat ${BUILD.version} (${BUILD.commit})`),
   keygen,
   validate,
   'policy suggest': policySuggest,

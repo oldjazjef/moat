@@ -154,7 +154,9 @@ right, next to light and dark mode.
 
 ## Quick start
 
-You need Node 22 and pnpm 11 (pinned in `package.json`). The gate needs PHP ≥ 8.2 with `sodium`,
+Built versions (gate, CLI, desktop installers) are on the
+[releases page](https://github.com/oldjazjef/moat/releases); see [Releases](#releases). To build
+from source, you need Node 22 and pnpm 11 (pinned in `package.json`). The gate needs PHP ≥ 8.2 with `sodium`,
 `curl`, `json` and `hash` on the hosting.
 
 ```bash
@@ -325,6 +327,31 @@ Every API endpoint has an entry in the authorization matrix
 ([`apps/api/src/security/authz-matrix.ts`](apps/api/src/security/authz-matrix.ts)), and the
 app is tested against the OWASP Top 10 and API Top 10
 ([docs/SECURITY-TESTING.md](docs/SECURITY-TESTING.md)).
+
+## Releases
+
+A release is made by hand in GitHub, no local tools needed: **Actions → Release → Run workflow**
+on `main`, choose which part of the version to raise (`patch`, `minor`, `major`) or type an exact
+version, and start it. The workflow ([`.github/workflows/release.yml`](.github/workflows/release.yml))
+refuses to run unless CI passed on that commit, builds everything and publishes the release
+`vX.Y.Z` with these files:
+
+| File                                          | What it is                                               |
+| --------------------------------------------- | -------------------------------------------------------- |
+| `moat-gate.php`                               | The gate, one file; version and commit are in its header |
+| `moat.cjs`                                    | The CLI (`node moat.cjs version`), needs Node 22         |
+| `Moat-Setup-X.Y.Z.exe`                        | Moat Desktop for Windows (x64)                           |
+| `Moat-X.Y.Z-arm64.dmg` / `Moat-X.Y.Z-x64.dmg` | Moat Desktop for macOS (Apple silicon / Intel)           |
+| `Moat-X.Y.Z.AppImage`                         | Moat Desktop for Linux (x64)                             |
+| `SHA256SUMS.txt`                              | SHA-256 checksums of all files above                     |
+
+While it builds, the release is a draft that nobody else sees; it is published, and the tag
+created, only when every file is there. If a build fails, the draft is deleted again.
+
+**Not signed yet.** The installers carry no code signature, so Windows SmartScreen and macOS
+Gatekeeper warn on first start (the release notes say how to open them anyway), and the gate file
+has no release signature (SEC-60) or SBOM (SEC-61) yet. Until then, compare the SHA-256 checksum
+with `SHA256SUMS.txt` before installing.
 
 ## Documentation
 
