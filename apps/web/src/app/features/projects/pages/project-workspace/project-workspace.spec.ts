@@ -39,6 +39,7 @@ describe('ProjectWorkspace', () => {
     window.moatDesktop = {
       platform: 'linux',
       project: { add: vi.fn(), reveal },
+      bundle: { sign: vi.fn() },
     };
     const { el } = await openProjectTab('overview', OverviewPage, PROJECT);
     click(el, '[data-reveal]');

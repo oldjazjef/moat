@@ -113,4 +113,40 @@ describe('FolderStorage', () => {
       '{}',
     );
   });
+
+  it('creates a bundle file with its folders, and never replaces one', () => {
+    const storage = new FolderStorage(project);
+    storage.create('bundles/site/1.json', '{"v":1}');
+    expect(
+      readFileSync(join(project, 'bundles', 'site', '1.json'), 'utf8'),
+    ).toBe('{"v":1}');
+    let error: unknown;
+    try {
+      storage.create('bundles/site/1.json', 'PLANTED');
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(FolderWriteError);
+    expect((error as FolderWriteError).reason).toBe('exists');
+    expect(
+      readFileSync(join(project, 'bundles', 'site', '1.json'), 'utf8'),
+    ).toBe('{"v":1}');
+    expect(readdirSync(join(project, 'bundles', 'site'))).toEqual(['1.json']);
+  });
+
+  it('never creates through a symbolic link folder or outside the project', () => {
+    const storage = new FolderStorage(project);
+    symlinkSync(base, join(project, 'bundles'));
+    for (const path of [
+      'bundles/site/1.json',
+      '../outside/1.json',
+      'gates/../../x.json',
+      '.git/1.json',
+      '/tmp/1.json',
+      'bundles//1.json',
+    ]) {
+      expect(() => storage.create(path, 'PLANTED')).toThrow(FolderWriteError);
+    }
+    expect(readdirSync(base).sort()).toEqual(['outside.txt', 'project']);
+  });
 });

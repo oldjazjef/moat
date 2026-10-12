@@ -90,8 +90,8 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
   },
   {
     id: 'release',
-    steps: items('build', 'deploy', 'accept'),
-    tips: items('rollback', 'policy'),
+    steps: items({ id: 'sign', only: 'desktop' }, 'build', 'deploy', 'accept'),
+    tips: items('rollback', 'policy', { id: 'keychain', only: 'desktop' }),
     links: [PROJECTS],
   },
   {

@@ -28,7 +28,7 @@ The gate's own local policy always wins over anything it receives.
 > **Status (October 2026):** early development. Working today: Moat Core, the `moat` CLI, the PHP
 > gate (signed bundles, exact routing, SSRF guard, CORS, rate limits, locking a gate or a whole
 > environment) and Moat Desktop (project list, a view of each project, and editing environments,
-> locks, routes and upstreams). Not built yet: Moat Cloud, sealing secrets and signing in the desktop,
+> locks, routes and upstreams, signing bundles). Not built yet: Moat Cloud, sealing secrets in the desktop,
 > quotas and budgets, the setup wizard. The full target is in
 > [ANFORDERUNGEN.md](ANFORDERUNGEN.md) (German).
 
@@ -111,8 +111,8 @@ whole environment. Under **Gates**, each gate has a list to choose its **environ
 Every change is written to `moat.yaml` right away, through the same edits as the CLI: comments,
 key order and formatting stay as you wrote them. If the file changed on disk since the app read
 it (an editor, `git pull`), nothing is written; the app says so and reads the project again. A
-change reaches a gate only with the next signed bundle (`moat build <gate>`), and the app says
-that after every change.
+change reaches a gate only with the next signed bundle (**Sign bundle**, or `moat build <gate>`),
+and the app says that after every change.
 
 | Environments and locks                                                     | A gate's environment and lock                                                   |
 | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
@@ -120,10 +120,31 @@ that after every change.
 
 A locked gate carries a **Locked** badge under **Gates**, with the reason (the gate itself or its
 environment). The app also compares `moat.yaml` with the latest bundle built: as long as that
-bundle does not carry the lock yet (or still carries one you lifted), it says so and names the
-`moat build` that fixes it.
+bundle does not carry the lock yet (or still carries one you lifted), it says so: sign a new
+bundle to fix it.
 
 ![A locked gate](docs/screenshots/moat-desktop-gate-locked.webp)
+
+### Signing a bundle
+
+**Sign bundle** on a gate builds its next bundle and opens a separate window of the app (not the
+page) that shows what you are about to sign: project, gate, the version (latest + 1) and every
+change against the latest bundle, field by field (`rateLimit.requests: 5 → 9`; a secret only by its
+version, never its value). The comparison counts only a latest bundle signed with your key for
+this gate: if the folder holds one that is not, everything is listed as new with a warning, so a
+planted file cannot hide a change. A bundle that locks the gate says so in bold.
+Choose your key file (the same `.moatkey` the CLI uses) once, enter the passphrase and confirm
+with **Sign**. The bundle is saved as `bundles/<gate>/<version>.json`, ready to upload and accept
+with `php moat-gate.php accept`. A wrong passphrase keeps the window open. If the project
+changed while the window was open, nothing is signed and the window shows the new changes.
+
+If your system has a keychain (macOS Keychain, Windows DPAPI, GNOME Keyring or KWallet), the
+window offers **Remember passphrase in the keychain**. Untick it the next time you sign and it is
+deleted there. Without a real keychain the option is not shown at all.
+
+| What you sign                                                         | Signed                                                        |
+| --------------------------------------------------------------------- | ------------------------------------------------------------- |
+| ![The signing window](docs/screenshots/moat-desktop-sign-dialog.webp) | ![A signed bundle](docs/screenshots/moat-desktop-signed.webp) |
 
 ### Routes
 
@@ -173,12 +194,18 @@ right, next to light and dark mode.
 - The app's API runs inside the app on `127.0.0.1` only. It answers only requests that carry a
   token created at each start and the exact `Host` (DT-16: no other program or web page on your
   computer can reach it, not even through DNS rebinding).
-- The window has no Node.js access and runs sandboxed. It talks to the app only through two
-  functions: add a project, and show a project's folder. Folders are chosen in the system dialog
-  and never typed in by the page (DT-08).
+- The window has no Node.js access and runs sandboxed. It talks to the app only through three
+  functions: add a project, show a project's folder, and ask to sign a gate's next bundle. Folders
+  and the key file are chosen in the system dialog and never typed in by the page (DT-08).
+- The page cannot sign. Signing happens only after you confirm in the app's own signing window,
+  which shows the changes and takes the passphrase; the page passes a project id and a gate name
+  and learns only the outcome. What you confirm is what gets signed: if the project changes
+  meanwhile, nothing is signed (DT-15, T-51, T-53). The key is zeroed right after signing.
+- A remembered passphrase is stored only encrypted by the system keychain (DT-04).
 - Project folders are read only inside the folder: symbolic links pointing elsewhere, special
   files and oversized files count as missing.
-- The app writes only `moat.yaml`, and only through a fixed list of edits (environments, locks,
+- The app writes only `moat.yaml` and new bundle files (a bundle file is never replaced). It
+  changes `moat.yaml` only through a fixed list of edits (environments, locks,
   routes). Names must match the name pattern, and a route's values pass the same schema and
   compile step as any `moat.yaml`, so the file never holds what a gate would refuse. The file is replaced
   atomically and never written through a symbolic link. Nothing the window does reaches a gate

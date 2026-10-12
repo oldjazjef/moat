@@ -124,9 +124,20 @@
         {{ 'gates.missing' | translate: { secrets: gate.missingSecrets.join(',
         ') } }}
       </p>
-      } @if (gate.lock; as lock) {
-      <div>
-        @if (lock.gateLocked) {
+      } @if (gate.lock || service.canSign) {
+      <div class="flex flex-wrap items-center gap-2">
+        @if (service.canSign) {
+        <button
+          hlmBtn
+          size="sm"
+          type="button"
+          data-bundle-sign
+          [disabled]="service.signing() !== null || service.edits.busy() || gate.missingSecrets.length > 0"
+          (click)="service.sign(gate)"
+        >
+          {{ 'gates.sign' | translate }}
+        </button>
+        } @if (gate.lock; as lock) { @if (lock.gateLocked) {
         <button
           hlmBtn
           variant="outline"
@@ -150,9 +161,20 @@
         >
           {{ 'gates.lock' | translate }}
         </button>
-        }
+        } }
       </div>
-      }
+      } @if (service.signed(); as signed) { @if (signed.gate === gate.name) {
+      <p
+        class="text-sm"
+        data-sign-outcome
+        [class.text-destructive]="signed.result.status !== 'signed'"
+        role="status"
+      >
+        <mt-rich-text
+          [text]="service.signText(signed.result) | translate: service.signParams(signed.result, gate.name)"
+        />
+      </p>
+      } }
     </div>
   </section>
   } @for (gate of service.invalid(); track gate.name) {

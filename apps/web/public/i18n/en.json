@@ -178,10 +178,20 @@
     "lockedGate": "This gate is locked. Once the bundle with the lock is accepted, it answers every request with an error and forwards nothing.",
     "lockedEnvironment": "The environment {{environment}} is locked, and with it this gate. Once the bundle with the lock is accepted, it answers every request with an error and forwards nothing.",
     "bundleLocked": "Version {{version}}, built with the lock",
-    "lockPending": "The latest bundle does not carry the lock yet. Build a new one with `moat build {{gate}}` and accept it on the gate.",
-    "unlockPending": "The latest bundle still locks the gate. Build a new one with `moat build {{gate}}` and accept it on the gate, then it forwards again.",
+    "lockPending": "The latest bundle does not carry the lock yet. Sign a new one (in Moat Desktop with “Sign bundle”, in the CLI with `moat build {{gate}}`) and accept it on the gate.",
+    "unlockPending": "The latest bundle still locks the gate. Sign a new one (in Moat Desktop with “Sign bundle”, in the CLI with `moat build {{gate}}`) and accept it on the gate, then it forwards again.",
     "lock": "Lock gate",
-    "unlock": "Unlock gate"
+    "unlock": "Unlock gate",
+    "sign": "Sign bundle",
+    "signResult": {
+      "signed": "Version {{version}} is signed and saved as `bundles/{{gate}}/{{version}}.json`. Upload the file to the server and accept it with `php moat-gate.php accept`.",
+      "config_missing": "This project has no moat.yaml yet.",
+      "config_invalid": "moat.yaml is not valid. Fix the errors shown in “Overview”, then you can sign.",
+      "gate_unknown": "The gate file is missing or damaged.",
+      "secrets_missing": "These secrets are not sealed for the gate yet: {{secrets}}",
+      "not_writable": "The folder `bundles/{{gate}}` cannot be written. Nothing was saved.",
+      "failed": "Signing did not work. Nothing was saved."
+    }
   },
   "routes": {
     "subtitle": "What the gate forwards, and to whom",
@@ -335,7 +345,7 @@
         },
         "lockPending": {
           "question": "I locked a gate, but it still forwards.",
-          "answer": "So far the lock is only in moat.yaml. It applies once the gate has accepted a bundle that carries it: `moat build <gate>`, upload the file and run `php moat-gate.php accept` on the server. `php moat-gate.php status` then shows `LOCKED`."
+          "answer": "So far the lock is only in moat.yaml. It applies once the gate has accepted a bundle that carries it: sign a new bundle (“Sign bundle” or `moat build <gate>`), upload the file and run `php moat-gate.php accept` on the server. `php moat-gate.php status` then shows `LOCKED`."
         }
       }
     },
@@ -437,13 +447,15 @@
         "purpose": "A bundle is the signed configuration for exactly one gate. The gate accepts it only when the signature is valid and the version is higher than the last one.",
         "where": "Project › Gates › Latest bundle",
         "steps": {
-          "build": "Build the bundle with `moat build <gate> --key <file>.moatkey`. It is then stored under `bundles`.",
+          "sign": "Under “Gates”, click “Sign bundle” on the gate. A separate Moat Desktop window shows what changes since the last bundle. The first time, choose your key file (`.moatkey`), then enter the passphrase and confirm. The bundle is then saved under `bundles`.",
+          "build": "In the CLI, build the bundle with `moat build <gate> --key <file>.moatkey`. It is then saved under `bundles`.",
           "deploy": "Upload the bundle file to the server.",
           "accept": "Activate it there with `php moat-gate.php accept <bundle>.json`. Under “Gates” you see the version built last."
         },
         "tips": {
           "rollback": "Back to an older configuration? Build it as a new, higher version.",
-          "policy": "If a bundle does not fit the local policy, the gate refuses it. You change the policy only on the gate itself."
+          "policy": "If a bundle does not fit the local policy, the gate refuses it. You change the policy only on the gate itself.",
+          "keychain": "If you like, Moat Desktop remembers the passphrase in your operating system’s keychain. Untick the box the next time you sign and it is deleted there. Without a real keychain, Moat Desktop does not offer this at all."
         }
       },
       "environments": {
@@ -453,7 +465,7 @@
         "steps": {
           "define": "In the “Overview”, under “Environments”, create an environment: type its name, then “Add environment”. Under “Gates”, choose each gate’s “Environment”. In the CLI: `moat env add staging` and `moat gate assign <gate> staging`.",
           "lock": "Lock the whole environment with “Lock” on the “Environments” card, or a single gate with “Lock gate” under “Gates”. In the CLI: `moat env disable staging` or `moat gate disable <gate>`.",
-          "build": "Build a new bundle for every gate affected with `moat build <gate>` and accept it on the gate with `php moat-gate.php accept`. Only then does the lock apply.",
+          "build": "Sign a new bundle for each gate concerned (with “Sign bundle” or `moat build <gate>`) and accept it on the gate with `php moat-gate.php accept`. Only then does the lock apply.",
           "check": "In the “Overview”, the “Environments” card shows every environment with its gates; under “Gates”, every locked gate carries the “Locked” badge."
         },
         "tips": {

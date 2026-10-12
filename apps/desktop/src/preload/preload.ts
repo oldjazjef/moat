@@ -10,6 +10,15 @@ const bridge: DesktopBridge = {
     add: () => ipcRenderer.invoke(IPC.projectAdd),
     reveal: (id: string) => ipcRenderer.invoke(IPC.projectReveal, String(id)),
   },
+  bundle: {
+    sign: (projectId: string, gate: string, locale: string) =>
+      ipcRenderer.invoke(
+        IPC.bundleSign,
+        String(projectId),
+        String(gate),
+        String(locale),
+      ),
+  },
 };
 
 contextBridge.exposeInMainWorld('moatDesktop', bridge);
