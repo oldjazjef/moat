@@ -10,6 +10,8 @@ import {
 import { TranslatePipe } from '@ngx-translate/core';
 import { HlmButtonImports } from '@moat/ui/button';
 import { ProjectResource } from '../../../../core/project/project-resource.service';
+import { ProjectEdits } from '../../../../core/project/project-edits.service';
+import { EditStatus } from '../../components/edit-status';
 import { PageHeader } from '../../../../shared/components/page-header';
 import { HelpLink } from '../../../help/components/help-link';
 import { ProjectRemoveButton } from '../../components/project-remove-button';
@@ -31,10 +33,12 @@ import { ProjectWorkspaceService } from './project-workspace.service';
     PageHeader,
     HelpLink,
     ProjectRemoveButton,
+    EditStatus,
     ...HlmButtonImports,
   ],
   providers: [
     ProjectResource,
+    ProjectEdits,
     ProjectWorkspaceService,
     provideIcons({
       lucideArrowLeft,

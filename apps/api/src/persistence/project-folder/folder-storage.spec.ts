@@ -1,15 +1,23 @@
 import { execFileSync } from 'node:child_process';
 import {
+  chmodSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
+  readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { FolderStorage, MAX_FILE_BYTES } from './folder-storage';
+import {
+  FolderStorage,
+  FolderWriteError,
+  MAX_FILE_BYTES,
+} from './folder-storage';
 
 describe('FolderStorage', () => {
   let base: string;
@@ -71,4 +79,38 @@ describe('FolderStorage', () => {
       expect(storage.read('moat.yaml.fifo')).toBeNull();
     },
   );
+
+  it('replaces a file atomically, keeping its permissions and leaving no temporary file', () => {
+    chmodSync(join(project, 'moat.yaml'), 0o600);
+    const storage = new FolderStorage(project);
+    storage.replace('moat.yaml', 'version: 1\n# edited\n');
+    expect(readFileSync(join(project, 'moat.yaml'), 'utf8')).toBe(
+      'version: 1\n# edited\n',
+    );
+    if (process.platform !== 'win32')
+      expect(statSync(join(project, 'moat.yaml')).mode & 0o777).toBe(0o600);
+    expect(readdirSync(project).sort()).toEqual(['gates', 'moat.yaml']);
+  });
+
+  it('never writes through a symbolic link, into a subfolder or outside the project', () => {
+    const storage = new FolderStorage(project);
+    symlinkSync(join(base, 'outside.txt'), join(project, 'link.yaml'));
+    for (const name of [
+      'link.yaml',
+      'gates',
+      'gates/site.json',
+      '../outside.txt',
+      '.hidden',
+      join(base, 'outside.txt'),
+      '',
+    ]) {
+      expect(() => storage.replace(name, 'PLANTED')).toThrow(FolderWriteError);
+    }
+    expect(readFileSync(join(base, 'outside.txt'), 'utf8')).toBe(
+      'PLANTED-OUTSIDE',
+    );
+    expect(readFileSync(join(project, 'gates', 'site.json'), 'utf8')).toBe(
+      '{}',
+    );
+  });
 });

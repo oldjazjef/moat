@@ -1,5 +1,10 @@
 import type { ProjectView } from '../../../../core/api/project.types';
-import { openProjectTab, PROJECT } from '../../../../../testing/page-harness';
+import {
+  expectEdit,
+  openProjectTab,
+  PROJECT,
+  settle,
+} from '../../../../../testing/page-harness';
 import { GatesPage } from './gates-page';
 
 const text = (el: HTMLElement, selector: string) =>
@@ -78,7 +83,14 @@ describe('GatesPage', () => {
     expect(text(locked.el, '[data-bundle]')).toBe(
       'Version 3, mit Sperre gebaut',
     );
-    expect(text(locked.el, '[data-environment]')).toBe('Ohne Umgebung');
+    const select = locked.el.querySelector(
+      '[data-environment-select]',
+    ) as HTMLSelectElement;
+    expect(select.value).toBe('');
+    expect(select.selectedOptions[0]?.textContent?.trim()).toBe(
+      'Ohne Umgebung',
+    );
+    expect(locked.el.querySelector('[data-gate-unlock]')).not.toBeNull();
     expect(locked.el.querySelector('[data-lock-pending]')).toBeNull();
   });
 
@@ -127,5 +139,82 @@ describe('GatesPage', () => {
       project: { config: { status: 'missing' }, gates: [] },
     });
     expect(el.querySelector('[data-no-gates]')).not.toBeNull();
+  });
+
+  const twoEnvironments = (): ProjectView => {
+    const config = PROJECT.project?.config;
+    if (PROJECT.project == null || config?.status !== 'valid')
+      throw new Error('fixture');
+    return {
+      ...PROJECT,
+      project: {
+        ...PROJECT.project,
+        config: {
+          ...config,
+          environments: [
+            { name: 'production', enabled: true, gates: ['site'] },
+            { name: 'staging', enabled: true, gates: [] },
+          ],
+        },
+      },
+    };
+  };
+
+  it('moves a gate to the environment chosen in its list', async () => {
+    const { el, harness } = await openProjectTab(
+      'gates',
+      GatesPage,
+      twoEnvironments(),
+    );
+    const select = el.querySelector(
+      '[data-environment-select]',
+    ) as HTMLSelectElement;
+    expect(select.value).toBe('production');
+    select.value = 'staging';
+    select.dispatchEvent(new Event('change'));
+    const edit = expectEdit();
+    expect(edit.request.body).toEqual({
+      base: 'a'.repeat(64),
+      op: 'assignGate',
+      gate: 'site',
+      environment: 'staging',
+    });
+    edit.flush(
+      { error: 'not_writable' },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    await settle(harness);
+    // Refused: the list shows what moat.yaml says again, and why.
+    expect(select.value).toBe('production');
+    expect(text(el, '[data-edit-outcome="error"]')).toContain(
+      'moat.yaml lässt sich nicht schreiben',
+    );
+  });
+
+  it('locks a single gate', async () => {
+    const { el, harness } = await openProjectTab('gates', GatesPage, PROJECT);
+    (el.querySelector('[data-gate-lock]') as HTMLButtonElement).click();
+    const edit = expectEdit();
+    expect(edit.request.body).toEqual({
+      base: 'a'.repeat(64),
+      op: 'lockGate',
+      gate: 'site',
+    });
+    edit.flush(
+      withGate({
+        ...site(),
+        lock: {
+          environment: 'production',
+          gateLocked: true,
+          environmentLocked: false,
+          enabled: false,
+        },
+      }),
+    );
+    await settle(harness);
+    expect(text(el, '[data-lock-pending]')).toContain(
+      'Das letzte Bundle enthält die Sperre noch nicht.',
+    );
+    expect(el.querySelector('[data-gate-unlock]')).not.toBeNull();
   });
 });

@@ -5,7 +5,11 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { allHelpKeys } from '../../features/help/help-content';
 import { allTrustKeys } from '../../shared/components/trust-mode-badge/trust-modes';
-import { AUTH_TYPES, CONFIG_ISSUE_CODES } from '../api/project.types';
+import {
+  AUTH_TYPES,
+  CONFIG_ISSUE_CODES,
+  EDIT_ERROR_CODES,
+} from '../api/project.types';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './locales';
 import { PROJECT_TABS } from '../../features/projects/pages/project-workspace/project-workspace.service';
 
@@ -24,6 +28,7 @@ const DYNAMIC_KEYS = [
   ...allHelpKeys(),
   ...allTrustKeys(),
   ...CONFIG_ISSUE_CODES.map((code) => `config.errors.${code}`),
+  ...EDIT_ERROR_CODES.map((code) => `edit.errors.${code}`),
   ...AUTH_TYPES.map((type) => `routes.auth.${type}`),
   ...['ip', 'route'].map((per) => `routes.rate.${per}`),
   ...PROJECT_TABS.map((tab) => `projects.tabs.${tab}`),

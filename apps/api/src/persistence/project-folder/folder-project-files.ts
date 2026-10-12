@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { StoragePort } from '@moat/core';
+import { CONFIG_FILE, type StoragePort } from '@moat/core';
 import { ProjectFilesPort } from '../../project/ports/project-files.port';
 import { FolderStorage } from './folder-storage';
 
@@ -12,5 +12,9 @@ export class FolderProjectFiles extends ProjectFilesPort {
     } catch {
       return null;
     }
+  }
+
+  writeConfig(folder: string, text: string): void {
+    new FolderStorage(folder).replace(CONFIG_FILE, text);
   }
 }

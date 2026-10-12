@@ -27,9 +27,9 @@ The gate's own local policy always wins over anything it receives.
 
 > **Status (October 2026):** early development. Working today: Moat Core, the `moat` CLI, the PHP
 > gate (signed bundles, exact routing, SSRF guard, CORS, rate limits, locking a gate or a whole
-> environment) and the first version of Moat Desktop (project list and a read-only view of each
-> project). Not built yet: Moat Cloud, editing and signing in the desktop, quotas and budgets, the
-> setup wizard. The full target is in
+> environment) and Moat Desktop (project list, a view of each project, and editing environments
+> and locks). Not built yet: Moat Cloud, editing routes and signing in the desktop, quotas and
+> budgets, the setup wizard. The full target is in
 > [ANFORDERUNGEN.md](ANFORDERUNGEN.md) (German).
 
 ## How it fits together
@@ -103,9 +103,20 @@ with line and column. **Show in folder** opens the folder in the file manager.
 ![Gates of a project](docs/screenshots/moat-desktop-gates.webp)
 
 Each project also has an **Environments** card: every environment (dev, staging, production …)
-with its gates, which of them are locked, and the gates that belong to no environment.
+with its gates, which of them are locked, and the gates that belong to no environment. Here you
+**add an environment** (type its name, then **Add environment**) and **lock** or **unlock** a
+whole environment. Under **Gates**, each gate has a list to choose its **environment** and a
+**Lock gate** / **Unlock gate** button.
 
-![Environments and locks](docs/screenshots/moat-desktop-environments.webp)
+Every change is written to `moat.yaml` right away, through the same edits as the CLI: comments,
+key order and formatting stay as you wrote them. If the file changed on disk since the app read
+it (an editor, `git pull`), nothing is written; the app says so and reads the project again. A
+change reaches a gate only with the next signed bundle (`moat build <gate>`), and the app says
+that after every change.
+
+| Environments and locks                                                     | A gate's environment and lock                                                   |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| ![Environments and locks](docs/screenshots/moat-desktop-environments.webp) | ![A gate's environment and lock](docs/screenshots/moat-desktop-gates-edit.webp) |
 
 A locked gate carries a **Locked** badge under **Gates**, with the reason (the gate itself or its
 environment). The app also compares `moat.yaml` with the latest bundle built: as long as that
@@ -150,6 +161,10 @@ right, next to light and dark mode.
   and never typed in by the page (DT-08).
 - Project folders are read only inside the folder: symbolic links pointing elsewhere, special
   files and oversized files count as missing.
+- The app writes only `moat.yaml`, and only through a fixed list of edits (add an environment,
+  lock or unlock, assign a gate) that take names, never free text. The file is replaced
+  atomically and never written through a symbolic link. Nothing the window does reaches a gate
+  without a bundle signed with your key (T-56).
 - Secrets are reported by name and version. Ciphertext never leaves the folder (SEC-31).
 
 ## Quick start

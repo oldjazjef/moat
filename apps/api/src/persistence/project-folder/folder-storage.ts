@@ -1,14 +1,19 @@
+import { randomBytes } from 'node:crypto';
 import {
   closeSync,
   constants,
   fstatSync,
+  fsyncSync,
   lstatSync,
   openSync,
   readdirSync,
   readSync,
   realpathSync,
+  renameSync,
+  rmSync,
+  writeSync,
 } from 'node:fs';
-import { isAbsolute, relative, resolve, sep } from 'node:path';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type { StoragePort } from '@moat/core';
 
 /** Larger than any moat.yaml (256 KiB), gate file, sealed secret or bundle (1 MiB). */
@@ -21,6 +26,14 @@ const OPEN_FLAGS =
   constants.O_RDONLY |
   (constants.O_NOFOLLOW ?? 0) |
   (constants.O_NONBLOCK ?? 0);
+
+/** A plain file name directly in the project folder; no dot files, no separators. */
+const WRITABLE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+/** A file the desktop may not replace: not a regular file, or the write failed. */
+export class FolderWriteError extends Error {
+  override readonly name = 'FolderWriteError';
+}
 
 /**
  * The project folder on disk (DT-03, DT-14) behind the core's StoragePort. Every path stays
@@ -75,6 +88,49 @@ export class FolderStorage implements StoragePort {
       return readdirSync(folder).slice(0, MAX_ENTRIES);
     } catch {
       return [];
+    }
+  }
+
+  /**
+   * Replaces the file `name` directly in the project folder, atomically: the text goes into a new
+   * temporary file in the same folder, is flushed, and is renamed over the old one, so a reader
+   * sees the old or the new file and never half of one (CLAUDE.md, PHP standards: Files, applied
+   * here too). Refuses a name with a path in it and anything at `name` that is not a regular file:
+   * a symbolic link is never written through. The old file's permissions are kept.
+   */
+  replace(name: string, text: string): void {
+    if (!WRITABLE_NAME.test(name)) throw new FolderWriteError('invalid name');
+    const target = join(this.root, name);
+    let mode = 0o644;
+    try {
+      const stat = lstatSync(target);
+      if (!stat.isFile()) throw new FolderWriteError('not a regular file');
+      mode = stat.mode & 0o777;
+    } catch (error) {
+      if (error instanceof FolderWriteError) throw error;
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+        throw new FolderWriteError('cannot check the file');
+    }
+    const temp = join(
+      this.root,
+      `.${name}.${randomBytes(8).toString('hex')}.tmp`,
+    );
+    try {
+      // 'wx': a file that appeared under the random name is never overwritten or followed.
+      const fd = openSync(temp, 'wx', mode);
+      try {
+        const bytes = Buffer.from(text, 'utf8');
+        let written = 0;
+        while (written < bytes.length)
+          written += writeSync(fd, bytes, written, bytes.length - written);
+        fsyncSync(fd);
+      } finally {
+        closeSync(fd);
+      }
+      renameSync(temp, target);
+    } catch {
+      rmSync(temp, { force: true });
+      throw new FolderWriteError('write failed');
     }
   }
 

@@ -92,6 +92,20 @@
       "schema": "Ungültiger Wert"
     }
   },
+  "edit": {
+    "saved": "In moat.yaml gespeichert. Auf dem Gate gilt die Änderung erst mit dem nächsten Bundle: `moat build <gate>`, hochladen und annehmen.",
+    "dismiss": "Ausblenden",
+    "errors": {
+      "config_changed": "moat.yaml wurde inzwischen ausserhalb von Moat geändert. Nichts gespeichert; das Projekt ist neu geladen, versuche es nochmals.",
+      "config_missing": "Dieses Projekt hat keine moat.yaml mehr. Nichts gespeichert.",
+      "config_invalid": "moat.yaml ist ungültig. Behebe zuerst die Fehler in der «Übersicht», dann geht es hier weiter.",
+      "name_invalid": "Der Name ist nicht erlaubt: nur Kleinbuchstaben, Ziffern und Bindestriche, mit einem Buchstaben am Anfang.",
+      "environment_unknown": "Diese Umgebung gibt es in moat.yaml nicht mehr. Lade das Projekt neu.",
+      "gate_in_other_environment": "Das Gate gehört schon zu einer anderen Umgebung.",
+      "not_writable": "moat.yaml lässt sich nicht schreiben. Prüfe, ob der Ordner schreibgeschützt ist oder moat.yaml eine Verknüpfung ist.",
+      "failed": "Das hat nicht geklappt. Nichts gespeichert."
+    }
+  },
   "overview": {
     "subtitle": "Dieses Projekt auf einen Blick",
     "folder": {
@@ -122,10 +136,16 @@
     "environments": {
       "title": "Umgebungen",
       "description": "Eine gesperrte Umgebung sperrt alle ihre Gates.",
-      "none": "Dieses Projekt hat noch keine Umgebungen. Lege mit `moat env add staging` eine an und ordne ihr mit `moat gate assign <gate> staging` ein Gate zu.",
+      "none": "Dieses Projekt hat noch keine Umgebungen. Lege unten eine an und ordne ihr unter «Gates» ein Gate zu.",
       "noGates": "Noch kein Gate",
       "unassigned": "Ohne Umgebung: {{gates}}",
-      "hint": "Sperren und entsperren: `moat env disable <umgebung>` oder `moat gate disable <gate>` (`enable` hebt die Sperre auf), danach für jedes betroffene Gate `moat build`."
+      "hint": "Sperren und Zuordnen ändern moat.yaml. Auf dem Gate gilt das erst mit einem neuen Bundle für jedes betroffene Gate (`moat build <gate>`).",
+      "lock": "Sperren",
+      "unlock": "Entsperren",
+      "newLabel": "Neue Umgebung",
+      "newPlaceholder": "z. B. staging",
+      "add": "Umgebung hinzufügen",
+      "nameRule": "Kleinbuchstaben, Ziffern und Bindestriche, mit einem Buchstaben am Anfang."
     }
   },
   "gates": {
@@ -149,7 +169,9 @@
     "lockedEnvironment": "Die Umgebung {{environment}} ist gesperrt und damit auch dieses Gate. Sobald das Bundle mit der Sperre angenommen ist, beantwortet es jede Anfrage mit einem Fehler und leitet nichts weiter.",
     "bundleLocked": "Version {{version}}, mit Sperre gebaut",
     "lockPending": "Das letzte Bundle enthält die Sperre noch nicht. Baue mit `moat build {{gate}}` ein neues und nimm es auf dem Gate an.",
-    "unlockPending": "Das letzte Bundle sperrt das Gate noch. Baue mit `moat build {{gate}}` ein neues und nimm es auf dem Gate an, dann leitet es wieder weiter."
+    "unlockPending": "Das letzte Bundle sperrt das Gate noch. Baue mit `moat build {{gate}}` ein neues und nimm es auf dem Gate an, dann leitet es wieder weiter.",
+    "lock": "Gate sperren",
+    "unlock": "Gate entsperren"
   },
   "routes": {
     "subtitle": "Was das Gate weiterleitet, und an wen",
@@ -350,15 +372,16 @@
         "purpose": "Mit Umgebungen (etwa dev, staging, production) ordnest du deine Gates. Eine ganze Umgebung oder ein einzelnes Gate lässt sich sperren: Ein gesperrtes Gate beantwortet jede Anfrage mit einem Fehler und leitet nichts mehr weiter. Die Sperre steht signiert im Bundle.",
         "where": "Projekt › Übersicht › Umgebungen",
         "steps": {
-          "define": "Lege eine Umgebung mit `moat env add staging` an. Ein Gate ordnest du beim Eintragen mit `moat gate add <gate> … --env staging` zu, oder später mit `moat gate assign <gate> staging`.",
-          "lock": "Sperre die ganze Umgebung mit `moat env disable staging` oder ein einzelnes Gate mit `moat gate disable <gate>`. Das CLI nennt die Gates, die betroffen sind.",
+          "define": "Lege in der «Übersicht» unter «Umgebungen» eine Umgebung an: Name eintragen, «Umgebung hinzufügen». Unter «Gates» wählst du bei jedem Gate seine «Umgebung». Im CLI geht das mit `moat env add staging` und `moat gate assign <gate> staging`.",
+          "lock": "Sperre die ganze Umgebung mit «Sperren» in der Karte «Umgebungen» oder ein einzelnes Gate mit «Gate sperren» unter «Gates». Im CLI: `moat env disable staging` oder `moat gate disable <gate>`.",
           "build": "Baue für jedes betroffene Gate ein neues Bundle mit `moat build <gate>` und nimm es auf dem Gate mit `php moat-gate.php accept` an. Erst dann gilt die Sperre.",
           "check": "In der «Übersicht» zeigt die Karte «Umgebungen» jede Umgebung mit ihren Gates, unter «Gates» trägt jedes gesperrte Gate das Abzeichen «Gesperrt»."
         },
         "tips": {
-          "unlock": "Entsperren geht genauso: `moat env enable staging` oder `moat gate enable <gate>`, danach ein neues Bundle.",
+          "unlock": "Entsperren geht genauso: «Entsperren» oder «Gate entsperren» (im CLI `moat env enable staging` oder `moat gate enable <gate>`), danach ein neues Bundle.",
           "one": "Ein Gate gehört zu höchstens einer Umgebung. Ist eine Umgebung gesperrt, nützt es nichts, ein einzelnes Gate darin zu entsperren.",
-          "answer": "Besucher bekommen von einem gesperrten Gate den Status 503 mit dem Code `gate_disabled`, auch für Pfade, die es gar nicht gibt."
+          "answer": "Besucher bekommen von einem gesperrten Gate den Status 503 mit dem Code `gate_disabled`, auch für Pfade, die es gar nicht gibt.",
+          "saved": "Jede Änderung landet sofort in moat.yaml; Kommentare und Reihenfolge bleiben erhalten. Hat jemand die Datei inzwischen anders geändert, speichert Moat nichts und lädt das Projekt neu."
         }
       },
       "privacy": {
@@ -366,7 +389,7 @@
         "purpose": "Moat Desktop arbeitet nur auf deinem Computer. Es braucht keinen Server und kein Konto.",
         "where": "Projekte",
         "steps": {
-          "local": "Moat Desktop liest deinen Projektordner und sendet nichts ins Internet.",
+          "local": "Moat Desktop liest deinen Projektordner, schreibt Änderungen nur in dessen moat.yaml und sendet nichts ins Internet.",
           "ciphertext": "Secrets liegen im Projektordner nur versiegelt. Öffnen kann sie nur das Gate, für das sie versiegelt sind.",
           "noAdmin": "Das Gate hat keine Verwaltung, die man über das Internet erreichen kann. Geändert wird es nur über signierte Bundles und Befehle auf dem Server."
         },

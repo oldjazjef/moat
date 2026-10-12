@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 /**
  * The authorization matrix (SEC-70 ff., docs/SECURITY-TESTING.md): every API route with the
  * answer each identity must get. `authz-matrix.spec.ts` boots the real app, fails on a route
@@ -26,6 +28,8 @@ export interface AuthzEntry {
   readonly path: string;
   /** The URL the spec calls, when `path` has parameters (ids seeded by the spec). */
   readonly request?: string;
+  /** A JSON body the spec sends with the request. */
+  readonly body?: unknown;
   readonly expect: Readonly<Record<Identity, number>>;
 }
 
@@ -39,6 +43,21 @@ const LOCAL_ONLY = {
 /** Projects the spec seeds into the project list before it boots the API. */
 export const SEEDED_PROJECT = 'seededProject000000000';
 export const SEEDED_REMOVABLE = 'seededRemovable0000000';
+/** The seeded project's moat.yaml, and the hash an edit of it names as its base. */
+export const SEEDED_CONFIG = `version: 1
+upstreams:
+  hubspot:
+    origin: "https://api.hubapi.com"
+routes:
+  newsletter:
+    method: POST
+    path: "/newsletter"
+    upstream: hubspot
+    upstreamPath: "/contacts"
+`;
+const SEEDED_CONFIG_HASH = createHash('sha256')
+  .update(SEEDED_CONFIG, 'utf8')
+  .digest('hex');
 
 export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
   { method: 'GET', path: '/api/health', expect: LOCAL_ONLY },
@@ -55,5 +74,17 @@ export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
     path: '/api/projects/:id',
     request: `/api/projects/${SEEDED_REMOVABLE}`,
     expect: { ...LOCAL_ONLY, desktop: 204 },
+  },
+  {
+    // Writes moat.yaml: the desktop only, and only through the closed list of edits.
+    method: 'POST',
+    path: '/api/projects/:id/config/edits',
+    request: `/api/projects/${SEEDED_PROJECT}/config/edits`,
+    body: {
+      base: SEEDED_CONFIG_HASH,
+      op: 'addEnvironment',
+      environment: 'staging',
+    },
+    expect: LOCAL_ONLY,
   },
 ];

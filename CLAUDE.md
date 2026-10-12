@@ -26,10 +26,10 @@ Four components (ANFORDERUNGEN.md, header):
 > of a gate or a whole environment (`moat env|gate disable`, `gate_disabled`)
 > ([gates/php/README.md](gates/php/README.md)). **Moat Desktop, first surface:** Electron shell
 > with the API in-process (`apps/api`: the project list in `<MOAT_DATA_DIR>/projects.json`,
-> `GET /api/projects`, `GET|DELETE /api/projects/:id`, project folders read-only) and the Angular
+> `GET /api/projects`, `GET|DELETE /api/projects/:id`, `POST /api/projects/:id/config/edits` — the closed list of moat.yaml edits: add/lock/unlock environments, lock/unlock and assign gates, with a `base` hash against lost updates) and the Angular
 > UI (`apps/web`: Projekte → workspace with Übersicht incl. Umgebungen, Gates with lock state, Routen;
-> Hilfe). Writing still goes
-> through the CLI. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, desktop editing/signing, setup wizard (FR-73),
+> Hilfe). Everything else
+> (routes, secrets, building and signing) still goes through the CLI. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, desktop route editing and signing, setup wizard (FR-73),
 > quotas/budgets, lazy pull, setup mode, trust mode 2, the local file kill switch (SEC-15). Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { AddProjectHandler } from './application/add-project.handler';
+import { EditConfigHandler } from './application/edit-config.handler';
 import { GetProjectHandler } from './application/get-project.handler';
 import { ListProjectsHandler } from './application/list-projects.handler';
 import { RemoveProjectHandler } from './application/remove-project.handler';
@@ -16,6 +17,7 @@ import { ProjectService } from './project.service';
     GetProjectHandler,
     AddProjectHandler,
     RemoveProjectHandler,
+    EditConfigHandler,
   ],
   exports: [ProjectService],
 })

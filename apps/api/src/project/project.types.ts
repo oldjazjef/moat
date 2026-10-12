@@ -39,4 +39,45 @@ export interface ProjectView {
   readonly name: string;
   readonly folder: string;
   readonly project: ProjectState | null;
+  /**
+   * SHA-256 (hex) of moat.yaml as read for this view; null when there is none. An edit names it
+   * as its `base`, so a file changed on disk in the meantime is never overwritten (409).
+   */
+  readonly configHash: string | null;
 }
+
+/**
+ * The edits Moat Desktop makes to moat.yaml (`POST /api/projects/:id/config/edits`): a closed list,
+ * each one a function of `@moat/core` (config/edit.ts) that keeps comments and key order. No
+ * free text reaches the file: only names that match the name pattern (SEC-20).
+ */
+export const CONFIG_EDIT_OPS = [
+  'addEnvironment',
+  'lockEnvironment',
+  'unlockEnvironment',
+  'lockGate',
+  'unlockGate',
+  'assignGate',
+] as const;
+export type ConfigEditOp = (typeof CONFIG_EDIT_OPS)[number];
+
+export type ConfigEdit =
+  | {
+      readonly op: 'addEnvironment' | 'lockEnvironment' | 'unlockEnvironment';
+      readonly environment: string;
+    }
+  | { readonly op: 'lockGate' | 'unlockGate'; readonly gate: string }
+  | {
+      readonly op: 'assignGate';
+      readonly gate: string;
+      readonly environment: string;
+    };
+
+/** Why an edit was refused (422), as `{ error: <code> }`; the UI shows `edit.errors.<code>`. */
+export type ConfigEditRefusal =
+  | 'config_missing'
+  | 'config_invalid'
+  | 'name_invalid'
+  | 'environment_unknown'
+  | 'gate_in_other_environment'
+  | 'not_writable';

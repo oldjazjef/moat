@@ -8,6 +8,7 @@ import {
   AUTHZ_MATRIX,
   IDENTITIES,
   type Identity,
+  SEEDED_CONFIG,
   SEEDED_PROJECT,
   SEEDED_REMOVABLE,
 } from './authz-matrix';
@@ -23,6 +24,7 @@ function call(
   method: string,
   path: string,
   identity: Identity,
+  body?: unknown,
 ): Promise<{ status: number; body: string }> {
   const headers: Record<string, string> = {
     host:
@@ -33,6 +35,8 @@ function call(
   if (identity !== 'noToken') {
     headers['x-moat-desktop'] = identity === 'wrongToken' ? WRONG : TOKEN;
   }
+  const payload = body === undefined ? undefined : JSON.stringify(body);
+  if (payload !== undefined) headers['content-type'] = 'application/json';
   return new Promise((resolve, reject) => {
     const req = request(
       { host: '127.0.0.1', port: api.port, method, path, headers },
@@ -44,7 +48,7 @@ function call(
       },
     );
     req.on('error', reject);
-    req.end();
+    req.end(payload);
   });
 }
 
@@ -55,6 +59,7 @@ describe('authorization matrix (local mode)', () => {
     const site = join(folder, 'site');
     mkdirSync(data);
     mkdirSync(site);
+    writeFileSync(join(site, 'moat.yaml'), SEEDED_CONFIG);
     writeFileSync(
       join(data, 'projects.json'),
       JSON.stringify({
@@ -109,6 +114,7 @@ describe('authorization matrix (local mode)', () => {
           entry.method,
           entry.request ?? entry.path,
           identity,
+          entry.body,
         );
         expect(status).toBe(entry.expect[identity]);
       });
@@ -127,6 +133,40 @@ describe('authorization matrix (local mode)', () => {
       );
     }
     expect((await call('POST', '/api/projects', 'desktop')).status).toBe(404);
+  });
+
+  it('writes moat.yaml only through a complete, well-formed edit based on the current file', async () => {
+    const url = `/api/projects/${SEEDED_PROJECT}/config/edits`;
+    const current = JSON.parse(
+      (await call('GET', `/api/projects/${SEEDED_PROJECT}`, 'desktop')).body,
+    ) as { configHash: string };
+    const base = current.configHash;
+    for (const body of [
+      undefined,
+      { base, op: 'addEnvironment' },
+      { base, op: 'addEnvironment', environment: 'Prod' },
+      { base, op: 'addEnvironment', environment: 'x', gate: 'site' },
+      { base, op: 'writeFile', environment: 'x' },
+      { base, op: 'addEnvironment', environment: 'x', path: '../evil' },
+      { base: 'nope', op: 'addEnvironment', environment: 'x' },
+    ]) {
+      expect((await call('POST', url, 'desktop', body)).status).toBe(400);
+    }
+    const stale = { base: '0'.repeat(64), op: 'lockGate', gate: 'site' };
+    const conflict = await call('POST', url, 'desktop', stale);
+    expect(conflict.status).toBe(409);
+    expect(JSON.parse(conflict.body)).toMatchObject({
+      error: 'config_changed',
+    });
+    const unknown = { base, op: 'lockEnvironment', environment: 'nowhere' };
+    const refused = await call('POST', url, 'desktop', unknown);
+    expect(refused.status).toBe(422);
+    expect(JSON.parse(refused.body)).toMatchObject({
+      error: 'environment_unknown',
+    });
+    const other = `/api/projects/${'x'.repeat(22)}/config/edits`;
+    const edit = { base, op: 'lockGate', gate: 'site' };
+    expect((await call('POST', other, 'desktop', edit)).status).toBe(404);
   });
 
   it('gives every refusal the same body (no hint which check failed)', async () => {

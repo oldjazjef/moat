@@ -52,7 +52,29 @@
       <dl class="mt-facts">
         <dt>{{ 'gates.environment' | translate }}</dt>
         <dd data-environment>
-          @if (gate.lock?.environment; as environment) {
+          @if (gate.lock && service.environments().length > 0) {
+          <select
+            hlmInput
+            class="mt-code h-8 max-w-64"
+            data-environment-select
+            [attr.aria-label]="'gates.environment' | translate"
+            [disabled]="service.edits.busy()"
+            (change)="service.choose(gate, $event)"
+          >
+            @if (gate.lock.environment === null) {
+            <option value="" selected disabled>
+              {{ 'gates.noEnvironment' | translate }}
+            </option>
+            } @for (environment of service.environments(); track environment) {
+            <option
+              [value]="environment"
+              [selected]="environment === gate.lock.environment"
+            >
+              {{ environment }}
+            </option>
+            }
+          </select>
+          } @else if (gate.lock?.environment; as environment) {
           <span class="mt-code">{{ environment }}</span>
           } @else {
           <span class="text-muted-foreground">
@@ -102,6 +124,34 @@
         {{ 'gates.missing' | translate: { secrets: gate.missingSecrets.join(',
         ') } }}
       </p>
+      } @if (gate.lock; as lock) {
+      <div>
+        @if (lock.gateLocked) {
+        <button
+          hlmBtn
+          variant="outline"
+          size="sm"
+          type="button"
+          data-gate-unlock
+          [disabled]="service.edits.busy()"
+          (click)="service.setLocked(gate, false)"
+        >
+          {{ 'gates.unlock' | translate }}
+        </button>
+        } @else {
+        <button
+          hlmBtn
+          variant="outline"
+          size="sm"
+          type="button"
+          data-gate-lock
+          [disabled]="service.edits.busy()"
+          (click)="service.setLocked(gate, true)"
+        >
+          {{ 'gates.lock' | translate }}
+        </button>
+        }
+      </div>
       }
     </div>
   </section>

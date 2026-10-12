@@ -121,6 +121,7 @@ export const PROJECT: ProjectView = {
   id: 'projectExample00000000',
   name: 'example',
   folder: '/home/eme/sites/example',
+  configHash: 'a'.repeat(64),
   project: {
     config: {
       status: 'valid',
@@ -173,3 +174,20 @@ export const PROJECT: ProjectView = {
     ],
   },
 };
+
+/** Lets pending promises and signals settle, then renders. */
+export async function settle(harness: RouterTestingHarness): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve));
+  harness.detectChanges();
+  await harness.fixture.whenStable();
+  harness.detectChanges();
+}
+
+/** The one edit the page sent (`POST …/config/edits`), to check and answer. */
+export function expectEdit(): ReturnType<HttpTestingController['expectOne']> {
+  const request = TestBed.inject(HttpTestingController).expectOne(
+    `/api/projects/${PROJECT.id}/config/edits`,
+  );
+  expect(request.request.method).toBe('POST');
+  return request;
+}

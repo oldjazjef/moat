@@ -92,6 +92,20 @@
       "schema": "Invalid value"
     }
   },
+  "edit": {
+    "saved": "Saved to moat.yaml. On the gate, the change applies only with the next bundle: `moat build <gate>`, upload it and accept it.",
+    "dismiss": "Dismiss",
+    "errors": {
+      "config_changed": "moat.yaml was changed outside Moat in the meantime. Nothing was saved; the project has been reloaded, please try again.",
+      "config_missing": "This project no longer has a moat.yaml. Nothing was saved.",
+      "config_invalid": "moat.yaml is invalid. Fix the errors shown in the “Overview” first, then continue here.",
+      "name_invalid": "That name is not allowed: lowercase letters, digits and hyphens only, starting with a letter.",
+      "environment_unknown": "This environment is no longer in moat.yaml. Reload the project.",
+      "gate_in_other_environment": "The gate already belongs to another environment.",
+      "not_writable": "moat.yaml cannot be written. Check whether the folder is read-only or moat.yaml is a link.",
+      "failed": "That did not work. Nothing was saved."
+    }
+  },
   "overview": {
     "subtitle": "This project at a glance",
     "folder": {
@@ -122,10 +136,16 @@
     "environments": {
       "title": "Environments",
       "description": "A locked environment locks all of its gates.",
-      "none": "This project has no environments yet. Create one with `moat env add staging` and put a gate into it with `moat gate assign <gate> staging`.",
+      "none": "This project has no environments yet. Create one below and put a gate into it under “Gates”.",
       "noGates": "No gate yet",
       "unassigned": "No environment: {{gates}}",
-      "hint": "To lock and unlock: `moat env disable <environment>` or `moat gate disable <gate>` (`enable` lifts the lock), then `moat build` for every gate affected."
+      "hint": "Locking and assigning change moat.yaml. On the gate, this applies only with a new bundle for every gate affected (`moat build <gate>`).",
+      "lock": "Lock",
+      "unlock": "Unlock",
+      "newLabel": "New environment",
+      "newPlaceholder": "e.g. staging",
+      "add": "Add environment",
+      "nameRule": "Lowercase letters, digits and hyphens, starting with a letter."
     }
   },
   "gates": {
@@ -149,7 +169,9 @@
     "lockedEnvironment": "The environment {{environment}} is locked, and with it this gate. Once the bundle with the lock is accepted, it answers every request with an error and forwards nothing.",
     "bundleLocked": "Version {{version}}, built with the lock",
     "lockPending": "The latest bundle does not carry the lock yet. Build a new one with `moat build {{gate}}` and accept it on the gate.",
-    "unlockPending": "The latest bundle still locks the gate. Build a new one with `moat build {{gate}}` and accept it on the gate, then it forwards again."
+    "unlockPending": "The latest bundle still locks the gate. Build a new one with `moat build {{gate}}` and accept it on the gate, then it forwards again.",
+    "lock": "Lock gate",
+    "unlock": "Unlock gate"
   },
   "routes": {
     "subtitle": "What the gate forwards, and to whom",
@@ -350,15 +372,16 @@
         "purpose": "Environments (such as dev, staging, production) group your gates. A whole environment or a single gate can be locked: a locked gate answers every request with an error and forwards nothing. The lock is signed into the bundle.",
         "where": "Project › Overview › Environments",
         "steps": {
-          "define": "Create an environment with `moat env add staging`. Put a gate into it when you add it, with `moat gate add <gate> … --env staging`, or later with `moat gate assign <gate> staging`.",
-          "lock": "Lock the whole environment with `moat env disable staging`, or a single gate with `moat gate disable <gate>`. The CLI names the gates affected.",
+          "define": "In the “Overview”, under “Environments”, create an environment: type its name, then “Add environment”. Under “Gates”, choose each gate’s “Environment”. In the CLI: `moat env add staging` and `moat gate assign <gate> staging`.",
+          "lock": "Lock the whole environment with “Lock” on the “Environments” card, or a single gate with “Lock gate” under “Gates”. In the CLI: `moat env disable staging` or `moat gate disable <gate>`.",
           "build": "Build a new bundle for every gate affected with `moat build <gate>` and accept it on the gate with `php moat-gate.php accept`. Only then does the lock apply.",
           "check": "In the “Overview”, the “Environments” card shows every environment with its gates; under “Gates”, every locked gate carries the “Locked” badge."
         },
         "tips": {
-          "unlock": "Unlocking works the same way: `moat env enable staging` or `moat gate enable <gate>`, then a new bundle.",
+          "unlock": "Unlocking works the same way: “Unlock” or “Unlock gate” (in the CLI `moat env enable staging` or `moat gate enable <gate>`), then a new bundle.",
           "one": "A gate belongs to at most one environment. While an environment is locked, unlocking a single gate in it changes nothing.",
-          "answer": "Visitors get status 503 with the code `gate_disabled` from a locked gate, even for paths that do not exist."
+          "answer": "Visitors get status 503 with the code `gate_disabled` from a locked gate, even for paths that do not exist.",
+          "saved": "Every change goes into moat.yaml right away; comments and order stay as they are. If someone changed the file differently in the meantime, Moat saves nothing and reloads the project."
         }
       },
       "privacy": {
@@ -366,7 +389,7 @@
         "purpose": "Moat Desktop works only on your computer. It needs no server and no account.",
         "where": "Projects",
         "steps": {
-          "local": "Moat Desktop reads your project folder and sends nothing to the internet.",
+          "local": "Moat Desktop reads your project folder, writes changes only to its moat.yaml and sends nothing to the internet.",
           "ciphertext": "Secrets are in the project folder only sealed. Only the gate they are sealed for can open them.",
           "noAdmin": "The gate has no management that can be reached over the internet. It changes only through signed bundles and commands on the server."
         },
