@@ -14,6 +14,7 @@
 |---|---|
 | Produktwording | Feste Bezeichnungen für Vertrauensmodi und Härtungsstufen, jeweils mit einem Satz, was eine gehackte Cloud könnte (Abschnitt 2.9). |
 | Teamarbeit ohne Cloud | MVP über Git im Projektordner; geteilte DB mit Rollen erst später (DT-14, DT-18). |
+| Sicherheitstests | OWASP Top 10, OWASP API Top 10, Berechtigungsmatrix für jeden Endpunkt, DAST, SAST, Pentests (Abschnitt 2.10, docs/SECURITY-TESTING.md). |
 | Hilfe und Einrichtung | Hilfe-Seite, kontextuelle „?“ und Einrichtungsassistent von Anfang an, analog lazy-koins (Abschnitt 3.9). |
 | Default-Vertrauensmodus | **Bequem** mit aktiver Empfehlung zu „Signiert“ (FR-46 bis FR-48, Abschnitt 2.9). |
 
@@ -186,6 +187,19 @@ Regeln:
 | SEC-65 | Gate-Artefakt und Release-Fingerprints sind gegen eine von der Cloud **unabhängige Quelle** prüfbar (z. B. GitHub-Release). Der Installer prüft die Release-Signatur (T-22, T-63). | M |
 | SEC-66 | Release-Schlüssel offline bzw. im HSM mit **M-of-N-Signatur**, Einträge in einem Transparenz-Log, gestaffelter Rollout von Gate-Updates (T-60). | M |
 | SEC-64 | Externer Penetrationstest vor Launch, Responsible-Disclosure (`security.txt`), später Bug Bounty. | S |
+
+### 2.10 Sicherheitstests (Details: [docs/SECURITY-TESTING.md](docs/SECURITY-TESTING.md))
+
+| ID | Anforderung | Prio |
+|---|---|---|
+| SEC-70 | Die Anwendung wird laufend gegen die **OWASP Top 10** (aktuelle Ausgabe, 2025) und die **OWASP API Security Top 10** getestet. Jede Kategorie ist auf konkrete automatisierte Tests abgebildet; die Abbildung wird gepflegt. | M |
+| SEC-71 | **Berechtigungsmatrix:** Jeder Endpunkt der Cloud-API wird mit jeder Identität getestet (ohne Token, ungültige/abgelaufene/widerrufene Tokens, jede Rolle, mit und ohne Freigabe-Recht, fremder Mandant, falscher Token-Scope, Gate-Anmeldung). Ein Endpunkt ohne Eintrag in der Matrix lässt den Build fehlschlagen. Dazu IDOR-, Massenzuweisungs- und CSRF-Fälle. | M |
+| SEC-72 | **Authentifizierung** wird als Ablauf getestet: Login, MFA, Passkeys, OIDC, Brute-Force-Sperre, Session-Rotation und -Ablauf, Logout, Token-Widerruf, Passwort-Reset. | M |
+| SEC-73 | **DAST:** OWASP ZAP gegen die laufende Cloud-API (mit Login je Rolle) und gegen ein laufendes Gate; Baseline in jedem PR, Vollscan nächtlich. Befunde ab „mittel“ blockieren. | M |
+| SEC-74 | **SAST und Lieferkette** in jedem PR: CodeQL, Semgrep (OWASP-Regeln), Abhängigkeits-Scan (npm + Composer), Secret-Scan, Container- und Helm-Scan, Electron-Konfigurations-Scan. | M |
+| SEC-75 | **Interner Pentest** nach OWASP WSTG vor jedem Minor-Release, inklusive Compromise-Test (2.8), dokumentiert pro Version. **Externer Pentest** vor Launch, danach jährlich und nach grossen Änderungen an Krypto, Auth oder Gate (ersetzt SEC-64 teilweise). | M |
+| SEC-76 | Befunde haben Fristen nach Schweregrad (kritisch 7 Tage, hoch 30 Tage) und gelten erst mit Regressionstest als behoben. | M |
+| SEC-77 | Der Compromise-Test aus 2.8 existiert zusätzlich als **automatisierte Suite** (gehackte Cloud simuliert: manipulierte DB, manipulierte Bundles, ausgetauschte Schlüssel) pro Vertrauensmodus. | M |
 
 ### 2.8 Abnahmekriterien (Compromise-Test)
 

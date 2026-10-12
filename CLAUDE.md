@@ -94,6 +94,8 @@ pnpm check:gate-php  # THE gate for PHP: composer validate + cs + phpstan + phpu
 pnpm check:all       # both — what CI runs
 pnpm test            # all TS unit tests (root Vitest, not via Nx — see Testing)
 pnpm test:integration
+pnpm test:authz      # the authorization matrix alone (also part of pnpm check)
+pnpm test:dast       # ZAP against a locally started Cloud + gate (needs Docker)
 pnpm conformance     # the conformance suite against libs/core and every gate target present
 pnpm schema          # regenerate schema/moat.schema.json from the Zod schema (committed)
 pnpm format          # prettier --write .
@@ -345,10 +347,28 @@ integration specs (`*.integration.spec.ts`) against real databases are separate.
   error and response the tests capture.
 - Every bug fix gets a regression test.
 
+### Security testing (SEC-70–SEC-77, [docs/SECURITY-TESTING.md](docs/SECURITY-TESTING.md))
+
+- **Every API endpoint has an entry in the authorization matrix**
+  (`apps/api/src/security/authz-matrix.ts`) in the same PR that adds it — expected answer per
+  identity (no token, bad/expired/revoked token, each role, with/without release permission,
+  other tenant = 404, wrong token scope, gate credential). The matrix spec runs in `pnpm check`
+  and fails on a route without an entry. Never weaken an expectation to make it pass.
+- Each new feature checks itself against the OWASP Top 10 / API Top 10 mapping in
+  docs/SECURITY-TESTING.md and adds the tests that row names; a new risk updates the mapping
+  and the threat model.
+- Scanner findings (CodeQL, Semgrep, osv-scanner, gitleaks, Trivy, ZAP, Electronegativity) are
+  fixed, not suppressed. An exception needs a justification comment next to it.
+- Security fixes and pentest findings always come with a regression test or conformance case.
+- `/security-review` before a PR that touches auth, the matrix, crypto, bundles, policy, gates or
+  desktop IPC.
+
 ## CI
 
-`.github/workflows/ci.yml`: `check` (`pnpm check`), `integration`, **`gate-php`** (matrix 8.2–8.5,
-`shivammathur/setup-php`, `pnpm check:gate-php`), `conformance`. The gate lives in
+`.github/workflows/ci.yml`: `check` (`pnpm check`, includes the authz matrix), `integration`,
+**`gate-php`** (matrix 8.2–8.5, `shivammathur/setup-php`, `pnpm check:gate-php`), `conformance`,
+`security` (CodeQL, Semgrep, osv-scanner, gitleaks, Trivy) and `dast` (ZAP baseline on PRs, full
+scan nightly against Cloud and gate). The gate lives in
 `package.json` — add checks there, never to the YAML alone. Release: signed gate artifact +
 checksums + SBOM (SEC-60, SEC-61), images to ghcr, desktop installers per release (as lazy-koins).
 
