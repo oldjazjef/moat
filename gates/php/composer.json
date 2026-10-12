@@ -1,0 +1,51 @@
+{
+    "name": "moat/gate-php",
+    "description": "Moat Gate for PHP: enforces API policies on the customer's hosting. Single-file build, no runtime dependencies.",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.2",
+        "ext-curl": "*",
+        "ext-hash": "*",
+        "ext-json": "*",
+        "ext-sodium": "*"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.75",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-deprecation-rules": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "phpunit/phpunit": "^11.5",
+        "spaze/phpstan-disallowed-calls": "^4.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Moat\\Gate\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Moat\\Gate\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "platform": {
+            "php": "8.2.0"
+        },
+        "sort-packages": true,
+        "allow-plugins": {}
+    },
+    "scripts": {
+        "cs": "php-cs-fixer check --diff",
+        "cs:fix": "php-cs-fixer fix",
+        "phpstan": "phpstan analyse --no-progress --memory-limit=1G",
+        "test": "phpunit",
+        "conformance": "phpunit --testsuite conformance",
+        "check": [
+            "@composer validate --strict",
+            "@cs",
+            "@phpstan",
+            "@test"
+        ]
+    }
+}
