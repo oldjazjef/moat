@@ -70,7 +70,7 @@ final class RateLimiterTest extends TestCase
         foreach (['a', 'b', 'c'] as $client) {
             self::assertNull(RateLimiter::hit($this->data, [['ip ' . $client, $perIp], ['total', $total]], 100, 1000));
         }
-        self::assertSame(60, RateLimiter::hit($this->data, [['ip d', $perIp], ['total', $total]], 100, 1000));
+        self::assertSame(60, RateLimiter::hit($this->data, [['ip d', $perIp], ['total', $total]], 100, 1000)?->retryAfter);
     }
 
     public function testTheStoreFileIsGuardedOnH1(): void

@@ -464,6 +464,35 @@ function configVectors(): Json {
           burst: 10,
         }),
     ],
+    [
+      'quota per day (FR-31)',
+      (c) => (route(c)['quota'] = { requests: 1000, period: 'day' }),
+    ],
+    [
+      'quota per month',
+      (c) => (route(c)['quota'] = { requests: 1000000, period: 'month' }),
+    ],
+    [
+      'quota with an unknown period',
+      (c) => (route(c)['quota'] = { requests: 1000, period: 'week' }),
+    ],
+    [
+      'quota of 0 requests',
+      (c) => (route(c)['quota'] = { requests: 0, period: 'day' }),
+    ],
+    [
+      'quota above 1 000 000 requests',
+      (c) => (route(c)['quota'] = { requests: 1000001, period: 'month' }),
+    ],
+    [
+      'quota requests as a string',
+      (c) => (route(c)['quota'] = { requests: '1000', period: 'day' }),
+    ],
+    [
+      'quota with an extra key',
+      (c) => (route(c)['quota'] = { requests: 1000, period: 'day', per: 'ip' }),
+    ],
+    ['quota null', (c) => (route(c)['quota'] = null)],
   ];
   return {
     description:
@@ -625,6 +654,9 @@ function corsVectors(): Json {
 
 function rateLimitVectors(): Json {
   const minute: Limit = { requests: 2, windowSeconds: 60 };
+  /** Unix seconds of a UTC date (month from 0). */
+  const day = (y: number, m: number, d: number, h = 0, min = 0, sec = 0) =>
+    Date.UTC(y, m, d, h, min, sec) / 1000;
   const sequences: [string, Limit[], number[]][] = [
     ['two per minute', [minute], [1000, 1001, 1002, 1059, 1060, 1061, 1062]],
     ['refused requests do not count', [minute], [0, 0, 0, 0, 59, 60]],
@@ -633,6 +665,41 @@ function rateLimitVectors(): Json {
       'several limits: every one must have room, all count together',
       [minute, { requests: 3, windowSeconds: 3600 }],
       [0, 1, 2, 60, 61, 120, 3600],
+    ],
+    [
+      'quota per day (FR-31): the calendar day in UTC, not 24 hours from the first request',
+      [{ requests: 2, period: 'day' }],
+      [
+        day(2026, 9, 12, 23, 0),
+        day(2026, 9, 12, 23, 30),
+        day(2026, 9, 12, 23, 59, 59),
+        day(2026, 9, 13),
+        day(2026, 9, 13, 12),
+      ],
+    ],
+    [
+      'quota per month: resets on the 1st (UTC), across the year end and a leap day',
+      [{ requests: 1, period: 'month' }],
+      [
+        day(2027, 11, 15),
+        day(2027, 11, 31, 23, 59, 59),
+        day(2028, 0, 1),
+        day(2028, 1, 29, 12),
+        day(2028, 1, 29, 13),
+        day(2028, 2, 1),
+      ],
+    ],
+    [
+      'quota and rate limit together: refused by the quota answers quota',
+      [minute, { requests: 3, period: 'day' }],
+      [
+        day(2026, 9, 12),
+        day(2026, 9, 12, 0, 0, 1),
+        day(2026, 9, 12, 0, 0, 2),
+        day(2026, 9, 12, 0, 1),
+        day(2026, 9, 12, 0, 1, 1),
+        day(2026, 9, 12, 0, 2),
+      ],
     ],
   ];
   const addresses: [string, string][] = [
@@ -655,7 +722,7 @@ function rateLimitVectors(): Json {
   ];
   return {
     description:
-      'FR-30, SEC-26, SEC-45. `sequences`: requests at these unix times against these limits, starting with no counters → per request `{allowed, retryAfter}` (retryAfter 0 when allowed). A window opens with the first request and lasts windowSeconds; a refused request does not count; with several limits a request passes only if each has room, and then each counts it. `clients`: REMOTE_ADDR → the key a per-IP limit counts (IPv4 as is, IPv6 by /64 as `xxxx:xxxx:xxxx:xxxx::/64`, IPv4-mapped as IPv4), or null = not an address (the gate refuses the request).',
+      'FR-30, FR-31, SEC-26, SEC-45. `sequences`: requests at these unix times against these limits, starting with no counters → per request `{allowed, retryAfter, quota}` (retryAfter 0 when allowed; quota true when a full quota is among the reasons, so the gate answers `quota_exceeded`). A rate-limit window opens with the first request and lasts windowSeconds; a quota (`period` day or month) counts the calendar day or month in UTC of the request and resets at its end; a refused request does not count; with several limits a request passes only if each has room, and then each counts it. `clients`: REMOTE_ADDR → the key a per-IP limit counts (IPv4 as is, IPv6 by /64 as `xxxx:xxxx:xxxx:xxxx::/64`, IPv4-mapped as IPv4), or null = not an address (the gate refuses the request).',
     sequences: sequences.map(([name, limits, times]) => {
       let windows: (Window | null)[] = limits.map(() => null);
       return {
@@ -666,9 +733,13 @@ function rateLimitVectors(): Json {
           const result = hitLimits(windows, limits, now);
           if (result.allowed) {
             windows = result.windows;
-            return { allowed: true, retryAfter: 0 };
+            return { allowed: true, retryAfter: 0, quota: false };
           }
-          return { allowed: false, retryAfter: result.retryAfter };
+          return {
+            allowed: false,
+            retryAfter: result.retryAfter,
+            quota: result.quota,
+          };
         }),
       };
     }),
@@ -839,6 +910,48 @@ function policyVectors(): Json {
           per: 'route',
         };
         (p['limits'] as Record<string, Json>)['maxClients'] = 1202;
+      },
+    ],
+    [
+      'policy quota per month for the whole gate (FR-31, T-07)',
+      (_c, p) =>
+        ((p['limits'] as Record<string, Json>)['quota'] = {
+          requests: 10000,
+          period: 'month',
+        }),
+    ],
+    [
+      'policy quota with an unknown period',
+      (_c, p) =>
+        ((p['limits'] as Record<string, Json>)['quota'] = {
+          requests: 10000,
+          period: 'year',
+        }),
+    ],
+    [
+      'policy quota of 0 requests',
+      (_c, p) =>
+        ((p['limits'] as Record<string, Json>)['quota'] = {
+          requests: 0,
+          period: 'day',
+        }),
+    ],
+    [
+      'each quota needs one counter (SEC-27)',
+      (c, p) => {
+        route(c)['quota'] = { requests: 100, period: 'day' };
+        const limits = p['limits'] as Record<string, Json>;
+        limits['quota'] = { requests: 1000, period: 'day' };
+        limits['maxClients'] = 1203;
+      },
+    ],
+    [
+      'quotas count against the counter store (SEC-27)',
+      (c, p) => {
+        route(c)['quota'] = { requests: 100, period: 'day' };
+        const limits = p['limits'] as Record<string, Json>;
+        limits['quota'] = { requests: 1000, period: 'day' };
+        limits['maxClients'] = 1202;
       },
     ],
     [

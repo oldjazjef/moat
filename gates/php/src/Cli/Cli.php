@@ -135,6 +135,9 @@ final class Cli
         if ($gate->policy !== null) {
             $limits = $gate->policy->limits;
             self::out('Limits:     ' . self::limitText($limits->perIp) . ' per IP, ' . self::limitText($limits->total) . ' in total, at most ' . $limits->maxClients . ' clients tracked');
+            if ($limits->quota !== null) {
+                self::out('Quota:      ' . $limits->quota->requests . ' requests per ' . $limits->quota->period->value . ' (UTC) for the whole gate');
+            }
         }
         try {
             $active = $gate->active(time());

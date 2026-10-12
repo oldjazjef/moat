@@ -6,6 +6,7 @@ import {
   PROJECT,
   settle,
 } from '../../../../../testing/page-harness';
+import type { ProjectView } from '../../../../core/api/project.types';
 import { RoutesPage } from './routes-page';
 
 const text = (el: HTMLElement, selector: string) =>
@@ -91,6 +92,46 @@ describe('RoutesPage', () => {
     expect(text(el, '[data-edit-outcome="saved"]')).toContain(
       'In moat.yaml gespeichert.',
     );
+  });
+
+  it('FR-31: shows a route quota and sets one from the form', async () => {
+    const withQuota = JSON.parse(JSON.stringify(PROJECT)) as ProjectView;
+    const config = withQuota.project?.config;
+    if (config?.status !== 'valid') throw new Error('fixture');
+    Object.assign(config.config.routes['newsletter'] ?? {}, {
+      quota: { requests: 1000, period: 'day' },
+    });
+    const { el, harness } = await openProjectTab(
+      'routes',
+      RoutesPage,
+      withQuota,
+    );
+    expect(text(el, '[data-rate-limit]')).toBe(
+      '5 pro 10 min je Besucher 1000 pro Tag insgesamt',
+    );
+    (await menuItem(harness, routeRow(el, 'newsletter'), 'edit')).click();
+    await settle(harness);
+    expect(
+      (el.querySelector('[data-route-quota]') as HTMLInputElement).checked,
+    ).toBe(true);
+    type(el, '#route-quota-requests', '30000');
+    const period = el.querySelector('#route-quota-period') as HTMLSelectElement;
+    period.value = 'month';
+    period.dispatchEvent(new Event('change'));
+    submit(el);
+    const edit = expectEdit();
+    expect(edit.request.body).toMatchObject({
+      op: 'updateRoute',
+      definition: { quota: { requests: 30000, period: 'month' } },
+    });
+    edit.flush(
+      { error: 'value_invalid', fields: ['quota.requests'] },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    await settle(harness);
+    expect(
+      el.querySelector('#route-quota-requests')?.getAttribute('aria-invalid'),
+    ).toBe('true');
   });
 
   it('does not send a route without a valid name and paths', async () => {

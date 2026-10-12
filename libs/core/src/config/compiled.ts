@@ -39,6 +39,9 @@ export const MAX_ORIGINS = 16;
 export const MAX_LIMIT_REQUESTS = 1_000_000;
 export const MAX_WINDOW_SECONDS = 86_400;
 export const LIMIT_SCOPES = ['ip', 'route'] as const;
+/** Quotas (FR-31): calendar periods in UTC; a period resets at its first second. */
+export const QUOTA_PERIODS = ['day', 'month'] as const;
+export type QuotaPeriod = (typeof QUOTA_PERIODS)[number];
 
 const name = z.string().regex(NAME);
 const mediaType = z.string().regex(MEDIA_TYPE);
@@ -65,6 +68,15 @@ const auth = z.discriminatedUnion('type', [
 export const limitSchema = z.strictObject({
   requests: z.int().min(1).max(MAX_LIMIT_REQUESTS),
   windowSeconds: z.int().min(1).max(MAX_WINDOW_SECONDS),
+});
+
+/**
+ * A quota (FR-31, T-07): at most `requests` per calendar day or month in UTC, counted for the
+ * whole route (or, in the local policy, the whole gate), whoever calls.
+ */
+export const quotaSchema = z.strictObject({
+  requests: z.int().min(1).max(MAX_LIMIT_REQUESTS),
+  period: z.enum(QUOTA_PERIODS),
 });
 
 export const compiledUpstreamSchema = z.strictObject({
@@ -96,6 +108,11 @@ export const compiledRouteSchema = z.strictObject({
     }),
     z.null(),
   ]),
+  /**
+   * FR-31: requests per calendar day or month for the whole route. Compiled only when set, so
+   * bundles without a quota are unchanged; a gate that does not know the key refuses the bundle.
+   */
+  quota: quotaSchema.optional(),
 });
 
 export const compiledConfigSchema = z.strictObject({

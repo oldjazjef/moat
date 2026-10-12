@@ -20,6 +20,13 @@ export interface RateLimit {
   readonly per: 'ip' | 'route';
 }
 
+export const QUOTA_PERIODS = ['day', 'month'] as const;
+
+export interface Quota {
+  readonly requests: number;
+  readonly period: (typeof QUOTA_PERIODS)[number];
+}
+
 export interface CompiledRoute {
   readonly method: string;
   readonly path: string;
@@ -31,6 +38,8 @@ export interface CompiledRoute {
   readonly enabled: boolean;
   readonly origins: readonly string[];
   readonly rateLimit: RateLimit | null;
+  /** FR-31: requests per calendar day or month (UTC) for the whole route; absent = none. */
+  readonly quota?: Quota;
 }
 
 export interface CompiledUpstream {
@@ -174,6 +183,7 @@ export interface RouteDefinition {
     readonly window: string;
     readonly per?: 'ip' | 'route';
   };
+  readonly quota?: Quota;
 }
 
 /** An upstream as moat.yaml writes it (UpstreamInput in libs/core/src/config/edit.ts). */

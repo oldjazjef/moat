@@ -21,6 +21,8 @@ import { HlmLabelImports } from '@moat/ui/label';
 import {
   METHODS,
   NAME_PATTERN,
+  QUOTA_PERIODS,
+  type Quota,
   type RouteDefinition,
 } from '../../../../core/api/project.types';
 import { ProjectEdits } from '../../../../core/project/project-edits.service';
@@ -99,7 +101,11 @@ export class RouteForm implements OnInit {
     requests: new FormControl(10, { nonNullable: true }),
     window: new FormControl('1m', { nonNullable: true }),
     per: new FormControl<'ip' | 'route'>('ip', { nonNullable: true }),
+    quotaOn: new FormControl(false, { nonNullable: true }),
+    quotaRequests: new FormControl(1000, { nonNullable: true }),
+    quotaPeriod: new FormControl<Quota['period']>('day', { nonNullable: true }),
   });
+  protected readonly periods = QUOTA_PERIODS;
 
   /** Fields the core refused in the last save, as form control names. */
   protected readonly refused = computed(() => {
@@ -109,7 +115,10 @@ export class RouteForm implements OnInit {
     return new Set(
       outcome.fields.map((field) => {
         const [first, second] = field.split('.');
-        return first === 'rateLimit' ? (second ?? 'requests') : (first ?? '');
+        if (first === 'rateLimit') return second ?? 'requests';
+        if (first === 'quota')
+          return second === 'period' ? 'quotaPeriod' : 'quotaRequests';
+        return first ?? '';
       }),
     );
   });
@@ -140,6 +149,9 @@ export class RouteForm implements OnInit {
           ? '1m'
           : windowText(route.rateLimit.windowSeconds),
       per: route.rateLimit?.per ?? 'ip',
+      quotaOn: route.quota !== undefined,
+      quotaRequests: route.quota?.requests ?? 1000,
+      quotaPeriod: route.quota?.period ?? 'day',
     });
   }
 
@@ -172,6 +184,14 @@ export class RouteForm implements OnInit {
               requests: Number(value.requests),
               window: value.window.trim(),
               per: value.per,
+            },
+          }
+        : {}),
+      ...(value.quotaOn
+        ? {
+            quota: {
+              requests: Number(value.quotaRequests),
+              period: value.quotaPeriod,
             },
           }
         : {}),

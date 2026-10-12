@@ -96,8 +96,11 @@ final class PolicyCheck
     {
         $total = $policy->limits->total;
         $live = static fn(int $window): int => $total->requests * (intdiv($window + $total->windowSeconds - 1, $total->windowSeconds) + 1);
-        $count = 1 + $live($policy->limits->perIp->windowSeconds);
+        $count = 1 + $live($policy->limits->perIp->windowSeconds) + ($policy->limits->quota !== null ? 1 : 0);
         foreach ($config->routes as $route) {
+            if ($route->quota !== null) {
+                ++$count;
+            }
             if ($route->rateLimit !== null) {
                 $count += $route->rateLimit->per === LimitScope::Ip ? $live($route->rateLimit->limit->windowSeconds) : 1;
             }
@@ -174,7 +177,7 @@ final class PolicyCheck
 
     private static function limits(mixed $value): PolicyLimits
     {
-        if (!$value instanceof JsonObject || !$value->hasExactKeys('perIp', 'total', 'maxClients')) {
+        if (!$value instanceof JsonObject || !$value->hasExactKeys('perIp', 'total', 'maxClients', ...($value->has('quota') ? ['quota'] : []))) {
             self::invalid();
         }
         $maxClients = $value->get('maxClients');
@@ -182,7 +185,12 @@ final class PolicyCheck
             self::invalid();
         }
 
-        return new PolicyLimits(self::limit($value->get('perIp')), self::limit($value->get('total')), $maxClients);
+        return new PolicyLimits(
+            self::limit($value->get('perIp')),
+            self::limit($value->get('total')),
+            $maxClients,
+            $value->has('quota') ? ConfigValidator::quota($value->get('quota'), RejectionCode::PolicyInvalid) : null,
+        );
     }
 
     private static function limit(mixed $value): Limit

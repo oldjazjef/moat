@@ -82,7 +82,10 @@ final class RequestHandler
         }
     }
 
-    /** FR-30, SEC-45: the policy's limits always, the route's own on top; 429 with Retry-After. */
+    /**
+     * FR-30, FR-31, SEC-45: the policy's limits and quota always, the route's own on top; 429 with
+     * Retry-After, `quota_exceeded` when a full quota is among the reasons.
+     */
     private static function limit(Request $request, Route $route, ActiveBundle $bundle, Gate $gate, int $now): void
     {
         $client = ClientKey::of($request->remoteAddr) ?? throw new Failure(GateError::RateLimitUnavailable);
@@ -92,14 +95,20 @@ final class RequestHandler
             $scope = $route->rateLimit->per === LimitScope::Ip ? $client : '*';
             $counters[] = ['route ' . $route->name . ' ' . $scope, $route->rateLimit->limit];
         }
+        if ($limits->quota !== null) {
+            $counters[] = ['quota ' . $limits->quota->period->value, $limits->quota];
+        }
+        if ($route->quota !== null) {
+            $counters[] = ['quota route ' . $route->name . ' ' . $route->quota->period->value, $route->quota];
+        }
         try {
-            $retryAfter = RateLimiter::hit($gate->data, $counters, $limits->maxClients, $now);
+            $refusal = RateLimiter::hit($gate->data, $counters, $limits->maxClients, $now);
         } catch (\Exception) {
             // Store full, damaged, locked too long or not writable: fail closed (SEC-27, SEC-46).
             throw new Failure(GateError::RateLimitUnavailable);
         }
-        if ($retryAfter !== null) {
-            throw new Failure(GateError::RateLimited, ['Retry-After' => (string) $retryAfter]);
+        if ($refusal !== null) {
+            throw new Failure($refusal->quota ? GateError::QuotaExceeded : GateError::RateLimited, ['Retry-After' => (string) $refusal->retryAfter]);
         }
     }
 

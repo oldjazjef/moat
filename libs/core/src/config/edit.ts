@@ -11,7 +11,7 @@ import {
 } from 'yaml';
 import { MoatRejection } from '../errors';
 import { compileConfig } from './compile';
-import { LIMIT_SCOPES, METHODS, NAME } from './compiled';
+import { LIMIT_SCOPES, METHODS, NAME, type QuotaPeriod } from './compiled';
 import type { MoatConfig } from './schema';
 import { parseDuration, parseSize } from './units';
 import { ConfigError, loadMoatYaml } from './yaml';
@@ -210,6 +210,11 @@ export interface RouteInput {
     readonly window: string;
     readonly per?: (typeof LIMIT_SCOPES)[number];
   };
+  /** FR-31: requests per calendar day or month (UTC). Absent = the key is removed. */
+  readonly quota?: {
+    readonly requests: number;
+    readonly period: QuotaPeriod;
+  };
 }
 
 /** Same value as written, so the author's spelling ("10m" vs "600s") is kept. */
@@ -392,6 +397,14 @@ export function setRoute(
     // "ip" is the default: written only when the author wrote `per` already.
     if (limit.per === 'route' || doc.hasIn(at('rateLimit', 'per')))
       setScalar(doc, at('rateLimit', 'per'), limit.per ?? 'ip', false);
+  }
+  const quota = input.quota;
+  if (quota === undefined) deleteIn(doc, at('quota'));
+  else {
+    if (!isMap(doc.getIn(at('quota'), true)))
+      setIn(doc, at('quota'), emptyMap());
+    setScalar(doc, at('quota', 'requests'), quota.requests, false);
+    setScalar(doc, at('quota', 'period'), quota.period, false);
   }
   if (input.origins === undefined || input.origins.length === 0)
     deleteIn(doc, at('origins'));

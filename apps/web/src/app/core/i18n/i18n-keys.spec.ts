@@ -9,6 +9,7 @@ import {
   AUTH_TYPES,
   CONFIG_ISSUE_CODES,
   EDIT_ERROR_CODES,
+  QUOTA_PERIODS,
 } from '../api/project.types';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './locales';
 import {
@@ -38,6 +39,8 @@ const DYNAMIC_KEYS = [
     (type) => `routes.upstreamForm.authTypes.${type}`,
   ),
   ...['ip', 'route'].map((per) => `routes.rate.${per}`),
+  ...QUOTA_PERIODS.map((period) => `routes.quota.${period}`),
+  ...QUOTA_PERIODS.map((period) => `routes.form.periods.${period}`),
   ...PROJECT_TABS.map((tab) => `projects.tabs.${tab}`),
   ...SIGN_OUTCOMES.map((outcome) => `gates.signResult.${outcome}`),
   ...SEAL_OUTCOMES.map((outcome) => `gates.sealResult.${outcome}`),

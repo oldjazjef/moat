@@ -23,5 +23,7 @@ final readonly class Route
         public bool $enabled,
         public array $origins,
         public ?RouteLimit $rateLimit,
+        /** FR-31: requests per calendar day or month for the whole route; null = none. */
+        public ?Quota $quota = null,
     ) {}
 }

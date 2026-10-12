@@ -102,9 +102,17 @@
           </td>
           <td hlmTd data-rate-limit>
             @if (row.route.rateLimit; as limit) { @if (row.window; as window) {
-            {{ 'routes.rate.' + limit.per | translate: { requests:
-            limit.requests, window: window.value, unit: (window.unitKey |
-            translate) } }} } } @else {
+            <span class="block">
+              {{ 'routes.rate.' + limit.per | translate: { requests:
+              limit.requests, window: window.value, unit: (window.unitKey |
+              translate) } }}
+            </span>
+            } } @if (row.route.quota; as quota) {
+            <span class="block" data-quota>
+              {{ 'routes.quota.' + quota.period | translate: { requests:
+              quota.requests } }}
+            </span>
+            } @if (!row.route.rateLimit && !row.route.quota) {
             <span class="text-muted-foreground text-xs">
               {{ 'routes.rate.policyOnly' | translate }}
             </span>

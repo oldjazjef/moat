@@ -3002,6 +3002,362 @@
         "ok": false,
         "error": "config_invalid"
       }
+    },
+    {
+      "name": "quota per day (FR-31)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "quota": {
+              "requests": 1000,
+              "period": "day"
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "quota per month",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "quota": {
+              "requests": 1000000,
+              "period": "month"
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "quota with an unknown period",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "quota": {
+              "requests": 1000,
+              "period": "week"
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "quota of 0 requests",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "quota": {
+              "requests": 0,
+              "period": "day"
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "quota above 1 000 000 requests",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "quota": {
+              "requests": 1000001,
+              "period": "month"
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "quota requests as a string",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "quota": {
+              "requests": "1000",
+              "period": "day"
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "quota with an extra key",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "quota": {
+              "requests": 1000,
+              "period": "day",
+              "per": "ip"
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "quota null",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "quota": null
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
     }
   ]
 }

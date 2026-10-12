@@ -355,7 +355,7 @@ describe('conformance vectors', () => {
         name: string;
         limits: Limit[];
         times: number[];
-        expect: { allowed: boolean; retryAfter: number }[];
+        expect: { allowed: boolean; retryAfter: number; quota: boolean }[];
       }[];
       clients: { name: string; address: string; expect: string | null }[];
     }>('http/rate-limit.json');
@@ -364,9 +364,13 @@ describe('conformance vectors', () => {
       const got = times.map((now) => {
         const result = hitLimits(windows, limits, now);
         if (!result.allowed)
-          return { allowed: false, retryAfter: result.retryAfter };
+          return {
+            allowed: false,
+            retryAfter: result.retryAfter,
+            quota: result.quota,
+          };
         windows = result.windows;
-        return { allowed: true, retryAfter: 0 };
+        return { allowed: true, retryAfter: 0, quota: false };
       });
       expect(got).toEqual(want);
     });

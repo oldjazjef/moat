@@ -7,6 +7,8 @@ namespace Moat\Gate\Tests\Conformance;
 use Moat\Gate\Config\ConfigValidator;
 use Moat\Gate\Config\Limit;
 use Moat\Gate\Config\Method;
+use Moat\Gate\Config\Quota;
+use Moat\Gate\Config\QuotaPeriod;
 use Moat\Gate\Config\Route;
 use Moat\Gate\Http\ContentType;
 use Moat\Gate\Http\Cors;
@@ -136,12 +138,14 @@ final class FormatVectorsTest extends TestCase
         $counters = [];
         foreach (Vectors::list($case['limits']) as $index => $limit) {
             $limit = Vectors::map($limit);
-            $counters[] = ['c' . $index, new Limit(Vectors::int($limit['requests']), Vectors::int($limit['windowSeconds']))];
+            $counters[] = ['c' . $index, isset($limit['period'])
+                ? new Quota(Vectors::int($limit['requests']), QuotaPeriod::from(Vectors::string($limit['period'])))
+                : new Limit(Vectors::int($limit['requests']), Vectors::int($limit['windowSeconds']))];
         }
         $got = [];
         foreach (Vectors::list($case['times']) as $now) {
-            $retryAfter = RateLimiter::hit($data, $counters, 100, Vectors::int($now));
-            $got[] = ['allowed' => $retryAfter === null, 'retryAfter' => $retryAfter ?? 0];
+            $refusal = RateLimiter::hit($data, $counters, 100, Vectors::int($now));
+            $got[] = ['allowed' => $refusal === null, 'retryAfter' => $refusal->retryAfter ?? 0, 'quota' => $refusal->quota ?? false];
         }
         self::assertSame(Vectors::list($case['expect']), $got);
     }

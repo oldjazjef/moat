@@ -248,6 +248,22 @@
           "windowSeconds": 600,
           "per": "ip"
         }
+      },
+      "quota": {
+        "method": "GET",
+        "path": "/quota",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null,
+        "quota": {
+          "requests": 1,
+          "period": "day"
+        }
       }
     }
   },
@@ -1131,6 +1147,36 @@
       "expect": {
         "status": 429,
         "error": "rate_limited",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "quota: the first request of the day passes (FR-31)",
+      "request": {
+        "method": "GET",
+        "path": "/quota",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "quota: the day's quota is used up, refused with Retry-After until midnight UTC, nothing forwarded (T-07)",
+      "request": {
+        "method": "GET",
+        "path": "/quota",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 429,
+        "error": "quota_exceeded",
+        "headers": {
+          "retry-after": "<any>"
+        },
         "upstreamCalls": 0
       }
     }

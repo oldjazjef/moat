@@ -58,6 +58,14 @@ export function compileConfig(
                   reject('config_invalid')) / 1000,
               per: route.rateLimit.per ?? 'ip',
             },
+      ...(route.quota === undefined
+        ? {}
+        : {
+            quota: {
+              requests: route.quota.requests,
+              period: route.quota.period,
+            },
+          }),
     };
   }
   const locked = gate !== undefined && !gateLockState(config, gate).enabled;

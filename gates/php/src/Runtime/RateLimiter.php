@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace Moat\Gate\Runtime;
 
 use Moat\Gate\Config\Limit;
+use Moat\Gate\Config\Quota;
 use Moat\Gate\Storage\DataDir;
 
 /**
- * FR-30, SEC-45: rate limits counted on the gate, as hitLimits() in
- * libs/core/src/http/rate-limit.ts (conformance/vectors/http/rate-limit.json). A window opens with
- * the first request and lasts `windowSeconds`; a refused request does not count; a request passes
- * only if every limit has room, and then every counter is raised.
+ * FR-30, FR-31, SEC-45: rate limits and quotas counted on the gate, as hitLimits() in
+ * libs/core/src/http/rate-limit.ts (conformance/vectors/http/rate-limit.json). A rate-limit window
+ * opens with the first request and lasts `windowSeconds`; a quota's window is the calendar day or
+ * month (UTC) of the request; a refused request does not count; a request passes only if every
+ * limit has room, and then every counter is raised.
  *
  * The counters live in one guarded data file, read and replaced under an exclusive lock. Keys are
  * keyed BLAKE2b hashes (with a random key kept in the file), so the file holds no IP address
@@ -24,31 +26,33 @@ final class RateLimiter
     private const HEADER = 'moat-limits-v1 ';
 
     /**
-     * @param list<array{string, Limit}> $counters counter key and its limit
+     * @param list<array{string, Limit|Quota}> $counters counter key and its limit
      *
-     * @return ?int null when the request may pass, else the seconds until it may be retried
+     * @return ?LimitRefusal null when the request may pass
      *
      * @throws \RuntimeException when the store is damaged, full or cannot be written
      */
-    public static function hit(DataDir $data, array $counters, int $maxClients, int $now): ?int
+    public static function hit(DataDir $data, array $counters, int $maxClients, int $now): ?LimitRefusal
     {
-        return $data->locked(static function () use ($data, $counters, $maxClients, $now): ?int {
+        return $data->locked(static function () use ($data, $counters, $maxClients, $now): ?LimitRefusal {
             [$key, $windows] = self::load($data->read(self::FILE), $now);
             $next = [];
             $retryAfter = 0;
+            $quota = false;
             foreach ($counters as [$name, $limit]) {
                 $id = bin2hex(sodium_crypto_generichash($name, $key, 16));
                 $window = $windows[$id] ?? null;
                 if ($window === null || $now >= $window[0]) {
-                    $next[$id] = [$now + $limit->windowSeconds, 1];
+                    $next[$id] = [$limit instanceof Quota ? $limit->period->end($now) : $now + $limit->windowSeconds, 1];
                 } elseif ($window[1] < $limit->requests) {
                     $next[$id] = [$window[0], $window[1] + 1];
                 } else {
                     $retryAfter = max($retryAfter, $window[0] - $now);
+                    $quota = $quota || $limit instanceof Quota;
                 }
             }
             if ($retryAfter > 0) {
-                return $retryAfter;
+                return new LimitRefusal($retryAfter, $quota);
             }
             $windows = $next + $windows;
             if (\count($windows) > $maxClients) {
