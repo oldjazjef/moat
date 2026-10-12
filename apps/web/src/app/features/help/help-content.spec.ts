@@ -86,10 +86,10 @@ describe('help content (FR-70–FR-74)', () => {
   });
 
   it('the route checker knows real routes from made-up ones', async () => {
-    expect(await exists('/app/gates')).toBe(true);
+    expect(await exists('/app/projects')).toBe(true);
     expect(await exists('/app/help')).toBe(true);
     expect(await exists('/app/nowhere')).toBe(false);
-    expect(await exists('/app/gates/nowhere')).toBe(false);
+    expect(await exists('/app/help/nowhere')).toBe(false);
     // A redirect is not a page of its own.
     expect(await exists('/')).toBe(false);
   });

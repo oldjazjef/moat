@@ -25,8 +25,8 @@ export interface DesktopMessages {
 export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
   'de-CH': {
     chooseProject: {
-      title: 'Projektordner öffnen',
-      button: 'Diesen Ordner öffnen',
+      title: 'Projekt hinzufügen',
+      button: 'Diesen Ordner hinzufügen',
     },
     startFailed: {
       title: 'Moat Desktop konnte nicht starten',
@@ -40,7 +40,7 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
     },
   },
   en: {
-    chooseProject: { title: 'Open project folder', button: 'Open this folder' },
+    chooseProject: { title: 'Add project', button: 'Add this folder' },
     startFailed: {
       title: 'Moat Desktop could not start',
       detail: (reason) => `Reason: ${reason}`,

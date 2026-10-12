@@ -1,19 +1,28 @@
 import { QueryHandler, type IQueryHandler } from '@nestjs/cqrs';
 import { readProject } from '@moat/core';
-import { ProjectStoragePort } from '../ports/project-storage.port';
-import type { ProjectView } from '../project.types';
+import { ProjectFilesPort } from '../ports/project-files.port';
+import { ProjectRegistryPort } from '../ports/project-registry.port';
+import { PROJECT_ID, type ProjectView } from '../project.types';
 import { GetProjectQuery } from './get-project.query';
+import { projectName } from './project-name';
 
 @QueryHandler(GetProjectQuery)
 export class GetProjectHandler implements IQueryHandler<GetProjectQuery> {
-  constructor(private readonly storage: ProjectStoragePort) {}
+  constructor(
+    private readonly registry: ProjectRegistryPort,
+    private readonly files: ProjectFilesPort,
+  ) {}
 
-  async execute(_query: GetProjectQuery): Promise<ProjectView> {
-    const folder = this.storage.location();
-    const files = this.storage.open();
+  async execute(query: GetProjectQuery): Promise<ProjectView | null> {
+    if (!PROJECT_ID.test(query.id)) return null;
+    const entry = this.registry.get(query.id);
+    if (entry === null) return null;
+    const storage = this.files.open(entry.folder);
     return {
-      folder,
-      project: files === null ? null : await readProject(files),
+      id: entry.id,
+      name: projectName(entry.folder),
+      folder: entry.folder,
+      project: storage === null ? null : await readProject(storage),
     };
   }
 }

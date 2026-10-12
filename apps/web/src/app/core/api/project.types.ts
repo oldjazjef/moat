@@ -1,5 +1,6 @@
 /**
- * `GET /api/project` — a mirror of `ProjectView` (apps/api/src/project/project.types.ts) and
+ * `GET /api/projects…` — a mirror of `ProjectSummary` / `ProjectView`
+ * (apps/api/src/project/project.types.ts) and
  * `ProjectState` (libs/core/src/storage/project.ts). The web app does not import the core; keep
  * these in step. Never carries a secret or ciphertext.
  */
@@ -80,12 +81,29 @@ export type GateState =
       readonly latestBundle: number;
     };
 
+export interface ProjectState {
+  readonly config: ConfigState;
+  readonly gates: readonly GateState[];
+}
+
+/** One card of `GET /api/projects`. */
+export interface ProjectSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly folder: string;
+  /** null: the folder can no longer be read. */
+  readonly config: ConfigState['status'] | null;
+  readonly routes: number;
+  readonly gates: number;
+  readonly gatesMissingSecrets: readonly string[];
+}
+
+/** `GET /api/projects/:id`; `project` is null when the folder can no longer be read. */
 export interface ProjectView {
-  readonly folder: string | null;
-  readonly project: {
-    readonly config: ConfigState;
-    readonly gates: readonly GateState[];
-  } | null;
+  readonly id: string;
+  readonly name: string;
+  readonly folder: string;
+  readonly project: ProjectState | null;
 }
 
 /** The codes of `ConfigIssue` (libs/core/src/config/yaml.ts), each `config.errors.<code>`. */

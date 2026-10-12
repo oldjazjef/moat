@@ -1,10 +1,16 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { request } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { RunningApi } from '../bootstrap';
-import { AUTHZ_MATRIX, IDENTITIES, type Identity } from './authz-matrix';
+import {
+  AUTHZ_MATRIX,
+  IDENTITIES,
+  type Identity,
+  SEEDED_PROJECT,
+  SEEDED_REMOVABLE,
+} from './authz-matrix';
 
 const TOKEN = 'a'.repeat(64);
 const WRONG = 'b'.repeat(64);
@@ -45,11 +51,25 @@ function call(
 describe('authorization matrix (local mode)', () => {
   beforeAll(async () => {
     folder = mkdtempSync(join(tmpdir(), 'moat-authz-'));
+    const data = join(folder, 'data');
+    const site = join(folder, 'site');
+    mkdirSync(data);
+    mkdirSync(site);
+    writeFileSync(
+      join(data, 'projects.json'),
+      JSON.stringify({
+        version: 1,
+        projects: [
+          { id: SEEDED_PROJECT, folder: site },
+          { id: SEEDED_REMOVABLE, folder: site + '-copy' },
+        ],
+      }),
+    );
     Object.assign(process.env, {
       AUTH_MODE: 'local',
       LOCAL_MODE: 'true',
       NODE_ENV: 'test',
-      MOAT_PROJECT_DIR: folder,
+      MOAT_DATA_DIR: data,
     });
     // Loaded only now: ConfigModule validates process.env when app.module is imported.
     const { bootstrap } = await import('../bootstrap');
@@ -85,7 +105,11 @@ describe('authorization matrix (local mode)', () => {
   for (const entry of AUTHZ_MATRIX) {
     for (const identity of IDENTITIES) {
       it(`${entry.method} ${entry.path} as ${identity} → ${entry.expect[identity]}`, async () => {
-        const { status } = await call(entry.method, entry.path, identity);
+        const { status } = await call(
+          entry.method,
+          entry.request ?? entry.path,
+          identity,
+        );
         expect(status).toBe(entry.expect[identity]);
       });
     }
@@ -96,10 +120,19 @@ describe('authorization matrix (local mode)', () => {
     expect((await call('GET', '/api/nope', 'desktop')).status).toBe(404);
   });
 
+  it('answers an unknown or malformed project id with 404, and has no route to add one (DT-08)', async () => {
+    for (const id of ['x'.repeat(22), '..%2F..%2Fetc', 'a']) {
+      expect((await call('GET', `/api/projects/${id}`, 'desktop')).status).toBe(
+        404,
+      );
+    }
+    expect((await call('POST', '/api/projects', 'desktop')).status).toBe(404);
+  });
+
   it('gives every refusal the same body (no hint which check failed)', async () => {
     const bodies = await Promise.all(
       (['noToken', 'wrongToken', 'foreignHost'] as const).map(
-        async (identity) => (await call('GET', '/api/project', identity)).body,
+        async (identity) => (await call('GET', '/api/projects', identity)).body,
       ),
     );
     expect(new Set(bodies).size).toBe(1);

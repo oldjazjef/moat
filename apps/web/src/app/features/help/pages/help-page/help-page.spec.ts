@@ -56,7 +56,7 @@ describe('HelpPage (FR-71)', () => {
       [...el.querySelectorAll('#gate [data-help-links] a')].map((a) =>
         a.getAttribute('href'),
       ),
-    ).toEqual(['/app/gates']);
+    ).toEqual(['/app/projects']);
     expect(el.querySelectorAll('[data-help-faq]').length).toBeGreaterThan(0);
   });
 

@@ -2,6 +2,12 @@ import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { desktopApiEnv } from './lib/api-env';
 
+interface ApiHandle {
+  app: { close(): Promise<void> };
+  port: number;
+  host: string;
+}
+
 /** What `dist/apps/desktop-api/main.js` (apps/api/src/desktop.ts) exports. */
 interface ApiBundle {
   DESKTOP_ACCESS_HEADER: string;
@@ -9,11 +15,9 @@ interface ApiBundle {
     port: number;
     accessToken: string;
     logger?: string[] | false;
-  }): Promise<{
-    app: { close(): Promise<void> };
-    port: number;
-    host: string;
-  }>;
+  }): Promise<ApiHandle>;
+  addProject(api: ApiHandle, folder: string): Promise<{ id: string }>;
+  projectFolder(api: ApiHandle, id: string): Promise<string | null>;
 }
 
 export interface RunningApi {
@@ -21,21 +25,23 @@ export interface RunningApi {
   baseUrl: string;
   accessHeader: string;
   accessToken: string;
+  /** In-process, never over HTTP: only the main process adds folders (DT-08). */
+  addProject(folder: string): Promise<{ id: string }>;
+  projectFolder(id: string): Promise<string | null>;
   close(): Promise<void>;
 }
 
 /**
  * Starts the NestJS API in this process, on 127.0.0.1 and a port the OS picks (as lazy-koins).
  * Called once per process: the API's ConfigModule reads the environment when its bundle is
- * loaded, so another project folder means a relaunch (see main.ts), not a restart.
+ * loaded.
  */
 export async function startApi(options: {
   appDir: string;
-  projectDir: string | null;
+  dataDir: string;
 }): Promise<RunningApi> {
-  const env = desktopApiEnv(options.projectDir);
-  for (const name of env.unset) delete process.env[name];
-  Object.assign(process.env, env.set);
+  delete process.env['MOAT_PROJECT_DIR'];
+  Object.assign(process.env, desktopApiEnv(options.dataDir));
 
   // Loaded only now: its ConfigModule validates process.env at load time.
   const api = require(join(options.appDir, 'api', 'main.js')) as ApiBundle;
@@ -50,6 +56,8 @@ export async function startApi(options: {
     baseUrl: `http://127.0.0.1:${running.port}`,
     accessHeader: api.DESKTOP_ACCESS_HEADER,
     accessToken,
+    addProject: (folder) => api.addProject(running, folder),
+    projectFolder: (id) => api.projectFolder(running, id),
     close: () => running.app.close(),
   };
 }

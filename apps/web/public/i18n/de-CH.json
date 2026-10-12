@@ -5,9 +5,7 @@
   },
   "nav": {
     "label": "Hauptnavigation",
-    "overview": "Übersicht",
-    "gates": "Gates",
-    "routes": "Routen",
+    "projects": "Projekte",
     "help": "Hilfe",
     "toggleSidebar": "Seitenleiste ein- oder ausblenden",
     "toggleTheme": "Hell oder dunkel",
@@ -18,8 +16,47 @@
     "reload": "Neu laden",
     "loading": "Wird geladen …",
     "loadError": "Das Projekt konnte nicht gelesen werden. Versuche es mit «Neu laden» noch einmal.",
-    "noProject": "Es ist noch kein Projektordner geöffnet.",
     "toOverview": "Zur Übersicht"
+  },
+  "projects": {
+    "title": "Projekte",
+    "subtitle": "Deine Websites, je ein Projektordner",
+    "add": "Projekt hinzufügen",
+    "addFailed": "Der Ordner konnte nicht hinzugefügt werden. Wähle einen Ordner, den du lesen darfst.",
+    "loadError": "Die Projektliste konnte nicht gelesen werden. Versuche es mit «Neu laden» noch einmal.",
+    "open": "Öffnen",
+    "reveal": "Im Ordner zeigen",
+    "backToList": "Zu den Projekten",
+    "status": {
+      "valid": "moat.yaml ist gültig.",
+      "invalid": "moat.yaml enthält Fehler.",
+      "missing": "Noch keine moat.yaml im Ordner.",
+      "gone": "Der Ordner kann nicht mehr gelesen werden."
+    },
+    "empty": {
+      "title": "Noch kein Projekt",
+      "description": "Ein Projekt ist ein Ordner mit einer moat.yaml, je Website einer.",
+      "cli": "Einen Projektordner legst du mit dem Moat CLI an: moat.yaml schreiben, Gate mit `moat gate add` eintragen, Secrets mit `moat secret seal` versiegeln.",
+      "help": "Anleitung öffnen"
+    },
+    "workspace": {
+      "title": "Projekt",
+      "notFound": "Dieses Projekt ist nicht (mehr) in der Liste.",
+      "gone": "Der Projektordner kann nicht mehr gelesen werden: verschoben, gelöscht oder auf einem Laufwerk, das gerade fehlt. Füge ihn neu hinzu, wenn er an einem anderen Ort liegt."
+    },
+    "tabs": {
+      "label": "Bereiche des Projekts",
+      "overview": "Übersicht",
+      "gates": "Gates",
+      "routes": "Routen"
+    },
+    "remove": {
+      "button": "Aus der Liste entfernen",
+      "confirm": "Das Projekt verschwindet aus der Liste. Der Ordner und seine Dateien bleiben, wie sie sind.",
+      "yes": "Ja, entfernen",
+      "no": "Abbrechen",
+      "failed": "Das Projekt konnte nicht entfernt werden. Versuche es noch einmal."
+    }
   },
   "units": {
     "seconds": "s",
@@ -52,14 +89,10 @@
     }
   },
   "overview": {
-    "title": "Übersicht",
-    "subtitle": "Dein Projektordner auf einen Blick",
+    "subtitle": "Dieses Projekt auf einen Blick",
     "folder": {
       "title": "Projektordner",
-      "description": "Hier liegen moat.yaml, die Gates, die versiegelten Secrets und die signierten Bundles.",
-      "choose": "Projektordner öffnen",
-      "reveal": "Im Ordner zeigen",
-      "failed": "Der Ordner konnte nicht geöffnet werden. Wähle einen Ordner, den du lesen darfst."
+      "description": "Hier liegen moat.yaml, die Gates, die versiegelten Secrets und die signierten Bundles."
     },
     "trust": {
       "title": "Vertrauensmodus",
@@ -81,17 +114,9 @@
       "upstreams": "Upstreams",
       "secrets": "Secrets",
       "gates": "Gates"
-    },
-    "empty": {
-      "title": "Noch kein Projekt geöffnet",
-      "description": "Öffne den Ordner, in dem deine moat.yaml liegt.",
-      "gone": "Der Projektordner {{folder}} kann nicht mehr gelesen werden. Öffne ihn neu oder wähle einen anderen.",
-      "cli": "Einen Projektordner legst du mit dem Moat CLI an: moat.yaml schreiben, Gate mit `moat gate add` eintragen, Secrets mit `moat secret seal` versiegeln.",
-      "help": "Anleitung öffnen"
     }
   },
   "gates": {
-    "title": "Gates",
     "subtitle": "Die Gates dieses Projekts und was für sie bereitliegt",
     "empty": "In diesem Projekt ist noch kein Gate eingetragen. Installiere ein Gate und trage es mit `moat gate add` ein.",
     "gateId": "Gate-ID",
@@ -108,7 +133,6 @@
     "invalid": "Die Datei {{file}} ist beschädigt oder keine Gate-Datei."
   },
   "routes": {
-    "title": "Routen",
     "subtitle": "Was das Gate weiterleitet, und an wen",
     "unusable": "moat.yaml fehlt oder enthält Fehler. Die Übersicht zeigt, was zu tun ist.",
     "routesTitle": "Routen",
@@ -157,7 +181,7 @@
     },
     "intro": {
       "title": "So arbeitet Moat",
-      "body": "Moat hält die Schlüssel deiner APIs aus dem Browser fern. Das Gate läuft auf deinem Hosting und leitet nur die Routen weiter, die du freigibst. Die Konfiguration schreibst du in moat.yaml, signierst sie mit deiner Schlüsseldatei und lädst sie auf das Gate. Moat Desktop zeigt dir, was in deinem Projektordner bereitliegt."
+      "body": "Moat hält die Schlüssel deiner APIs aus dem Browser fern. Das Gate läuft auf deinem Hosting und leitet nur die Routen weiter, die du freigibst. Die Konfiguration schreibst du in moat.yaml, signierst sie mit deiner Schlüsseldatei und lädst sie auf das Gate. Moat Desktop zeigt dir, was in deinen Projektordnern bereitliegt."
     },
     "search": {
       "label": "Hilfe durchsuchen",
@@ -175,12 +199,12 @@
       "title": "Häufige Fragen",
       "items": {
         "noProject": {
-          "question": "Die Übersicht sagt «Noch kein Projekt geöffnet».",
-          "answer": "Klicke auf «Projektordner öffnen» und wähle den Ordner, in dem deine moat.yaml liegt. Moat Desktop startet danach mit diesem Ordner neu und merkt ihn sich."
+          "question": "Unter «Projekte» steht «Noch kein Projekt».",
+          "answer": "Klicke auf «Projekt hinzufügen» und wähle den Ordner, in dem deine moat.yaml liegt. Moat Desktop merkt sich den Ordner; weitere Projekte fügst du genauso hinzu."
         },
         "invalidConfig": {
           "question": "moat.yaml enthält Fehler. Was nun?",
-          "answer": "Die Übersicht nennt jeden Fehler mit Zeile und Spalte. Korrigiere die Datei in deinem Editor und klicke auf «Neu laden». Typisch sind nicht gesetzte Anführungszeichen bei Pfaden und URLs oder ein Tippfehler im Namen eines Upstreams."
+          "answer": "Die Übersicht des Projekts nennt jeden Fehler mit Zeile und Spalte. Korrigiere die Datei in deinem Editor und klicke auf «Neu laden». Typisch sind nicht gesetzte Anführungszeichen bei Pfaden und URLs oder ein Tippfehler im Namen eines Upstreams."
         },
         "missingSecret": {
           "question": "Unter «Gates» fehlt einem Gate ein Secret.",
@@ -193,30 +217,29 @@
       }
     },
     "links": {
-      "overview": "Übersicht",
-      "gates": "Gates",
-      "routes": "Routen"
+      "projects": "Projekte"
     },
     "sections": {
       "project": {
-        "title": "Projektordner",
-        "purpose": "Alles, was Moat über deine Website weiss, liegt in einem Ordner: die Konfiguration, die Gates, die versiegelten Secrets und die signierten Bundles. Keine Datenbank, kein Server.",
-        "where": "Übersicht › Projektordner",
+        "title": "Projekte",
+        "purpose": "Jede Website ist ein Projekt. Alles, was Moat über sie weiss, liegt in ihrem Projektordner: die Konfiguration, die Gates, die versiegelten Secrets und die signierten Bundles. Keine Datenbank, kein Server.",
+        "where": "Projekte",
         "steps": {
           "cli": "Lege einen Ordner an und schreibe darin eine moat.yaml. Ein Recipe aus dem Ordner `recipes` ist ein guter Anfang.",
           "folder": "Mit dem Moat CLI kommen die Unterordner dazu: `gates` für die Gates, `secrets` für versiegelte Secrets, `bundles` für signierte Bundles.",
-          "open": "Klicke in der Übersicht auf «Projektordner öffnen» und wähle den Ordner. Moat Desktop startet mit diesem Ordner neu.",
-          "check": "Die Übersicht zeigt, ob moat.yaml gültig ist, wie viele Routen, Upstreams, Secrets und Gates es gibt, und welcher Vertrauensmodus gilt."
+          "add": "Klicke unter «Projekte» auf «Projekt hinzufügen» und wähle den Ordner. Das Projekt öffnet sich sofort.",
+          "check": "Jedes Projekt hat die Bereiche «Übersicht», «Gates» und «Routen». Die Übersicht zeigt, ob moat.yaml gültig ist, wie viele Routen, Upstreams, Secrets und Gates es gibt, und welcher Vertrauensmodus gilt."
         },
         "tips": {
           "git": "Der Projektordner eignet sich für Git: Secrets liegen darin nur versiegelt, Schlüsseldateien gehören nicht hinein.",
-          "reload": "Änderst du Dateien im Ordner, klicke auf «Neu laden»."
+          "reload": "Änderst du Dateien im Ordner, klicke auf «Neu laden».",
+          "remove": "«Aus der Liste entfernen» nimmt nur den Eintrag weg. Der Ordner und seine Dateien bleiben, wie sie sind."
         }
       },
       "gate": {
         "title": "Gate installieren",
         "purpose": "Das Gate läuft auf deinem Hosting. Es kennt deine Secrets und leitet nur die Routen weiter, die du freigibst. Es hat keine Verwaltungsoberfläche, die man von aussen erreichen könnte.",
-        "where": "Gates",
+        "where": "Projekt › Gates",
         "steps": {
           "upload": "Lade die Datei moat-gate.php in den Webspace deiner Website hoch.",
           "install": "Führe auf dem Server `php moat-gate.php install --signer=<öffentlicher Schlüssel>` aus. Das Gate legt einen geschützten Datenordner an und gibt Gate-ID, Box-Schlüssel und Fingerprints aus.",
@@ -232,7 +255,7 @@
       "trust": {
         "title": "Vertrauensmodus",
         "purpose": "Der Vertrauensmodus legt fest, wer Änderungen an einem Gate freigeben darf. In Moat Desktop gilt immer «Signiert»: Das Gate nimmt nur Bundles an, die mit deiner Schlüsseldatei signiert sind.",
-        "where": "Übersicht › Vertrauensmodus und Gates",
+        "where": "Projekt › Übersicht › Vertrauensmodus und Gates",
         "steps": {
           "keygen": "Erzeuge einmal eine Schlüsseldatei mit `moat keygen <datei>.moatkey` und wähle eine gute Passphrase.",
           "trust": "Gib dem Gate bei der Installation den öffentlichen Schlüssel mit (--signer). Wechseln kannst du ihn nur am Gate selbst, mit `php moat-gate.php trust`.",
@@ -246,7 +269,7 @@
       "secrets": {
         "title": "Upstreams und Secrets",
         "purpose": "Ein Upstream ist die API, die das Gate aufruft. Ihr Schlüssel ist ein Secret: Er wird für ein bestimmtes Gate versiegelt und kann nur dort wieder geöffnet werden.",
-        "where": "Gates › Versiegelte Secrets und Routen › Upstreams",
+        "where": "Projekt › Gates › Versiegelte Secrets und Routen › Upstreams",
         "steps": {
           "upstream": "Trage den Upstream in moat.yaml ein, mit Adresse und dem Namen des Secrets (z. B. `secret: hubspot-token`), nie mit dem Wert.",
           "seal": "Versiegle den Wert mit `moat secret seal <gate> <name>`. Du gibst ihn im Terminal ein; gespeichert wird nur verschlüsselter Text.",
@@ -260,7 +283,7 @@
       "routes": {
         "title": "Routen und Recipes",
         "purpose": "Eine Route ist eine Adresse auf deinem Gate, die genau eine Anfrage an einen Upstream weiterleitet. Alles andere lehnt das Gate ab.",
-        "where": "Routen",
+        "where": "Projekt › Routen",
         "steps": {
           "write": "Trage die Route in moat.yaml ein: Methode, Pfad, Upstream und Ziel-Pfad.",
           "recipe": "Für häufige Fälle gibt es Recipes, zum Beispiel die Newsletter-Anmeldung bei HubSpot.",
@@ -275,7 +298,7 @@
       "limits": {
         "title": "Limits",
         "purpose": "Rate-Limits schützen deine API-Kontingente vor Skripten. Das Gate zählt selbst mit.",
-        "where": "Routen › Rate-Limit",
+        "where": "Projekt › Routen › Rate-Limit",
         "steps": {
           "route": "Gib einer Route ein Rate-Limit, zum Beispiel 5 Anfragen pro 10 Minuten je Besucher.",
           "policy": "Die lokale Policy des Gates setzt Grenzen, die immer gelten, egal was ein Bundle sagt. `moat policy suggest` schlägt eine passende Policy vor.",
@@ -288,7 +311,7 @@
       "release": {
         "title": "Freigeben und Signieren",
         "purpose": "Ein Bundle ist die signierte Konfiguration für genau ein Gate. Das Gate nimmt es nur an, wenn die Signatur stimmt und die Version höher ist als die letzte.",
-        "where": "Gates › Letztes Bundle",
+        "where": "Projekt › Gates › Letztes Bundle",
         "steps": {
           "build": "Baue das Bundle mit `moat build <gate> --key <datei>.moatkey`. Es liegt danach unter `bundles`.",
           "deploy": "Lade die Bundle-Datei auf den Server.",
@@ -302,7 +325,7 @@
       "privacy": {
         "title": "Desktop und Datenschutz",
         "purpose": "Moat Desktop arbeitet nur auf deinem Computer. Es braucht keinen Server und kein Konto.",
-        "where": "Übersicht",
+        "where": "Projekte",
         "steps": {
           "local": "Moat Desktop liest deinen Projektordner und sendet nichts ins Internet.",
           "ciphertext": "Secrets liegen im Projektordner nur versiegelt. Öffnen kann sie nur das Gate, für das sie versiegelt sind.",

@@ -8,18 +8,11 @@ export const appRoutes: Route[] = [
     loadComponent: () =>
       import('./core/layout/app-shell').then((m) => m.AppShell),
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'overview' },
+      { path: '', pathMatch: 'full', redirectTo: 'projects' },
       {
-        path: 'overview',
-        loadChildren: () => import('./features/overview/overview.routes'),
-      },
-      {
-        path: 'gates',
-        loadChildren: () => import('./features/gates/gates.routes'),
-      },
-      {
-        path: 'routes',
-        loadChildren: () => import('./features/routes/routes.routes'),
+        // The start page, and each project's workspace below it.
+        path: 'projects',
+        loadChildren: () => import('./features/projects/projects.routes'),
       },
       {
         // FR-70: the step-by-step guide.

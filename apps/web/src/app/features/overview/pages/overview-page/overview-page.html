@@ -1,51 +1,8 @@
-<mt-page-header
-  [title]="'overview.title' | translate"
-  [subtitle]="'overview.subtitle' | translate"
->
-  <button
-    hlmBtn
-    variant="outline"
-    type="button"
-    data-reload
-    (click)="resource.reload()"
-  >
-    <ng-icon name="lucideRefreshCw" size="16" aria-hidden="true" />
-    {{ 'common.reload' | translate }}
-  </button>
-  @if (service.canChoose) {
-  <button hlmBtn type="button" data-choose-folder (click)="service.choose()">
-    <ng-icon name="lucideFolderOpen" size="16" aria-hidden="true" />
-    {{ 'overview.folder.choose' | translate }}
-  </button>
-  }
-  <mt-help-link section="project" />
-</mt-page-header>
+<p class="text-muted-foreground mb-6 text-sm">
+  {{ 'overview.subtitle' | translate }}
+</p>
 
-@if (service.choice() === 'failed') {
-<p class="mt-note mb-6" role="alert" data-choose-failed>
-  <ng-icon
-    name="lucideTriangleAlert"
-    size="16"
-    aria-hidden="true"
-    class="mt-0.5 shrink-0"
-  />
-  <span>{{ 'overview.folder.failed' | translate }}</span>
-</p>
-} @if (resource.view.isLoading() && !resource.view.hasValue()) {
-<p class="text-muted-foreground text-sm" role="status">
-  {{ 'common.loading' | translate }}
-</p>
-} @else if (resource.view.error()) {
-<p class="mt-note" role="alert" data-load-error>
-  <ng-icon
-    name="lucideTriangleAlert"
-    size="16"
-    aria-hidden="true"
-    class="mt-0.5 shrink-0"
-  />
-  <span>{{ 'common.loadError' | translate }}</span>
-</p>
-} @else if (resource.project(); as project) {
+@if (resource.project(); as project) {
 <div class="grid gap-6 md:grid-cols-2">
   <section hlmCard aria-labelledby="folder-title">
     <div hlmCardHeader>
@@ -56,19 +13,7 @@
     </div>
     <div hlmCardContent class="flex flex-col gap-3">
       <p class="mt-code" data-folder>{{ resource.folder() }}</p>
-      @if (service.canChoose) {
-      <div>
-        <button
-          hlmBtn
-          variant="outline"
-          size="sm"
-          type="button"
-          (click)="service.reveal()"
-        >
-          {{ 'overview.folder.reveal' | translate }}
-        </button>
-      </div>
-      }
+      <mt-project-remove-button />
     </div>
   </section>
 
@@ -113,10 +58,20 @@
       </p>
       }
       <div class="flex flex-wrap gap-2">
-        <a hlmBtn variant="outline" size="sm" routerLink="/app/routes">
+        <a
+          hlmBtn
+          variant="outline"
+          size="sm"
+          [routerLink]="[resource.base(), 'routes']"
+        >
           {{ 'overview.config.showRoutes' | translate }}
         </a>
-        <a hlmBtn variant="outline" size="sm" routerLink="/app/gates">
+        <a
+          hlmBtn
+          variant="outline"
+          size="sm"
+          [routerLink]="[resource.base(), 'gates']"
+        >
           {{ 'overview.config.showGates' | translate }}
         </a>
       </div>
@@ -148,28 +103,4 @@
     </div>
   </section>
 </div>
-} @else {
-<!-- No project open yet (first start), or the folder is gone. -->
-<section hlmCard class="max-w-2xl" data-no-project>
-  <div hlmCardHeader>
-    <h2 hlmCardTitle>{{ 'overview.empty.title' | translate }}</h2>
-    <p hlmCardDescription>
-      @if (resource.folder(); as folder) { {{ 'overview.empty.gone' | translate:
-      { folder: folder } }} } @else { {{ 'overview.empty.description' |
-      translate }} }
-    </p>
-  </div>
-  <div hlmCardContent class="flex flex-col gap-4 text-sm">
-    <p><mt-rich-text [text]="'overview.empty.cli' | translate" /></p>
-    <div class="flex flex-wrap gap-2">
-      @if (service.canChoose) {
-      <button hlmBtn type="button" (click)="service.choose()">
-        <ng-icon name="lucideFolderOpen" size="16" aria-hidden="true" />
-        {{ 'overview.folder.choose' | translate }}
-      </button>
-      }
-      <mt-help-link section="project" [labelKey]="'overview.empty.help'" />
-    </div>
-  </div>
-</section>
 }

@@ -1,36 +1,11 @@
-<mt-page-header
-  [title]="'gates.title' | translate"
-  [subtitle]="'gates.subtitle' | translate"
->
-  <button hlmBtn variant="outline" type="button" (click)="resource.reload()">
-    <ng-icon name="lucideRefreshCw" size="16" aria-hidden="true" />
-    {{ 'common.reload' | translate }}
-  </button>
+<div class="mb-6 flex items-center justify-between gap-3">
+  <p class="text-muted-foreground text-sm">
+    {{ 'gates.subtitle' | translate }}
+  </p>
   <mt-help-link section="gate" />
-</mt-page-header>
+</div>
 
-@if (resource.view.isLoading() && !resource.view.hasValue()) {
-<p class="text-muted-foreground text-sm" role="status">
-  {{ 'common.loading' | translate }}
-</p>
-} @else if (resource.view.error()) {
-<p class="mt-note" role="alert">
-  <ng-icon
-    name="lucideTriangleAlert"
-    size="16"
-    aria-hidden="true"
-    class="mt-0.5 shrink-0"
-  />
-  <span>{{ 'common.loadError' | translate }}</span>
-</p>
-} @else if (!resource.project()) {
-<p class="mt-note" data-no-project>
-  <span class="flex-1">{{ 'common.noProject' | translate }}</span>
-  <a hlmBtn size="sm" variant="outline" routerLink="/app/overview">
-    {{ 'common.toOverview' | translate }}
-  </a>
-</p>
-} @else if (resource.gates().length === 0) {
+@if (resource.gates().length === 0) {
 <p class="mt-note" data-no-gates>
   <mt-rich-text [text]="'gates.empty' | translate" />
 </p>

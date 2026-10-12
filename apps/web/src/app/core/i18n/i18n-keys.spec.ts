@@ -7,6 +7,7 @@ import { allHelpKeys } from '../../features/help/help-content';
 import { allTrustKeys } from '../../shared/components/trust-mode-badge/trust-modes';
 import { AUTH_TYPES, CONFIG_ISSUE_CODES } from '../api/project.types';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './locales';
+import { PROJECT_TABS } from '../../features/projects/pages/project-workspace/project-workspace.service';
 
 /**
  * Every i18n key the app references exists in every message file, and every text in the files is
@@ -25,6 +26,7 @@ const DYNAMIC_KEYS = [
   ...CONFIG_ISSUE_CODES.map((code) => `config.errors.${code}`),
   ...AUTH_TYPES.map((type) => `routes.auth.${type}`),
   ...['ip', 'route'].map((per) => `routes.rate.${per}`),
+  ...PROJECT_TABS.map((tab) => `projects.tabs.${tab}`),
 ];
 
 function files(dir: string): string[] {

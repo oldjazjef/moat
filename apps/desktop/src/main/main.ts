@@ -1,4 +1,4 @@
-import { accessSync, constants, statSync } from 'node:fs';
+import { accessSync, constants, realpathSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import {
   app,
@@ -10,7 +10,7 @@ import {
   session,
   shell,
 } from 'electron';
-import { IPC, type ProjectChangeResult } from '../shared/bridge';
+import { IPC, PROJECT_ID, type ProjectAddResult } from '../shared/bridge';
 import { type RunningApi, startApi } from './api-host';
 import { readConfig, writeConfig } from './lib/config';
 import { MESSAGES, systemLocale } from './lib/messages';
@@ -77,16 +77,8 @@ void app.whenReady().then(start);
 
 async function start(): Promise<void> {
   const userData = app.getPath('userData');
-  // A folder given on the command line (`--project=<dir>`) wins for this run: demos and tests.
-  const projectArg = process.argv
-    .find((arg) => arg.startsWith('--project='))
-    ?.slice('--project='.length);
-  const projectDir =
-    projectArg !== undefined && projectArg !== ''
-      ? resolve(projectArg)
-      : readConfig(userData).projectDir;
   try {
-    api = await startApi({ appDir, projectDir });
+    api = await startApi({ appDir, dataDir: userData });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     console.error('[desktop] start failed', error);
@@ -99,18 +91,41 @@ async function start(): Promise<void> {
     return;
   }
 
+  // The first builds remembered one folder: move it into the project list once.
+  const legacy = readConfig(userData).projectDir;
+  if (legacy !== null) {
+    if (isFolder(legacy)) await api.addProject(legacy).catch(() => undefined);
+    writeConfig(userData, { projectDir: null });
+  }
+  // A folder given on the command line (`--project=<dir>`) is added and opened: demos and tests.
+  const projectArg = process.argv
+    .find((arg) => arg.startsWith('--project='))
+    ?.slice('--project='.length);
+  let startPath = '/app/projects';
+  if (projectArg !== undefined && projectArg !== '') {
+    const dir = resolve(projectArg);
+    if (isFolder(dir)) {
+      try {
+        const { id } = await api.addProject(dir);
+        startPath = `/app/projects/${id}`;
+      } catch {
+        // A full list: start on the list instead.
+      }
+    }
+  }
+
   handleAppScheme(join(appDir, 'web'), api);
   // The app needs no camera, microphone, notifications, … — refuse every permission request.
   session.defaultSession.setPermissionRequestHandler((_wc, _p, callback) =>
     callback(false),
   );
   session.defaultSession.setPermissionCheckHandler(() => false);
-  registerIpc(userData, projectDir);
+  registerIpc();
   Menu.setApplicationMenu(buildMenu());
-  createWindow();
+  createWindow(startPath);
 }
 
-function createWindow(): void {
+function createWindow(startPath: string): void {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 860,
@@ -132,7 +147,7 @@ function createWindow(): void {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
-  void mainWindow.loadURL(`${APP_ORIGIN}/app/overview`);
+  void mainWindow.loadURL(`${APP_ORIGIN}${startPath}`);
 }
 
 /** Answers only the app's own page (DT-08); the handlers take no arguments from it. */
@@ -140,48 +155,52 @@ function fromApp(event: IpcMainInvokeEvent): boolean {
   return isAppUrl(event.senderFrame?.url);
 }
 
-function registerIpc(userData: string, current: string | null): void {
+function registerIpc(): void {
+  ipcMain.handle(IPC.projectAdd, async (event): Promise<ProjectAddResult> => {
+    if (!fromApp(event) || mainWindow === null || api === null) {
+      return { status: 'failed' };
+    }
+    const text = messages().chooseProject;
+    const picked = await dialog.showOpenDialog(mainWindow, {
+      title: text.title,
+      buttonLabel: text.button,
+      properties: ['openDirectory'],
+    });
+    const dir = picked.filePaths[0];
+    if (picked.canceled || dir === undefined) return { status: 'cancelled' };
+    try {
+      if (!isFolder(dir)) return { status: 'failed' };
+      accessSync(dir, constants.R_OK);
+      return { status: 'added', id: (await api.addProject(dir)).id };
+    } catch {
+      return { status: 'failed' };
+    }
+  });
+  // The page passes only an id; the folder comes from the API's own list.
   ipcMain.handle(
-    IPC.projectChoose,
-    async (event): Promise<ProjectChangeResult> => {
-      if (!fromApp(event) || mainWindow === null) return { status: 'failed' };
-      const text = messages().chooseProject;
-      const picked = await dialog.showOpenDialog(mainWindow, {
-        title: text.title,
-        buttonLabel: text.button,
-        properties: ['openDirectory'],
-        ...(current === null ? {} : { defaultPath: current }),
-      });
-      const dir = picked.filePaths[0];
-      if (picked.canceled || dir === undefined) return { status: 'cancelled' };
-      if (dir === current) return { status: 'unchanged' };
-      try {
-        if (!statSync(dir).isDirectory()) return { status: 'failed' };
-        accessSync(dir, constants.R_OK);
-        writeConfig(userData, { projectDir: dir });
-      } catch {
-        return { status: 'failed' };
-      }
-      // The API read MOAT_PROJECT_DIR when it was loaded: start afresh with the new folder,
-      // once the answer has reached the page.
-      setTimeout(() => {
-        app.relaunch({
-          args: process.argv
-            .slice(1)
-            .filter((arg) => !arg.startsWith('--project=')),
-        });
-        app.quit();
-      }, 100);
-      return { status: 'restarting' };
+    IPC.projectReveal,
+    async (event, id: unknown): Promise<void> => {
+      if (!fromApp(event) || api === null) return;
+      if (typeof id !== 'string' || !PROJECT_ID.test(id)) return;
+      const folder = await api.projectFolder(id);
+      // openPath runs a file with its default handler: open only a real folder, never a program
+      // (a macOS `.app` is a folder too).
+      // Check the real path: a symbolic link or a trailing `/.` must not hide an app bundle.
+      const real = folder === null ? null : realFolder(folder);
+      if (real === null || /\.app$/i.test(real)) return;
+      await shell.openPath(real);
     },
   );
-  ipcMain.handle(IPC.projectReveal, async (event): Promise<void> => {
-    if (!fromApp(event) || current === null) return;
-    // openPath runs a file with its default handler: open only a real folder, never a program
-    // (`--project=` and config.json are not checked otherwise; a macOS `.app` is a folder too).
-    if (!isFolder(current) || /\.app\/?$/i.test(current)) return;
-    await shell.openPath(current);
-  });
+}
+
+/** The resolved path when it is a directory, otherwise null. */
+function realFolder(path: string): string | null {
+  try {
+    const real = realpathSync(path);
+    return statSync(real).isDirectory() ? real : null;
+  } catch {
+    return null;
+  }
 }
 
 function isFolder(path: string): boolean {

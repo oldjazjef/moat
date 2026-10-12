@@ -24,6 +24,8 @@ export interface AuthzEntry {
   readonly method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   /** As registered, with the global prefix: `/api/project`. */
   readonly path: string;
+  /** The URL the spec calls, when `path` has parameters (ids seeded by the spec). */
+  readonly request?: string;
   readonly expect: Readonly<Record<Identity, number>>;
 }
 
@@ -34,7 +36,24 @@ const LOCAL_ONLY = {
   desktop: 200,
 } as const;
 
+/** Projects the spec seeds into the project list before it boots the API. */
+export const SEEDED_PROJECT = 'seededProject000000000';
+export const SEEDED_REMOVABLE = 'seededRemovable0000000';
+
 export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
   { method: 'GET', path: '/api/health', expect: LOCAL_ONLY },
-  { method: 'GET', path: '/api/project', expect: LOCAL_ONLY },
+  { method: 'GET', path: '/api/projects', expect: LOCAL_ONLY },
+  {
+    method: 'GET',
+    path: '/api/projects/:id',
+    request: `/api/projects/${SEEDED_PROJECT}`,
+    expect: LOCAL_ONLY,
+  },
+  {
+    // Only takes the project off the list; the desktop is the only caller that gets through.
+    method: 'DELETE',
+    path: '/api/projects/:id',
+    request: `/api/projects/${SEEDED_REMOVABLE}`,
+    expect: { ...LOCAL_ONLY, desktop: 204 },
+  },
 ];

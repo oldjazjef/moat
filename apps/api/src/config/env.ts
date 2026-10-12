@@ -1,12 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import {
-  IsEnum,
-  IsIn,
-  IsOptional,
-  IsString,
-  Matches,
-  validateSync,
-} from 'class-validator';
+import { IsEnum, IsIn, IsString, Matches, validateSync } from 'class-validator';
 
 export enum NodeEnv {
   Development = 'development',
@@ -42,14 +35,14 @@ export class Env {
   LOCAL_MODE!: 'true';
 
   /**
-   * The open project folder (DT-03, DT-14), an absolute path; unset = no project open yet. The
-   * desktop shell chooses it in a main-process dialog, never the page.
+   * Where the API keeps its own data, an absolute path: the list of projects
+   * (`projects.json`). The desktop passes its user-data folder. The projects themselves stay in
+   * their own folders (DT-03, DT-14).
    */
-  @IsOptional()
   @IsString()
   // POSIX `/…` or Windows `C:\…`: a relative path would depend on the working directory.
   @Matches(/^(\/|[A-Za-z]:[\\/])/)
-  MOAT_PROJECT_DIR?: string;
+  MOAT_DATA_DIR!: string;
 }
 
 /** Throws on the first misconfiguration; never echoes values (one of them could be a path). */

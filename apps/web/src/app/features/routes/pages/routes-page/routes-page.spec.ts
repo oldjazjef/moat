@@ -1,4 +1,4 @@
-import { openPage, PROJECT } from '../../../../../testing/page-harness';
+import { openProjectTab, PROJECT } from '../../../../../testing/page-harness';
 import { RoutesPage } from './routes-page';
 
 const text = (el: HTMLElement, selector: string) =>
@@ -6,7 +6,7 @@ const text = (el: HTMLElement, selector: string) =>
 
 describe('RoutesPage', () => {
   it('shows each route as the gate enforces it, and the upstream with its secret by name', async () => {
-    const { el } = await openPage('/app/routes', RoutesPage, PROJECT);
+    const { el } = await openProjectTab('routes', RoutesPage, PROJECT);
     const row = text(el, '[data-route-name="newsletter"]');
     expect(row).toContain('POST /newsletter');
     expect(row).toContain('https://api.hubapi.com/crm/v3/objects/contacts');
@@ -19,8 +19,8 @@ describe('RoutesPage', () => {
   });
 
   it('sends to the overview when moat.yaml cannot be used', async () => {
-    const { el } = await openPage('/app/routes', RoutesPage, {
-      folder: '/p',
+    const { el } = await openProjectTab('routes', RoutesPage, {
+      ...PROJECT,
       project: { config: { status: 'missing' }, gates: [] },
     });
     expect(el.querySelector('[data-config-unusable]')).not.toBeNull();

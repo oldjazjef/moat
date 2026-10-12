@@ -1,0 +1,136 @@
+<mt-page-header
+  [title]="'projects.title' | translate"
+  [subtitle]="'projects.subtitle' | translate"
+>
+  <button
+    hlmBtn
+    variant="outline"
+    type="button"
+    (click)="service.list.reload()"
+  >
+    <ng-icon name="lucideRefreshCw" size="16" aria-hidden="true" />
+    {{ 'common.reload' | translate }}
+  </button>
+  @if (service.canAdd) {
+  <button hlmBtn type="button" data-add-project (click)="service.add()">
+    <ng-icon name="lucideFolderPlus" size="16" aria-hidden="true" />
+    {{ 'projects.add' | translate }}
+  </button>
+  }
+  <mt-help-link section="project" />
+</mt-page-header>
+
+@if (service.addFailed()) {
+<p class="mt-note mb-6" role="alert" data-add-failed>
+  <ng-icon
+    name="lucideTriangleAlert"
+    size="16"
+    aria-hidden="true"
+    class="mt-0.5 shrink-0"
+  />
+  <span>{{ 'projects.addFailed' | translate }}</span>
+</p>
+} @if (service.list.isLoading() && !service.list.hasValue()) {
+<p class="text-muted-foreground text-sm" role="status">
+  {{ 'common.loading' | translate }}
+</p>
+} @else if (service.list.error()) {
+<p class="mt-note" role="alert" data-load-error>
+  <ng-icon
+    name="lucideTriangleAlert"
+    size="16"
+    aria-hidden="true"
+    class="mt-0.5 shrink-0"
+  />
+  <span>{{ 'projects.loadError' | translate }}</span>
+</p>
+} @else if (service.list.hasValue() && service.list.value().length > 0) {
+<ul class="grid gap-6 md:grid-cols-2" data-projects>
+  @for (project of service.list.value(); track project.id) {
+  <li>
+    <section
+      hlmCard
+      class="h-full"
+      data-project
+      [attr.aria-labelledby]="'project-' + project.id"
+    >
+      <div hlmCardHeader>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <h2 hlmCardTitle [id]="'project-' + project.id">
+            <a
+              class="hover:underline"
+              [routerLink]="['/app/projects', project.id]"
+              data-project-link
+              >{{ project.name }}</a
+            >
+          </h2>
+          <mt-trust-mode-badge mode="signed" />
+        </div>
+        <p class="mt-code text-muted-foreground">{{ project.folder }}</p>
+      </div>
+      <div hlmCardContent class="flex flex-col gap-3 text-sm">
+        @switch (project.config) { @case ('valid') {
+        <p data-project-status="valid">
+          {{ 'projects.status.valid' | translate }}
+        </p>
+        } @case ('invalid') {
+        <p class="text-destructive" data-project-status="invalid">
+          {{ 'projects.status.invalid' | translate }}
+        </p>
+        } @case ('missing') {
+        <p class="mt-warning-text" data-project-status="missing">
+          {{ 'projects.status.missing' | translate }}
+        </p>
+        } @default {
+        <p class="mt-warning-text" data-project-status="gone">
+          {{ 'projects.status.gone' | translate }}
+        </p>
+        } } @if (project.config !== null) {
+        <dl class="mt-facts">
+          <dt>{{ 'overview.counts.routes' | translate }}</dt>
+          <dd>{{ project.routes }}</dd>
+          <dt>{{ 'overview.counts.gates' | translate }}</dt>
+          <dd>{{ project.gates }}</dd>
+        </dl>
+        } @if (project.gatesMissingSecrets.length > 0) {
+        <p class="mt-warning-text" data-missing-secrets>
+          {{ 'overview.config.missingSecrets' | translate: { gates:
+          project.gatesMissingSecrets.join(', ') } }}
+        </p>
+        }
+        <div>
+          <a
+            hlmBtn
+            variant="outline"
+            size="sm"
+            [routerLink]="['/app/projects', project.id]"
+          >
+            {{ 'projects.open' | translate }}
+          </a>
+        </div>
+      </div>
+    </section>
+  </li>
+  }
+</ul>
+} @else {
+<!-- No project yet (first start). -->
+<section hlmCard class="max-w-2xl" data-no-project>
+  <div hlmCardHeader>
+    <h2 hlmCardTitle>{{ 'projects.empty.title' | translate }}</h2>
+    <p hlmCardDescription>{{ 'projects.empty.description' | translate }}</p>
+  </div>
+  <div hlmCardContent class="flex flex-col gap-4 text-sm">
+    <p><mt-rich-text [text]="'projects.empty.cli' | translate" /></p>
+    <div class="flex flex-wrap gap-2">
+      @if (service.canAdd) {
+      <button hlmBtn type="button" (click)="service.add()">
+        <ng-icon name="lucideFolderPlus" size="16" aria-hidden="true" />
+        {{ 'projects.add' | translate }}
+      </button>
+      }
+      <mt-help-link section="project" [labelKey]="'projects.empty.help'" />
+    </div>
+  </div>
+</section>
+}

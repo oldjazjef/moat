@@ -1,17 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { NgIcon, provideIcons } from '@ng-icons/core';
-import {
-  lucideFolderOpen,
-  lucideRefreshCw,
-  lucideTriangleAlert,
-} from '@ng-icons/lucide';
 import { TranslatePipe } from '@ngx-translate/core';
 import { HlmButtonImports } from '@moat/ui/button';
 import { HlmCardImports } from '@moat/ui/card';
-import { HelpLink } from '../../../help/components/help-link';
-import { PageHeader } from '../../../../shared/components/page-header';
-import { RichText } from '../../../../shared/components/rich-text';
+import { ProjectRemoveButton } from '../../../projects/components/project-remove-button';
 import { TrustModeBadge } from '../../../../shared/components/trust-mode-badge';
 import { OverviewPageService } from './overview-page.service';
 
@@ -19,19 +11,13 @@ import { OverviewPageService } from './overview-page.service';
   selector: 'mt-overview-page',
   imports: [
     RouterLink,
-    NgIcon,
     TranslatePipe,
-    PageHeader,
-    RichText,
-    HelpLink,
     TrustModeBadge,
+    ProjectRemoveButton,
     ...HlmButtonImports,
     ...HlmCardImports,
   ],
-  providers: [
-    OverviewPageService,
-    provideIcons({ lucideFolderOpen, lucideRefreshCw, lucideTriangleAlert }),
-  ],
+  providers: [OverviewPageService],
   templateUrl: './overview-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

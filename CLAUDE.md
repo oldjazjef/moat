@@ -23,9 +23,10 @@ Four components (ANFORDERUNGEN.md, header):
 > build, CLI (`install|trust|policy|accept|status`), bundle acceptance (steps 1–10), exact routing,
 > the cURL upstream client with SSRF guard, origin binding/CORS and rate limits
 > ([gates/php/README.md](gates/php/README.md)). **Moat Desktop, first surface:** Electron shell
-> with the API in-process (`apps/api`, project folder read-only: `GET /api/health`,
-> `GET /api/project`) and the Angular UI (`apps/web`: Übersicht, Gates, Routen, Hilfe). Writing
-> still goes through the CLI. Not yet: Cloud, desktop editing/signing, setup wizard (FR-73),
+> with the API in-process (`apps/api`: the project list in `<MOAT_DATA_DIR>/projects.json`,
+> `GET /api/projects`, `GET|DELETE /api/projects/:id`, project folders read-only) and the Angular
+> UI (`apps/web`: Projekte → workspace with Übersicht, Gates, Routen; Hilfe). Writing still goes
+> through the CLI. Not yet: Cloud, desktop editing/signing, setup wizard (FR-73),
 > quotas/budgets, lazy pull, setup mode, trust mode 2. Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
@@ -76,9 +77,11 @@ DT-04). Electron over Tauri: decided by "same stack as lazy-koins" (closes ANFOR
 
 As built: the API refuses any request whose `Host` is not exactly `127.0.0.1:<port>` (DT-16)
 or that lacks the per-launch `x-moat-desktop` token; both refusals are the same 403. IPC
-handlers take no arguments and answer only the `app://moat` origin (DT-08); the project folder
-is picked in a main-process dialog, then the app relaunches with it. `--project=<dir>` opens a
-folder for development and screenshots.
+handlers answer only the `app://moat` origin (DT-08) and take at most a project id. Everything
+is project-based: a project is a folder in the API's project list. A folder is added only in the
+main-process dialog, in-process (`addProject` in `apps/api/src/desktop.ts`) — there is no HTTP
+route that takes a path. `--project=<dir>` adds and opens a folder for development and
+screenshots.
 
 ### CLI (`apps/cli`)
 

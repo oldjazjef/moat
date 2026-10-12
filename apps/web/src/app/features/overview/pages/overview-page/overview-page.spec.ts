@@ -1,14 +1,12 @@
-import { openPage, PROJECT } from '../../../../../testing/page-harness';
+import { openProjectTab, PROJECT } from '../../../../../testing/page-harness';
 import { OverviewPage } from './overview-page';
 
 const text = (el: HTMLElement, selector: string) =>
   el.querySelector(selector)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 
 describe('OverviewPage', () => {
-  afterEach(() => delete window.moatDesktop);
-
   it('shows the folder, the valid config with its counts and the trust mode with the §2.9 sentence', async () => {
-    const { el } = await openPage('/app/overview', OverviewPage, PROJECT);
+    const { el } = await openProjectTab('overview', OverviewPage, PROJECT);
     expect(text(el, '[data-folder]')).toBe('/home/eme/sites/example');
     expect(el.querySelector('[data-config-status="valid"]')).not.toBeNull();
     expect(text(el, '[data-count-routes]')).toBe('1');
@@ -24,8 +22,8 @@ describe('OverviewPage', () => {
   });
 
   it('lists config errors with line and column', async () => {
-    const { el } = await openPage('/app/overview', OverviewPage, {
-      folder: '/p',
+    const { el } = await openProjectTab('overview', OverviewPage, {
+      ...PROJECT,
       project: {
         config: {
           status: 'invalid',
@@ -46,36 +44,5 @@ describe('OverviewPage', () => {
     expect(text(el, '[data-config-issues]')).toContain(
       'Fehler in der YAML-Schreibweise (Zeile 2, Spalte 1)',
     );
-  });
-
-  it('offers to open a folder when none is open — in the desktop app only', async () => {
-    const { el } = await openPage('/app/overview', OverviewPage, {
-      folder: null,
-      project: null,
-    });
-    expect(el.querySelector('[data-no-project]')).not.toBeNull();
-    expect(el.querySelector('[data-choose-folder]')).toBeNull();
-  });
-
-  it('asks the desktop shell for the folder dialog and says so when it fails', async () => {
-    const choose = vi.fn().mockResolvedValue({ status: 'failed' });
-    window.moatDesktop = {
-      platform: 'linux',
-      project: { choose, reveal: vi.fn() },
-    };
-    const { el, harness } = await openPage('/app/overview', OverviewPage, {
-      folder: null,
-      project: null,
-    });
-    (el.querySelector('[data-choose-folder]') as HTMLButtonElement).click();
-    await harness.fixture.whenStable();
-    harness.detectChanges();
-    expect(choose).toHaveBeenCalledOnce();
-    expect(el.querySelector('[data-choose-failed]')).not.toBeNull();
-  });
-
-  it('says so when the API cannot be reached', async () => {
-    const { el } = await openPage('/app/overview', OverviewPage, 'error');
-    expect(el.querySelector('[data-load-error]')).not.toBeNull();
   });
 });

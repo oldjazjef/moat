@@ -5,7 +5,10 @@ import { isAbsolute, join } from 'node:path';
 export const CONFIG_FILE = 'config.json';
 
 export interface DesktopConfig {
-  /** The open project folder (DT-03), absolute; null = none chosen yet. */
+  /**
+   * The one project folder of the first desktop builds, before the project list. Moved into the
+   * list on the next start, then cleared (see main.ts).
+   */
   readonly projectDir: string | null;
 }
 

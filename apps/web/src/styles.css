@@ -186,6 +186,21 @@
     border-color: color-mix(in oklab, var(--primary) 30%, transparent);
   }
 
+  /* A project's tabs (Übersicht, Gates, Routen): links, the current one underlined. */
+  .mt-tabs {
+    @apply flex gap-1 overflow-x-auto overflow-y-hidden;
+    /* The base line as a shadow: the current tab's border lies on top of it, no overflow. */
+    box-shadow: inset 0 -1px 0 var(--border);
+  }
+
+  .mt-tab {
+    @apply text-muted-foreground hover:text-foreground border-b-2 border-transparent px-3 py-2 text-sm font-medium whitespace-nowrap outline-hidden focus-visible:ring-inset focus-visible:ring-2;
+  }
+
+  .mt-tab-active {
+    @apply border-primary text-foreground;
+  }
+
   /* Hilfe (FR-71): the table of contents and a jumped-to step (as lazy-koins). */
   .mt-help-toc-link {
     @apply text-muted-foreground hover:bg-muted hover:text-foreground flex items-start gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden focus-visible:ring-2;

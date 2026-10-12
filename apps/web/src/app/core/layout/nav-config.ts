@@ -1,9 +1,4 @@
-import {
-  lucideCircleHelp,
-  lucideLayoutDashboard,
-  lucideRoute,
-  lucideServer,
-} from '@ng-icons/lucide';
+import { lucideCircleHelp, lucideFolderKanban } from '@ng-icons/lucide';
 
 export interface NavItem {
   readonly path: string;
@@ -16,13 +11,12 @@ export interface NavItem {
  * it). Icon names must be registered in `NAV_ICONS`.
  */
 export const NAV_ITEMS: readonly NavItem[] = [
+  // Everything lives in a project (Übersicht, Gates, Routen are the tabs of its workspace).
   {
-    path: '/app/overview',
-    labelKey: 'nav.overview',
-    icon: 'lucideLayoutDashboard',
+    path: '/app/projects',
+    labelKey: 'nav.projects',
+    icon: 'lucideFolderKanban',
   },
-  { path: '/app/gates', labelKey: 'nav.gates', icon: 'lucideServer' },
-  { path: '/app/routes', labelKey: 'nav.routes', icon: 'lucideRoute' },
 ];
 
 /** "Hilfe" (FR-70): the last entry of the sidebar, in its footer. */
@@ -34,9 +28,7 @@ export const HELP_NAV_ITEM: NavItem = {
 
 export const NAV_ICONS = {
   lucideCircleHelp,
-  lucideLayoutDashboard,
-  lucideRoute,
-  lucideServer,
+  lucideFolderKanban,
 };
 
 /** Whether a navigation entry is the current one: the URL lies under its path. */

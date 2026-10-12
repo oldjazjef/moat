@@ -3,22 +3,18 @@
  * Absent in a browser. A mirror of `apps/desktop/src/shared/bridge.ts` — keep both in step; the
  * web app must not import from apps/desktop.
  */
-export type ProjectChangeResult =
+export type ProjectAddResult =
+  | { status: 'added'; id: string }
   | { status: 'cancelled' }
-  | { status: 'unchanged' }
-  | { status: 'restarting' }
   | { status: 'failed' };
 
 export interface DesktopBridge {
   readonly platform: string;
   readonly project: {
-    /**
-     * Opens the folder dialog of the main process (DT-08: the page never names a path). A new
-     * folder restarts the app with it.
-     */
-    choose(): Promise<ProjectChangeResult>;
-    /** Shows the open project folder in the file manager. */
-    reveal(): Promise<void>;
+    /** Opens the folder dialog of the main process (DT-08: the page never names a path). */
+    add(): Promise<ProjectAddResult>;
+    /** Shows a listed project's folder in the file manager. */
+    reveal(id: string): Promise<void>;
   };
 }
 

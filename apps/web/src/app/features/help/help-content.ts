@@ -46,59 +46,58 @@ export interface HelpSection {
 const items = (...ids: readonly (string | HelpItem)[]): readonly HelpItem[] =>
   ids.map((id) => (typeof id === 'string' ? { id } : id));
 
-const OVERVIEW: HelpLink = { id: 'overview', path: '/app/overview' };
-const GATES: HelpLink = { id: 'gates', path: '/app/gates' };
-const ROUTES: HelpLink = { id: 'routes', path: '/app/routes' };
+/** Gates and routes live inside a project, so every step opens the project list. */
+const PROJECTS: HelpLink = { id: 'projects', path: '/app/projects' };
 
 /** The guide, in the order of the work (FR-70): "Schritt N von M" is the position here. */
 export const HELP_SECTIONS: readonly HelpSection[] = [
   {
     id: 'project',
-    steps: items('cli', 'folder', { id: 'open', only: 'desktop' }, 'check'),
-    tips: items('git', 'reload'),
-    links: [OVERVIEW],
+    steps: items('cli', 'folder', { id: 'add', only: 'desktop' }, 'check'),
+    tips: items('git', 'reload', 'remove'),
+    links: [PROJECTS],
   },
   {
     id: 'gate',
     steps: items('upload', 'install', 'add', 'compare', 'check'),
     tips: items('mismatch', 'php'),
-    links: [GATES],
+    links: [PROJECTS],
   },
   {
     id: 'trust',
     steps: items('keygen', 'trust', 'badge'),
     tips: items('passphrase', { id: 'desktopOnly', only: 'desktop' }),
-    links: [GATES],
+    links: [PROJECTS],
   },
   {
     id: 'secrets',
     steps: items('upstream', 'seal', 'check'),
     tips: items('never', 'rotate'),
-    links: [GATES],
+    links: [PROJECTS],
   },
   {
     id: 'routes',
     steps: items('write', 'recipe', 'origins', 'check'),
     tips: items('exact', 'quote'),
-    links: [ROUTES],
+    links: [PROJECTS],
   },
   {
     id: 'limits',
     steps: items('route', 'policy', 'answer'),
     tips: items('proxy'),
-    links: [ROUTES],
+    links: [PROJECTS],
   },
   {
     id: 'release',
     steps: items('build', 'deploy', 'accept'),
     tips: items('rollback', 'policy'),
-    links: [GATES],
+    links: [PROJECTS],
   },
   {
     id: 'privacy',
     steps: items('local', 'ciphertext', 'noAdmin'),
     tips: items('folder'),
-    links: [OVERVIEW],
+    links: [PROJECTS],
   },
 ];
 

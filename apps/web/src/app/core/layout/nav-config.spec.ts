@@ -8,11 +8,11 @@ describe('nav-config', () => {
   });
 
   it('marks the entry whose path the URL lies under', () => {
-    const gates = NAV_ITEMS.find((item) => item.path === '/app/gates');
-    if (!gates) throw new Error('no gates entry');
-    expect(isNavActive('/app/gates', gates)).toBe(true);
-    expect(isNavActive('/app/gates?x=1#y', gates)).toBe(true);
-    expect(isNavActive('/app/gatesx', gates)).toBe(false);
-    expect(isNavActive('/app/routes', gates)).toBe(false);
+    const projects = NAV_ITEMS.find((item) => item.path === '/app/projects');
+    if (!projects) throw new Error('no projects entry');
+    expect(isNavActive('/app/projects', projects)).toBe(true);
+    expect(isNavActive('/app/projects/abc/gates?x=1#y', projects)).toBe(true);
+    expect(isNavActive('/app/projectsx', projects)).toBe(false);
+    expect(isNavActive('/app/help', projects)).toBe(false);
   });
 });

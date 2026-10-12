@@ -1,0 +1,72 @@
+<mt-page-header
+  [title]="resource.name() ?? ('projects.workspace.title' | translate)"
+  [subtitle]="resource.folder()"
+>
+  <button
+    hlmBtn
+    variant="outline"
+    type="button"
+    data-reload
+    (click)="resource.reload()"
+  >
+    <ng-icon name="lucideRefreshCw" size="16" aria-hidden="true" />
+    {{ 'common.reload' | translate }}
+  </button>
+  @if (service.canReveal && resource.folder()) {
+  <button
+    hlmBtn
+    variant="outline"
+    type="button"
+    data-reveal
+    (click)="service.reveal()"
+  >
+    <ng-icon name="lucideFolderOpen" size="16" aria-hidden="true" />
+    {{ 'projects.reveal' | translate }}
+  </button>
+  }
+  <mt-help-link section="project" />
+</mt-page-header>
+
+@if (resource.view.isLoading() && !resource.view.hasValue()) {
+<p class="text-muted-foreground text-sm" role="status">
+  {{ 'common.loading' | translate }}
+</p>
+} @else if (resource.notFound()) {
+<p class="mt-note" role="alert" data-not-found>
+  <span class="flex-1">{{ 'projects.workspace.notFound' | translate }}</span>
+  <a hlmBtn size="sm" variant="outline" routerLink="/app/projects">
+    <ng-icon name="lucideArrowLeft" size="16" aria-hidden="true" />
+    {{ 'projects.backToList' | translate }}
+  </a>
+</p>
+} @else if (resource.view.error()) {
+<p class="mt-note" role="alert" data-load-error>
+  <ng-icon
+    name="lucideTriangleAlert"
+    size="16"
+    aria-hidden="true"
+    class="mt-0.5 shrink-0"
+  />
+  <span>{{ 'common.loadError' | translate }}</span>
+</p>
+} @else if (!resource.project()) {
+<div class="mt-note flex-col" role="alert" data-folder-gone>
+  <p>{{ 'projects.workspace.gone' | translate }}</p>
+  <mt-project-remove-button />
+</div>
+} @else {
+<nav class="mt-tabs mb-6" [attr.aria-label]="'projects.tabs.label' | translate">
+  @for (tab of service.tabs; track tab) {
+  <a
+    class="mt-tab"
+    [routerLink]="[resource.base(), tab]"
+    routerLinkActive="mt-tab-active"
+    ariaCurrentWhenActive="page"
+    [attr.data-tab]="tab"
+  >
+    {{ 'projects.tabs.' + tab | translate }}
+  </a>
+  }
+</nav>
+<router-outlet />
+}

@@ -1,5 +1,5 @@
 import type { ProjectView } from '../../../../core/api/project.types';
-import { openPage, PROJECT } from '../../../../../testing/page-harness';
+import { openProjectTab, PROJECT } from '../../../../../testing/page-harness';
 import { GatesPage } from './gates-page';
 
 const text = (el: HTMLElement, selector: string) =>
@@ -7,7 +7,7 @@ const text = (el: HTMLElement, selector: string) =>
 
 describe('GatesPage', () => {
   it('shows each gate with its fingerprint, trust mode, sealed secrets and last bundle', async () => {
-    const { el } = await openPage('/app/gates', GatesPage, PROJECT);
+    const { el } = await openProjectTab('gates', GatesPage, PROJECT);
     expect(el.querySelectorAll('[data-gate]')).toHaveLength(1);
     expect(text(el, '[data-fingerprint]')).toBe('MOAT-ABCD-EFGH-IJKL');
     expect(text(el, '[data-trust-mode]')).toBe('Signiert');
@@ -37,17 +37,17 @@ describe('GatesPage', () => {
         ],
       },
     };
-    const { el } = await openPage('/app/gates', GatesPage, view);
+    const { el } = await openProjectTab('gates', GatesPage, view);
     expect(text(el, '[data-missing]')).toContain('hubspot-token');
     expect(text(el, '[data-bundle]')).toBe('Noch keins gebaut');
     expect(text(el, '[data-gate-invalid]')).toContain('gates/old.json');
   });
 
-  it('points to the overview while no project is open', async () => {
-    const { el } = await openPage('/app/gates', GatesPage, {
-      folder: null,
-      project: null,
+  it('says so when the project has no gate yet', async () => {
+    const { el } = await openProjectTab('gates', GatesPage, {
+      ...PROJECT,
+      project: { config: { status: 'missing' }, gates: [] },
     });
-    expect(el.querySelector('[data-no-project]')).not.toBeNull();
+    expect(el.querySelector('[data-no-gates]')).not.toBeNull();
   });
 });
