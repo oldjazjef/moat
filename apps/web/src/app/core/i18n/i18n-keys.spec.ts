@@ -11,7 +11,10 @@ import {
   EDIT_ERROR_CODES,
 } from '../api/project.types';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './locales';
-import { SIGN_OUTCOMES } from '../../features/gates/pages/gates-page/gates-page.service';
+import {
+  SEAL_OUTCOMES,
+  SIGN_OUTCOMES,
+} from '../../features/gates/pages/gates-page/gates-page.service';
 import { PROJECT_TABS } from '../../features/projects/pages/project-workspace/project-workspace.service';
 
 /**
@@ -37,6 +40,7 @@ const DYNAMIC_KEYS = [
   ...['ip', 'route'].map((per) => `routes.rate.${per}`),
   ...PROJECT_TABS.map((tab) => `projects.tabs.${tab}`),
   ...SIGN_OUTCOMES.map((outcome) => `gates.signResult.${outcome}`),
+  ...SEAL_OUTCOMES.map((outcome) => `gates.sealResult.${outcome}`),
 ];
 
 function files(dir: string): string[] {

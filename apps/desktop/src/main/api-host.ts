@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { desktopApiEnv } from './lib/api-env';
+import type { PrepareSealResult, SealResult } from './lib/sealing';
 import type { PlanSigner, PrepareResult, SignResult } from './lib/signing';
 
 interface ApiHandle {
@@ -33,6 +34,20 @@ interface ApiBundle {
     keyFile: string,
     passphrase: string,
   ): Promise<SignResult>;
+  prepareSeal(
+    api: ApiHandle,
+    id: string,
+    gate: string,
+    name: string,
+  ): Promise<PrepareSealResult>;
+  sealSecret(
+    api: ApiHandle,
+    id: string,
+    gate: string,
+    name: string,
+    digest: string,
+    value: Uint8Array,
+  ): Promise<SealResult>;
 }
 
 export interface RunningApi {
@@ -56,6 +71,19 @@ export interface RunningApi {
     keyFile: string,
     passphrase: string,
   ): Promise<SignResult>;
+  /** In-process only, for the seal window: the page never sees a secret's value. */
+  prepareSeal(
+    id: string,
+    gate: string,
+    name: string,
+  ): Promise<PrepareSealResult>;
+  sealSecret(
+    id: string,
+    gate: string,
+    name: string,
+    digest: string,
+    value: Uint8Array,
+  ): Promise<SealResult>;
   close(): Promise<void>;
 }
 
@@ -90,6 +118,9 @@ export async function startApi(options: {
       api.prepareBundle(running, id, gate, signer),
     signBundle: (id, gate, digest, keyFile, passphrase) =>
       api.signBundle(running, id, gate, digest, keyFile, passphrase),
+    prepareSeal: (id, gate, name) => api.prepareSeal(running, id, gate, name),
+    sealSecret: (id, gate, name, digest, value) =>
+      api.sealSecret(running, id, gate, name, digest, value),
     close: () => running.app.close(),
   };
 }

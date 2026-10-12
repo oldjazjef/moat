@@ -2,6 +2,7 @@
  * The few texts the main process shows itself (dialogs, menu), in the system's language: German
  * for any de-*, English otherwise. The window's texts live in apps/web's message files.
  */
+import type { SealDialogTexts } from '../../shared/seal-dialog';
 import type { SignDialogTexts } from '../../shared/sign-dialog';
 
 export type DesktopLocale = 'de-CH' | 'en';
@@ -27,6 +28,7 @@ export interface DesktopMessages {
     readonly filter: string;
   };
   readonly signDialog: SignDialogTexts;
+  readonly sealDialog: SealDialogTexts;
   readonly menu: {
     readonly file: string;
     readonly edit: string;
@@ -45,6 +47,33 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       title: 'Schlüsseldatei wählen',
       button: 'Diese Schlüsseldatei verwenden',
       filter: 'Moat-Schlüsseldatei',
+    },
+    sealDialog: {
+      title: 'Secret versiegeln',
+      intro:
+        'Der Wert wird hier auf deinem Computer für genau dieses Gate verschlüsselt. Gespeichert wird nur der verschlüsselte Text. Öffnen kann ihn nur dieses Gate, und nur unter diesem Namen.',
+      project: 'Projekt',
+      gate: 'Gate',
+      fingerprint: 'Fingerprint',
+      fingerprintHint:
+        'Vergleiche den Fingerprint mit dem, den das Gate bei der Installation ausgegeben hat. Weicht er ab, brich ab.',
+      secret: 'Secret',
+      version: 'Version',
+      firstVersion: 'erstmals',
+      usedBy: 'Gesendet an',
+      unused: 'Kein Upstream verwendet es zurzeit.',
+      value: 'Wert',
+      valueHint:
+        'Füge den Schlüssel oder das Token ein. Moat zeigt ihn danach nie wieder an.',
+      show: 'Wert anzeigen',
+      seal: 'Versiegeln',
+      cancel: 'Abbrechen',
+      notices: {
+        value_invalid:
+          'Der Wert ist leer, länger als 8 KiB oder enthält einen Zeilenumbruch.',
+        changed:
+          'Gate oder Secret haben sich geändert, während dieses Fenster offen war. Prüfe die Angaben und gib den Wert noch einmal ein.',
+      },
     },
     signDialog: {
       title: 'Bundle signieren',
@@ -109,6 +138,33 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       title: 'Choose key file',
       button: 'Use this key file',
       filter: 'Moat key file',
+    },
+    sealDialog: {
+      title: 'Seal secret',
+      intro:
+        'The value is encrypted here on your computer for exactly this gate. Only the encrypted text is saved. Only this gate can open it, and only under this name.',
+      project: 'Project',
+      gate: 'Gate',
+      fingerprint: 'Fingerprint',
+      fingerprintHint:
+        'Compare the fingerprint with the one the gate printed when it was installed. If it differs, cancel.',
+      secret: 'Secret',
+      version: 'Version',
+      firstVersion: 'first time',
+      usedBy: 'Sent to',
+      unused: 'No upstream uses it at the moment.',
+      value: 'Value',
+      valueHint:
+        'Paste the key or token. Moat never shows it again afterwards.',
+      show: 'Show value',
+      seal: 'Seal',
+      cancel: 'Cancel',
+      notices: {
+        value_invalid:
+          'The value is empty, longer than 8 KiB or contains a line break.',
+        changed:
+          'The gate or the secret changed while this window was open. Check the details and enter the value again.',
+      },
     },
     signDialog: {
       title: 'Sign bundle',

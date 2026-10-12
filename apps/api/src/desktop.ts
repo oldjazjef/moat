@@ -10,6 +10,11 @@ import {
   type PrepareBundleResult,
   type SignBundleResult,
 } from './project/application/bundle-signing.service';
+import {
+  SecretSealingService,
+  type PrepareSealResult,
+  type SealResult,
+} from './project/application/secret-sealing.service';
 import { ProjectService } from './project/project.service';
 
 export {
@@ -74,4 +79,35 @@ export function signBundle(
   return api.app
     .get(BundleSigningService)
     .sign(id, gate, digest, keyFile, passphrase, Math.floor(Date.now() / 1000));
+}
+
+export type {
+  PrepareSealResult,
+  SealPreview,
+  SealResult,
+} from './project/application/secret-sealing.service';
+
+/** What sealing `name` for `gate` would do, for the main process's seal window. Never HTTP. */
+export function prepareSeal(
+  api: RunningApi,
+  id: string,
+  gate: string,
+  name: string,
+): Promise<PrepareSealResult> {
+  return api.app.get(SecretSealingService).prepare(id, gate, name);
+}
+
+/**
+ * Seals the value typed in the main process's seal window (never in the page) for the gate and
+ * version the person confirmed (`digest`). Writes ciphertext only; `value` is zeroed (SEC-31).
+ */
+export function sealSecret(
+  api: RunningApi,
+  id: string,
+  gate: string,
+  name: string,
+  digest: string,
+  value: Uint8Array,
+): Promise<SealResult> {
+  return api.app.get(SecretSealingService).seal(id, gate, name, digest, value);
 }

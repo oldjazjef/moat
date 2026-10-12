@@ -20,6 +20,22 @@ export type BundleSignResult =
   | { status: 'not_writable' }
   | { status: 'failed' };
 
+export type SecretSealResult =
+  | { status: 'sealed'; secretVersion: number }
+  | { status: 'cancelled' }
+  | {
+      status: 'refused';
+      code:
+        | 'config_missing'
+        | 'config_invalid'
+        | 'gate_unknown'
+        | 'secret_unknown'
+        | 'secret_unreadable';
+    }
+  /** `secrets/<gate>/` could not be written; nothing was saved. */
+  | { status: 'not_writable' }
+  | { status: 'failed' };
+
 export interface DesktopBridge {
   readonly platform: string;
   readonly project: {
@@ -27,6 +43,18 @@ export interface DesktopBridge {
     add(): Promise<ProjectAddResult>;
     /** Shows a listed project's folder in the file manager. */
     reveal(id: string): Promise<void>;
+  };
+  readonly secret: {
+    /**
+     * Opens the main process's seal window for a secret of a gate: the person checks the gate's
+     * fingerprint and types the value there, never in the page. The page learns only the outcome.
+     */
+    seal(
+      projectId: string,
+      gate: string,
+      name: string,
+      locale: string,
+    ): Promise<SecretSealResult>;
   };
   readonly bundle: {
     /**

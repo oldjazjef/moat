@@ -1,36 +1,17 @@
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { BrowserWindow, type IpcMainInvokeEvent, ipcMain } from 'electron';
+import type { BrowserWindow, IpcMainInvokeEvent } from 'electron';
+import { ipcMain } from 'electron';
 import type { BundleSignResult } from '../shared/bridge';
 import {
   SIGN_IPC,
   type SignDialogConfirm,
   type SignDialogView,
 } from '../shared/sign-dialog';
+import { DialogSlot } from './dialog-window';
 import type { SigningSession } from './lib/signing';
 
-/**
- * The signing dialog (DT-15): a modal window of its own, rendered by the main process from a
- * local file with its own preload. The app's page cannot reach it: its IPC answers only this
- * window's main frame, and the page only ever learns the outcome.
- */
-interface OpenDialog {
-  readonly window: BrowserWindow;
-  readonly session: SigningSession;
-  finish(result: BundleSignResult): void;
-}
-
-let current: OpenDialog | null = null;
-
-/** Main frame of the open dialog, loaded from our own file — nothing else. */
-function fromDialog(event: IpcMainInvokeEvent): OpenDialog | null {
-  const dialog = current;
-  if (dialog === null || dialog.window.isDestroyed()) return null;
-  const contents = dialog.window.webContents;
-  if (event.sender !== contents || event.senderFrame !== contents.mainFrame)
-    return null;
-  return dialog;
-}
+/** The signing dialog (DT-15), see DialogSlot. */
+const slot = new DialogSlot<SigningSession, BundleSignResult>();
+const fromDialog = (event: IpcMainInvokeEvent) => slot.from(event);
 
 export function registerSignDialogIpc(): void {
   ipcMain.handle(SIGN_IPC.view, (event): SignDialogView | null => {
@@ -58,7 +39,7 @@ export function registerSignDialogIpc(): void {
       const dialog = fromDialog(event);
       if (dialog === null || !isConfirm(input)) return null;
       try {
-        const step = await dialog.session.confirm(input);
+        const step = await dialog.working(dialog.session.confirm(input));
         if ('view' in step) return step.view;
         dialog.finish(step.done);
       } catch (error) {
@@ -91,49 +72,12 @@ export function showSignDialog(options: {
   title: string;
   session: SigningSession;
 }): Promise<BundleSignResult> {
-  if (current !== null && !current.window.isDestroyed()) {
-    current.window.focus();
-    return Promise.resolve({ status: 'failed' });
-  }
-  return new Promise((resolve) => {
-    const window = new BrowserWindow({
-      parent: options.parent,
-      modal: true,
-      width: 560,
-      height: 640,
-      minWidth: 360,
-      minHeight: 420,
-      title: options.title,
-      show: false,
-      autoHideMenuBar: true,
-      webPreferences: {
-        preload: join(options.appDir, 'sign-preload.js'),
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: true,
-        webSecurity: true,
-        spellcheck: false,
-        devTools: false,
-      },
-    });
-    window.setMenu(null);
-    let done = false;
-    const dialog: OpenDialog = {
-      window,
-      session: options.session,
-      finish: (result) => {
-        if (done) return;
-        done = true;
-        if (current === dialog) current = null;
-        resolve(result);
-        if (!window.isDestroyed()) window.close();
-      },
-    };
-    current = dialog;
-    window.once('ready-to-show', () => window.show());
-    window.on('closed', () => dialog.finish({ status: 'cancelled' }));
-    void window.loadURL(
-      pathToFileURL(join(options.appDir, 'sign', 'sign-dialog.html')).href,
-    );
+  return slot.show({
+    ...options,
+    preload: 'sign-preload.js',
+    page: 'dialogs/sign-dialog.html',
+    height: 640,
+    cancelled: { status: 'cancelled' },
+    busy: { status: 'failed' },
   });
 }

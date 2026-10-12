@@ -110,6 +110,14 @@ export {
   type PlanSigner,
 } from './storage/bundle-plan';
 export {
+  isSecretValue,
+  MAX_SECRET_BYTES,
+  planSeal,
+  SealPlanError,
+  type SealPlan,
+  type SealPlanErrorCode,
+} from './storage/seal-plan';
+export {
   readProject,
   CONFIG_FILE,
   type ConfigState,

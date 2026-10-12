@@ -28,7 +28,7 @@ The gate's own local policy always wins over anything it receives.
 > **Status (October 2026):** early development. Working today: Moat Core, the `moat` CLI, the PHP
 > gate (signed bundles, exact routing, SSRF guard, CORS, rate limits, locking a gate or a whole
 > environment) and Moat Desktop (project list, a view of each project, and editing environments,
-> locks, routes and upstreams, signing bundles). Not built yet: Moat Cloud, sealing secrets in the desktop,
+> locks, routes and upstreams, sealing secrets, signing bundles). Not built yet: Moat Cloud,
 > quotas and budgets, the setup wizard. The full target is in
 > [ANFORDERUNGEN.md](ANFORDERUNGEN.md) (German).
 
@@ -97,8 +97,8 @@ with line and column. **Show in folder** opens the folder in the file manager.
 - its id and the **fingerprint** of its key, to compare group by group with what the gate printed
   when it was installed;
 - the latest bundle built;
-- the secrets sealed for it, by name and version only (the app never sees a secret);
-- secrets the configuration needs that are not sealed for this gate yet.
+- its **Secrets**: every secret the configuration uses or that is sealed for this gate, with its
+  version, or "Not sealed yet" (the app never shows a secret's value).
 
 ![Gates of a project](docs/screenshots/moat-desktop-gates.webp)
 
@@ -124,6 +124,17 @@ bundle does not carry the lock yet (or still carries one you lifted), it says so
 bundle to fix it.
 
 ![A locked gate](docs/screenshots/moat-desktop-gate-locked.webp)
+
+### Sealing a secret
+
+**Seal** next to a secret under **Gates** (or **Seal again** for a new key) opens a separate
+window of the app, not the page. It shows the gate with its id and the **fingerprint** of its key,
+to compare with what the gate printed, the secret's name and new version, and which upstream
+sends it. Paste the value there and confirm with **Seal**. It is encrypted on your computer for
+exactly this gate and name; only the ciphertext is saved, under `secrets/<gate>/<name>.json`. The
+app never shows the value again. Sign a new bundle so the gate gets it.
+
+![Sealing a secret](docs/screenshots/moat-desktop-seal-dialog.webp)
 
 ### Signing a bundle
 
@@ -166,7 +177,7 @@ origin, a size above 10 MiB) is not saved, and the form marks the field.
 **New upstream** adds the API the gate calls: its HTTPS address (host only, no path), an optional
 timeout and how the gate authenticates (bearer token, a custom header or a query parameter). The form
 takes only the **name** of the secret; there is no field for its value. Seal the value for each
-gate in the terminal with `moat secret seal <gate> <name>`. An upstream that routes still call
+gate under **Gates** (see below) or in the terminal with `moat secret seal <gate> <name>`. An upstream that routes still call
 cannot be deleted; the row names those routes.
 
 ![Routes and upstreams](docs/screenshots/moat-desktop-routes.webp)
@@ -194,17 +205,22 @@ right, next to light and dark mode.
 - The app's API runs inside the app on `127.0.0.1` only. It answers only requests that carry a
   token created at each start and the exact `Host` (DT-16: no other program or web page on your
   computer can reach it, not even through DNS rebinding).
-- The window has no Node.js access and runs sandboxed. It talks to the app only through three
-  functions: add a project, show a project's folder, and ask to sign a gate's next bundle. Folders
+- The window has no Node.js access and runs sandboxed. It talks to the app only through four
+  functions: add a project, show a project's folder, ask to seal a gate's secret, and ask to sign a
+  gate's next bundle. Folders
   and the key file are chosen in the system dialog and never typed in by the page (DT-08).
 - The page cannot sign. Signing happens only after you confirm in the app's own signing window,
   which shows the changes and takes the passphrase; the page passes a project id and a gate name
   and learns only the outcome. What you confirm is what gets signed: if the project changes
   meanwhile, nothing is signed (DT-15, T-51, T-53). The key is zeroed right after signing.
 - A remembered passphrase is stored only encrypted by the system keychain (DT-04).
+- A secret's value is typed only in the app's own seal window, never in the page, and is sealed
+  right there for the gate and version that window showed (SEC-31, SEC-33). Its bytes are zeroed
+  afterwards; the page learns only whether it worked (T-58).
 - Project folders are read only inside the folder: symbolic links pointing elsewhere, special
   files and oversized files count as missing.
-- The app writes only `moat.yaml` and new bundle files (a bundle file is never replaced). It
+- The app writes only `moat.yaml`, sealed secrets (ciphertext) and new bundle files (a bundle
+  file is never replaced). It
   changes `moat.yaml` only through a fixed list of edits (environments, locks,
   routes). Names must match the name pattern, and a route's values pass the same schema and
   compile step as any `moat.yaml`, so the file never holds what a gate would refuse. The file is replaced

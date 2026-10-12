@@ -10,6 +10,16 @@ const bridge: DesktopBridge = {
     add: () => ipcRenderer.invoke(IPC.projectAdd),
     reveal: (id: string) => ipcRenderer.invoke(IPC.projectReveal, String(id)),
   },
+  secret: {
+    seal: (projectId: string, gate: string, name: string, locale: string) =>
+      ipcRenderer.invoke(
+        IPC.secretSeal,
+        String(projectId),
+        String(gate),
+        String(name),
+        String(locale),
+      ),
+  },
   bundle: {
     sign: (projectId: string, gate: string, locale: string) =>
       ipcRenderer.invoke(

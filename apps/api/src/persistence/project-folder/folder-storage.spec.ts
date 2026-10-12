@@ -92,13 +92,13 @@ describe('FolderStorage', () => {
     expect(readdirSync(project).sort()).toEqual(['gates', 'moat.yaml']);
   });
 
-  it('never writes through a symbolic link, into a subfolder or outside the project', () => {
+  it('never writes through a symbolic link or outside the project', () => {
     const storage = new FolderStorage(project);
     symlinkSync(join(base, 'outside.txt'), join(project, 'link.yaml'));
     for (const name of [
       'link.yaml',
       'gates',
-      'gates/site.json',
+      'gates/../moat.yaml',
       '../outside.txt',
       '.hidden',
       join(base, 'outside.txt'),
@@ -109,8 +109,27 @@ describe('FolderStorage', () => {
     expect(readFileSync(join(base, 'outside.txt'), 'utf8')).toBe(
       'PLANTED-OUTSIDE',
     );
-    expect(readFileSync(join(project, 'gates', 'site.json'), 'utf8')).toBe(
-      '{}',
+  });
+
+  it('replaces a sealed secret in its folder, never through a symbolic link folder', () => {
+    const storage = new FolderStorage(project);
+    storage.replace('secrets/site/hubspot-token.json', '{"v":1}');
+    storage.replace('secrets/site/hubspot-token.json', '{"v":2}');
+    expect(
+      readFileSync(
+        join(project, 'secrets', 'site', 'hubspot-token.json'),
+        'utf8',
+      ),
+    ).toBe('{"v":2}');
+    expect(readdirSync(join(project, 'secrets', 'site'))).toEqual([
+      'hubspot-token.json',
+    ]);
+    symlinkSync(base, join(project, 'secrets', 'other'));
+    expect(() =>
+      storage.replace('secrets/other/outside.txt', 'PLANTED'),
+    ).toThrow(FolderWriteError);
+    expect(readFileSync(join(base, 'outside.txt'), 'utf8')).toBe(
+      'PLANTED-OUTSIDE',
     );
   });
 

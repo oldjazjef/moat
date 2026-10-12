@@ -167,9 +167,8 @@
     "bundle": "Latest bundle",
     "bundleVersion": "Version {{version}}",
     "noBundle": "None built yet",
-    "secrets": "Sealed secrets",
-    "secretVersion": "{{name}} (v{{version}})",
-    "noSecrets": "None",
+    "secrets": "Secrets",
+    "noSecrets": "The configuration uses no secret.",
     "fingerprintHint": "Compare the fingerprint group by group with the one the gate printed when it was installed.",
     "missing": "The configuration needs these secrets, but they are not sealed for this gate yet: {{secrets}}",
     "invalid": "The file {{file}} is damaged or not a gate file.",
@@ -191,6 +190,21 @@
       "secrets_missing": "These secrets are not sealed for the gate yet: {{secrets}}",
       "not_writable": "The folder `bundles/{{gate}}` cannot be written. Nothing was saved.",
       "failed": "Signing did not work. Nothing was saved."
+    },
+    "secretMissing": "Not sealed yet",
+    "secretSealed": "Sealed, version {{version}}",
+    "secretUnused": "Sealed, version {{version}}, not used",
+    "seal": "Seal",
+    "reseal": "Seal again",
+    "sealResult": {
+      "sealed": "{{name}} is sealed for {{gate}} (version {{version}}). Sign a new bundle so the gate gets it.",
+      "config_missing": "This project has no moat.yaml yet.",
+      "config_invalid": "moat.yaml is not valid. Fix the errors shown in “Overview”, then you can seal.",
+      "gate_unknown": "The gate file is missing or damaged.",
+      "secret_unknown": "No upstream uses {{name}}.",
+      "secret_unreadable": "The sealed file `secrets/{{gate}}/{{name}}.json` is damaged. Delete it, then seal {{name}} again (the version starts at 1 again).",
+      "not_writable": "The folder `secrets/{{gate}}` cannot be written. Nothing was saved.",
+      "failed": "Sealing did not work. Nothing was saved."
     }
   },
   "routes": {
@@ -402,15 +416,16 @@
       "secrets": {
         "title": "Upstreams and secrets",
         "purpose": "An upstream is the API the gate calls. Its key is a secret: it is sealed for one particular gate and can be opened only there.",
-        "where": "Project › Gates › Sealed secrets and Routes › Upstreams",
+        "where": "Project › Gates › Secrets and Routes › Upstreams",
         "steps": {
           "upstream": "Under “Routes”, click “New upstream” next to the upstreams and fill in the address, the authentication and the secret’s name (e.g. `hubspot-token`), never its value. In moat.yaml: `secret: hubspot-token`.",
-          "seal": "Seal the value with `moat secret seal <gate> <name>`. You type it in the terminal; only encrypted text is stored.",
-          "check": "Under “Gates” you see for each gate which secrets are sealed and which are still missing."
+          "sealDesktop": "Under “Gates”, click “Seal” in the “Secrets” list. A separate Moat Desktop window shows the gate and its fingerprint. Compare the fingerprint with the gate’s, then paste the value. Only encrypted text is stored.",
+          "seal": "In the CLI, seal the value with `moat secret seal <gate> <name>`. You type it in the terminal; only encrypted text is stored.",
+          "check": "Under “Gates”, the “Secrets” list shows for each gate which secrets are sealed and which are still missing."
         },
         "tips": {
           "never": "Moat never shows secrets, not even in Moat Desktop. It knows only their names and versions.",
-          "rotate": "A new key? Seal it with `--secret-version` and a higher number, and build a new bundle."
+          "rotate": "A new key? Click “Seal again” (in the CLI: `--secret-version` with a higher number) and sign a new bundle."
         }
       },
       "routes": {
