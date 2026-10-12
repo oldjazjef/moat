@@ -15,9 +15,12 @@ Four components (ANFORDERUNGEN.md, header):
 - **Moat Gate** (`gates/php` first, later `gates/node`, `gates/dotnet`): runs on the customer's
   hosting, enforces everything locally, trusts nobody it does not have to.
 
-> **Status (12.10.2026): requirements v0.5 + threat model v0.1 + crypto spec v0.1 + this setup.** No code yet. The stack and the
-> conventions below are the target; each section becomes concrete when the code lands. Update
-> this file whenever the code makes a section concrete or wrong.
+> **Status (12.10.2026): requirements v0.5 + threat model v0.1 + crypto spec v0.1.** Code so far:
+> the Nx/pnpm workspace, `libs/core` (encodings, strict JSON, JCS, key ids, bundle sign/verify,
+> sealed secrets), `conformance/vectors/crypto/`, and `gates/php` (bundle verification and secret
+> opening against the same vectors). Everything else below is the target; each section becomes
+> concrete when the code lands. Update this file whenever the code makes a section concrete or
+> wrong.
 
 **The one rule above all others:** a fully compromised Moat Cloud must not compromise a gate
 (ANFORDERUNGEN.md §1, §2.8). Every change is checked against that. When a change would let data
@@ -70,15 +73,15 @@ Nest, no Prisma. The trustworthy path for signing and sealing (SEC-37).
 
 ### Gate PHP (`gates/php`) — its own world
 
-|              |                                                                                    |
-| ------------ | ---------------------------------------------------------------------------------- |
-| PHP          | **≥ 8.2** at runtime (shared hosting); CI matrix 8.2 · 8.3 · 8.4 · 8.5             |
+|              |                                                                                           |
+| ------------ | ----------------------------------------------------------------------------------------- |
+| PHP          | **≥ 8.2** at runtime (shared hosting); CI matrix 8.2 · 8.3 · 8.4 · 8.5                    |
 | Extensions   | `sodium`, `curl`, `json`, `hash` (+ `openssl` only if mode 2 is pinned) — checked at boot |
-| Runtime deps | **none** — Composer is for dev tools only (`require` = `php` + `ext-*`)            |
-| Style        | **PER Coding Style 2.0** via PHP-CS-Fixer                                          |
-| Analysis     | **PHPStan level max** + strict-rules + disallowed-calls (see PHP)                  |
-| Tests        | **PHPUnit** + the shared conformance suite                                         |
-| Artifact     | one built file per release, signed (SEC-21, SEC-60)                                |
+| Runtime deps | **none** — Composer is for dev tools only (`require` = `php` + `ext-*`)                   |
+| Style        | **PER Coding Style 2.0** via PHP-CS-Fixer                                                 |
+| Analysis     | **PHPStan level max** + strict-rules + disallowed-calls (see PHP)                         |
+| Tests        | **PHPUnit** + the shared conformance suite                                                |
+| Artifact     | one built file per release, signed (SEC-21, SEC-60)                                       |
 
 Revisit the PHP floor when 8.2 leaves security support (31.12.2026).
 
@@ -97,6 +100,7 @@ pnpm test:integration
 pnpm test:authz      # the authorization matrix alone (also part of pnpm check)
 pnpm test:dast       # ZAP against a locally started Cloud + gate (needs Docker)
 pnpm conformance     # the conformance suite against libs/core and every gate target present
+pnpm vectors         # regenerate conformance/vectors/crypto/ from libs/core/scripts/build-vectors.ts
 pnpm schema          # regenerate schema/moat.schema.json from the Zod schema (committed)
 pnpm format          # prettier --write .
 ```
@@ -320,8 +324,8 @@ in-memory port doubles; a cross-tenant isolation suite covers every endpoint.
   history; a test keeps them structurally equal. CHECK constraints hand-written in the migration
   SQL, as in lazy-koins (copy them back after a table redefinition).
 - MySQL/MariaDB (DT-03) later, same pattern.
-- The desktop's storage choice (DT-03) is a `StoragePort` in core: project folder (default, files
-  + Git), SQLite, external DB. **External backends store ciphertext and signed bundles only.**
+- The desktop's storage choice (DT-03) is a `StoragePort` in core: project folder (default,
+  files and Git), SQLite, external DB. **External backends store ciphertext and signed bundles only.**
 
 ## Auth
 

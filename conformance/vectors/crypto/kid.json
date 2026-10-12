@@ -1,0 +1,40 @@
+{
+  "description": "kid = base64url(BLAKE2b-128(\"moat:kid:v1|\" ‖ alg ‖ \"|\" ‖ publicKey)); fingerprint = \"MOAT-\" + base32 of the same 16 bytes in groups of four (docs/CRYPTO.md §3). The webauthn point is arbitrary bytes, not a curve point: the kid only hashes it.",
+  "cases": [
+    {
+      "name": "signer-a",
+      "alg": "ed25519",
+      "publicKey": "xLJXeR4WujwL_xeuT72vJ0LAvTeF47XTUwuzO1i1W1Q",
+      "kid": "g3TWIWKLpCXXHBHfvi3edA",
+      "fingerprint": "MOAT-QN2N-MILC-ROSC-LVY4-CHP3-4LO6-OQ"
+    },
+    {
+      "name": "signer-b",
+      "alg": "ed25519",
+      "publicKey": "r4sORh00jqAI_s-n0htk_kgLajOMsoOiIEVfstVLZGI",
+      "kid": "1T0BHyl7H5HEVmFwDcmmdg",
+      "fingerprint": "MOAT-2U6Q-CHZJ-PMPZ-DRCW-MFYA-3SNG-OY"
+    },
+    {
+      "name": "signer-c",
+      "alg": "ed25519",
+      "publicKey": "vYBZiW9VPxW8WKneThEFQ_5kN02HHfrokKqd7Bqkloc",
+      "kid": "v_oHcnBlkXaiMldtSCYPEg",
+      "fingerprint": "MOAT-X75A-O4TQ-MWIX-NIRS-K5WU-QJQP-CI"
+    },
+    {
+      "name": "gate-box",
+      "alg": "x25519",
+      "publicKey": "noZZ4Qd6tMoHEGl0DWM49zkYYWPor9vTI_8WfPhvI0Q",
+      "kid": "6sLjIMNpgl_mgazKDMTg_g",
+      "fingerprint": "MOAT-5LBO-GIGD-NGBF-7ZUB-VTFA-ZRHA-7Y"
+    },
+    {
+      "name": "webauthn point",
+      "alg": "webauthn-es256",
+      "publicKey": "BLwBhWUvFNOsL5znyE60i3uBSBzQ6eCGijbTRobr9xSANf-Ppf_GO_sVMtcK5RJkn92xHcSXQCQquDO-vL6yak0",
+      "kid": "g9RbuHqyJ_tT8VRGFiH4Vg",
+      "fingerprint": "MOAT-QPKF-XOD2-WIT7-WU7R-KRDB-MIPY-KY"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+# Integrated Nx workspace, as in lazy-koins: every dependency lives in the root manifest and apps
+# carry no package.json of their own. `apps/*` is listed for the day one of them needs to become a
+# real package; today it matches nothing, which is fine.
+packages:
+  - 'apps/*'
+
+# pnpm 10+ refuses to run dependency install scripts unless they are allowlisted here.
+#   nx                 own postinstall
+#   @swc/core          @swc-node/register, used by Nx to execute TS config files
+#   @parcel/watcher    Nx file watching
+#   lmdb, msgpackr-extract  Nx task cache
+#   unrs-resolver      native module resolver behind eslint-plugin-import
+#   esbuild            pulled in by vite (vitest)
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  esbuild: true
+  lmdb: true
+  msgpackr-extract: true
+  nx: true
+  unrs-resolver: true
+
+# Nx is pinned to one exact version; keep @nx/devkit in step with it (see lazy-koins).
+overrides:
+  '@nx/devkit': 23.2.1
+  nx: 23.2.1

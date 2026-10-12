@@ -1,0 +1,271 @@
+{
+  "description": "Strict JSON as every implementation parses envelopes, payloads and data files (docs/CRYPTO.md §2): UTF-8 without BOM, integers 0 … 2^53 − 1 only (-0 counts as 0), no lone surrogates, no object key starting with NUL, at most 32 nested containers. `inputHex` is used where the input is not valid UTF-8.",
+  "cases": [
+    {
+      "name": "empty object",
+      "input": "{}",
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "empty array",
+      "input": "[]",
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "zero",
+      "input": "0",
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "minus zero is zero",
+      "input": "-0",
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "largest safe integer",
+      "input": "9007199254740991",
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "scalar true",
+      "input": "true",
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "nested values",
+      "input": "{\"a\":[1,2,{\"b\":null}],\"c\":\"x\"}",
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "escaped surrogate pair",
+      "input": "\"\\ud83d\\ude00\"",
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "raw non-ascii text",
+      "input": "\"Grüezi 😀\"",
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "__proto__ is plain data",
+      "input": "{\"__proto__\":{\"admin\":true}}",
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "numeric-looking key",
+      "input": "{\"1\":\"one\",\"0\":\"zero\"}",
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "empty key",
+      "input": "{\"\":1}",
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "whitespace around",
+      "input": " \n\t{ \"a\" : 1 }\r\n ",
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "32 nested containers",
+      "input": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "fraction",
+      "input": "1.0",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "exponent",
+      "input": "1e3",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "negative integer",
+      "input": "-1",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "above 2^53 - 1",
+      "input": "9007199254740992",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "huge integer",
+      "input": "123456789012345678901234567890",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "leading zero",
+      "input": "01",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "float inside object",
+      "input": "{\"a\":0.5}",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "lone high surrogate",
+      "input": "\"\\ud800\"",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "lone low surrogate in key",
+      "input": "{\"\\udc00\":1}",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "reversed surrogate pair",
+      "input": "\"\\ude00\\ud83d\"",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "key starting with NUL",
+      "input": "{\"\\u0000a\":1}",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "byte order mark",
+      "inputHex": "efbbbf7b7d",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "invalid utf-8",
+      "inputHex": "22ff22",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "overlong utf-8",
+      "inputHex": "22c0af22",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "33 nested containers",
+      "input": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "trailing comma",
+      "input": "{\"a\":1,}",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "single quotes",
+      "input": "{'a':1}",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "NaN",
+      "input": "NaN",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "empty document",
+      "input": "",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "two documents",
+      "input": "{}{}",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    },
+    {
+      "name": "comment",
+      "input": "{} // x",
+      "expect": {
+        "ok": false,
+        "error": "json_invalid"
+      }
+    }
+  ]
+}
