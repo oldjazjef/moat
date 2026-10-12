@@ -1,0 +1,246 @@
+<mt-page-header
+  [title]="'help.title' | translate"
+  [subtitle]="'help.subtitle' | translate"
+/>
+
+<div class="grid gap-6 lg:grid-cols-4">
+  <!-- Search + table of contents: the left column from lg (sticky), above the guide below. -->
+  <aside
+    class="flex min-w-0 flex-col gap-4 lg:sticky lg:top-32 lg:max-h-[calc(100dvh-10rem)] lg:self-start lg:overflow-y-auto"
+  >
+    <div class="flex flex-col gap-2" role="search">
+      <label hlmLabel for="help-search"
+        >{{ 'help.search.label' | translate }}</label
+      >
+      <div class="flex gap-2">
+        <input
+          #search
+          hlmInput
+          id="help-search"
+          type="search"
+          class="min-w-0 flex-1"
+          autocomplete="off"
+          [value]="service.query()"
+          [placeholder]="'help.search.placeholder' | translate"
+          (input)="setQuery(search.value)"
+        />
+        @if (service.searching()) {
+        <button
+          hlmBtn
+          variant="ghost"
+          size="icon"
+          type="button"
+          [attr.aria-label]="'help.search.clear' | translate"
+          [attr.title]="'help.search.clear' | translate"
+          (click)="setQuery(''); search.focus()"
+        >
+          <ng-icon name="lucideX" size="16" aria-hidden="true" />
+        </button>
+        }
+      </div>
+      <p class="text-muted-foreground text-xs" role="status" data-help-results>
+        @if (service.searching()) { {{ 'help.search.results' | translate: {
+        count: service.visibleSections().length, total: service.total } }} }
+      </p>
+    </div>
+
+    <nav [attr.aria-label]="'help.toc.title' | translate" data-help-toc>
+      <button
+        hlmBtn
+        variant="outline"
+        type="button"
+        class="w-full justify-between lg:hidden"
+        aria-controls="help-toc"
+        [attr.aria-expanded]="tocOpen()"
+        (click)="tocOpen.set(!tocOpen())"
+      >
+        {{ (tocOpen() ? 'help.toc.hide' : 'help.toc.show') | translate }}
+        <ng-icon
+          name="lucideChevronDown"
+          size="16"
+          aria-hidden="true"
+          class="transition-transform motion-reduce:transition-none"
+          [class.rotate-180]="tocOpen()"
+        />
+      </button>
+      <h2
+        class="text-muted-foreground mb-2 hidden text-xs font-semibold uppercase lg:block"
+      >
+        {{ 'help.toc.title' | translate }}
+      </h2>
+      <ol
+        id="help-toc"
+        class="mt-2 flex-col gap-0.5 lg:mt-0 lg:flex"
+        [class.hidden]="!tocOpen()"
+        [class.flex]="tocOpen()"
+      >
+        @for (section of service.visibleSections(); track section.id) {
+        <li>
+          <a
+            class="mt-help-toc-link"
+            [routerLink]="[]"
+            [fragment]="section.id"
+            [attr.aria-current]="highlighted() === section.id ? 'location' : null"
+            (click)="jump(section.id)"
+          >
+            <span class="mt-help-toc-number" aria-hidden="true"
+              >{{ section.number }}</span
+            >
+            <span class="min-w-0 flex-1"
+              >{{ keys.title(section.id) | translate }}</span
+            >
+          </a>
+        </li>
+        } @if (service.visibleFaq().length > 0) {
+        <li>
+          <a
+            class="mt-help-toc-link"
+            [routerLink]="[]"
+            [fragment]="faqAnchor"
+            (click)="jump(faqAnchor)"
+          >
+            <span class="mt-help-toc-number" aria-hidden="true">
+              <ng-icon name="lucideCircleHelp" size="14" />
+            </span>
+            <span class="min-w-0 flex-1"
+              >{{ 'help.faq.title' | translate }}</span
+            >
+          </a>
+        </li>
+        }
+      </ol>
+    </nav>
+  </aside>
+
+  <div class="flex min-w-0 flex-col gap-6 lg:col-span-3">
+    @if (!service.searching()) {
+    <section hlmCard aria-labelledby="help-intro-title">
+      <div hlmCardHeader>
+        <h2 hlmCardTitle id="help-intro-title">
+          {{ 'help.intro.title' | translate }}
+        </h2>
+      </div>
+      <div hlmCardContent>
+        <p class="text-sm leading-relaxed">
+          {{ 'help.intro.body' | translate }}
+        </p>
+      </div>
+    </section>
+    } @if (service.nothingFound()) {
+    <p class="text-muted-foreground py-8 text-center text-sm" data-help-none>
+      {{ 'help.search.none' | translate }}
+    </p>
+    } @for (section of service.visibleSections(); track section.id) {
+    <section
+      hlmCard
+      class="scroll-mt-32"
+      [id]="section.id"
+      [class.mt-help-highlight]="highlighted() === section.id"
+      [attr.aria-labelledby]="section.id + '-title'"
+    >
+      <div hlmCardHeader>
+        <p class="text-muted-foreground text-xs" data-help-step>
+          {{ 'help.stepOf' | translate: { number: section.number, total:
+          service.total } }}
+        </p>
+        <h2
+          hlmCardTitle
+          tabindex="-1"
+          data-help-heading
+          class="outline-hidden"
+          [id]="section.id + '-title'"
+        >
+          {{ keys.title(section.id) | translate }}
+        </h2>
+        <p hlmCardDescription class="leading-relaxed">
+          <mt-rich-text [text]="keys.purpose(section.id) | translate" />
+        </p>
+      </div>
+      <div hlmCardContent class="flex flex-col gap-4 text-sm">
+        <p>
+          <span class="font-medium">{{ 'help.whereLabel' | translate }}</span>
+          {{ keys.where(section.id) | translate }}
+        </p>
+
+        <div>
+          <h3 class="mb-2 font-medium">{{ 'help.stepsTitle' | translate }}</h3>
+          <ol class="flex list-decimal flex-col gap-2 pl-5 leading-relaxed">
+            @for (step of section.steps; track step.id) {
+            <li>
+              <mt-rich-text
+                [text]="keys.step(section.id, step.id) | translate"
+              />
+              @if (step.only; as only) {
+              <span hlmBadge variant="outline" class="ml-1 align-middle">
+                {{ keys.only(only) | translate }}
+              </span>
+              }
+            </li>
+            }
+          </ol>
+        </div>
+
+        @if (section.tips.length > 0) {
+        <div>
+          <h3 class="mb-2 font-medium">{{ 'help.tipsTitle' | translate }}</h3>
+          <ul
+            class="text-muted-foreground flex list-disc flex-col gap-2 pl-5 leading-relaxed"
+          >
+            @for (tip of section.tips; track tip.id) {
+            <li>
+              <mt-rich-text [text]="keys.tip(section.id, tip.id) | translate" />
+              @if (tip.only; as only) {
+              <span hlmBadge variant="outline" class="ml-1 align-middle">
+                {{ keys.only(only) | translate }}
+              </span>
+              }
+            </li>
+            }
+          </ul>
+        </div>
+        } @if (section.links.length > 0) {
+        <div class="flex flex-wrap gap-2" data-help-links>
+          @for (link of section.links; track link.id) {
+          <a hlmBtn variant="outline" size="sm" [routerLink]="link.path">
+            {{ 'help.open' | translate: { target: (keys.link(link.id) |
+            translate) } }}
+            <ng-icon name="lucideArrowRight" size="14" aria-hidden="true" />
+          </a>
+          }
+        </div>
+        }
+      </div>
+    </section>
+    } @if (service.visibleFaq().length > 0) {
+    <section
+      hlmCard
+      class="scroll-mt-32"
+      [id]="faqAnchor"
+      [class.mt-help-highlight]="highlighted() === faqAnchor"
+      aria-labelledby="faq-title"
+    >
+      <div hlmCardHeader>
+        <h2
+          hlmCardTitle
+          id="faq-title"
+          tabindex="-1"
+          data-help-heading
+          class="outline-hidden"
+        >
+          {{ 'help.faq.title' | translate }}
+        </h2>
+      </div>
+      <div hlmCardContent class="flex flex-col gap-4 text-sm">
+        @for (faq of service.visibleFaq(); track faq) {
+        <div data-help-faq>
+          <h3 class="font-medium">{{ keys.question(faq) | translate }}</h3>
+          <p class="text-muted-foreground mt-1 leading-relaxed">
+            <mt-rich-text [text]="keys.answer(faq) | translate" />
+          </p>
+        </div>
+        }
+      </div>
+    </section>
+    }
+  </div>
+</div>

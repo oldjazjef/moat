@@ -1,0 +1,126 @@
+<div hlmSidebarWrapper class="h-dvh overflow-hidden">
+  <hlm-sidebar collapsible="icon">
+    <div hlmSidebarHeader class="py-3">
+      <a
+        routerLink="/app"
+        class="flex min-w-0 items-center gap-2 rounded-md p-1 outline-hidden focus-visible:ring-2"
+        [attr.aria-label]="'app.name' | translate"
+      >
+        <img [src]="logo" alt="" class="size-6 shrink-0" />
+        <span
+          class="flex min-w-0 items-center gap-1.5 group-data-[collapsible=icon]:hidden"
+        >
+          <span class="mt-brand truncate">{{ 'app.name' | translate }}</span>
+          <span
+            hlmBadge
+            variant="outline"
+            class="text-muted-foreground shrink-0 font-normal"
+          >
+            {{ 'app.edition' | translate }}
+          </span>
+        </span>
+      </a>
+    </div>
+
+    <div hlmSidebarContent>
+      <nav
+        hlmSidebarGroup
+        data-main-nav
+        [attr.aria-label]="'nav.label' | translate"
+      >
+        <div hlmSidebarGroupContent>
+          <ul hlmSidebarMenu>
+            @for (item of items; track item.path) {
+            <li hlmSidebarMenuItem>
+              @let active = isActive(item);
+              <a
+                hlmSidebarMenuButton
+                [routerLink]="item.path"
+                [isActive]="active"
+                [attr.aria-current]="active ? 'page' : null"
+                [tooltip]="item.labelKey | translate"
+              >
+                <ng-icon [name]="item.icon" aria-hidden="true" />
+                <span>{{ item.labelKey | translate }}</span>
+              </a>
+            </li>
+            }
+          </ul>
+        </div>
+      </nav>
+    </div>
+
+    <div hlmSidebarFooter>
+      <ul hlmSidebarMenu>
+        <!-- FR-70: "Hilfe" at the bottom of the sidebar. -->
+        <li hlmSidebarMenuItem>
+          @let helpActive = isActive(help);
+          <a
+            hlmSidebarMenuButton
+            data-help-nav
+            [routerLink]="help.path"
+            [isActive]="helpActive"
+            [attr.aria-current]="helpActive ? 'page' : null"
+            [tooltip]="help.labelKey | translate"
+          >
+            <ng-icon [name]="help.icon" aria-hidden="true" />
+            <span>{{ help.labelKey | translate }}</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </hlm-sidebar>
+
+  <main hlmSidebarInset class="min-h-0 min-w-0 overflow-hidden">
+    <header
+      class="bg-background flex h-12 shrink-0 items-center gap-1 border-b px-3"
+    >
+      <button
+        hlmSidebarTrigger
+        data-sidebar-trigger
+        [srOnlyText]="'nav.toggleSidebar' | translate"
+        [attr.aria-expanded]="sidebarOpen()"
+        [attr.title]="'nav.toggleSidebar' | translate"
+      ></button>
+      <span class="flex-1"></span>
+      <button
+        hlmBtn
+        variant="ghost"
+        size="sm"
+        type="button"
+        data-language-toggle
+        (click)="toggleLanguage()"
+        [attr.title]="'nav.toggleLanguage' | translate"
+      >
+        <ng-icon name="lucideLanguages" size="16" aria-hidden="true" />
+        {{ 'nav.otherLanguage' | translate }}
+      </button>
+      <button
+        hlmBtn
+        variant="ghost"
+        size="icon"
+        type="button"
+        (click)="theme.toggle()"
+        [attr.aria-label]="'nav.toggleTheme' | translate"
+        [attr.title]="'nav.toggleTheme' | translate"
+      >
+        <ng-icon
+          [name]="theme.current() === 'dark' ? 'lucideSun' : 'lucideMoon'"
+          size="18"
+          aria-hidden="true"
+        />
+      </button>
+    </header>
+
+    <!-- Only this area scrolls: the top bar above stays put. -->
+    <div
+      class="mt-scroll-area flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto"
+    >
+      <div class="mt-scroll-content flex flex-1 flex-col">
+        <div class="mx-auto w-full max-w-6xl flex-1 px-4 py-8 md:px-6">
+          <router-outlet />
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

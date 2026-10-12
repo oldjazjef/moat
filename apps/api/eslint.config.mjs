@@ -1,0 +1,32 @@
+import baseConfig from '../../eslint.config.mjs';
+
+export default [
+  ...baseConfig,
+  {
+    files: ['**/*.ts'],
+    rules: {
+      // Nest resolves constructor parameters by type, so the decorator metadata is the point of
+      // these declarations even when nothing in the body references them.
+      '@typescript-eslint/no-useless-constructor': 'off',
+    },
+  },
+  {
+    // Only src/persistence touches the file system for project data; features depend on a port.
+    files: ['**/*.ts'],
+    ignores: ['src/persistence/**', '**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: ['fs', 'node:fs', 'fs/promises', 'node:fs/promises'].map(
+            (name) => ({
+              name,
+              message:
+                'Project data is read through a storage port; the adapter lives in src/persistence.',
+            }),
+          ),
+        },
+      ],
+    },
+  },
+];

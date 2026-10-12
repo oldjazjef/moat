@@ -1,0 +1,87 @@
+<div class="mb-6 flex items-center justify-between gap-3">
+  <p class="text-muted-foreground text-sm">
+    {{ 'gates.subtitle' | translate }}
+  </p>
+  <mt-help-link section="gate" />
+</div>
+
+@if (resource.gates().length === 0) {
+<p class="mt-note" data-no-gates>
+  <mt-rich-text [text]="'gates.empty' | translate" />
+</p>
+} @else {
+<div class="flex flex-col gap-6">
+  @for (gate of service.valid(); track gate.name) {
+  <section
+    hlmCard
+    data-gate
+    [attr.data-gate-name]="gate.name"
+    [attr.aria-labelledby]="'gate-' + gate.name"
+  >
+    <div hlmCardHeader>
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <h2 hlmCardTitle class="mt-code text-base" [id]="'gate-' + gate.name">
+          {{ gate.name }}
+        </h2>
+        <mt-trust-mode-badge [mode]="gate.trustMode" />
+      </div>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      <dl class="mt-facts">
+        <dt>{{ 'gates.gateId' | translate }}</dt>
+        <dd class="mt-code">{{ gate.gateId }}</dd>
+        <dt>{{ 'gates.fingerprint' | translate }}</dt>
+        <dd class="mt-code" data-fingerprint>{{ gate.boxKeyFingerprint }}</dd>
+        <dt>{{ 'gates.keyId' | translate }}</dt>
+        <dd class="mt-code">{{ gate.boxKeyId }}</dd>
+        <dt>{{ 'gates.bundle' | translate }}</dt>
+        <dd data-bundle>
+          @if (gate.latestBundle > 0) { {{ 'gates.bundleVersion' | translate: {
+          version: gate.latestBundle } }} } @else {
+          <span class="text-muted-foreground">
+            {{ 'gates.noBundle' | translate }}
+          </span>
+          }
+        </dd>
+        <dt>{{ 'gates.secrets' | translate }}</dt>
+        <dd>
+          @if (gate.secrets.length === 0) {
+          <span class="text-muted-foreground">
+            {{ 'gates.noSecrets' | translate }}
+          </span>
+          } @else {
+          <span class="flex flex-wrap gap-1" data-secrets>
+            @for (secret of gate.secrets; track secret.name) {
+            <span hlmBadge variant="secondary" class="font-mono font-normal">
+              {{ 'gates.secretVersion' | translate: { name: secret.name,
+              version: secret.secretVersion } }}
+            </span>
+            }
+          </span>
+          }
+        </dd>
+      </dl>
+      <p class="text-muted-foreground text-xs">
+        {{ 'gates.fingerprintHint' | translate }}
+      </p>
+      @if (gate.missingSecrets.length > 0) {
+      <p class="mt-warning-text text-sm" data-missing>
+        {{ 'gates.missing' | translate: { secrets: gate.missingSecrets.join(',
+        ') } }}
+      </p>
+      }
+    </div>
+  </section>
+  } @for (gate of service.invalid(); track gate.name) {
+  <section hlmCard data-gate-invalid>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle class="mt-code text-base">{{ gate.name }}</h2>
+      <p class="text-destructive text-sm">
+        {{ 'gates.invalid' | translate: { file: 'gates/' + gate.name + '.json' }
+        }}
+      </p>
+    </div>
+  </section>
+  }
+</div>
+}

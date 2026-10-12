@@ -10,15 +10,24 @@ packages:
 #   @parcel/watcher    Nx file watching
 #   lmdb, msgpackr-extract  Nx task cache
 #   unrs-resolver      native module resolver behind eslint-plugin-import
-#   esbuild            pulled in by vite (vitest)
+#   esbuild            pulled in by vite (vitest) and Angular's bundler (@angular/build)
+#   less               pulled in by @angular/build's stylesheet pipeline
+#   electron           downloads the Electron binary (apps/desktop, `pnpm start:desktop`)
+#
+# The `false` entries are deliberate: `@nestjs/core` only prints a sponsorship notice,
+# `electron-winstaller` (via electron-builder) is Squirrel.Windows, unused: the desktop app ships NSIS.
 allowBuilds:
   '@parcel/watcher': true
   '@swc/core': true
+  electron: true
   esbuild: true
+  less: true
   lmdb: true
   msgpackr-extract: true
   nx: true
   unrs-resolver: true
+  '@nestjs/core': false
+  electron-winstaller: false
 
 # Nx is pinned to one exact version; keep @nx/devkit in step with it (see lazy-koins).
 overrides:

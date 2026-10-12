@@ -1,5 +1,9 @@
 {
   "$comment": "Warning ceilings for scripts/check-lint-budget.mjs (`pnpm lint:budget`, part of `pnpm check`). A workspace's number may only go DOWN. Lower it in the same change that clears the warnings; never raise it to get CI green. Errors fail regardless of these numbers.",
   "libs/core": 0,
-  "apps/cli": 0
+  "apps/cli": 0,
+  "apps/api": 0,
+  "apps/web": 0,
+  "apps/desktop": 0,
+  "tools/eslint-rules": 0
 }

@@ -1,0 +1,106 @@
+<p class="text-muted-foreground mb-6 text-sm">
+  {{ 'overview.subtitle' | translate }}
+</p>
+
+@if (resource.project(); as project) {
+<div class="grid gap-6 md:grid-cols-2">
+  <section hlmCard aria-labelledby="folder-title">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="folder-title">
+        {{ 'overview.folder.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'overview.folder.description' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-3">
+      <p class="mt-code" data-folder>{{ resource.folder() }}</p>
+      <mt-project-remove-button />
+    </div>
+  </section>
+
+  <section hlmCard aria-labelledby="trust-title">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="trust-title">
+        {{ 'overview.trust.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'overview.trust.description' | translate }}</p>
+    </div>
+    <div hlmCardContent>
+      <mt-trust-mode-badge mode="signed" [detailed]="true" />
+    </div>
+  </section>
+
+  <section hlmCard class="md:col-span-2" aria-labelledby="config-title">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="config-title">
+        {{ 'overview.config.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'overview.config.description' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      @switch (project.config.status) { @case ('valid') {
+      <p class="text-sm" data-config-status="valid">
+        {{ 'overview.config.valid' | translate }}
+      </p>
+      <dl class="mt-facts">
+        <dt>{{ 'overview.counts.routes' | translate }}</dt>
+        <dd data-count-routes>{{ service.counts().routes }}</dd>
+        <dt>{{ 'overview.counts.upstreams' | translate }}</dt>
+        <dd>{{ service.counts().upstreams }}</dd>
+        <dt>{{ 'overview.counts.secrets' | translate }}</dt>
+        <dd>{{ service.counts().secrets }}</dd>
+        <dt>{{ 'overview.counts.gates' | translate }}</dt>
+        <dd data-count-gates>{{ service.counts().gates }}</dd>
+      </dl>
+      @if (service.gatesMissingSecrets().length > 0) {
+      <p class="mt-warning-text text-sm" data-missing-secrets>
+        {{ 'overview.config.missingSecrets' | translate: { gates:
+        service.gatesMissingSecrets().join(', ') } }}
+      </p>
+      }
+      <div class="flex flex-wrap gap-2">
+        <a
+          hlmBtn
+          variant="outline"
+          size="sm"
+          [routerLink]="[resource.base(), 'routes']"
+        >
+          {{ 'overview.config.showRoutes' | translate }}
+        </a>
+        <a
+          hlmBtn
+          variant="outline"
+          size="sm"
+          [routerLink]="[resource.base(), 'gates']"
+        >
+          {{ 'overview.config.showGates' | translate }}
+        </a>
+      </div>
+      } @case ('missing') {
+      <p class="mt-warning-text text-sm" data-config-status="missing">
+        {{ 'overview.config.missing' | translate }}
+      </p>
+      } @case ('invalid') {
+      <p class="text-destructive text-sm" data-config-status="invalid">
+        {{ 'overview.config.invalid' | translate }}
+      </p>
+      @if (project.config.status === 'invalid') {
+      <ul class="flex flex-col gap-2 text-sm" data-config-issues>
+        @for (issue of project.config.issues; track $index) {
+        <li class="flex flex-col">
+          <span class="font-medium">
+            {{ 'config.errors.' + issue.code | translate }} @if (issue.line) {
+            {{ 'overview.config.at' | translate: { line: issue.line, column:
+            issue.column ?? 1 } }} }
+          </span>
+          <span class="mt-code text-muted-foreground">
+            @if (issue.path.length > 0) { {{ issue.path.join('.') }}: } {{
+            issue.message }}
+          </span>
+        </li>
+        }
+      </ul>
+      } } }
+    </div>
+  </section>
+</div>
+}

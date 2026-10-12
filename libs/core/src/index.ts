@@ -82,3 +82,13 @@ export {
   type KeyFile,
 } from './crypto/keyfile';
 export { buildBundle, type BuildBundleInput } from './bundle/build';
+export type { StoragePort } from './storage/storage-port';
+export {
+  readProject,
+  CONFIG_FILE,
+  type ConfigState,
+  type GateState,
+  type ProjectState,
+  type SealedSecretInfo,
+  type TrustMode,
+} from './storage/project';
