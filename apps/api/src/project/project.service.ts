@@ -1,10 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { AddProjectCommand } from './application/add-project.command';
+import {
+  EditConfigCommand,
+  type EditConfigResult,
+} from './application/edit-config.command';
 import { GetProjectQuery } from './application/get-project.query';
 import { ListProjectsQuery } from './application/list-projects.query';
 import { RemoveProjectCommand } from './application/remove-project.command';
 import type {
+  ConfigEdit,
   ProjectEntry,
   ProjectSummary,
   ProjectView,
@@ -33,5 +38,13 @@ export class ProjectService {
 
   remove(id: string): Promise<boolean> {
     return this.commands.execute(new RemoveProjectCommand(id));
+  }
+
+  editConfig(
+    id: string,
+    base: string,
+    edit: ConfigEdit,
+  ): Promise<EditConfigResult> {
+    return this.commands.execute(new EditConfigCommand(id, base, edit));
   }
 }

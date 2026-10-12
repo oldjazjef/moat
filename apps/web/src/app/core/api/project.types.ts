@@ -127,7 +127,41 @@ export interface ProjectView {
   readonly name: string;
   readonly folder: string;
   readonly project: ProjectState | null;
+  /** SHA-256 of moat.yaml as read; the `base` of the next edit. Null when there is none. */
+  readonly configHash: string | null;
 }
+
+/** `POST /api/projects/:id/config/edits` (ConfigEdit in apps/api/src/project/project.types.ts). */
+export type ConfigEdit =
+  | {
+      readonly op: 'addEnvironment' | 'lockEnvironment' | 'unlockEnvironment';
+      readonly environment: string;
+    }
+  | { readonly op: 'lockGate' | 'unlockGate'; readonly gate: string }
+  | {
+      readonly op: 'assignGate';
+      readonly gate: string;
+      readonly environment: string;
+    };
+
+/**
+ * Why an edit failed, each `edit.errors.<code>`: the API's 409/422 codes (ConfigEditRefusal),
+ * and `failed` for anything else.
+ */
+export const EDIT_ERROR_CODES = [
+  'config_changed',
+  'config_missing',
+  'config_invalid',
+  'name_invalid',
+  'environment_unknown',
+  'gate_in_other_environment',
+  'not_writable',
+  'failed',
+] as const;
+export type EditErrorCode = (typeof EDIT_ERROR_CODES)[number];
+
+/** Environment, gate, route, upstream and secret names (as the core's name pattern). */
+export const NAME_PATTERN = /^[a-z][a-z0-9-]{0,62}$/;
 
 /** The codes of `ConfigIssue` (libs/core/src/config/yaml.ts), each `config.errors.<code>`. */
 export const CONFIG_ISSUE_CODES = [

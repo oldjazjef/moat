@@ -97,7 +97,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
   {
     id: 'environments',
     steps: items('define', 'lock', 'build', 'check'),
-    tips: items('unlock', 'one', 'answer'),
+    tips: items('unlock', 'saved', 'one', 'answer'),
     links: [PROJECTS],
   },
   {

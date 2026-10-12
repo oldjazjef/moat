@@ -5,6 +5,9 @@ import {
 } from '../testing/in-memory-projects';
 import { AddProjectCommand } from './add-project.command';
 import { AddProjectHandler } from './add-project.handler';
+import { configHash } from './config-hash';
+import { EditConfigCommand } from './edit-config.command';
+import { EditConfigHandler } from './edit-config.handler';
 import { GetProjectHandler } from './get-project.handler';
 import { GetProjectQuery } from './get-project.query';
 import { ListProjectsHandler } from './list-projects.handler';
@@ -29,9 +32,12 @@ function setup() {
   const files = new InMemoryProjectFiles({
     '/sites/shop': { 'moat.yaml': YAML },
     '/sites/blog/': {},
+    '/sites/broken': { 'moat.yaml': 'version: 1\nroutes: [\n' },
   });
   return {
     registry,
+    files,
+    edit: new EditConfigHandler(registry, files),
     add: new AddProjectHandler(registry),
     list: new ListProjectsHandler(registry, files),
     get: new GetProjectHandler(registry, files),
@@ -83,6 +89,7 @@ describe('project handlers', () => {
       name: 'gone',
       folder: '/sites/gone',
       project: null,
+      configHash: null,
     });
   });
 
@@ -92,5 +99,121 @@ describe('project handlers', () => {
     expect(await remove.execute(new RemoveProjectCommand(shop.id))).toBe(true);
     expect(await remove.execute(new RemoveProjectCommand(shop.id))).toBe(false);
     expect(registry.list()).toEqual([]);
+  });
+
+  it('reports the hash of moat.yaml, the base of the next edit', async () => {
+    const { add, get } = setup();
+    const shop = await add.execute(new AddProjectCommand('/sites/shop'));
+    expect((await get.execute(new GetProjectQuery(shop.id)))?.configHash).toBe(
+      configHash(YAML),
+    );
+  });
+});
+
+describe('editing moat.yaml', () => {
+  async function shop() {
+    const context = setup();
+    const entry = await context.add.execute(
+      new AddProjectCommand('/sites/shop'),
+    );
+    const text = () =>
+      context.files.folders['/sites/shop']?.['moat.yaml'] ?? '';
+    return { ...context, id: entry.id, text };
+  }
+
+  it('adds and locks an environment, keeping what was there', async () => {
+    const { edit, id, text } = await shop();
+    expect(
+      await edit.execute(
+        new EditConfigCommand(id, configHash(YAML), {
+          op: 'addEnvironment',
+          environment: 'production',
+        }),
+      ),
+    ).toEqual({ status: 'saved' });
+    const added = text();
+    expect(added).toContain('environments:\n  production: {}');
+    expect(added).toContain('upstreamPath: "/contacts"');
+    await edit.execute(
+      new EditConfigCommand(id, configHash(added), {
+        op: 'lockEnvironment',
+        environment: 'production',
+      }),
+    );
+    expect(text()).toContain('production:\n    enabled: false');
+  });
+
+  it('assigns, moves, locks and unlocks a gate', async () => {
+    const { edit, id, text } = await shop();
+    const run = async (
+      change: ConstructorParameters<typeof EditConfigCommand>[2],
+    ) => edit.execute(new EditConfigCommand(id, configHash(text()), change));
+    await run({ op: 'assignGate', gate: 'site', environment: 'staging' });
+    await run({ op: 'assignGate', gate: 'site', environment: 'production' });
+    expect(text()).toContain('site:\n    environment: production');
+    await run({ op: 'lockGate', gate: 'site' });
+    expect(text()).toContain('enabled: false');
+    await run({ op: 'unlockGate', gate: 'site' });
+    expect(text()).not.toContain('enabled');
+  });
+
+  it('writes nothing when moat.yaml changed since the window read it', async () => {
+    const { edit, id, text } = await shop();
+    const result = await edit.execute(
+      new EditConfigCommand(id, configHash(`${YAML}# edited\n`), {
+        op: 'lockGate',
+        gate: 'site',
+      }),
+    );
+    expect(result).toEqual({ status: 'changed' });
+    expect(text()).toBe(YAML);
+  });
+
+  it('refuses unknown environments, missing or invalid configs and read-only folders', async () => {
+    const { edit, id, add, files } = await shop();
+    const base = configHash(YAML);
+    expect(
+      await edit.execute(
+        new EditConfigCommand(id, base, {
+          op: 'lockEnvironment',
+          environment: 'nowhere',
+        }),
+      ),
+    ).toEqual({ status: 'refused', code: 'environment_unknown' });
+
+    const blog = await add.execute(new AddProjectCommand('/sites/blog/'));
+    expect(
+      await edit.execute(
+        new EditConfigCommand(blog.id, base, { op: 'lockGate', gate: 'site' }),
+      ),
+    ).toEqual({ status: 'refused', code: 'config_missing' });
+
+    const broken = await add.execute(new AddProjectCommand('/sites/broken'));
+    const brokenText = files.folders['/sites/broken']?.['moat.yaml'] ?? '';
+    expect(
+      await edit.execute(
+        new EditConfigCommand(broken.id, configHash(brokenText), {
+          op: 'lockGate',
+          gate: 'site',
+        }),
+      ),
+    ).toEqual({ status: 'refused', code: 'config_invalid' });
+
+    files.readOnly.add('/sites/shop');
+    expect(
+      await edit.execute(
+        new EditConfigCommand(id, base, { op: 'lockGate', gate: 'site' }),
+      ),
+    ).toEqual({ status: 'refused', code: 'not_writable' });
+  });
+
+  it('answers an unknown project like a missing one', async () => {
+    const { edit } = await shop();
+    const change = { op: 'lockGate', gate: 'site' } as const;
+    for (const id of ['x'.repeat(22), '../../etc']) {
+      expect(
+        await edit.execute(new EditConfigCommand(id, '0'.repeat(64), change)),
+      ).toEqual({ status: 'not_found' });
+    }
   });
 });

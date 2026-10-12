@@ -149,6 +149,33 @@
           @if (service.gatesLocked().has(gate)) {
           <mt-lock-badge [locked]="true" />
           } } }
+          <span class="ms-auto">
+            @if (environment.enabled) {
+            <button
+              hlmBtn
+              variant="outline"
+              size="sm"
+              type="button"
+              data-environment-lock
+              [disabled]="service.edits.busy()"
+              (click)="service.setEnvironmentLocked(environment.name, true)"
+            >
+              {{ 'overview.environments.lock' | translate }}
+            </button>
+            } @else {
+            <button
+              hlmBtn
+              variant="outline"
+              size="sm"
+              type="button"
+              data-environment-unlock
+              [disabled]="service.edits.busy()"
+              (click)="service.setEnvironmentLocked(environment.name, false)"
+            >
+              {{ 'overview.environments.unlock' | translate }}
+            </button>
+            }
+          </span>
         </li>
         }
       </ul>
@@ -158,6 +185,51 @@
         service.unassigned().join(', ') } }}
       </p>
       }
+      <form
+        class="flex flex-col gap-2"
+        data-add-environment
+        (submit)="$event.preventDefault(); service.addEnvironment()"
+      >
+        <label hlmLabel for="new-environment">
+          {{ 'overview.environments.newLabel' | translate }}
+        </label>
+        <div class="flex flex-wrap gap-2">
+          <input
+            hlmInput
+            id="new-environment"
+            class="max-w-64"
+            autocomplete="off"
+            spellcheck="false"
+            [placeholder]="'overview.environments.newPlaceholder' | translate"
+            [formControl]="service.newEnvironment"
+            [attr.aria-invalid]="
+              service.newEnvironment.touched && service.newEnvironment.invalid
+            "
+            aria-describedby="new-environment-hint"
+          />
+          <button
+            hlmBtn
+            size="sm"
+            type="submit"
+            class="h-9"
+            [disabled]="service.edits.busy()"
+          >
+            {{ 'overview.environments.add' | translate }}
+          </button>
+        </div>
+        <p
+          id="new-environment-hint"
+          class="text-xs"
+          [class.text-destructive]="
+            service.newEnvironment.touched && service.newEnvironment.invalid
+          "
+          [class.text-muted-foreground]="
+            !(service.newEnvironment.touched && service.newEnvironment.invalid)
+          "
+        >
+          {{ 'overview.environments.nameRule' | translate }}
+        </p>
+      </form>
       <p class="text-muted-foreground text-xs">
         <mt-rich-text [text]="'overview.environments.hint' | translate" />
       </p>

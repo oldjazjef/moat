@@ -57,6 +57,13 @@ describe('moat.yaml edits', () => {
     });
   });
 
+  it('leaves flow lists as written', () => {
+    const text = `${base}    origins: ['https://www.example.ch', 'https://shop.example.ch']\n`;
+    expect(setGateEnabled(text, 'website', false)).toContain(
+      "    origins: ['https://www.example.ch', 'https://shop.example.ch']\n",
+    );
+  });
+
   it('locks and unlocks an environment, which locks its gates', () => {
     const assigned = assignGate(base, 'website', 'staging');
     const locked = setEnvironmentEnabled(assigned, 'staging', false);

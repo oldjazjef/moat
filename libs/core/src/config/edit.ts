@@ -34,7 +34,8 @@ function document(text: string): Document {
 }
 
 function checked(doc: Document): string {
-  const text = doc.toString();
+  // `['a', 'b']` stays as written (and as Prettier writes it); the default would pad it to `[ 'a', 'b' ]`.
+  const text = doc.toString({ flowCollectionPadding: false });
   loadMoatYaml(text);
   return text;
 }

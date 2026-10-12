@@ -1,4 +1,12 @@
-import { openProjectTab, PROJECT } from '../../../../../testing/page-harness';
+import { TestBed } from '@angular/core/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
+import type { ProjectView } from '../../../../core/api/project.types';
+import {
+  expectEdit,
+  openProjectTab,
+  PROJECT,
+  settle,
+} from '../../../../../testing/page-harness';
 import { OverviewPage } from './overview-page';
 
 const text = (el: HTMLElement, selector: string) =>
@@ -69,10 +77,10 @@ describe('OverviewPage', () => {
     ) as HTMLElement;
     // Production is active, but its gate "site" is locked on its own.
     expect(production.textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      'production site Gesperrt',
+      'production site Gesperrt Sperren',
     );
     expect(staging.textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      'staging Gesperrt Noch kein Gate',
+      'staging Gesperrt Noch kein Gate Entsperren',
     );
     expect(text(el, '[data-unassigned]')).toBe('Ohne Umgebung: loose');
   });
@@ -86,9 +94,8 @@ describe('OverviewPage', () => {
       ...PROJECT,
       project: { ...project, config: { ...config, environments: [] } },
     });
-    expect(text(el, '[data-no-environments]')).toContain(
-      'moat env add staging',
-    );
+    expect(text(el, '[data-no-environments]')).toContain('Lege unten eine an');
+    expect(el.querySelector('[data-add-environment]')).not.toBeNull();
   });
 
   it('lists config errors with line and column', async () => {
@@ -113,6 +120,111 @@ describe('OverviewPage', () => {
     expect(el.querySelector('[data-config-status="invalid"]')).not.toBeNull();
     expect(text(el, '[data-config-issues]')).toContain(
       'Fehler in der YAML-Schreibweise (Zeile 2, Spalte 1)',
+    );
+  });
+
+  const withEnvironments = (
+    environments: { name: string; enabled: boolean; gates: string[] }[],
+    configHash = 'b'.repeat(64),
+  ): ProjectView => {
+    const project = PROJECT.project;
+    const config = project?.config;
+    if (project == null || config?.status !== 'valid')
+      throw new Error('fixture');
+    return {
+      ...PROJECT,
+      configHash,
+      project: { ...project, config: { ...config, environments } },
+    };
+  };
+
+  it('locks an environment in moat.yaml and says it applies with the next bundle', async () => {
+    const { el, harness } = await openProjectTab(
+      'overview',
+      OverviewPage,
+      PROJECT,
+    );
+    (el.querySelector('[data-environment-lock]') as HTMLButtonElement).click();
+    const edit = expectEdit();
+    expect(edit.request.body).toEqual({
+      base: 'a'.repeat(64),
+      op: 'lockEnvironment',
+      environment: 'production',
+    });
+    edit.flush(
+      withEnvironments([
+        { name: 'production', enabled: false, gates: ['site'] },
+      ]),
+    );
+    await settle(harness);
+    expect(text(el, '[data-edit-outcome="saved"]')).toContain(
+      'In moat.yaml gespeichert. Auf dem Gate gilt die Änderung erst mit dem nächsten Bundle',
+    );
+    expect(el.querySelector('[data-environment-unlock]')).not.toBeNull();
+  });
+
+  it('adds an environment, but only with a name moat.yaml takes', async () => {
+    const { el, harness } = await openProjectTab(
+      'overview',
+      OverviewPage,
+      PROJECT,
+    );
+    const input = el.querySelector('#new-environment') as HTMLInputElement;
+    const form = el.querySelector('[data-add-environment]') as HTMLFormElement;
+    input.value = 'Prod Server';
+    input.dispatchEvent(new Event('input'));
+    form.dispatchEvent(new Event('submit'));
+    await settle(harness);
+    TestBed.inject(HttpTestingController).expectNone(
+      `/api/projects/${PROJECT.id}/config/edits`,
+    );
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+
+    input.value = ' staging ';
+    input.dispatchEvent(new Event('input'));
+    form.dispatchEvent(new Event('submit'));
+    const edit = expectEdit();
+    expect(edit.request.body).toEqual({
+      base: 'a'.repeat(64),
+      op: 'addEnvironment',
+      environment: 'staging',
+    });
+    edit.flush(
+      withEnvironments([
+        { name: 'production', enabled: true, gates: ['site'] },
+        { name: 'staging', enabled: true, gates: [] },
+      ]),
+    );
+    await settle(harness);
+    expect(
+      el.querySelector('[data-environment-name="staging"]'),
+    ).not.toBeNull();
+    expect(input.value).toBe('');
+  });
+
+  it('writes nothing over a moat.yaml changed on disk, says so and reads it again', async () => {
+    const { el, harness } = await openProjectTab(
+      'overview',
+      OverviewPage,
+      PROJECT,
+    );
+    (el.querySelector('[data-environment-lock]') as HTMLButtonElement).click();
+    expectEdit().flush(
+      { error: 'config_changed' },
+      { status: 409, statusText: 'Conflict' },
+    );
+    // Not settle(): the project is read again, and that request is open until answered.
+    await new Promise((resolve) => setTimeout(resolve));
+    TestBed.inject(HttpTestingController)
+      .expectOne(`/api/projects/${PROJECT.id}`)
+      .flush(
+        withEnvironments([
+          { name: 'production', enabled: true, gates: ['site'] },
+        ]),
+      );
+    await settle(harness);
+    expect(text(el, '[data-edit-outcome="error"]')).toContain(
+      'moat.yaml wurde inzwischen ausserhalb von Moat geändert',
     );
   });
 });

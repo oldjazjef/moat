@@ -36,10 +36,18 @@ export class InMemoryProjectRegistry extends ProjectRegistryPort {
 
 /** Project folders in memory: folder → files; a folder not in the map is gone. */
 export class InMemoryProjectFiles extends ProjectFilesPort {
-  constructor(
-    private readonly folders: Record<string, Record<string, string>>,
-  ) {
+  /** Folders whose moat.yaml cannot be written (read-only, not a regular file). */
+  readonly readOnly = new Set<string>();
+
+  constructor(readonly folders: Record<string, Record<string, string>>) {
     super();
+  }
+
+  writeConfig(folder: string, text: string): void {
+    const files = this.folders[folder];
+    if (files === undefined || this.readOnly.has(folder))
+      throw new Error('not writable');
+    files['moat.yaml'] = text;
   }
 
   open(folder: string): StoragePort | null {

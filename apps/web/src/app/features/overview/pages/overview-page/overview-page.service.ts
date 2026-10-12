@@ -1,14 +1,24 @@
 import { computed, inject, Injectable } from '@angular/core';
+import { FormControl, Validators } from '@angular/forms';
+import { NAME_PATTERN } from '../../../../core/api/project.types';
+import { ProjectEdits } from '../../../../core/project/project-edits.service';
 import { ProjectResource } from '../../../../core/project/project-resource.service';
 
 /**
  * A project's overview (Übersicht): where its folder is, whether its moat.yaml is valid, how many
  * routes, upstreams, secrets and gates it has, the trust mode, and its environments with their
- * locks (FR-01).
+ * locks (FR-01) — locked and unlocked here, and added below the list.
  */
 @Injectable()
 export class OverviewPageService {
   readonly resource = inject(ProjectResource);
+  readonly edits = inject(ProjectEdits);
+
+  /** «Umgebung hinzufügen»: a name as moat.yaml takes it (lowercase, digits, hyphens). */
+  readonly newEnvironment = new FormControl('', {
+    nonNullable: true,
+    validators: [Validators.required, Validators.pattern(NAME_PATTERN)],
+  });
 
   readonly counts = computed(() => {
     const config = this.resource.config();
@@ -57,4 +67,20 @@ export class OverviewPageService {
           .map((gate) => gate.name),
       ),
   );
+
+  async addEnvironment(): Promise<void> {
+    const environment = this.newEnvironment.value.trim();
+    this.newEnvironment.setValue(environment);
+    this.newEnvironment.markAsTouched();
+    if (this.newEnvironment.invalid) return;
+    if (await this.edits.run({ op: 'addEnvironment', environment }))
+      this.newEnvironment.reset();
+  }
+
+  setEnvironmentLocked(environment: string, locked: boolean): Promise<boolean> {
+    return this.edits.run({
+      op: locked ? 'lockEnvironment' : 'unlockEnvironment',
+      environment,
+    });
+  }
 }
