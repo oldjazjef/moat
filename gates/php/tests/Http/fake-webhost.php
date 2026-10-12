@@ -42,7 +42,8 @@ for (;;) {
         $folder = $site . '/' . $match[1];
         if (($match[2] ?? '') === '') {
             $status = 200;
-            $body = '<html><body>' . implode('<br>', array_map(basename(...), glob($folder . '/*') ?: [])) . '</body></html>';
+            $entries = glob($folder . '/*');
+            $body = '<html><body>' . implode('<br>', array_map(basename(...), $entries === false ? [] : $entries)) . '</body></html>';
         } elseif (is_file($folder . '/' . $match[2])) {
             $status = 200;
             $body = (string) file_get_contents($folder . '/' . $match[2]);

@@ -216,12 +216,13 @@ final class Cli
 
     private static function webText(WebFacts $web): string
     {
-        return 'user ' . ($web->user ?? 'unknown') . ($web->uid === null ? '' : ' (uid ' . $web->uid . ')')
-            . match ($web->ownsFiles) {
-                true => ', owns the gate file',
-                false => ', does not own the gate file',
-                null => ', owner unknown',
-            }
+        $owner = match ($web->ownsFiles) {
+            true => 'owns the gate file',
+            false => 'does not own the gate file',
+            null => 'owner unknown',
+        };
+
+        return 'user ' . ($web->user ?? 'unknown') . ($web->uid === null ? '' : ' (uid ' . $web->uid . ')') . ', ' . $owner
             . ', open_basedir ' . ($web->openBasedir ? 'set' : 'not set')
             . ', SAPI ' . $web->sapi . ', seen ' . gmdate('Y-m-d H:i', $web->at) . ' UTC';
     }

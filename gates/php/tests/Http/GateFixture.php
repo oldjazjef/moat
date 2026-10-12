@@ -37,7 +37,8 @@ final class GateFixture
         $this->upstreamLog = $dir . '/upstream.log';
         $this->gateLog = $dir . '/gate.log';
         [$cert, $key] = self::certificate($dir);
-        [$this->certFile, $this->keyFile] = [$cert, $key];
+        $this->certFile = $cert;
+        $this->keyFile = $key;
         touch($this->upstreamLog);
 
         $doc = self::decode($casesFile);
