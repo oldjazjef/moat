@@ -1,0 +1,49 @@
+{
+  "name": "@moat/source",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "packageManager": "pnpm@11.21.0",
+  "volta": {
+    "node": "22.23.2"
+  },
+  "scripts": {
+    "prepare": "node scripts/dev/install-hooks.mjs",
+    "test": "vitest run",
+    "lint": "nx run-many -t lint",
+    "lint:budget": "node scripts/check-lint-budget.mjs",
+    "lint:yaml": "yamllint -s .",
+    "typecheck": "nx run-many -t typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "vectors": "node scripts/vectors.mjs",
+    "ci:verify": "pnpm lint && pnpm lint:budget && pnpm lint:yaml && pnpm format:check && pnpm test && pnpm typecheck",
+    "check": "pnpm ci:verify",
+    "check:gate-php": "composer --working-dir=gates/php check",
+    "check:all": "pnpm check && pnpm check:gate-php",
+    "conformance": "vitest run --project core libs/core/src/conformance.spec.ts && composer --working-dir=gates/php conformance"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.8.0",
+    "@nx/eslint": "23.2.1",
+    "@nx/eslint-plugin": "23.2.1",
+    "@nx/js": "23.2.1",
+    "@types/libsodium-wrappers-sumo": "^0.8.2",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.8.0",
+    "eslint-config-prettier": "^10.0.0",
+    "fast-check": "^4.3.0",
+    "jsonc-eslint-parser": "^2.1.0",
+    "nx": "23.2.1",
+    "prettier": "^3.8.1",
+    "tslib": "^2.3.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.58.0",
+    "vitest": "^4.0.8"
+  },
+  "dependencies": {
+    "libsodium-wrappers-sumo": "^0.8.4",
+    "yaml": "^2.9.1",
+    "zod": "^4.4.3"
+  }
+}

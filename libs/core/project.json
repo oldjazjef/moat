@@ -1,0 +1,20 @@
+{
+  "name": "core",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/core/src",
+  "projectType": "library",
+  "tags": ["scope:core"],
+  "mt-note-no-test-target": "Deliberate, as in lazy-koins: tests run via `pnpm test` (root Vitest workspace) or `pnpm vitest run --project core`.",
+  "mt-note-no-build-target": "Consumed through the tsconfig.base.json path mapping (`@moat/core`) and bundled by its consumers. `typecheck` is what `pnpm check` runs instead.",
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "options": {
+        "command": "tsc -p libs/core/tsconfig.lib.json --noEmit && tsc -p libs/core/tsconfig.spec.json --noEmit",
+        "cwd": "."
+      }
+    }
+  }
+}

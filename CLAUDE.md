@@ -70,15 +70,15 @@ Nest, no Prisma. The trustworthy path for signing and sealing (SEC-37).
 
 ### Gate PHP (`gates/php`) — its own world
 
-|              |                                                                                    |
-| ------------ | ---------------------------------------------------------------------------------- |
-| PHP          | **≥ 8.2** at runtime (shared hosting); CI matrix 8.2 · 8.3 · 8.4 · 8.5             |
+|              |                                                                                           |
+| ------------ | ----------------------------------------------------------------------------------------- |
+| PHP          | **≥ 8.2** at runtime (shared hosting); CI matrix 8.2 · 8.3 · 8.4 · 8.5                    |
 | Extensions   | `sodium`, `curl`, `json`, `hash` (+ `openssl` only if mode 2 is pinned) — checked at boot |
-| Runtime deps | **none** — Composer is for dev tools only (`require` = `php` + `ext-*`)            |
-| Style        | **PER Coding Style 2.0** via PHP-CS-Fixer                                          |
-| Analysis     | **PHPStan level max** + strict-rules + disallowed-calls (see PHP)                  |
-| Tests        | **PHPUnit** + the shared conformance suite                                         |
-| Artifact     | one built file per release, signed (SEC-21, SEC-60)                                |
+| Runtime deps | **none** — Composer is for dev tools only (`require` = `php` + `ext-*`)                   |
+| Style        | **PER Coding Style 2.0** via PHP-CS-Fixer                                                 |
+| Analysis     | **PHPStan level max** + strict-rules + disallowed-calls (see PHP)                         |
+| Tests        | **PHPUnit** + the shared conformance suite                                                |
+| Artifact     | one built file per release, signed (SEC-21, SEC-60)                                       |
 
 Revisit the PHP floor when 8.2 leaves security support (31.12.2026).
 
@@ -320,8 +320,8 @@ in-memory port doubles; a cross-tenant isolation suite covers every endpoint.
   history; a test keeps them structurally equal. CHECK constraints hand-written in the migration
   SQL, as in lazy-koins (copy them back after a table redefinition).
 - MySQL/MariaDB (DT-03) later, same pattern.
-- The desktop's storage choice (DT-03) is a `StoragePort` in core: project folder (default, files
-  + Git), SQLite, external DB. **External backends store ciphertext and signed bundles only.**
+- The desktop's storage choice (DT-03) is a `StoragePort` in core: project folder (default,
+  files and Git), SQLite, external DB. **External backends store ciphertext and signed bundles only.**
 
 ## Auth
 

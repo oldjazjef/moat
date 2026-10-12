@@ -1,0 +1,963 @@
+{
+  "description": "Bundle verification in the binding order of docs/CRYPTO.md §4.3 (steps 1–8). Each case: the envelope as received (append ASCII spaces up to `padTo` bytes when set), the gate state (`pinned` names keys from `signers`), and the expected result — the gate id and version on success, otherwise the rejection code of the first failing check.",
+  "notice": "TEST ONLY — every key in this file is derived from a public label. Never use it anywhere else.",
+  "signers": [
+    {
+      "name": "a",
+      "alg": "ed25519",
+      "seed": "MoHWwf6tu69YakIpFYb6CvXv-gxn1Q4MKNJs5Wx9tRo",
+      "publicKey": "xLJXeR4WujwL_xeuT72vJ0LAvTeF47XTUwuzO1i1W1Q",
+      "kid": "g3TWIWKLpCXXHBHfvi3edA"
+    },
+    {
+      "name": "b",
+      "alg": "ed25519",
+      "seed": "BCdP7DRILsC791cl9ZvTUG4mSp0fwCrbuQAp2VmGAvg",
+      "publicKey": "r4sORh00jqAI_s-n0htk_kgLajOMsoOiIEVfstVLZGI",
+      "kid": "1T0BHyl7H5HEVmFwDcmmdg"
+    },
+    {
+      "name": "c",
+      "alg": "ed25519",
+      "seed": "mlll_mp_W2mwVrXgZTjx0I3E4_Nk--Q_JRiQfKCf_hw",
+      "publicKey": "vYBZiW9VPxW8WKneThEFQ_5kN02HHfrokKqd7Bqkloc",
+      "kid": "v_oHcnBlkXaiMldtSCYPEg"
+    }
+  ],
+  "cases": [
+    {
+      "name": "valid",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": true,
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "version": 42
+      }
+    },
+    {
+      "name": "valid as first bundle",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 0,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": true,
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "version": 42
+      }
+    },
+    {
+      "name": "non-canonical payload bytes are verified as received, never re-serialised",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"ewogICJ0eXBlIjogIm1vYXQuYnVuZGxlIiwKICAidiI6IDEsCiAgImdhdGVJZCI6ICJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwKICAidmVyc2lvbiI6IDQyLAogICJpc3N1ZWRBdCI6IDE3OTE3OTE5NDAsCiAgImV4cGlyZXNBdCI6IG51bGwsCiAgImNvbmZpZyI6IHsKICAgICJ2ZXJzaW9uIjogMSwKICAgICJyb3V0ZXMiOiB7CiAgICAgICJjb250YWN0IjogewogICAgICAgICJ1cHN0cmVhbSI6ICJodWJzcG90IiwKICAgICAgICAicGF0aCI6ICIvY29udGFjdCIKICAgICAgfQogICAgfQogIH0sCiAgInNlY3JldHMiOiB7fQp9\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"GqqBBKURF1ms9nw1JyWFsZYkHi-zMJ9uUBEnxBiTNkgrt4uuKkBvswGdoxILYYCEFpyF5x9pLRNsbrpbbBEcBw\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": true,
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "version": 42
+      }
+    },
+    {
+      "name": "envelope of exactly 1 MiB (padded with whitespace) is accepted",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "padTo": 1048576,
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": true,
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "version": 42
+      }
+    },
+    {
+      "name": "envelope of 1 MiB + 1 byte is rejected before parsing",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "padTo": 1048577,
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "too_large"
+      }
+    },
+    {
+      "name": "envelope is not JSON",
+      "envelope": "moat",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "envelope_invalid"
+      }
+    },
+    {
+      "name": "envelope is an array",
+      "envelope": "[]",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "envelope_invalid"
+      }
+    },
+    {
+      "name": "envelope with an extra field",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}],\"note\":\"x\"}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "envelope_invalid"
+      }
+    },
+    {
+      "name": "envelope without sigs",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\"}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "envelope_invalid"
+      }
+    },
+    {
+      "name": "envelope type is not \"bundle\"",
+      "envelope": "{\"moat\":\"release\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "envelope_invalid"
+      }
+    },
+    {
+      "name": "envelope version 2",
+      "envelope": "{\"moat\":\"bundle\",\"v\":2,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "envelope_invalid"
+      }
+    },
+    {
+      "name": "envelope version as string",
+      "envelope": "{\"moat\":\"bundle\",\"v\":\"1\",\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "envelope_invalid"
+      }
+    },
+    {
+      "name": "envelope version 1.0 (float)",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1.0,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "envelope_invalid"
+      }
+    },
+    {
+      "name": "empty sigs",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "envelope_invalid"
+      }
+    },
+    {
+      "name": "more than 16 signatures",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "envelope_invalid"
+      }
+    },
+    {
+      "name": "signature entry with an extra field",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\",\"at\":1}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "envelope_invalid"
+      }
+    },
+    {
+      "name": "payload is not a string",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":{\"type\":\"moat.bundle\",\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"version\":42,\"issuedAt\":1791791940,\"expiresAt\":null,\"config\":{\"version\":1,\"routes\":{\"contact\":{\"upstream\":\"hubspot\",\"path\":\"/contact\"}}},\"secrets\":{}},\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "envelope_invalid"
+      }
+    },
+    {
+      "name": "payload with base64 padding",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0=\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "payload_encoding"
+      }
+    },
+    {
+      "name": "payload in the standard base64 alphabet",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"+yJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "payload_encoding"
+      }
+    },
+    {
+      "name": "tampered payload",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo1Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "signature_invalid"
+      }
+    },
+    {
+      "name": "signature without the domain prefix",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"uM8IPeYh3hy__W7r92_x0xuFNKbYtucLUi36Y8JgWaqJZD1scB3ttg3DubBBJzH--L1cjOWzhZIYrmsYHNvlAA\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "signature_invalid"
+      }
+    },
+    {
+      "name": "signature with another domain",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"RuT0buQgnyB2Y-2aaHho7cyMvmLhxUbwT_NWDC8dxovL_e4uyXBj_PbTpen4Ay92hwoAdBS4RYLD1ovuXvM_Ag\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "signature_invalid"
+      }
+    },
+    {
+      "name": "known kid with another algorithm",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed448\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "signature_invalid"
+      }
+    },
+    {
+      "name": "known kid with a truncated signature",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "signature_invalid"
+      }
+    },
+    {
+      "name": "known kid with a signature by another key",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"mA8yd3_Lz8RWPCNBczceFZopsEUa_8CHoSheoRw9LxkatE77KtWY52we6knmJnxQHWTTR8djaG0ilqkIv3S0Bg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "signature_invalid"
+      }
+    },
+    {
+      "name": "only an unknown kid",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"v_oHcnBlkXaiMldtSCYPEg\",\"alg\":\"ed25519\",\"sig\":\"ArWtvwd_pYma5YSfIpAa9-BDdIptlEKCUBZEODjR3Jb8g85_Kdai9SMsruf2ck2R9Ow7i4KafhD25cU5tlWqBw\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "threshold_not_met"
+      }
+    },
+    {
+      "name": "unknown kid next to a valid one is ignored",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"v_oHcnBlkXaiMldtSCYPEg\",\"alg\":\"ed25519\",\"sig\":\"ArWtvwd_pYma5YSfIpAa9-BDdIptlEKCUBZEODjR3Jb8g85_Kdai9SMsruf2ck2R9Ow7i4KafhD25cU5tlWqBw\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": true,
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "version": 42
+      }
+    },
+    {
+      "name": "2 of 2 required, both signed",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"1T0BHyl7H5HEVmFwDcmmdg\",\"alg\":\"ed25519\",\"sig\":\"mA8yd3_Lz8RWPCNBczceFZopsEUa_8CHoSheoRw9LxkatE77KtWY52we6knmJnxQHWTTR8djaG0ilqkIv3S0Bg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a",
+          "b"
+        ],
+        "threshold": 2,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": true,
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "version": 42
+      }
+    },
+    {
+      "name": "2 of 3 required, one signed",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a",
+          "b",
+          "c"
+        ],
+        "threshold": 2,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "threshold_not_met"
+      }
+    },
+    {
+      "name": "2 of 2 required, the same kid twice counts once",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a",
+          "b"
+        ],
+        "threshold": 2,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "threshold_not_met"
+      }
+    },
+    {
+      "name": "signed payload with a float",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAuMCwic2VjcmV0cyI6e30sInR5cGUiOiJtb2F0LmJ1bmRsZSIsInYiOjEsInZlcnNpb24iOjQyfQ\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"z-QtXEmhoK0cDfQEVUexWCYhjkk2NLCrAn6DIFJwbI-CcGzUfttki268d0IkmvOL15Fj92_p2V2EoMAPmrieDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "payload_invalid"
+      }
+    },
+    {
+      "name": "signed payload with an integer above 2^53 - 1",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo5MDA3MTk5MjU0NzQwOTkyfQ\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"MXs0jCZ105rEv3TR-AQPlA7mNQZ1UHolX0sl6zPt6wx59tpzHUBlbl7hwyuDtghs5k_0lE2TYu1qkHJbpXgiAw\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "payload_invalid"
+      }
+    },
+    {
+      "name": "signed payload with a negative integer",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOi0xLCJzZWNyZXRzIjp7fSwidHlwZSI6Im1vYXQuYnVuZGxlIiwidiI6MSwidmVyc2lvbiI6NDJ9\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"uwHGAgwvaz0XSURlfw-VVj1DRP-vCoWJ4Ot8SlqXI_TE-d3f3mEicSFBTRDwbcePVb16QFsc7ruaudqHkrVpCg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "payload_invalid"
+      }
+    },
+    {
+      "name": "signed payload with an extra field",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJleHRyYSI6dHJ1ZSwiZ2F0ZUlkIjoiSllIWGFjWERZUzZKcndCbGNWdVZ1dyIsImlzc3VlZEF0IjoxNzkxNzkxOTQwLCJzZWNyZXRzIjp7fSwidHlwZSI6Im1vYXQuYnVuZGxlIiwidiI6MSwidmVyc2lvbiI6NDJ9\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"G6_iJSNiosqPKB9DGew4SnfshYpIFmyAWPuKoyp1ulCacu6fb97XQV42TJ9vVoOL3pw6wCSyvDUBL99yWESDBg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "payload_invalid"
+      }
+    },
+    {
+      "name": "signed payload of another type",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5yZWxlYXNlIiwidiI6MSwidmVyc2lvbiI6NDJ9\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"0YP1o_eOPJ5MyPJeHIzio7b2UMgfpac0zV10-QqMg8cSr2favRCI-2qE83et5M_QT8auIfc8-Bbex4xF4_hpAg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "payload_invalid"
+      }
+    },
+    {
+      "name": "signed payload with version 0",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjowfQ\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"jIU2RpPp-4oiEYqYQVSORi04rbMYUo9dKmcpmnyk1LMBsded089IQaO_cJTfjwGJInTJCEsk9K7QaErzupyfDw\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 0,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "payload_invalid"
+      }
+    },
+    {
+      "name": "signed payload that is not JSON",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"bW9hdA\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"Z4kn1u8f3L5H8Z-xHAh_2mGbgQuZnoZdpDM-hPlnny4d9glfswwW3WC03qSzPffIrKecSc59IhfTWbfzhBsLCA\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "payload_invalid"
+      }
+    },
+    {
+      "name": "signed payload with a byte order mark",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"77u_eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"g5p_lNtIj7NBpQJFmtFF4hNheQK1I3Y9WYGJTdW8sR7SwcPEJ5uelOVWHV7YKWszFj3P-eKMeEFW3JAjIMtFAw\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "payload_invalid"
+      }
+    },
+    {
+      "name": "signed payload with a lone surrogate",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0XHVkODAwIiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"Mop4fWjk5d0bztIbPOKiE197HPoWi2NGSptE-uxiKXxvswa-P8YJeiLhqHfmT8QjgC-nuEm4gpWI-IyAITpcDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "payload_invalid"
+      }
+    },
+    {
+      "name": "signed payload with 32 nested containers",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnt9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19LCJleHBpcmVzQXQiOm51bGwsImdhdGVJZCI6IkpZSFhhY1hEWVM2SnJ3QmxjVnVWdXciLCJpc3N1ZWRBdCI6MTc5MTc5MTk0MCwic2VjcmV0cyI6e30sInR5cGUiOiJtb2F0LmJ1bmRsZSIsInYiOjEsInZlcnNpb24iOjQyfQ\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"OllJn8cZlKZpxKP8Jy4N0005DKM5MOJDHAb1gaXqvJEiuL0SHv2SJvCGwHObzxlRZQBB7v0vfrNCFbSCIJ18BA\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": true,
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "version": 42
+      }
+    },
+    {
+      "name": "signed payload with 33 nested containers",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6eyJuIjp7Im4iOnsibiI6e319fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19LCJleHBpcmVzQXQiOm51bGwsImdhdGVJZCI6IkpZSFhhY1hEWVM2SnJ3QmxjVnVWdXciLCJpc3N1ZWRBdCI6MTc5MTc5MTk0MCwic2VjcmV0cyI6e30sInR5cGUiOiJtb2F0LmJ1bmRsZSIsInYiOjEsInZlcnNpb24iOjQyfQ\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"L_63tl0QZyVBTzmSWz9eCwgrfTq_hR3e9bwlH_9dLn1Ovn3cf_DjG6BLRvEQBut_WXHl0VDNjczQPiQxKx99Cw\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "payload_invalid"
+      }
+    },
+    {
+      "name": "signed payload with __proto__ and numeric keys as plain data",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsiMSI6Im9uZSIsIl9fcHJvdG9fXyI6eyJhZG1pbiI6dHJ1ZX19LCJleHBpcmVzQXQiOm51bGwsImdhdGVJZCI6IkpZSFhhY1hEWVM2SnJ3QmxjVnVWdXciLCJpc3N1ZWRBdCI6MTc5MTc5MTk0MCwic2VjcmV0cyI6e30sInR5cGUiOiJtb2F0LmJ1bmRsZSIsInYiOjEsInZlcnNpb24iOjQyfQ\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"unht5JaGB9I5llp9EoiFx64OqKVJ97PxURU8gAoPNMX0EGuxI0Z-MDNKDslH7UTDjN8JrM-hP-LT6K64dHcpCA\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": true,
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "version": 42
+      }
+    },
+    {
+      "name": "bundle for another gate",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJFS0JYT21wZnNYNy0wdWJWQWdRdjJnIiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"Wu5FzUTaFOEgj3HVJj10GRaJ7gZi4t0D6Eg8YpI3tyhwol5cAvQ6woZ5B1sjyWORCMUcmkM1hM-vhLwAYSfFBg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "gate_mismatch"
+      }
+    },
+    {
+      "name": "same version as the current one (replay)",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0MX0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"Cix4ibg1cKklJHRnRQjFlZjT8DHYns_lTsfCdavAQQMXid1rOhxN68660qvPGmbDmKljir6mnt3QvvtfIEm2AQ\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "version_not_newer"
+      }
+    },
+    {
+      "name": "lower version (downgrade)",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo3fQ\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"KjYKSYoeUxytik-J-itMwmUErEMc20TDYK_kB_wB-PXfoRZ_4uW2gQ8fHK5Qh4uOo0fnXK2eaCgohXDHyCZGBw\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "version_not_newer"
+      }
+    },
+    {
+      "name": "expired",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjoxNzkxNzkxOTk5LCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"jBh7wi-k4sa0qDgMqFbLQv06PJcvvmFVGsgcJWk9KlMUH4fX1MghjLAOxyK-bGUOO3T-8YGnQIEw7dUFp27kAQ\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "expired"
+      }
+    },
+    {
+      "name": "expires exactly now",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjoxNzkxNzkyMDAwLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"48NLAvEuQvUX7PLTa_afjAL242rTiMUirBW9-yJue1T50m05fjgJOWikmoj2V_4ge6vzNC9jXT8hIod9AjspBg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "expired"
+      }
+    },
+    {
+      "name": "not yet expired",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjoxNzkxNzkyMDAxLCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"gjRVtN8A0OcOu7eiGGOOk6x6jsDM6IYRj4U9hAoHLlZOZ_vgfXCV5Ig0Q3-Zp4hwa1OtCvyrzKrnKnL9YgGWCQ\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": true,
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "version": 42
+      }
+    },
+    {
+      "name": "expired, but expiry is not enabled on this gate",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjoxNzkxNzkxOTk5LCJnYXRlSWQiOiJKWUhYYWNYRFlTNkpyd0JsY1Z1VnV3IiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo0Mn0\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"jBh7wi-k4sa0qDgMqFbLQv06PJcvvmFVGsgcJWk9KlMUH4fX1MghjLAOxyK-bGUOO3T-8YGnQIEw7dUFp27kAQ\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": false
+      },
+      "expect": {
+        "ok": true,
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "version": 42
+      }
+    },
+    {
+      "name": "foreign gate and old version: gate id is checked first",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"eyJjb25maWciOnsicm91dGVzIjp7ImNvbnRhY3QiOnsicGF0aCI6Ii9jb250YWN0IiwidXBzdHJlYW0iOiJodWJzcG90In19LCJ2ZXJzaW9uIjoxfSwiZXhwaXJlc0F0IjpudWxsLCJnYXRlSWQiOiJFS0JYT21wZnNYNy0wdWJWQWdRdjJnIiwiaXNzdWVkQXQiOjE3OTE3OTE5NDAsInNlY3JldHMiOnt9LCJ0eXBlIjoibW9hdC5idW5kbGUiLCJ2IjoxLCJ2ZXJzaW9uIjo3fQ\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"tyuHhzGIPS7h5tSoTb2RMqKjJJ1lE3h2vhpWrWuBwcV8WoUZ6cIayy62jFqPIqdFITcsvncp_se2SLvC0w_8CA\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "gate_mismatch"
+      }
+    },
+    {
+      "name": "unsigned garbage payload: signatures are checked before parsing",
+      "envelope": "{\"moat\":\"bundle\",\"v\":1,\"payload\":\"bm90IGpzb24\",\"sigs\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"sig\":\"bUi8ZaxQsxwXZRBu10ivBgcOMnv2-qUY1OLErxNaCzN2hNuy8ia5m97wTshE_c-OHjXAErz_vC_5Id82GkFaDg\"}]}",
+      "context": {
+        "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+        "pinned": [
+          "a"
+        ],
+        "threshold": 1,
+        "currentVersion": 41,
+        "now": 1791792000,
+        "expiryEnabled": true
+      },
+      "expect": {
+        "ok": false,
+        "error": "signature_invalid"
+      }
+    }
+  ]
+}

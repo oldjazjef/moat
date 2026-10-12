@@ -1,0 +1,65 @@
+{
+  "description": "RFC 8785 (JCS) for the subset Moat signs. Signers must produce exactly `canonical` (UTF-8). Gates never canonicalise — they verify the received bytes — so a gate may skip this file.",
+  "cases": [
+    {
+      "name": "keys sorted",
+      "input": {
+        "b": 1,
+        "a": 2,
+        "c": {
+          "z": null,
+          "y": true
+        }
+      },
+      "canonical": "{\"a\":2,\"b\":1,\"c\":{\"y\":true,\"z\":null}}"
+    },
+    {
+      "name": "arrays keep order",
+      "input": [
+        3,
+        1,
+        2
+      ],
+      "canonical": "[3,1,2]"
+    },
+    {
+      "name": "integer limits",
+      "input": {
+        "max": 9007199254740991,
+        "zero": 0
+      },
+      "canonical": "{\"max\":9007199254740991,\"zero\":0}"
+    },
+    {
+      "name": "keys sorted by UTF-16 code units",
+      "input": {
+        "😀": 1,
+        "ﬁ": 2,
+        "a": 3,
+        "Z": 4
+      },
+      "canonical": "{\"Z\":4,\"a\":3,\"😀\":1,\"ﬁ\":2}"
+    },
+    {
+      "name": "control characters escaped",
+      "input": {
+        "s": "\u0000\b\u001f\n\"\\"
+      },
+      "canonical": "{\"s\":\"\\u0000\\b\\u001f\\n\\\"\\\\\"}"
+    },
+    {
+      "name": "non-ascii stays literal",
+      "input": {
+        "s": "Grüezi €"
+      },
+      "canonical": "{\"s\":\"Grüezi €\"}"
+    },
+    {
+      "name": "solidus not escaped",
+      "input": {
+        "s": "/a/"
+      },
+      "canonical": "{\"s\":\"/a/\"}"
+    }
+  ]
+}

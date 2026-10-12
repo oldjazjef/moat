@@ -25,23 +25,23 @@ Schlüsselwörter: **MUSS**, **DARF NICHT**, **SOLL** im Sinne von RFC 2119.
 
 ## 2. Kodierungen
 
-| Was | Kodierung |
-|---|---|
-| Binärdaten in JSON | **base64url ohne Padding** (RFC 4648 §5). Decoder lehnen Padding, `+`, `/` und Leerzeichen ab. |
+| Was                    | Kodierung                                                                                                                     |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Binärdaten in JSON     | **base64url ohne Padding** (RFC 4648 §5). Decoder lehnen Padding, `+`, `/` und Leerzeichen ab.                                |
 | Signierte JSON-Objekte | **RFC 8785 (JCS)**. Zahlen nur als Ganzzahlen im Bereich 0 bis 2⁵³−1; Fliesskommazahlen sind in signierten Objekten verboten. |
-| Zeitpunkte | Ganzzahl, Sekunden seit Unix-Epoche (UTC). |
-| Texte | UTF-8. Namen (Routen, Upstreams, Secrets) nach `^[a-z][a-z0-9-]{0,62}$`, daher ohne Normalisierungsfragen. |
-| Grössenlimits | Envelope ≤ 1 MiB, JSON-Tiefe ≤ 32. Überschreitung: Ablehnung vor jedem Parsen bzw. beim Parsen. |
+| Zeitpunkte             | Ganzzahl, Sekunden seit Unix-Epoche (UTC).                                                                                    |
+| Texte                  | UTF-8. Namen (Routen, Upstreams, Secrets) nach `^[a-z][a-z0-9-]{0,62}$`, daher ohne Normalisierungsfragen.                    |
+| Grössenlimits          | Envelope ≤ 1 MiB, JSON-Tiefe ≤ 32. Überschreitung: Ablehnung vor jedem Parsen bzw. beim Parsen.                               |
 
 ## 3. Schlüssel und Kennungen
 
-| Schlüssel | Algorithmus | Besitzer | Zweck |
-|---|---|---|---|
-| Gate-Box-Schlüssel | X25519 | Gate (erzeugt beim Installieren) | Secrets entschlüsseln (SEC-30) |
-| Gate-Auth-Schlüssel | Ed25519 | Gate | Anmeldung bei der Cloud (SEC-55) |
-| Kunden-Signaturschlüssel | Ed25519 (Modus 1, 3) oder ES256 (Modus 2) | Kunde | Bundles freigeben |
-| Cloud-Signaturschlüssel | Ed25519 | Moat Cloud | Bundles in Modus 0 |
-| Release-Schlüssel | Ed25519, mehrere | Moat-Projekt | Gate-Releases (SEC-60, SEC-66) |
+| Schlüssel                | Algorithmus                               | Besitzer                         | Zweck                            |
+| ------------------------ | ----------------------------------------- | -------------------------------- | -------------------------------- |
+| Gate-Box-Schlüssel       | X25519                                    | Gate (erzeugt beim Installieren) | Secrets entschlüsseln (SEC-30)   |
+| Gate-Auth-Schlüssel      | Ed25519                                   | Gate                             | Anmeldung bei der Cloud (SEC-55) |
+| Kunden-Signaturschlüssel | Ed25519 (Modus 1, 3) oder ES256 (Modus 2) | Kunde                            | Bundles freigeben                |
+| Cloud-Signaturschlüssel  | Ed25519                                   | Moat Cloud                       | Bundles in Modus 0               |
+| Release-Schlüssel        | Ed25519, mehrere                          | Moat-Projekt                     | Gate-Releases (SEC-60, SEC-66)   |
 
 **Key-ID (`kid`):** `base64url( BLAKE2b-128( "moat:kid:v1|" ‖ alg ‖ "|" ‖ publicKeyBytes ) )`
 mit `crypto_generichash`, Ausgabelänge 16 Bytes. Bei ES256 ist `publicKeyBytes` der unkomprimierte
@@ -84,9 +84,7 @@ Ein JSON-Objekt in JCS-Form:
   "moat": "bundle",
   "v": 1,
   "payload": "<base64url der JCS-Payload-Bytes>",
-  "sigs": [
-    { "kid": "…", "alg": "ed25519", "sig": "<base64url, 64 Bytes>" }
-  ]
+  "sigs": [{ "kid": "…", "alg": "ed25519", "sig": "<base64url, 64 Bytes>" }]
 }
 ```
 
@@ -131,8 +129,14 @@ Secret-Version gebunden (SEC-31, SEC-33).
 7. `esk`, `ss`, `key` und den Klartext mit `memzero` löschen.
 
 ```json
-{ "v": 1, "alg": "x25519-blake2b-xchacha20poly1305", "secretVersion": 3,
-  "epk": "…", "nonce": "…", "ct": "…" }
+{
+  "v": 1,
+  "alg": "x25519-blake2b-xchacha20poly1305",
+  "secretVersion": 3,
+  "epk": "…",
+  "nonce": "…",
+  "ct": "…"
+}
 ```
 
 **Öffnen** (nur im Gate): dieselben Schritte mit `crypto_scalarmult(gateSk, epk)`; AD aus der
@@ -149,9 +153,14 @@ Datei mit Endung `.moatkey`:
 
 ```json
 {
-  "moat": "keyfile", "v": 1, "alg": "ed25519", "kid": "…", "pk": "…",
+  "moat": "keyfile",
+  "v": 1,
+  "alg": "ed25519",
+  "kid": "…",
+  "pk": "…",
   "kdf": { "alg": "argon2id13", "ops": 3, "mem": 268435456, "salt": "…" },
-  "nonce": "…", "ct": "…"
+  "nonce": "…",
+  "ct": "…"
 }
 ```
 
@@ -176,8 +185,13 @@ Der Schlüssel verlässt den Authenticator nie, wie in den Anforderungen verspro
 - Beim Signieren: `challenge = SHA-256(M)` (M aus 4.2), `userVerification: "required"`.
 - Signatur-Eintrag im Envelope:
   ```json
-  { "kid": "…", "alg": "webauthn-es256", "sig": "<DER-Signatur>",
-    "authenticatorData": "…", "clientDataJSON": "…" }
+  {
+    "kid": "…",
+    "alg": "webauthn-es256",
+    "sig": "<DER-Signatur>",
+    "authenticatorData": "…",
+    "clientDataJSON": "…"
+  }
   ```
 - Das Gate pinnt beim Enrollment: öffentlichen Schlüssel (P-256), `rpId`, erlaubte Origins.
 - Prüfung: `clientDataJSON` parsen (`type == "webauthn.get"`, `challenge` == base64url von
@@ -205,9 +219,14 @@ In beiden Varianten gilt T-25: Im Browser signiert der Passkey, was das ausgelie
 SEC-13):
 
 ```json
-{ "v": 1, "gateId": "…", "mode": 1, "threshold": 1,
-  "signers": [ { "kid": "…", "alg": "ed25519", "pk": "…" } ],
-  "cloud": { "url": "https://…", "kid": "…", "pk": "…" } }
+{
+  "v": 1,
+  "gateId": "…",
+  "mode": 1,
+  "threshold": 1,
+  "signers": [{ "kid": "…", "alg": "ed25519", "pk": "…" }],
+  "cloud": { "url": "https://…", "kid": "…", "pk": "…" }
+}
 ```
 
 **Ablauf** (SEC-28, SEC-32):
@@ -236,7 +255,7 @@ Moat-Gate: kid=<auth-kid>, ts=<unix>, sig=<base64url>
 ```
 
 - `sig = crypto_sign_detached("moat:gate-req:v1\n" ‖ method ‖ "\n" ‖ path ‖ "\n" ‖ ts ‖ "\n" ‖
-  base64url(SHA-256(body)), authSk)`.
+base64url(SHA-256(body)), authSk)`.
 - Die Cloud akzeptiert `ts` nur ±300 Sekunden und jede Kombination aus `kid` und `sig` nur einmal
   innerhalb dieses Fensters.
 - TLS bleibt Pflicht (SEC-48), die Sicherheit hängt aber nicht daran.
@@ -244,7 +263,7 @@ Moat-Gate: kid=<auth-kid>, ts=<unix>, sig=<base64url>
 ## 10. Releases (SEC-60, SEC-65, SEC-66)
 
 - Jede Gate-Version hat ein Manifest (JCS): `{ "type": "moat.release", "v": 1, "version":
-  "1.4.2", "files": { "moat-gate.php": "<sha256 hex>" }, "minUpgradeFrom": "1.0.0" }`.
+"1.4.2", "files": { "moat-gate.php": "<sha256 hex>" }, "minUpgradeFrom": "1.0.0" }`.
 - Signiert mit `"moat:release:v1\n" ‖ manifestBytes`, Schwelle **2 von 3** Release-Schlüsseln,
   deren öffentliche Schlüssel fest im Gate eingebaut sind.
 - Auto-Update (nur wenn eingeschaltet) prüft Manifest und Hash, lehnt niedrigere Versionen ab und

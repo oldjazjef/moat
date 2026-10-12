@@ -1,0 +1,173 @@
+{
+  "description": "base64url without padding (RFC 4648 §5), docs/CRYPTO.md §2. Decoders reject padding, the standard alphabet, whitespace, impossible lengths and non-zero trailing bits.",
+  "cases": [
+    {
+      "name": "decode \"\"",
+      "input": "",
+      "expect": {
+        "ok": true,
+        "hex": ""
+      }
+    },
+    {
+      "name": "decode \"Zg\"",
+      "input": "Zg",
+      "expect": {
+        "ok": true,
+        "hex": "66"
+      }
+    },
+    {
+      "name": "decode \"Zm8\"",
+      "input": "Zm8",
+      "expect": {
+        "ok": true,
+        "hex": "666f"
+      }
+    },
+    {
+      "name": "decode \"Zm9v\"",
+      "input": "Zm9v",
+      "expect": {
+        "ok": true,
+        "hex": "666f6f"
+      }
+    },
+    {
+      "name": "decode \"Zm9vYg\"",
+      "input": "Zm9vYg",
+      "expect": {
+        "ok": true,
+        "hex": "666f6f62"
+      }
+    },
+    {
+      "name": "decode \"Zm9vYmE\"",
+      "input": "Zm9vYmE",
+      "expect": {
+        "ok": true,
+        "hex": "666f6f6261"
+      }
+    },
+    {
+      "name": "decode \"Zm9vYmFy\"",
+      "input": "Zm9vYmFy",
+      "expect": {
+        "ok": true,
+        "hex": "666f6f626172"
+      }
+    },
+    {
+      "name": "decode \"-_8\"",
+      "input": "-_8",
+      "expect": {
+        "ok": true,
+        "hex": "fbff"
+      }
+    },
+    {
+      "name": "decode \"AAAAAA\"",
+      "input": "AAAAAA",
+      "expect": {
+        "ok": true,
+        "hex": "00000000"
+      }
+    },
+    {
+      "name": "decode \"________\"",
+      "input": "________",
+      "expect": {
+        "ok": true,
+        "hex": "ffffffffffff"
+      }
+    },
+    {
+      "name": "padding",
+      "input": "Zg==",
+      "expect": {
+        "ok": false,
+        "error": "encoding_invalid"
+      }
+    },
+    {
+      "name": "single padding",
+      "input": "Zm8=",
+      "expect": {
+        "ok": false,
+        "error": "encoding_invalid"
+      }
+    },
+    {
+      "name": "standard alphabet plus",
+      "input": "a+b0",
+      "expect": {
+        "ok": false,
+        "error": "encoding_invalid"
+      }
+    },
+    {
+      "name": "standard alphabet slash",
+      "input": "a/b0",
+      "expect": {
+        "ok": false,
+        "error": "encoding_invalid"
+      }
+    },
+    {
+      "name": "leading space",
+      "input": " Zg",
+      "expect": {
+        "ok": false,
+        "error": "encoding_invalid"
+      }
+    },
+    {
+      "name": "trailing newline",
+      "input": "Zg\n",
+      "expect": {
+        "ok": false,
+        "error": "encoding_invalid"
+      }
+    },
+    {
+      "name": "impossible length",
+      "input": "Zm9vY",
+      "expect": {
+        "ok": false,
+        "error": "encoding_invalid"
+      }
+    },
+    {
+      "name": "single character",
+      "input": "Z",
+      "expect": {
+        "ok": false,
+        "error": "encoding_invalid"
+      }
+    },
+    {
+      "name": "non-zero trailing bits (1 byte)",
+      "input": "Zh",
+      "expect": {
+        "ok": false,
+        "error": "encoding_invalid"
+      }
+    },
+    {
+      "name": "non-zero trailing bits (2 bytes)",
+      "input": "Zm9",
+      "expect": {
+        "ok": false,
+        "error": "encoding_invalid"
+      }
+    },
+    {
+      "name": "non-ascii character",
+      "input": "Zé",
+      "expect": {
+        "ok": false,
+        "error": "encoding_invalid"
+      }
+    }
+  ]
+}

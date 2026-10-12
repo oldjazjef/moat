@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "production": [
+      "default",
+      "!{projectRoot}/eslint.config.mjs",
+      "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
+      "!{projectRoot}/tsconfig.spec.json"
+    ],
+    "sharedGlobals": []
+  },
+  "analytics": false,
+  "//useDaemonProcess": "Disabled deliberately, same as etx-working-time-manager: on Windows the daemon's cold start costs minutes (it installs nx@latest into a temp dir for its AI-agent config probes), and a warm daemon is no faster than no daemon on a workspace this size. In CI and containers it is pure overhead.",
+  "useDaemonProcess": false,
+  "targetDefaults": {
+    "@nx/eslint:lint": {
+      "cache": true,
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/eslint.config.mjs",
+        "{workspaceRoot}/tools/eslint-rules/**/*"
+      ]
+    },
+    "typecheck": {
+      "cache": true,
+      "inputs": ["default", "^default"]
+    }
+  },
+  "plugins": [
+    {
+      "plugin": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "lint"
+      }
+    }
+  ]
+}
