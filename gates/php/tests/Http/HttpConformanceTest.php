@@ -1,0 +1,150 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Moat\Gate\Tests\Http;
+
+use Moat\Gate\Tests\Conformance\Vectors;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * conformance/http/gate.json against the built gate file under a real web server and a fake
+ * HTTPS upstream (SEC-41 to SEC-46, FR-18). The planted secret must never reach a client answer
+ * or the gate's log.
+ */
+final class HttpConformanceTest extends TestCase
+{
+    private const CASES = 'http/gate.json';
+
+    private static ?GateFixture $gate = null;
+
+    public static function setUpBeforeClass(): void
+    {
+        $dir = sys_get_temp_dir() . '/moat-http-' . bin2hex(random_bytes(6));
+        mkdir($dir, 0o700);
+        self::$gate = new GateFixture($dir, (string) file_get_contents(\dirname(__DIR__, 4) . '/conformance/' . self::CASES));
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+        self::$gate?->stop();
+        self::$gate = null;
+    }
+
+    /** @return iterable<string, array{array<string, mixed>}> */
+    public static function cases(): iterable
+    {
+        $file = \dirname(__DIR__, 4) . '/conformance/' . self::CASES;
+        $doc = json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
+        foreach (Vectors::list(Vectors::map($doc)['cases'] ?? null) as $case) {
+            $case = Vectors::map($case);
+            yield Vectors::string($case['name']) => [$case];
+        }
+    }
+
+    /** @param array<string, mixed> $case */
+    #[DataProvider('cases')]
+    public function testCase(array $case): void
+    {
+        $gate = self::$gate ?? throw new \LogicException('no gate');
+        $request = Vectors::map($case['request']);
+        $expect = Vectors::map($case['expect']);
+        $before = $gate->upstreamCalls();
+
+        [$status, $headers, $body] = self::send($gate->baseUrl, $request);
+
+        self::assertSame(Vectors::int($expect['status']), $status, $body);
+        if (isset($expect['error'])) {
+            self::assertSame(['error' => $expect['error']], json_decode($body, true));
+        }
+        if (isset($expect['json'])) {
+            self::assertSubset(Vectors::map($expect['json']), json_decode($body, true), 'json');
+        }
+        foreach (Vectors::map($expect['headers'] ?? []) as $name => $value) {
+            self::assertSame($value, $headers[$name] ?? null, "header {$name}");
+        }
+        self::assertSame(Vectors::int($expect['upstreamCalls']), $gate->upstreamCalls() - $before, 'upstream calls');
+        foreach (explode("\n", $gate->secret) as $secret) {
+            self::assertStringNotContainsString($secret, $body . implode("\n", $headers));
+        }
+    }
+
+    /** Runs after every case (PHPUnit keeps declaration order). */
+    public function testSecretNeverInTheGateLog(): void
+    {
+        $gate = self::$gate ?? throw new \LogicException('no gate');
+        foreach (explode("\n", $gate->secret) as $secret) {
+            self::assertStringNotContainsString($secret, $gate->gateLogText());
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $request
+     *
+     * @return array{int, array<string, string>, string}
+     */
+    private static function send(string $baseUrl, array $request): array
+    {
+        $headers = [];
+        $sent = [];
+        foreach (Vectors::map($request['headers']) as $name => $value) {
+            $sent[] = $name . ': ' . Vectors::string($value);
+        }
+        if (!isset(Vectors::map($request['headers'])['Content-Type'])) {
+            $sent[] = 'Content-Type:';
+        }
+        $curl = curl_init($baseUrl . Vectors::string($request['path']));
+        if ($curl === false) {
+            throw new \RuntimeException('curl_init failed');
+        }
+        $options = [
+            CURLOPT_CUSTOMREQUEST => Vectors::string($request['method']),
+            CURLOPT_HTTPHEADER => [...$sent, 'Expect:'],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_PATH_AS_IS => true,
+            CURLOPT_PROXY => '',
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_HEADERFUNCTION => static function (\CurlHandle $handle, string $line) use (&$headers): int {
+                $parts = explode(':', $line, 2);
+                if (isset($parts[1])) {
+                    $headers[strtolower(trim($parts[0]))] = trim($parts[1]);
+                }
+
+                return \strlen($line);
+            },
+        ];
+        $body = Vectors::string($request['body']);
+        if ($body !== '') {
+            $options[CURLOPT_POSTFIELDS] = $body;
+        }
+        curl_setopt_array($curl, $options);
+        $answer = curl_exec($curl);
+        if (!\is_string($answer)) {
+            throw new \RuntimeException('request failed: ' . curl_error($curl));
+        }
+
+        return [Vectors::int(curl_getinfo($curl, CURLINFO_RESPONSE_CODE)), $headers, $answer];
+    }
+
+    /**
+     * `null` in the expectation means "absent"; objects are compared as subsets.
+     *
+     * @param array<mixed> $expected
+     */
+    private static function assertSubset(array $expected, mixed $actual, string $where): void
+    {
+        if (!\is_array($actual)) {
+            self::fail("{$where} is not an object");
+        }
+        foreach ($expected as $key => $value) {
+            if ($value === null) {
+                self::assertArrayNotHasKey($key, $actual, "{$where}.{$key}");
+            } elseif (\is_array($value) && !array_is_list($value)) {
+                self::assertSubset($value, $actual[$key] ?? null, "{$where}.{$key}");
+            } else {
+                self::assertSame($value, $actual[$key] ?? null, "{$where}.{$key}");
+            }
+        }
+    }
+}

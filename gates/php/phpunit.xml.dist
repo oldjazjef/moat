@@ -18,6 +18,10 @@
         <testsuite name="conformance">
             <directory>tests/Conformance</directory>
         </testsuite>
+        <!-- ../../conformance/http/: the built gate under php -S against a fake HTTPS upstream. -->
+        <testsuite name="http">
+            <directory>tests/Http</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

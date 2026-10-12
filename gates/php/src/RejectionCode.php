@@ -22,4 +22,9 @@ enum RejectionCode: string
     case SecretInvalid = 'secret_invalid';
     case EncodingInvalid = 'encoding_invalid';
     case JsonInvalid = 'json_invalid';
+    case ConfigInvalid = 'config_invalid';
+    case PolicyInvalid = 'policy_invalid';
+    case PolicyViolation = 'policy_violation';
+    case PathInvalid = 'path_invalid';
+    // keyfile_invalid and keyfile_locked exist only in Desktop/CLI: a gate never opens a key file.
 }

@@ -20,6 +20,7 @@
     "ci:verify": "pnpm lint && pnpm lint:budget && pnpm lint:yaml && pnpm format:check && pnpm test && pnpm build && pnpm typecheck",
     "check": "pnpm ci:verify",
     "check:gate-php": "composer --working-dir=gates/php check",
+    "build:gate-php": "php gates/php/build/build.php",
     "check:all": "pnpm check && pnpm check:gate-php",
     "conformance": "vitest run --project core libs/core/src/conformance.spec.ts && composer --working-dir=gates/php conformance",
     "schema": "node scripts/regenerate.mjs schema",

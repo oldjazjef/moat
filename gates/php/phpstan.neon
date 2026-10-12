@@ -3,12 +3,12 @@ includes:
     - vendor/phpstan/phpstan-deprecation-rules/rules.neon
     - vendor/spaze/phpstan-disallowed-calls/extension.neon
     - vendor/spaze/phpstan-disallowed-calls/disallowed-dangerous-calls.neon
-    - vendor/spaze/phpstan-disallowed-calls/disallowed-execution-calls.neon
     - vendor/spaze/phpstan-disallowed-calls/disallowed-insecure-calls.neon
     - vendor/spaze/phpstan-disallowed-calls/disallowed-loose-calls.neon
 
-# CLAUDE.md, PHP standards: level max, no baseline (a baseline may only shrink). eval, exec and
-# friends come from the disallowed-* includes; `@`, backticks, `$$` and dynamic include are
+# CLAUDE.md, PHP standards: level max, no baseline (a baseline may only shrink). eval and friends
+# come from the disallowed-* includes; the execution calls are listed below instead of included,
+# so the HTTP conformance runner in tests/ may start `php -S` and the fake upstream; `@`, backticks, `$$` and dynamic include are
 # checked token by token in tests/Unit/BannedConstructsTest.php.
 parameters:
     level: max
@@ -18,6 +18,7 @@ parameters:
     paths:
         - src
         - tests
+        - build
     disallowedFunctionCalls:
         -
             function:
@@ -29,9 +30,28 @@ parameters:
                 - 'var_dump()'
                 - 'print_r()'
                 - 'var_export()'
+                - 'parse_str()'
+            message: 'banned in the gate (CLAUDE.md, PHP standards)'
+            allowIn:
+                - tests/*
+        -
+            function:
                 - 'file_get_contents()'
                 - 'fopen()'
-                - 'parse_str()'
-            message: 'banned in the gate (CLAUDE.md, PHP standards); HTTP goes through the one cURL client'
+            message: 'files only through Moat\Gate\Storage\Files; HTTP only through the one cURL client'
+            allowIn:
+                - tests/*
+                - build/*
+                - src/Storage/Files.php
+        -
+            function:
+                - 'exec()'
+                - 'passthru()'
+                - 'proc_open()'
+                - 'shell_exec()'
+                - 'system()'
+                - 'popen()'
+                - 'pcntl_exec()'
+            message: 'no process execution in the gate (CLAUDE.md, PHP standards)'
             allowIn:
                 - tests/*
