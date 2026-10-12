@@ -5,6 +5,7 @@ import {
   MAX_BODY_BYTES,
   MAX_TIMEOUT_MS,
   METHODS,
+  NAME,
   type CompiledConfig,
 } from '../config/compiled';
 import { reject } from '../errors';
@@ -31,12 +32,16 @@ const prefix = z.string().refine((value) => {
 
 export const policySchema = z.strictObject({
   v: z.literal(1),
-  /** Allowed upstreams by `host[:port]`, each with the path prefixes and methods it may use. */
+  /**
+   * Allowed upstreams by `host[:port]`, each with the path prefixes and methods it may use and
+   * the secrets that may be sent to it (SEC-35): a bundle cannot point a secret at another host.
+   */
   upstreams: z.record(
     hostKeySchema,
     z.strictObject({
       pathPrefixes: z.array(prefix).min(1).max(64),
       methods: z.array(z.enum(METHODS)).min(1),
+      secrets: z.array(z.string().regex(NAME)).max(16),
     }),
   ),
   maxBodyBytes: z.int().min(0).max(MAX_BODY_BYTES),
@@ -79,6 +84,15 @@ export function matchesPrefix(path: string, pathPrefix: string): boolean {
 export function checkPolicy(config: CompiledConfig, policy: Policy): void {
   for (const upstream of Object.values(config.upstreams)) {
     if (upstream.timeoutMs > policy.maxTimeoutMs) reject('policy_violation');
+    // SEC-35: a secret goes only to a host the policy binds it to.
+    if (upstream.auth !== null) {
+      const allowed = policy.upstreams[hostKey(upstream.origin)];
+      if (
+        allowed === undefined ||
+        !allowed.secrets.includes(upstream.auth.secret)
+      )
+        reject('policy_violation');
+    }
   }
   for (const route of Object.values(config.routes)) {
     const upstream = config.upstreams[route.upstream];
@@ -109,7 +123,10 @@ export function suggestPolicy(config: CompiledConfig): Policy {
     const entry = (upstreams[hostKey(upstream.origin)] ??= {
       pathPrefixes: [],
       methods: [],
+      secrets: [],
     });
+    if (upstream.auth !== null && !entry.secrets.includes(upstream.auth.secret))
+      entry.secrets.push(upstream.auth.secret);
     if (!entry.pathPrefixes.includes(route.upstreamPath))
       entry.pathPrefixes.push(route.upstreamPath);
     if (!entry.methods.includes(route.method)) entry.methods.push(route.method);

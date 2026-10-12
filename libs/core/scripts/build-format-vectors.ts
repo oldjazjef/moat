@@ -370,7 +370,11 @@ function configVectors(): Json {
 const basePolicy = (): Record<string, Json> => ({
   v: 1,
   upstreams: {
-    'api.hubapi.com': { pathPrefixes: ['/crm/v3/objects'], methods: ['POST'] },
+    'api.hubapi.com': {
+      pathPrefixes: ['/crm/v3/objects'],
+      methods: ['POST'],
+      secrets: ['hubspot-token'],
+    },
   },
   maxBodyBytes: 65536,
   maxResponseBytes: 1048576,
@@ -404,7 +408,11 @@ function policyVectors(): Json {
       'upstream host not allowed (SEC-11)',
       (_c, p) => {
         p['upstreams'] = {
-          'api.other.com': { pathPrefixes: ['/'], methods: ['POST'] },
+          'api.other.com': {
+            pathPrefixes: ['/'],
+            methods: ['POST'],
+            secrets: ['hubspot-token'],
+          },
         };
       },
     ],
@@ -429,7 +437,11 @@ function policyVectors(): Json {
       'policy host with a scheme',
       (_c, p) => {
         p['upstreams'] = {
-          'https://api.hubapi.com': { pathPrefixes: ['/'], methods: ['POST'] },
+          'https://api.hubapi.com': {
+            pathPrefixes: ['/'],
+            methods: ['POST'],
+            secrets: [],
+          },
         };
       },
     ],
@@ -438,6 +450,43 @@ function policyVectors(): Json {
       (_c, p) => (allowed(p)['pathPrefixes'] = ['/crm/../']),
     ],
     ['policy without methods', (_c, p) => (allowed(p)['methods'] = [])],
+    [
+      'secret not bound to the upstream host (SEC-35)',
+      (_c, p) => (allowed(p)['secrets'] = []),
+    ],
+    [
+      'secret bound only to another host (SEC-35)',
+      (_c, p) => {
+        allowed(p)['secrets'] = [];
+        (p['upstreams'] as Record<string, Json>)['api.other.com'] = {
+          pathPrefixes: ['/'],
+          methods: ['POST'],
+          secrets: ['hubspot-token'],
+        };
+      },
+    ],
+    [
+      'an upstream without routes may not carry a secret to an unlisted host (SEC-35)',
+      (c) => {
+        (c['upstreams'] as Record<string, Json>)['other'] = {
+          origin: 'https://api.other.com',
+          auth: { type: 'bearer', secret: 'hubspot-token' },
+          timeoutMs: 1000,
+        };
+      },
+    ],
+    [
+      'an upstream without auth needs no secret binding',
+      (c, p) => {
+        upstream(c)['auth'] = null;
+        allowed(p)['secrets'] = [];
+      },
+    ],
+    ['policy without a secrets list', (_c, p) => delete allowed(p)['secrets']],
+    [
+      'policy secret name not a name',
+      (_c, p) => (allowed(p)['secrets'] = ['Hubspot Token']),
+    ],
     [
       'testing block with loopback',
       (_c, p) => {

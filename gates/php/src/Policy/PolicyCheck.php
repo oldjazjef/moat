@@ -59,6 +59,13 @@ final class PolicyCheck
             if ($upstream->timeoutMs > $policy->maxTimeoutMs) {
                 self::violation();
             }
+            // SEC-35: a secret goes only to a host the policy binds it to.
+            if ($upstream->auth !== null) {
+                $allowed = $policy->upstreams[$upstream->hostKey()] ?? null;
+                if ($allowed === null || !\in_array($upstream->auth->secret, $allowed->secrets, true)) {
+                    self::violation();
+                }
+            }
         }
         foreach ($config->routes as $route) {
             $allowed = $policy->upstreams[$config->upstreamOf($route)->hostKey()] ?? null;
@@ -96,14 +103,16 @@ final class PolicyCheck
 
     private static function upstream(mixed $entry): PolicyUpstream
     {
-        if (!$entry instanceof JsonObject || !$entry->hasExactKeys('pathPrefixes', 'methods')) {
+        if (!$entry instanceof JsonObject || !$entry->hasExactKeys('pathPrefixes', 'methods', 'secrets')) {
             self::invalid();
         }
         $prefixes = $entry->get('pathPrefixes');
         $methods = $entry->get('methods');
+        $names = $entry->get('secrets');
         if (
             !\is_array($prefixes) || !array_is_list($prefixes) || $prefixes === [] || \count($prefixes) > 64
             || !\is_array($methods) || !array_is_list($methods) || $methods === []
+            || !\is_array($names) || !array_is_list($names) || \count($names) > 16
         ) {
             self::invalid();
         }
@@ -119,7 +128,15 @@ final class PolicyCheck
             $allowed[] = (\is_string($method) ? Method::tryFrom($method) : null) ?? self::invalid();
         }
 
-        return new PolicyUpstream($pathPrefixes, $allowed);
+        $secrets = [];
+        foreach ($names as $name) {
+            if (!\is_string($name) || preg_match(ConfigValidator::NAME, $name) !== 1) {
+                self::invalid();
+            }
+            $secrets[] = $name;
+        }
+
+        return new PolicyUpstream($pathPrefixes, $allowed, $secrets);
     }
 
     private static function isPrefix(string $value): bool

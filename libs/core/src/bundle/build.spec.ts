@@ -124,6 +124,7 @@ describe('suggestPolicy (SEC-14)', () => {
       'api.hubapi.com': {
         pathPrefixes: ['/crm/v3/objects/contacts'],
         methods: ['POST'],
+        secrets: ['hubspot-token'],
       },
     });
     expect(() => checkPolicy(compiled, policy)).not.toThrow();

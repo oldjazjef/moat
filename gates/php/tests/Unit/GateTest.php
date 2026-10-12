@@ -17,7 +17,7 @@ use PHPUnit\Framework\TestCase;
 /** Bundle acceptance and serving as an attacker would try them (docs/CRYPTO.md §4.3, steps 1–10). */
 final class GateTest extends TestCase
 {
-    private const POLICY = '{"v":1,"upstreams":{"api.example.com":{"pathPrefixes":["/v1"],"methods":["POST"]}},'
+    private const POLICY = '{"v":1,"upstreams":{"api.example.com":{"pathPrefixes":["/v1"],"methods":["POST"],"secrets":["token"]}},'
         . '"maxBodyBytes":4096,"maxResponseBytes":65536,"maxTimeoutMs":10000}';
 
     private string $dir;

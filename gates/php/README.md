@@ -40,7 +40,9 @@ in the project folder with the `moat gate add` line it prints.
 ## Commands
 
 ```bash
-php moat-gate.php policy <policy.json>     # install the local policy (moat policy suggest)
+php moat-gate.php policy <policy.json>     # install the local policy (moat policy suggest);
+                                           # it lists per host the paths, methods and the
+                                           # secrets that may be sent there (SEC-35)
 php moat-gate.php accept <bundle.json>     # verify (steps 1–10) and activate a bundle
 php moat-gate.php trust --signer=<pk>[,…] [--threshold=n]   # replace the pinned signers
 php moat-gate.php status                   # fingerprints, policy, active bundle

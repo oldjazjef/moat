@@ -197,11 +197,13 @@
           "/set-cookie",
           "/status"
         ],
-        "methods": ["GET", "POST", "DELETE"]
+        "methods": ["GET", "POST", "DELETE"],
+        "secrets": ["api-token"]
       },
       "localhost:{port}": {
         "pathPrefixes": ["/echo"],
-        "methods": ["GET"]
+        "methods": ["GET"],
+        "secrets": []
       }
     },
     "maxBodyBytes": 1024,
@@ -239,7 +241,8 @@
           "content-type": "application/json",
           "set-cookie": null,
           "x-content-type-options": "nosniff",
-          "cache-control": "no-store"
+          "cache-control": "no-store",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'; form-action 'none'; sandbox"
         },
         "upstreamCalls": 1,
         "json": {

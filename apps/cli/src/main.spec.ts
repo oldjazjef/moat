@@ -223,6 +223,7 @@ describe('moat CLI', () => {
         'api.hubapi.com': {
           pathPrefixes: ['/crm/v3/objects/contacts'],
           methods: ['POST'],
+          secrets: ['hubspot-token'],
         },
       },
     });

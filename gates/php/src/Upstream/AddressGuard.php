@@ -42,8 +42,9 @@ final class AddressGuard
     }
 
     /**
-     * No private, loopback, link-local, reserved, shared or documentation range — also not when
-     * an IPv4 address hides inside IPv6 (NAT64 64:ff9b::/96, 6to4 2002::/16; Teredo is refused).
+     * No private, loopback, link-local, reserved, shared, documentation or multicast range. IPv6
+     * must be global unicast (2000::/3); an IPv4 address hidden inside IPv6 is checked as IPv4
+     * (NAT64 64:ff9b::/96, 6to4 2002::/16), and Teredo is refused.
      */
     public static function isPublic(string $address): bool
     {
@@ -52,19 +53,29 @@ final class AddressGuard
             return false;
         }
         $packed = inet_pton($address);
-        if ($packed === false || \strlen($packed) === 4) {
-            return $packed !== false;
+        if ($packed === false) {
+            return false;
         }
-        $embedded = match (true) {
-            str_starts_with($packed, "\x00\x64\xff\x9b" . str_repeat("\x00", 8)) => substr($packed, 12, 4),
-            str_starts_with($packed, "\x20\x02") => substr($packed, 2, 4),
-            str_starts_with($packed, "\x20\x01\x00\x00") => '',
-            default => null,
-        };
-        if ($embedded === null) {
-            return true;
+        if (\strlen($packed) === 4) {
+            // 224.0.0.0/4 multicast and 240.0.0.0/4 reserved.
+            return \ord($packed[0]) < 224;
         }
-        $ipv4 = $embedded === '' ? false : inet_ntop($embedded);
+        if (str_starts_with($packed, "\x00\x64\xff\x9b" . str_repeat("\x00", 8))) {
+            return self::isPublicIpv4(substr($packed, 12, 4));
+        }
+        if ((\ord($packed[0]) & 0xE0) !== 0x20) {
+            return false;
+        }
+        if (str_starts_with($packed, "\x20\x02")) {
+            return self::isPublicIpv4(substr($packed, 2, 4));
+        }
+
+        return !str_starts_with($packed, "\x20\x01\x00\x00");
+    }
+
+    private static function isPublicIpv4(string $packed): bool
+    {
+        $ipv4 = inet_ntop($packed);
 
         return $ipv4 !== false && self::isPublic($ipv4);
     }

@@ -36,7 +36,7 @@ final readonly class Response
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'no-store',
             'Referrer-Policy' => 'no-referrer',
-            'Content-Security-Policy' => "default-src 'none'; frame-ancestors 'none'",
+            'Content-Security-Policy' => "default-src 'none'; frame-ancestors 'none'; form-action 'none'; sandbox",
         ];
         foreach ($headers as $name => $value) {
             header($name . ': ' . $value);

@@ -30,10 +30,13 @@ final class Files
         return $bytes === false ? '' : $bytes;
     }
 
-    /** Atomic write: a temp file in the same folder, then rename (CLAUDE.md, PHP standards). */
+    /**
+     * Atomic write: a temp file in the same folder, then rename (CLAUDE.md, PHP standards). The
+     * temp file ends in `.php` too, so a leftover copy of a guarded data file stays guarded.
+     */
     public static function writeAtomic(string $path, string $bytes, int $mode = 0o600): void
     {
-        $temp = \dirname($path) . '/.tmp-' . bin2hex(random_bytes(8));
+        $temp = \dirname($path) . '/.tmp-' . bin2hex(random_bytes(8)) . '.php';
         $handle = fopen($temp, 'xb');
         if ($handle === false) {
             throw new \RuntimeException('cannot create a temp file');

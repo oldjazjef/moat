@@ -35,6 +35,13 @@ final class AddressGuardTest extends TestCase
         yield '6to4 of a private address' => ['2002:a00:1::1', false];
         yield 'Teredo' => ['2001:0:4136:e378::1', false];
         yield 'not an address' => ['localhost', false];
+        yield 'IPv4 multicast' => ['224.0.0.1', false];
+        yield 'IPv4 reserved 240/4' => ['240.0.0.1', false];
+        yield 'IPv6 multicast' => ['ff02::1', false];
+        yield 'IPv6 site-local' => ['fec0::1', false];
+        yield 'local-use NAT64' => ['64:ff9b:1::a00:1', false];
+        yield 'SIIT ::ffff:0:0/96' => ['::ffff:0:7f00:1', false];
+        yield '6to4 of a public address' => ['2002:5db8:d822::1', true];
     }
 
     #[DataProvider('addresses')]

@@ -84,7 +84,7 @@ final class RequestHandler
                 $route->responseContentTypes,
             ), $bundle->policy);
             // SEC-34: an upstream that echoes the credential does not get it to the client.
-            if ($secret !== '' && (str_contains($response->body, $secret) || str_contains($response->body, rawurlencode($secret)))) {
+            if (SecretEcho::found($response->body, $secret)) {
                 throw new Failure(GateError::UpstreamReflectedSecret);
             }
         } finally {
