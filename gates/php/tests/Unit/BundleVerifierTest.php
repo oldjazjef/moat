@@ -58,12 +58,7 @@ final class BundleVerifierTest extends TestCase
     /** @return non-empty-string */
     private static function keyPair(): string
     {
-        $keyPair = sodium_crypto_sign_keypair();
-        if ($keyPair === '') {
-            throw new \LogicException('libsodium returned an empty key pair');
-        }
-
-        return $keyPair;
+        return sodium_crypto_sign_keypair();
     }
 
     private function expectRejection(RejectionCode $code): void
