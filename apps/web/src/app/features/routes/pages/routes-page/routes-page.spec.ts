@@ -161,4 +161,145 @@ describe('RoutesPage', () => {
     removed.flush(PROJECT);
     await settle(harness);
   });
+
+  const submitUpstream = (el: HTMLElement) =>
+    (el.querySelector('[data-upstream-form]') as HTMLFormElement).dispatchEvent(
+      new Event('submit'),
+    );
+  const choose = (el: HTMLElement, selector: string, value: string) => {
+    const select = el.querySelector(selector) as HTMLSelectElement;
+    select.value = value;
+    select.dispatchEvent(new Event('change'));
+  };
+
+  it('adds an upstream with a header and the secret by name only', async () => {
+    const { el, harness } = await openProjectTab('routes', RoutesPage, PROJECT);
+    (el.querySelector('[data-upstream-new]') as HTMLButtonElement).click();
+    await settle(harness);
+    type(el, '#upstream-name', 'mailchimp');
+    type(el, '#upstream-origin', ' https://us21.api.mailchimp.com ');
+    choose(el, '#upstream-auth', 'header');
+    await settle(harness);
+    submitUpstream(el);
+    await settle(harness);
+    // Header and secret are required for this auth type.
+    TestBed.inject(HttpTestingController).expectNone(
+      `/api/projects/${PROJECT.id}/config/edits`,
+    );
+    expect(
+      el.querySelector('#upstream-header')?.getAttribute('aria-invalid'),
+    ).toBe('true');
+    type(el, '#upstream-header', 'X-Api-Key');
+    type(el, '#upstream-secret', 'mailchimp-key');
+    submitUpstream(el);
+    const edit = expectEdit();
+    expect(edit.request.body).toEqual({
+      base: 'a'.repeat(64),
+      op: 'addUpstream',
+      upstream: 'mailchimp',
+      upstreamDefinition: {
+        origin: 'https://us21.api.mailchimp.com',
+        auth: { type: 'header', name: 'X-Api-Key', secret: 'mailchimp-key' },
+      },
+    });
+    edit.flush(PROJECT);
+    await settle(harness);
+    expect(el.querySelector('[data-upstream-form]')).toBeNull();
+  });
+
+  it('opens an upstream with its values and marks the field the core refused', async () => {
+    const { el, harness } = await openProjectTab('routes', RoutesPage, PROJECT);
+    (el.querySelector('[data-upstream-edit]') as HTMLButtonElement).click();
+    await settle(harness);
+    const value = (selector: string) =>
+      (el.querySelector(selector) as HTMLInputElement).value;
+    expect(el.querySelector('#upstream-name')).toBeNull();
+    expect(value('#upstream-origin')).toBe('https://api.hubapi.com');
+    expect(value('#upstream-auth')).toBe('bearer');
+    expect(value('#upstream-secret')).toBe('hubspot-token');
+    expect(value('#upstream-timeout')).toBe('');
+    type(el, '#upstream-origin', 'http://api.hubapi.com');
+    submitUpstream(el);
+    await settle(harness);
+    // The form wants https:// before anything is sent (SEC-41).
+    TestBed.inject(HttpTestingController).expectNone(
+      `/api/projects/${PROJECT.id}/config/edits`,
+    );
+    type(el, '#upstream-origin', 'https://api.hubapi.com/crm');
+    submitUpstream(el);
+    const edit = expectEdit();
+    expect(edit.request.body).toEqual({
+      base: 'a'.repeat(64),
+      op: 'updateUpstream',
+      upstream: 'hubspot',
+      upstreamDefinition: {
+        origin: 'https://api.hubapi.com/crm',
+        auth: { type: 'bearer', secret: 'hubspot-token' },
+      },
+    });
+    edit.flush(
+      { error: 'value_invalid', fields: ['origin'] },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    await settle(harness);
+    expect(
+      el.querySelector('#upstream-origin')?.getAttribute('aria-invalid'),
+    ).toBe('true');
+    expect(text(el, '[data-refused]')).toContain(
+      'Moat hat den Upstream nicht gespeichert',
+    );
+  });
+
+  it('removes only an upstream no route calls, on the second click', async () => {
+    const project = PROJECT.project;
+    const config = project?.config;
+    if (project == null || config?.status !== 'valid')
+      throw new Error('fixture');
+    const hubspot = config.config.upstreams['hubspot'];
+    if (hubspot === undefined) throw new Error('fixture');
+    const { el, harness } = await openProjectTab('routes', RoutesPage, {
+      ...PROJECT,
+      project: {
+        ...project,
+        config: {
+          ...config,
+          config: {
+            ...config.config,
+            upstreams: {
+              ...config.config.upstreams,
+              spare: { ...hubspot, auth: null },
+            },
+          },
+        },
+      },
+    });
+    const used = el.querySelector(
+      '[data-upstream-name="hubspot"]',
+    ) as HTMLElement;
+    expect(used.querySelector('[data-upstream-remove]')).toBeNull();
+    expect(text(used, '[data-upstream-callers]')).toBe(
+      'Benutzt von newsletter',
+    );
+    const spare = el.querySelector(
+      '[data-upstream-name="spare"]',
+    ) as HTMLElement;
+    (
+      spare.querySelector('[data-upstream-remove]') as HTMLButtonElement
+    ).click();
+    await settle(harness);
+    TestBed.inject(HttpTestingController).expectNone(
+      `/api/projects/${PROJECT.id}/config/edits`,
+    );
+    (
+      spare.querySelector('[data-upstream-remove-confirm]') as HTMLButtonElement
+    ).click();
+    const removed = expectEdit();
+    expect(removed.request.body).toEqual({
+      base: 'a'.repeat(64),
+      op: 'removeUpstream',
+      upstream: 'spare',
+    });
+    removed.flush(PROJECT);
+    await settle(harness);
+  });
 });

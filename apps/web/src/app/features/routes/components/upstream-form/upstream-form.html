@@ -1,0 +1,197 @@
+<form
+  hlmCard
+  class="mb-6"
+  data-upstream-form
+  [attr.aria-labelledby]="'upstream-form-title'"
+  (submit)="$event.preventDefault(); save()"
+>
+  <div hlmCardHeader>
+    <h3 hlmCardTitle id="upstream-form-title">
+      @if (upstream(); as row) { {{ 'routes.upstreamForm.editTitle' | translate:
+      { name: row.name } }} } @else { {{ 'routes.upstreamForm.newTitle' |
+      translate }} }
+    </h3>
+    <p hlmCardDescription>
+      {{ 'routes.upstreamForm.description' | translate }}
+    </p>
+  </div>
+  <div hlmCardContent class="grid gap-4 md:grid-cols-2" [formGroup]="form">
+    @if (upstream() === null) {
+    <div class="flex flex-col gap-1.5 md:col-span-2">
+      <label hlmLabel for="upstream-name">
+        {{ 'routes.upstreamForm.name' | translate }}
+      </label>
+      <input
+        hlmInput
+        id="upstream-name"
+        class="mt-code max-w-80"
+        autocomplete="off"
+        spellcheck="false"
+        formControlName="name"
+        [placeholder]="'routes.upstreamForm.namePlaceholder' | translate"
+        [attr.aria-invalid]="invalid('name')"
+        [class.border-destructive]="invalid('name')"
+        aria-describedby="upstream-name-hint"
+      />
+      <p
+        id="upstream-name-hint"
+        class="text-xs"
+        [class.text-destructive]="invalid('name')"
+        [class.text-muted-foreground]="!invalid('name')"
+      >
+        {{ 'routes.form.nameHint' | translate }}
+      </p>
+    </div>
+    }
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="upstream-origin">
+        {{ 'routes.upstreamForm.origin' | translate }}
+      </label>
+      <input
+        hlmInput
+        id="upstream-origin"
+        class="mt-code"
+        autocomplete="off"
+        spellcheck="false"
+        formControlName="origin"
+        [placeholder]="'routes.upstreamForm.originPlaceholder' | translate"
+        [attr.aria-invalid]="invalid('origin')"
+        [class.border-destructive]="invalid('origin')"
+        aria-describedby="upstream-origin-hint"
+      />
+      <p
+        id="upstream-origin-hint"
+        class="text-xs"
+        [class.text-destructive]="invalid('origin')"
+        [class.text-muted-foreground]="!invalid('origin')"
+      >
+        {{ 'routes.upstreamForm.originHint' | translate }}
+      </p>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="upstream-timeout">
+        {{ 'routes.upstreamForm.timeout' | translate }}
+      </label>
+      <input
+        hlmInput
+        id="upstream-timeout"
+        class="mt-code max-w-40"
+        autocomplete="off"
+        spellcheck="false"
+        formControlName="timeout"
+        [placeholder]="'routes.upstreamForm.timeoutPlaceholder' | translate"
+        [attr.aria-invalid]="invalid('timeout')"
+        [class.border-destructive]="invalid('timeout')"
+        aria-describedby="upstream-timeout-hint"
+      />
+      <p
+        id="upstream-timeout-hint"
+        class="text-xs"
+        [class.text-destructive]="invalid('timeout')"
+        [class.text-muted-foreground]="!invalid('timeout')"
+      >
+        {{ 'routes.upstreamForm.timeoutHint' | translate }}
+      </p>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="upstream-auth">
+        {{ 'routes.upstreamForm.auth' | translate }}
+      </label>
+      <select
+        hlmInput
+        id="upstream-auth"
+        formControlName="auth"
+        data-upstream-auth
+        [attr.aria-invalid]="invalid('auth')"
+        [class.border-destructive]="invalid('auth')"
+      >
+        @for (type of authTypes; track type) {
+        <option [value]="type">
+          {{ 'routes.upstreamForm.authTypes.' + type | translate }}
+        </option>
+        }
+      </select>
+    </div>
+    @if (form.controls.auth.value === 'header') {
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="upstream-header">
+        {{ 'routes.upstreamForm.header' | translate }}
+      </label>
+      <input
+        hlmInput
+        id="upstream-header"
+        class="mt-code"
+        autocomplete="off"
+        spellcheck="false"
+        formControlName="header"
+        [placeholder]="'routes.upstreamForm.headerPlaceholder' | translate"
+        [attr.aria-invalid]="invalid('header')"
+        [class.border-destructive]="invalid('header')"
+      />
+    </div>
+    } @else if (form.controls.auth.value === 'query') {
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="upstream-param">
+        {{ 'routes.upstreamForm.param' | translate }}
+      </label>
+      <input
+        hlmInput
+        id="upstream-param"
+        class="mt-code"
+        autocomplete="off"
+        spellcheck="false"
+        formControlName="param"
+        [placeholder]="'routes.upstreamForm.paramPlaceholder' | translate"
+        [attr.aria-invalid]="invalid('param')"
+        [class.border-destructive]="invalid('param')"
+      />
+    </div>
+    } @else {
+    <div></div>
+    } @if (form.controls.auth.value !== 'none') {
+    <div class="flex flex-col gap-1.5 md:col-span-2">
+      <label hlmLabel for="upstream-secret">
+        {{ 'routes.upstreamForm.secret' | translate }}
+      </label>
+      <input
+        hlmInput
+        id="upstream-secret"
+        class="mt-code max-w-80"
+        autocomplete="off"
+        spellcheck="false"
+        formControlName="secret"
+        [placeholder]="'routes.upstreamForm.secretPlaceholder' | translate"
+        [attr.aria-invalid]="invalid('secret')"
+        [class.border-destructive]="invalid('secret')"
+        aria-describedby="upstream-secret-hint"
+      />
+      <p
+        id="upstream-secret-hint"
+        class="text-xs"
+        [class.text-destructive]="invalid('secret')"
+        [class.text-muted-foreground]="!invalid('secret')"
+      >
+        <mt-rich-text [text]="'routes.upstreamForm.secretHint' | translate" />
+      </p>
+    </div>
+    } @if (refused().size > 0) {
+    <p class="text-destructive text-sm md:col-span-2" role="alert" data-refused>
+      {{ 'routes.upstreamForm.refused' | translate }}
+    </p>
+    }
+  </div>
+  <div hlmCardFooter class="flex flex-wrap gap-2">
+    <button hlmBtn type="submit" data-upstream-save [disabled]="edits.busy()">
+      {{ 'routes.form.save' | translate }}
+    </button>
+    <button
+      hlmBtn
+      variant="outline"
+      type="button"
+      data-upstream-cancel
+      (click)="closed.emit()"
+    >
+      {{ 'routes.form.cancel' | translate }}
+    </button>
+  </div>
+</form>

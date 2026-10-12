@@ -262,4 +262,35 @@ describe('editing moat.yaml', () => {
     ).toEqual({ status: 'refused', code: 'value_invalid', fields: ['path'] });
     expect(text()).toBe(YAML);
   });
+
+  it('adds, changes and removes an upstream, and keeps one a route calls', async () => {
+    const { edit, id, text } = await shop();
+    const run = async (
+      change: ConstructorParameters<typeof EditConfigCommand>[2],
+    ) => edit.execute(new EditConfigCommand(id, configHash(text()), change));
+    expect(
+      await run({
+        op: 'addUpstream',
+        upstream: 'mailchimp',
+        upstreamDefinition: { origin: 'https://us21.api.mailchimp.com' },
+      }),
+    ).toEqual({ status: 'saved' });
+    expect(text()).toContain('origin: "https://us21.api.mailchimp.com"');
+    await run({
+      op: 'updateUpstream',
+      upstream: 'mailchimp',
+      upstreamDefinition: {
+        origin: 'https://us21.api.mailchimp.com',
+        auth: { type: 'bearer', secret: 'mailchimp-key' },
+      },
+    });
+    expect(text()).toContain('secret: mailchimp-key');
+    expect(await run({ op: 'removeUpstream', upstream: 'hubspot' })).toEqual({
+      status: 'refused',
+      code: 'upstream_in_use',
+      fields: ['newsletter'],
+    });
+    await run({ op: 'removeUpstream', upstream: 'mailchimp' });
+    expect(text()).toBe(YAML);
+  });
 });

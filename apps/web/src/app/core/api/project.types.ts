@@ -151,7 +151,13 @@ export type ConfigEdit =
   | {
       readonly op: 'removeRoute' | 'enableRoute' | 'disableRoute';
       readonly route: string;
-    };
+    }
+  | {
+      readonly op: 'addUpstream' | 'updateUpstream';
+      readonly upstream: string;
+      readonly upstreamDefinition: UpstreamDefinition;
+    }
+  | { readonly op: 'removeUpstream'; readonly upstream: string };
 
 export const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
 
@@ -170,6 +176,14 @@ export interface RouteDefinition {
   };
 }
 
+/** An upstream as moat.yaml writes it (UpstreamInput in libs/core/src/config/edit.ts). */
+export interface UpstreamDefinition {
+  readonly origin: string;
+  /** `secret` is the name of a sealed secret, never its value. */
+  readonly auth?: NonNullable<CompiledUpstream['auth']>;
+  readonly timeout?: string;
+}
+
 /**
  * Why an edit failed, each `edit.errors.<code>`: the API's 409/422 codes (ConfigEditRefusal),
  * and `failed` for anything else.
@@ -185,6 +199,8 @@ export const EDIT_ERROR_CODES = [
   'route_unknown',
   'upstream_unknown',
   'route_conflict',
+  'upstream_exists',
+  'upstream_in_use',
   'value_invalid',
   'not_writable',
   'failed',

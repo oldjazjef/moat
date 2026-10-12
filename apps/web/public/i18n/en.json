@@ -104,9 +104,11 @@
       "gate_in_other_environment": "The gate already belongs to another environment.",
       "route_exists": "A route with this name already exists.",
       "route_unknown": "This route is no longer in moat.yaml. Reload the project.",
-      "upstream_unknown": "This upstream is not in moat.yaml.",
+      "upstream_unknown": "This upstream is not (or no longer) in moat.yaml.",
       "route_conflict": "Another route already answers the same method and path.",
-      "value_invalid": "A value of the route is not valid. The marked fields show which one.",
+      "upstream_exists": "An upstream with this name already exists.",
+      "upstream_in_use": "Routes still use this upstream. Change or delete those routes first.",
+      "value_invalid": "A value is not valid. The marked fields show which one.",
       "not_writable": "moat.yaml cannot be written. Check whether the folder is read-only or moat.yaml is a link.",
       "failed": "That did not work. Nothing was saved."
     }
@@ -212,6 +214,37 @@
       "none": "None"
     },
     "new": "New route",
+    "newUpstream": "New upstream",
+    "noUpstreams": "No upstream yet. Add the first one with “New upstream”; then you can add routes.",
+    "upstreamInUse": "Used by {{routes}}",
+    "upstreamForm": {
+      "newTitle": "New upstream",
+      "editTitle": "Edit upstream {{name}}",
+      "description": "The API the gate calls. Saved to moat.yaml; on the gate, the change applies only with the next bundle.",
+      "name": "Name",
+      "namePlaceholder": "hubspot",
+      "origin": "Address",
+      "originPlaceholder": "https://api.hubapi.com",
+      "originHint": "Only https:// and the host, no path. The gate’s policy must allow the host.",
+      "timeout": "Timeout",
+      "timeoutPlaceholder": "10s",
+      "timeoutHint": "Empty means 10 seconds. With a unit, e.g. 5s, at most 60s.",
+      "auth": "Authentication",
+      "authTypes": {
+        "none": "None",
+        "bearer": "Bearer token",
+        "header": "Custom header",
+        "query": "Query parameter"
+      },
+      "header": "Header",
+      "headerPlaceholder": "X-Api-Key",
+      "param": "Parameter",
+      "paramPlaceholder": "api_key",
+      "secret": "Secret name",
+      "secretPlaceholder": "hubspot-token",
+      "secretHint": "Only the name, never the key itself. Then seal the key in the terminal for each gate: `moat secret seal <gate> <name>`.",
+      "refused": "Moat did not save the upstream: the marked fields hold values the gate would refuse."
+    },
     "edit": "Edit",
     "switchOff": "Switch off",
     "switchOn": "Switch on",
@@ -358,7 +391,7 @@
         "purpose": "An upstream is the API the gate calls. Its key is a secret: it is sealed for one particular gate and can be opened only there.",
         "where": "Project › Gates › Sealed secrets and Routes › Upstreams",
         "steps": {
-          "upstream": "Add the upstream to moat.yaml with its address and the secret's name (e.g. `secret: hubspot-token`), never its value.",
+          "upstream": "Under “Routes”, click “New upstream” next to the upstreams and fill in the address, the authentication and the secret’s name (e.g. `hubspot-token`), never its value. In moat.yaml: `secret: hubspot-token`.",
           "seal": "Seal the value with `moat secret seal <gate> <name>`. You type it in the terminal; only encrypted text is stored.",
           "check": "Under “Gates” you see for each gate which secrets are sealed and which are still missing."
         },
@@ -375,7 +408,7 @@
           "write": "Under “Routes”, click “New route” and fill in method, path, upstream and target path. “Edit” changes a route, “Switch off” disables it without deleting it. If you prefer your editor, write it into moat.yaml directly.",
           "recipe": "For common cases there are recipes, for example the newsletter sign-up with HubSpot.",
           "origins": "If another website calls the route in a browser, add it under “Allowed websites” (in moat.yaml: `origins`). Without an entry, browsers refuse other websites.",
-          "bundle": "A new or changed route applies on the gate only with the next bundle: `moat build <gate>`, upload it and accept it. For now, upstreams are changed in moat.yaml.",
+          "bundle": "A new or changed route applies on the gate only with the next bundle: `moat build <gate>`, upload it and accept it.",
           "check": "Under “Routes” you see every route as the gate checks it: path, target, allowed websites, rate limit and maximum size."
         },
         "tips": {

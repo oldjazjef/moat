@@ -192,5 +192,15 @@ export class RouteForm implements OnInit {
         : { op: 'updateRoute', route: row.name, definition: this.definition() },
     );
     if (saved) this.closed.emit();
+    else this.markRefused();
+  }
+
+  /**
+   * A refused field gets an error of its own, so it reads as invalid everywhere (also to
+   * hlmInput's own aria-invalid) until it is edited.
+   */
+  private markRefused(): void {
+    for (const control of this.refused())
+      this.form.get(control)?.setErrors({ refused: true });
   }
 }

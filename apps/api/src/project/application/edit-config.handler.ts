@@ -6,10 +6,12 @@ import {
   ConfigEditError,
   ConfigError,
   removeRoute,
+  removeUpstream,
   setEnvironmentEnabled,
   setGateEnabled,
   setRoute,
   setRouteEnabled,
+  setUpstream,
 } from '@moat/core';
 import { ProjectFilesPort } from '../ports/project-files.port';
 import { ProjectRegistryPort } from '../ports/project-registry.port';
@@ -46,6 +48,22 @@ function apply(text: string, edit: ConfigEdit): string {
       return setRouteEnabled(text, edit.route, true);
     case 'disableRoute':
       return setRouteEnabled(text, edit.route, false);
+    case 'addUpstream':
+      return setUpstream(
+        text,
+        edit.upstream,
+        edit.upstreamDefinition,
+        'create',
+      );
+    case 'updateUpstream':
+      return setUpstream(
+        text,
+        edit.upstream,
+        edit.upstreamDefinition,
+        'update',
+      );
+    case 'removeUpstream':
+      return removeUpstream(text, edit.upstream);
   }
 }
 
@@ -69,7 +87,8 @@ export class EditConfigHandler implements ICommandHandler<EditConfigCommand> {
       next = apply(text, command.edit);
     } catch (error) {
       if (error instanceof ConfigEditError)
-        return error.code === 'value_invalid'
+        return error.code === 'value_invalid' ||
+          error.code === 'upstream_in_use'
           ? { status: 'refused', code: error.code, fields: error.fields }
           : { status: 'refused', code: error.code };
       if (error instanceof ConfigError)

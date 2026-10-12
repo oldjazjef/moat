@@ -1,4 +1,4 @@
-import type { ProjectState, RouteInput } from '@moat/core';
+import type { ProjectState, RouteInput, UpstreamInput } from '@moat/core';
 
 /**
  * A project Moat Desktop knows: an id of its own and the folder the project lives in (DT-03,
@@ -64,6 +64,9 @@ export const CONFIG_EDIT_OPS = [
   'removeRoute',
   'enableRoute',
   'disableRoute',
+  'addUpstream',
+  'updateUpstream',
+  'removeUpstream',
 ] as const;
 export type ConfigEditOp = (typeof CONFIG_EDIT_OPS)[number];
 
@@ -86,7 +89,13 @@ export type ConfigEdit =
   | {
       readonly op: 'removeRoute' | 'enableRoute' | 'disableRoute';
       readonly route: string;
-    };
+    }
+  | {
+      readonly op: 'addUpstream' | 'updateUpstream';
+      readonly upstream: string;
+      readonly upstreamDefinition: UpstreamInput;
+    }
+  | { readonly op: 'removeUpstream'; readonly upstream: string };
 
 /** Why an edit was refused (422), as `{ error: <code> }`; the UI shows `edit.errors.<code>`. */
 export type ConfigEditRefusal =
@@ -99,6 +108,9 @@ export type ConfigEditRefusal =
   | 'route_unknown'
   | 'upstream_unknown'
   | 'route_conflict'
-  /** A value the gate would refuse; the 422 body lists the route's `fields`. */
+  | 'upstream_exists'
+  /** The 422 body lists the routes that call it as `fields`. */
+  | 'upstream_in_use'
+  /** A value the gate would refuse; the 422 body lists the route's or upstream's `fields`. */
   | 'value_invalid'
   | 'not_writable';

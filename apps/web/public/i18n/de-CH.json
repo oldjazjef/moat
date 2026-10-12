@@ -104,9 +104,11 @@
       "gate_in_other_environment": "Das Gate gehört schon zu einer anderen Umgebung.",
       "route_exists": "Eine Route mit diesem Namen gibt es schon.",
       "route_unknown": "Diese Route gibt es in moat.yaml nicht mehr. Lade das Projekt neu.",
-      "upstream_unknown": "Diesen Upstream gibt es in moat.yaml nicht.",
+      "upstream_unknown": "Diesen Upstream gibt es in moat.yaml nicht (mehr).",
       "route_conflict": "Eine andere Route beantwortet schon dieselbe Methode und denselben Pfad.",
-      "value_invalid": "Ein Wert der Route ist nicht gültig. Die markierten Felder zeigen, welcher.",
+      "upstream_exists": "Einen Upstream mit diesem Namen gibt es schon.",
+      "upstream_in_use": "Dieser Upstream wird noch von Routen benutzt. Ändere oder lösche zuerst diese Routen.",
+      "value_invalid": "Ein Wert ist nicht gültig. Die markierten Felder zeigen, welcher.",
       "not_writable": "moat.yaml lässt sich nicht schreiben. Prüfe, ob der Ordner schreibgeschützt ist oder moat.yaml eine Verknüpfung ist.",
       "failed": "Das hat nicht geklappt. Nichts gespeichert."
     }
@@ -212,6 +214,37 @@
       "none": "Keine"
     },
     "new": "Neue Route",
+    "newUpstream": "Neuer Upstream",
+    "noUpstreams": "Noch kein Upstream. Lege mit «Neuer Upstream» den ersten an, danach kannst du Routen anlegen.",
+    "upstreamInUse": "Benutzt von {{routes}}",
+    "upstreamForm": {
+      "newTitle": "Neuer Upstream",
+      "editTitle": "Upstream {{name}} bearbeiten",
+      "description": "Die API, die das Gate aufruft. Gespeichert wird in moat.yaml; auf dem Gate gilt die Änderung erst mit dem nächsten Bundle.",
+      "name": "Name",
+      "namePlaceholder": "hubspot",
+      "origin": "Adresse",
+      "originPlaceholder": "https://api.hubapi.com",
+      "originHint": "Nur https:// und der Host, ohne Pfad. Die Policy des Gates muss den Host erlauben.",
+      "timeout": "Timeout",
+      "timeoutPlaceholder": "10s",
+      "timeoutHint": "Leer heisst 10 Sekunden. Mit Einheit, z. B. 5s, höchstens 60s.",
+      "auth": "Anmeldung",
+      "authTypes": {
+        "none": "Keine",
+        "bearer": "Bearer-Token",
+        "header": "Eigener Header",
+        "query": "Query-Parameter"
+      },
+      "header": "Header",
+      "headerPlaceholder": "X-Api-Key",
+      "param": "Parameter",
+      "paramPlaceholder": "api_key",
+      "secret": "Name des Secrets",
+      "secretPlaceholder": "hubspot-token",
+      "secretHint": "Nur der Name, nie der Schlüssel selbst. Den Schlüssel versiegelst du danach im Terminal für jedes Gate: `moat secret seal <gate> <name>`.",
+      "refused": "Moat hat den Upstream nicht gespeichert: Die markierten Felder enthalten Werte, die das Gate ablehnen würde."
+    },
     "edit": "Bearbeiten",
     "switchOff": "Ausschalten",
     "switchOn": "Einschalten",
@@ -358,7 +391,7 @@
         "purpose": "Ein Upstream ist die API, die das Gate aufruft. Ihr Schlüssel ist ein Secret: Er wird für ein bestimmtes Gate versiegelt und kann nur dort wieder geöffnet werden.",
         "where": "Projekt › Gates › Versiegelte Secrets und Routen › Upstreams",
         "steps": {
-          "upstream": "Trage den Upstream in moat.yaml ein, mit Adresse und dem Namen des Secrets (z. B. `secret: hubspot-token`), nie mit dem Wert.",
+          "upstream": "Klicke unter «Routen» bei den Upstreams auf «Neuer Upstream» und trage Adresse, Anmeldung und den Namen des Secrets ein (z. B. `hubspot-token`), nie den Wert. In moat.yaml: `secret: hubspot-token`.",
           "seal": "Versiegle den Wert mit `moat secret seal <gate> <name>`. Du gibst ihn im Terminal ein; gespeichert wird nur verschlüsselter Text.",
           "check": "Unter «Gates» siehst du je Gate, welche Secrets versiegelt sind und welche noch fehlen."
         },
@@ -375,7 +408,7 @@
           "write": "Klicke unter «Routen» auf «Neue Route» und fülle Methode, Pfad, Upstream und Ziel-Pfad aus. «Bearbeiten» ändert eine Route, «Ausschalten» legt sie still, ohne sie zu löschen. Wer lieber im Editor arbeitet, trägt sie direkt in moat.yaml ein.",
           "recipe": "Für häufige Fälle gibt es Recipes, zum Beispiel die Newsletter-Anmeldung bei HubSpot.",
           "origins": "Ruft eine andere Website die Route im Browser auf, trage sie unter «Erlaubte Websites» ein (in moat.yaml: `origins`). Ohne Eintrag lehnen Browser fremde Websites ab.",
-          "bundle": "Eine neue oder geänderte Route gilt auf dem Gate erst mit dem nächsten Bundle: `moat build <gate>`, hochladen und annehmen. Upstreams änderst du vorerst in moat.yaml.",
+          "bundle": "Eine neue oder geänderte Route gilt auf dem Gate erst mit dem nächsten Bundle: `moat build <gate>`, hochladen und annehmen.",
           "check": "Unter «Routen» siehst du jede Route so, wie das Gate sie prüft: Pfad, Ziel, erlaubte Websites, Rate-Limit und maximale Grösse."
         },
         "tips": {

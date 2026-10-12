@@ -26,10 +26,10 @@ Four components (ANFORDERUNGEN.md, header):
 > of a gate or a whole environment (`moat env|gate disable`, `gate_disabled`)
 > ([gates/php/README.md](gates/php/README.md)). **Moat Desktop, first surface:** Electron shell
 > with the API in-process (`apps/api`: the project list in `<MOAT_DATA_DIR>/projects.json`,
-> `GET /api/projects`, `GET|DELETE /api/projects/:id`, `POST /api/projects/:id/config/edits` — the closed list of moat.yaml edits: add/lock/unlock environments, lock/unlock and assign gates, add/update/enable/disable/remove routes (`setRoute` & co. in `libs/core/src/config/edit.ts`), with a `base` hash against lost updates) and the Angular
+> `GET /api/projects`, `GET|DELETE /api/projects/:id`, `POST /api/projects/:id/config/edits` — the closed list of moat.yaml edits: add/lock/unlock environments, lock/unlock and assign gates, add/update/enable/disable/remove routes and add/update/remove upstreams (`setRoute`, `setUpstream` & co. in `libs/core/src/config/edit.ts`), with a `base` hash against lost updates) and the Angular
 > UI (`apps/web`: Projekte → workspace with Übersicht incl. Umgebungen, Gates with lock state, Routen;
 > Hilfe). Everything else
-> (upstreams, secrets, building and signing) still goes through the CLI. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, desktop upstream editing and signing, setup wizard (FR-73),
+> (sealing secrets, building and signing) still goes through the CLI. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, desktop secret sealing and signing, setup wizard (FR-73),
 > quotas/budgets, lazy pull, setup mode, trust mode 2, the local file kill switch (SEC-15). Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.

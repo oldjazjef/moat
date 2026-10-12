@@ -183,9 +183,31 @@
 </section>
 
 <section class="mt-8 flex flex-col gap-3" aria-labelledby="upstreams-title">
-  <h2 id="upstreams-title" class="text-lg font-semibold">
-    {{ 'routes.upstreamsTitle' | translate }}
-  </h2>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 id="upstreams-title" class="text-lg font-semibold">
+      {{ 'routes.upstreamsTitle' | translate }}
+    </h2>
+    @if (service.editingUpstream() === undefined) {
+    <button
+      hlmBtn
+      size="sm"
+      type="button"
+      data-upstream-new
+      (click)="service.openUpstream(null)"
+    >
+      {{ 'routes.newUpstream' | translate }}
+    </button>
+    }
+  </div>
+  @if (service.editingUpstream(); as row) {
+  <mt-upstream-form [upstream]="row" (closed)="service.closeUpstream()" />
+  } @else if (service.editingUpstream() === null) {
+  <mt-upstream-form (closed)="service.closeUpstream()" />
+  } @if (service.upstreams().length === 0) {
+  <p class="text-muted-foreground text-sm" data-no-upstreams>
+    {{ 'routes.noUpstreams' | translate }}
+  </p>
+  } @else {
   <div hlmTableContainer class="mt-panel">
     <table hlmTable>
       <thead hlmTHead>
@@ -198,8 +220,56 @@
       </thead>
       <tbody hlmTBody>
         @for (row of service.upstreams(); track row.name) {
-        <tr hlmTr data-upstream>
-          <td hlmTd class="mt-code font-medium">{{ row.name }}</td>
+        <tr hlmTr data-upstream [attr.data-upstream-name]="row.name">
+          <td hlmTd>
+            <span class="mt-code font-medium">{{ row.name }}</span>
+            <div class="mt-1 flex flex-wrap gap-x-3" data-upstream-actions>
+              <button
+                hlmBtn
+                variant="link"
+                size="sm"
+                class="h-auto px-0 text-xs"
+                type="button"
+                data-upstream-edit
+                [disabled]="service.edits.busy()"
+                (click)="service.openUpstream(row)"
+              >
+                {{ 'routes.edit' | translate }}
+              </button>
+              @if (row.callers.length > 0) {
+              <span class="text-muted-foreground text-xs" data-upstream-callers>
+                {{ 'routes.upstreamInUse' | translate: { routes:
+                row.callers.join(', ') } }}
+              </span>
+              } @else if (service.confirmingUpstreamRemove() === row.name) {
+              <button
+                hlmBtn
+                variant="link"
+                size="sm"
+                class="text-destructive h-auto px-0 text-xs"
+                type="button"
+                data-upstream-remove-confirm
+                [disabled]="service.edits.busy()"
+                (click)="service.removeUpstream(row)"
+              >
+                {{ 'routes.removeConfirm' | translate }}
+              </button>
+              } @else {
+              <button
+                hlmBtn
+                variant="link"
+                size="sm"
+                class="h-auto px-0 text-xs"
+                type="button"
+                data-upstream-remove
+                [disabled]="service.edits.busy()"
+                (click)="service.removeUpstream(row)"
+              >
+                {{ 'routes.remove' | translate }}
+              </button>
+              }
+            </div>
+          </td>
           <td hlmTd class="mt-code">{{ row.upstream.origin }}</td>
           <td hlmTd>
             @if (row.upstream.auth; as auth) { {{ 'routes.auth.' + auth.type |
@@ -218,5 +288,6 @@
       </tbody>
     </table>
   </div>
+  }
 </section>
 }
