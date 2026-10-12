@@ -20,8 +20,8 @@ final class BundleVerifierTest extends TestCase
     public function testSec01ABundleSignedByAnUnpinnedKeyIsRejected(): void
     {
         // A fully compromised Cloud can sign anything with its own key — but not with a pinned one.
-        $pinned = sodium_crypto_sign_keypair();
-        $attacker = sodium_crypto_sign_keypair();
+        $pinned = self::keyPair();
+        $attacker = self::keyPair();
         $envelope = self::sign(self::payload(['version' => 99]), $attacker);
 
         $this->expectRejection(RejectionCode::ThresholdNotMet);
@@ -30,7 +30,7 @@ final class BundleVerifierTest extends TestCase
 
     public function testSec07ABundleForAnotherGateIsRejected(): void
     {
-        $keys = sodium_crypto_sign_keypair();
+        $keys = self::keyPair();
         $envelope = self::sign(self::payload(['gateId' => 'another-gate']), $keys);
 
         $this->expectRejection(RejectionCode::GateMismatch);
@@ -39,7 +39,7 @@ final class BundleVerifierTest extends TestCase
 
     public function testSec04AReplayedBundleIsRejected(): void
     {
-        $keys = sodium_crypto_sign_keypair();
+        $keys = self::keyPair();
         $envelope = self::sign(self::payload(['version' => 5]), $keys);
 
         $this->expectRejection(RejectionCode::VersionNotNewer);
@@ -48,11 +48,22 @@ final class BundleVerifierTest extends TestCase
 
     public function testAcceptsWhatTheCoreFormatDescribes(): void
     {
-        $keys = sodium_crypto_sign_keypair();
+        $keys = self::keyPair();
         $bundle = BundleVerifier::verify(self::sign(self::payload(), $keys), self::context($keys));
 
         self::assertSame(2, $bundle->version);
         self::assertSame('gate-under-test', $bundle->gateId);
+    }
+
+    /** @return non-empty-string */
+    private static function keyPair(): string
+    {
+        $keyPair = sodium_crypto_sign_keypair();
+        if ($keyPair === '') {
+            throw new \LogicException('libsodium returned an empty key pair');
+        }
+
+        return $keyPair;
     }
 
     private function expectRejection(RejectionCode $code): void
@@ -77,6 +88,7 @@ final class BundleVerifierTest extends TestCase
         ], JSON_THROW_ON_ERROR);
     }
 
+    /** @param non-empty-string $keyPair */
     private static function sign(string $payload, string $keyPair): string
     {
         $secretKey = sodium_crypto_sign_secretkey($keyPair);
@@ -94,6 +106,7 @@ final class BundleVerifierTest extends TestCase
         ], JSON_THROW_ON_ERROR);
     }
 
+    /** @param non-empty-string $keyPair */
     private static function context(string $keyPair, int $currentVersion = 1): VerificationContext
     {
         return new VerificationContext(

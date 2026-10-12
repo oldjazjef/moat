@@ -86,7 +86,12 @@ final class BundleVerifier
             } catch (Rejection) {
                 throw new Rejection(RejectionCode::SignatureInvalid);
             }
-            if (!sodium_crypto_sign_verify_detached($signature, $message, $signer->publicKey)) {
+            $publicKey = $signer->publicKey;
+            // Both lengths were checked (64 and 32 bytes); this only tells the type checker.
+            if ($signature === '' || $publicKey === '') {
+                throw new Rejection(RejectionCode::SignatureInvalid);
+            }
+            if (!sodium_crypto_sign_verify_detached($signature, $message, $publicKey)) {
                 throw new Rejection(RejectionCode::SignatureInvalid);
             }
             $valid[$signer->kid] = true;

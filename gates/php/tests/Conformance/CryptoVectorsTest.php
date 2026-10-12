@@ -90,13 +90,13 @@ final class CryptoVectorsTest extends TestCase
     public function testBundle(array $case): void
     {
         $signers = [];
-        foreach (Vectors::load('bundle.json')['signers'] ?? [] as $signer) {
+        foreach (Vectors::list(Vectors::load('bundle.json')['signers'] ?? null) as $signer) {
             $signer = Vectors::map($signer);
             $signers[Vectors::string($signer['name'])] = Vectors::string($signer['publicKey']);
         }
         $context = Vectors::map($case['context']);
         $pinned = [];
-        foreach (Vectors::map($context['pinned']) as $name) {
+        foreach (Vectors::list($context['pinned']) as $name) {
             $pinned[] = new PinnedSigner(Base64Url::decode($signers[Vectors::string($name)] ?? null));
         }
         $verification = new VerificationContext(

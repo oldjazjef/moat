@@ -36,11 +36,12 @@ final class Vectors
             throw new \RuntimeException("{$file} has no cases");
         }
         foreach ($cases as $case) {
-            if (!\is_array($case) || !\is_string($case['name'] ?? null)) {
+            $name = \is_array($case) ? ($case['name'] ?? null) : null;
+            if (!\is_array($case) || !\is_string($name)) {
                 throw new \RuntimeException("{$file} has a case without a name");
             }
             /** @var array<string, mixed> $case */
-            yield $case['name'] => [$case];
+            yield $name => [$case];
         }
     }
 
@@ -57,6 +58,16 @@ final class Vectors
     {
         if (!\is_int($value)) {
             throw new \RuntimeException('expected an integer in the vector file');
+        }
+
+        return $value;
+    }
+
+    /** @return array<mixed> */
+    public static function list(mixed $value): array
+    {
+        if (!\is_array($value)) {
+            throw new \RuntimeException('expected an array in the vector file');
         }
 
         return $value;
