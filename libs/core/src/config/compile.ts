@@ -1,0 +1,48 @@
+import { reject } from '../errors';
+import type { JsonValue } from '../json/strict-json';
+import { validateCompiledConfig, type CompiledConfig } from './compiled';
+import type { MoatConfig } from './schema';
+import { parseDuration, parseSize } from './units';
+
+export const DEFAULT_TIMEOUT_MS = 10_000;
+export const DEFAULT_MAX_BODY_BYTES = 64 * 1024;
+export const DEFAULT_CONTENT_TYPES = ['application/json'];
+
+/**
+ * moat.yaml → the compiled config a bundle carries: defaults filled in, units turned into
+ * integers, then validated exactly as a gate will (step 9 of docs/CRYPTO.md §4.3) against the
+ * names of the secrets that go into the bundle. Throws `config_invalid`.
+ */
+export function compileConfig(
+  config: MoatConfig,
+  secretNames: readonly string[],
+): CompiledConfig {
+  const upstreams: Record<string, JsonValue> = {};
+  for (const [name, upstream] of Object.entries(config.upstreams)) {
+    upstreams[name] = {
+      origin: upstream.origin,
+      auth: upstream.auth ?? null,
+      timeoutMs:
+        upstream.timeout === undefined
+          ? DEFAULT_TIMEOUT_MS
+          : (parseDuration(upstream.timeout) ?? reject('config_invalid')),
+    };
+  }
+  const routes: Record<string, JsonValue> = {};
+  for (const [name, route] of Object.entries(config.routes)) {
+    routes[name] = {
+      method: route.method,
+      path: route.path,
+      upstream: route.upstream,
+      upstreamPath: route.upstreamPath,
+      maxBodyBytes:
+        route.maxBodySize === undefined
+          ? DEFAULT_MAX_BODY_BYTES
+          : (parseSize(route.maxBodySize) ?? reject('config_invalid')),
+      contentTypes: route.contentTypes ?? DEFAULT_CONTENT_TYPES,
+      responseContentTypes: route.responseContentTypes ?? DEFAULT_CONTENT_TYPES,
+      enabled: route.enabled ?? true,
+    };
+  }
+  return validateCompiledConfig({ version: 1, upstreams, routes }, secretNames);
+}

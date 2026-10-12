@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../schema/moat.schema.json
+#
+# Recipe (FR-43): newsletter sign-up on your website → HubSpot contact.
+# The HubSpot token is never written here: seal it with `moat secret seal <gate> hubspot-token`.
+version: 1
+
+upstreams:
+  hubspot:
+    origin: 'https://api.hubapi.com'
+    auth:
+      type: bearer
+      secret: hubspot-token
+    timeout: '10s'
+
+routes:
+  newsletter:
+    method: POST
+    path: '/newsletter'
+    upstream: hubspot
+    upstreamPath: '/crm/v3/objects/contacts'
+    maxBodySize: '4KiB'

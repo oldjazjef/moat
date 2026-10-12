@@ -84,3 +84,13 @@ export function hasExactKeys(
     own.length === keys.length && keys.every((key) => Object.hasOwn(value, key))
   );
 }
+
+/**
+ * True when any object in the value has a `__proto__` key. Zod's records silently drop such a
+ * key, while every gate would see it — so validators reject it before Zod runs (DT-17).
+ */
+export function hasProtoKey(value: unknown): boolean {
+  if (value === null || typeof value !== 'object') return false;
+  if (!Array.isArray(value) && Object.hasOwn(value, '__proto__')) return true;
+  return Object.values(value).some(hasProtoKey);
+}

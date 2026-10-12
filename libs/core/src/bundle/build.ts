@@ -1,0 +1,53 @@
+import { compileConfig } from '../config/compile';
+import type { MoatConfig } from '../config/schema';
+import type { JsonValue } from '../json/strict-json';
+import { checkPolicy, type Policy } from '../policy/policy';
+import type { SealedSecret } from '../secrets/seal';
+import { signBundle, type BundlePayload, type Ed25519Signer } from './bundle';
+
+export interface BuildBundleInput {
+  readonly config: MoatConfig;
+  readonly gateId: string;
+  /** Sealed for this gate (sealSecret), by the name the config references. */
+  readonly secrets: Readonly<Record<string, SealedSecret>>;
+  readonly version: number;
+  /** Seconds since the epoch — passed in, the core has no clock. */
+  readonly issuedAt: number;
+  readonly expiresAt?: number | null;
+  /** When known (Desktop, CLI with the gate's policy): fail here instead of on the gate. */
+  readonly policy?: Policy;
+}
+
+/**
+ * Compiles the config, checks it as the gate will (schema, references, optional local policy)
+ * and signs the bundle. Only secrets the config references go in — nothing else leaves the
+ * project folder.
+ */
+export async function buildBundle(
+  input: BuildBundleInput,
+  signers: readonly Ed25519Signer[],
+): Promise<string> {
+  const referenced = new Set(
+    Object.values(input.config.upstreams).flatMap((upstream) =>
+      upstream.auth ? [upstream.auth.secret] : [],
+    ),
+  );
+  const secrets: Record<string, JsonValue> = {};
+  for (const name of [...referenced].sort()) {
+    const sealed = input.secrets[name];
+    if (sealed !== undefined) secrets[name] = sealed as unknown as JsonValue;
+  }
+  const config = compileConfig(input.config, Object.keys(secrets));
+  if (input.policy !== undefined) checkPolicy(config, input.policy);
+  const payload: BundlePayload = {
+    type: 'moat.bundle',
+    v: 1,
+    gateId: input.gateId,
+    version: input.version,
+    issuedAt: input.issuedAt,
+    expiresAt: input.expiresAt ?? null,
+    config: config as unknown as BundlePayload['config'],
+    secrets,
+  };
+  return signBundle(payload, signers);
+}

@@ -1,5 +1,6 @@
 /**
- * The closed list of reasons a bundle, a sealed secret or an encoded value is rejected. The same
+ * The closed list of reasons a bundle, a sealed secret, a config, a request path, a key file or an
+ * encoded value is rejected. The same
  * codes are used by every gate and by the conformance vectors (conformance/vectors/crypto/), so
  * a case says exactly which check must fail.
  */
@@ -16,6 +17,12 @@ export const REJECTION_CODES = [
   'secret_invalid',
   'encoding_invalid',
   'json_invalid',
+  'config_invalid',
+  'policy_invalid',
+  'policy_violation',
+  'path_invalid',
+  'keyfile_invalid',
+  'keyfile_locked',
 ] as const;
 
 export type RejectionCode = (typeof REJECTION_CODES)[number];

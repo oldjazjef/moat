@@ -30,3 +30,40 @@ export {
   type SealedSecret,
   type SecretBinding,
 } from './secrets/seal';
+export { normalisePath, MAX_PATH_LENGTH } from './http/path';
+export { mediaTypeOf, isAllowedContentType } from './http/content-type';
+export {
+  validateCompiledConfig,
+  isOrigin,
+  hostKey,
+  METHODS,
+  type CompiledConfig,
+  type CompiledRoute,
+  type CompiledUpstream,
+} from './config/compiled';
+export {
+  moatConfigSchema,
+  moatJsonSchema,
+  type MoatConfig,
+} from './config/schema';
+export {
+  loadMoatYaml,
+  ConfigError,
+  formatIssue,
+  type ConfigIssue,
+} from './config/yaml';
+export { compileConfig } from './config/compile';
+export {
+  parsePolicy,
+  checkPolicy,
+  suggestPolicy,
+  matchesPrefix,
+  type Policy,
+} from './policy/policy';
+export {
+  createKeyFile,
+  openKeyFile,
+  KEYFILE_WRITE_MIN,
+  type KeyFile,
+} from './crypto/keyfile';
+export { buildBundle, type BuildBundleInput } from './bundle/build';

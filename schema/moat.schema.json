@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "upstreams": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,62}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "description": "HTTPS origin of the API, e.g. \"https://api.hubapi.com\""
+          },
+          "auth": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "bearer"
+                      },
+                      "secret": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]{0,62}$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "secret"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "header"
+                      },
+                      "name": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9-]{1,64}$"
+                      },
+                      "secret": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]{0,62}$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "name",
+                      "secret"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "query"
+                      },
+                      "param": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                      },
+                      "secret": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]{0,62}$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "param",
+                      "secret"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timeout": {
+            "description": "e.g. \"10s\" (default)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "origin"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "routes": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,62}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "PATCH",
+              "DELETE"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "upstream": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,62}$"
+          },
+          "upstreamPath": {
+            "type": "string"
+          },
+          "maxBodySize": {
+            "description": "e.g. \"16KiB\"; default \"64KiB\"",
+            "type": "string"
+          },
+          "contentTypes": {
+            "minItems": 1,
+            "maxItems": 8,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]{0,63}\\/[a-z0-9][a-z0-9!#$&^_.+-]{0,63}$"
+            }
+          },
+          "responseContentTypes": {
+            "minItems": 1,
+            "maxItems": 8,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]{0,63}\\/[a-z0-9][a-z0-9!#$&^_.+-]{0,63}$"
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "method",
+          "path",
+          "upstream",
+          "upstreamPath"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "version",
+    "upstreams",
+    "routes"
+  ],
+  "additionalProperties": false,
+  "description": "Moat configuration (moat.yaml), version 1"
+}

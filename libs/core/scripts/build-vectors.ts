@@ -21,6 +21,7 @@ import {
 } from '../src/bundle/bundle';
 import { sealSecret, type SealedSecret } from '../src/secrets/seal';
 import type { JsonValue } from '../src/json/strict-json';
+import { buildFormatVectors } from './build-format-vectors';
 
 export const TEST_ONLY_NOTICE =
   'TEST ONLY — every key in this file is derived from a public label. Never use it anywhere else.';
@@ -960,14 +961,15 @@ async function secretVectors(): Promise<Json> {
   };
 }
 
-/** File name (relative to conformance/vectors/crypto/) → content. */
+/** File path (relative to conformance/vectors/) → content. */
 export async function buildVectors(): Promise<Record<string, Json>> {
   return {
-    'base64url.json': base64urlVectors(),
-    'json.json': jsonVectors(),
-    'jcs.json': jcsVectors(),
-    'kid.json': await kidVectors(),
-    'bundle.json': await bundleVectors(),
-    'secret.json': await secretVectors(),
+    'crypto/base64url.json': base64urlVectors(),
+    'crypto/json.json': jsonVectors(),
+    'crypto/jcs.json': jcsVectors(),
+    'crypto/kid.json': await kidVectors(),
+    'crypto/bundle.json': await bundleVectors(),
+    'crypto/secret.json': await secretVectors(),
+    ...(await buildFormatVectors()),
   };
 }
