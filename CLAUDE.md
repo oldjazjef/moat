@@ -340,11 +340,12 @@ checksums + SBOM (SEC-60, SEC-61), images to ghcr, desktop installers per releas
   New files need no license header; third-party code must be MIT-compatible.
 - **Cloud auth without Firebase** (12.10.2026, see Auth).
 - **Desktop = Electron** (same stack as lazy-koins, see Desktop).
+- **Default trust mode in the Cloud = mode 0 ("Bequem")** with the active recommendation to
+  "Signiert" and a mandatory path policy before a secret is bound (12.10.2026, FR-46–FR-48).
 - **Passkeys: the gate verifies WebAuthn ES256** (12.10.2026, docs/CRYPTO.md §7).
 
 ## Open decisions — ask, don't decide
 
-- **Default trust mode** in the Cloud (proposal FR-46–FR-48 in ANFORDERUNGEN.md §2.9).
 - **Desktop signing / auto-update** (same open point as lazy-koins).
 - **Threat model**: v0.1 in [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) (cite threats as `T-20`);
   its proposals are requirements since v0.4. New features update it (new threat → new `T-…`).

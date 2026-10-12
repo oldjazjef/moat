@@ -14,7 +14,7 @@
 |---|---|
 | Produktwording | Feste Bezeichnungen für Vertrauensmodi und Härtungsstufen, jeweils mit einem Satz, was eine gehackte Cloud könnte (Abschnitt 2.9). |
 | Teamarbeit ohne Cloud | MVP über Git im Projektordner; geteilte DB mit Rollen erst später (DT-14, DT-18). |
-| Default-Vertrauensmodus | Vorschlag in Abschnitt 2.9, Entscheid offen. |
+| Default-Vertrauensmodus | **Bequem** mit aktiver Empfehlung zu „Signiert“ (FR-46 bis FR-48, Abschnitt 2.9). |
 
 ## Änderungen gegenüber v0.3
 
@@ -218,7 +218,7 @@ gehackt wird …“ an, damit die Garantie ehrlich bleibt (§1.5, SEC-58).
 | H2 | **Gut** / *Good* | Schlüssel und Policy liegen ausserhalb des Webspace. | — |
 | H3 | **Stark** / *Strong* | Eigener Container oder Server, nur lesbares Dateisystem. | — |
 
-**Default-Vertrauensmodus (Vorschlag, Entscheid offen):**
+**Default-Vertrauensmodus (entschieden 12.10.2026):**
 
 | ID | Anforderung | Prio |
 |---|---|---|
@@ -354,6 +354,6 @@ Moat Desktop ist die Control Plane ohne Server. Sie arbeitet immer in Vertrauens
 1. ~~Threat Model~~: v0.1 erstellt ([docs/THREAT-MODEL.md](docs/THREAT-MODEL.md)), Vorschläge in v0.4 übernommen.
 2. ~~Tech-Stack~~: entschieden, gleicher Stack wie lazy-koins, Desktop mit Electron (siehe CLAUDE.md).
 3. ~~Kryptografie-Details~~: Spezifikation v0.1 in [docs/CRYPTO.md](docs/CRYPTO.md); Passkeys werden vom Gate als WebAuthn/ES256 geprüft.
-4. **Default-Modus:** Vorschlag in 2.9 (FR-46 bis FR-48), Entscheid offen.
+4. ~~Default-Modus~~: Bequem mit Empfehlung (FR-46 bis FR-48).
 5. ~~Produktwording~~: Abschnitt 2.9.
 6. ~~Teamarbeit ohne Cloud~~: Git im MVP (DT-14), geteilte DB später (DT-18).
