@@ -272,6 +272,7 @@ describe('conformance vectors', () => {
         name: string;
         route: Route;
         origin: string | null;
+        fetchSite: string | null;
         expect: Expect;
       }[];
       preflight: {
@@ -285,7 +286,7 @@ describe('conformance vectors', () => {
     }>('http/cors.json');
     it.each(origin)('origin: $name', async (vector) => {
       const result = await outcome(() =>
-        checkOrigin(vector.route, vector.origin),
+        checkOrigin(vector.route, vector.origin, vector.fetchSite),
       );
       expect(
         result.ok ? { ok: true, allowOrigin: result.value } : result,

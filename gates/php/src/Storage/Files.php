@@ -11,6 +11,8 @@ namespace Moat\Gate\Storage;
  */
 final class Files
 {
+    public const LOCK_WAIT_SECONDS = 0.25;
+
     /** The file's bytes, at most `$maxBytes` + 1 of them (so a caller can tell "too large"); null if missing. */
     public static function read(string $path, int $maxBytes): ?string
     {
@@ -46,9 +48,13 @@ final class Files
             if (fwrite($handle, $bytes) !== \strlen($bytes) || !fflush($handle)) {
                 throw new \RuntimeException('cannot write a temp file');
             }
-        } finally {
+        } catch (\Throwable $error) {
             fclose($handle);
+            unlink($temp);
+
+            throw $error;
         }
+        fclose($handle);
         if (!rename($temp, $path)) {
             unlink($temp);
 
@@ -58,7 +64,7 @@ final class Files
 
     /**
      * Runs `$critical` while holding an exclusive lock on `$path` (created with `$initial` when
-     * missing, so a guarded lock file stays guarded).
+     * missing, so a guarded lock file stays guarded). Waits at most LOCK_WAIT_SECONDS, then throws.
      *
      * @template T
      *
@@ -76,8 +82,13 @@ final class Files
             throw new \RuntimeException('cannot open a lock file');
         }
         try {
-            if (!flock($handle, LOCK_EX)) {
-                throw new \RuntimeException('cannot lock');
+            // Never queue every PHP worker behind one slow request: give up after a short wait.
+            $deadline = microtime(true) + self::LOCK_WAIT_SECONDS;
+            while (!flock($handle, LOCK_EX | LOCK_NB)) {
+                if (microtime(true) > $deadline) {
+                    throw new \RuntimeException('lock busy');
+                }
+                usleep(2000);
             }
             $stat = fstat($handle);
             if ($stat !== false && $stat['size'] === 0) {

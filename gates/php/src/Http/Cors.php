@@ -20,11 +20,19 @@ final class Cors
 
     /**
      * The Access-Control-Allow-Origin value for a request to `$route`, or null for none. A route
-     * that lists origins refuses a request carrying another one (`origin_forbidden`).
+     * that lists origins refuses a request carrying another one (`origin_forbidden`), and one
+     * without Origin that the browser marks as sent by another site (`<img src>`, a link).
      */
-    public static function check(Route $route, ?string $origin): ?string
+    public static function check(Route $route, ?string $origin, ?string $fetchSite = null): ?string
     {
-        if ($route->origins === [] || $origin === null) {
+        if ($route->origins === []) {
+            return null;
+        }
+        if ($origin === null) {
+            if ($fetchSite === 'cross-site' || $fetchSite === 'same-site') {
+                throw new Rejection(RejectionCode::OriginForbidden);
+            }
+
             return null;
         }
         if (!\in_array($origin, $route->origins, true)) {

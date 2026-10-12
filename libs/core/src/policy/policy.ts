@@ -123,6 +123,31 @@ export function checkPolicy(config: CompiledConfig, policy: Policy): void {
     }
     if (route.maxBodyBytes > policy.maxBodyBytes) reject('policy_violation');
   }
+  if (counterCapacity(config, policy) > policy.limits.maxClients)
+    reject('policy_violation');
+}
+
+/**
+ * SEC-27: the most counters the gate can hold at once with this config, so a full store — which
+ * refuses every new client — cannot be reached by flooding. A counter is created only for a
+ * request that passes the `total` limit, so per kind of per-IP counter (the policy's, and each
+ * route limited per IP) at most `total.requests × (⌈window / total.windowSeconds⌉ + 1)` are alive
+ * at once; plus one per route limited as a whole, plus `total` itself.
+ */
+export function counterCapacity(
+  config: CompiledConfig,
+  policy: Policy,
+): number {
+  const { total, perIp } = policy.limits;
+  const live = (windowSeconds: number) =>
+    total.requests * (Math.ceil(windowSeconds / total.windowSeconds) + 1);
+  let count = 1 + live(perIp.windowSeconds);
+  for (const route of Object.values(config.routes)) {
+    if (route.rateLimit === null) continue;
+    count +=
+      route.rateLimit.per === 'ip' ? live(route.rateLimit.windowSeconds) : 1;
+  }
+  return count;
 }
 
 /** What `moat policy suggest` proposes: enough for a contact form, little for an abuser. */
@@ -153,7 +178,7 @@ export function suggestPolicy(config: CompiledConfig): Policy {
     if (!entry.methods.includes(route.method)) entry.methods.push(route.method);
   }
   const routes = Object.values(config.routes);
-  return {
+  const policy: Policy = {
     v: 1,
     upstreams,
     maxBodyBytes: Math.max(0, ...routes.map((route) => route.maxBodyBytes)),
@@ -164,4 +189,11 @@ export function suggestPolicy(config: CompiledConfig): Policy {
     ),
     limits: DEFAULT_LIMITS,
   };
+  const needed = counterCapacity(config, policy);
+  if (needed > policy.limits.maxClients)
+    policy.limits = {
+      ...policy.limits,
+      maxClients: Math.min(MAX_TRACKED_CLIENTS, needed),
+    };
+  return policy;
 }

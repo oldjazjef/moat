@@ -98,7 +98,8 @@ final class FormatVectorsTest extends TestCase
     {
         $route = self::route(Vectors::map($case['route']));
         $origin = $case['origin'] === null ? null : Vectors::string($case['origin']);
-        $result = self::outcome(static fn(): array => ['allowOrigin' => Cors::check($route, $origin)]);
+        $fetchSite = $case['fetchSite'] === null ? null : Vectors::string($case['fetchSite']);
+        $result = self::outcome(static fn(): array => ['allowOrigin' => Cors::check($route, $origin, $fetchSite)]);
         self::assertSame(Vectors::map($case['expect']), $result);
     }
 

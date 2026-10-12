@@ -144,7 +144,7 @@ export async function policySuggest(
   );
 }
 
-/** `moat gate add <name> --gate-id <id> --box-key <key>` — pin a gate after comparing fingerprints. */
+/** `moat gate add <name> --gate-id=<id> --box-key=<key>` — pin a gate after comparing fingerprints. */
 export async function gateAdd(
   context: Context,
   [name]: string[],

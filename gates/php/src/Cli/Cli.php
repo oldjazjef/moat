@@ -76,7 +76,8 @@ final class Cli
         self::describe($identity, $signers);
         self::out('');
         self::out('Next: compare the fingerprints, then in the project folder run');
-        self::out('  moat gate add <name> --gate-id ' . $identity->gateId . ' --box-key ' . Base64Url::encode($identity->boxPublicKey));
+        // `=` form: a base64url value may start with "-" and would read as an option.
+        self::out('  moat gate add <name> --gate-id=' . $identity->gateId . ' --box-key=' . Base64Url::encode($identity->boxPublicKey));
         self::out('and install a local policy: php moat-gate.php policy <policy.json>');
 
         return 0;

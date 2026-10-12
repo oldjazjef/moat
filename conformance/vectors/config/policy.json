@@ -1891,6 +1891,288 @@
       }
     },
     {
+      "name": "the counter store fits the worst case (SEC-27)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": {
+              "requests": 5,
+              "windowSeconds": 600,
+              "per": "ip"
+            }
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 7801
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "a per-IP window too long for the counter store (SEC-27)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": {
+              "requests": 5,
+              "windowSeconds": 600,
+              "per": "ip"
+            }
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 7800
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_violation"
+      }
+    },
+    {
+      "name": "a whole-route limit needs one counter",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": {
+              "requests": 5,
+              "windowSeconds": 86400,
+              "per": "route"
+            }
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 1202
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "the policy alone may not overflow the store (SEC-27)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 1200
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_violation"
+      }
+    },
+    {
       "name": "a looser route limit is allowed: the policy limits still apply (T-21)",
       "config": {
         "version": 1,

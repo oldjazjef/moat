@@ -16,14 +16,21 @@ const TOKEN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 
 /**
  * The `Access-Control-Allow-Origin` value for a request to `route`, or null for none. Throws
- * `origin_forbidden` when the route lists origins and the request carries another one; a request
- * without `Origin` passes (same-origin GET, or not a browser).
+ * `origin_forbidden` when the route lists origins and the request carries another one. A request
+ * without `Origin` passes (same-origin GET, or not a browser) — unless the browser says in
+ * `Sec-Fetch-Site` that another site made it (`<img src>`, a link): those carry no `Origin`.
  */
 export function checkOrigin(
   route: Pick<CompiledRoute, 'origins'>,
   origin: string | null,
+  fetchSite: string | null = null,
 ): string | null {
-  if (route.origins.length === 0 || origin === null) return null;
+  if (route.origins.length === 0) return null;
+  if (origin === null) {
+    if (fetchSite === 'cross-site' || fetchSite === 'same-site')
+      reject('origin_forbidden');
+    return null;
+  }
   if (!route.origins.includes(origin)) reject('origin_forbidden');
   return origin;
 }

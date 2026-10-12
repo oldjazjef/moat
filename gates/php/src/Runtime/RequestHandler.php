@@ -59,7 +59,7 @@ final class RequestHandler
         }
         $route = self::match($request, $routes);
         try {
-            $allowOrigin = Cors::check($route, $request->origin);
+            $allowOrigin = Cors::check($route, $request->origin, $request->fetchSite);
         } catch (Rejection) {
             throw new Failure(GateError::OriginForbidden, ['Vary' => 'Origin']);
         }
@@ -89,7 +89,8 @@ final class RequestHandler
         }
         try {
             $retryAfter = RateLimiter::hit($gate->data, $counters, $limits->maxClients, $now);
-        } catch (\RuntimeException) {
+        } catch (\Exception) {
+            // Store full, damaged, locked too long or not writable: fail closed (SEC-27, SEC-46).
             throw new Failure(GateError::RateLimitUnavailable);
         }
         if ($retryAfter !== null) {

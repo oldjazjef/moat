@@ -7,6 +7,7 @@ namespace Moat\Gate\Policy;
 use Moat\Gate\Config\CompiledConfig;
 use Moat\Gate\Config\ConfigValidator;
 use Moat\Gate\Config\Limit;
+use Moat\Gate\Config\LimitScope;
 use Moat\Gate\Config\Method;
 use Moat\Gate\Http\PathNormaliser;
 use Moat\Gate\Json\JsonObject;
@@ -82,6 +83,27 @@ final class PolicyCheck
                 self::violation();
             }
         }
+        if (self::counterCapacity($config, $policy) > $policy->limits->maxClients) {
+            self::violation();
+        }
+    }
+
+    /**
+     * SEC-27: the most rate-limit counters alive at once, as counterCapacity() in libs/core — a
+     * counter is created only for a request that passes `total`, so a flood cannot fill the store.
+     */
+    public static function counterCapacity(CompiledConfig $config, Policy $policy): int
+    {
+        $total = $policy->limits->total;
+        $live = static fn(int $window): int => $total->requests * (intdiv($window + $total->windowSeconds - 1, $total->windowSeconds) + 1);
+        $count = 1 + $live($policy->limits->perIp->windowSeconds);
+        foreach ($config->routes as $route) {
+            if ($route->rateLimit !== null) {
+                $count += $route->rateLimit->per === LimitScope::Ip ? $live($route->rateLimit->limit->windowSeconds) : 1;
+            }
+        }
+
+        return $count;
     }
 
     /** True when `path` equals the prefix or continues it at a segment boundary. */

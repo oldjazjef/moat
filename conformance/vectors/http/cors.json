@@ -1,5 +1,5 @@
 {
-  "description": "FR-15: origin binding and CORS. `origin` cases: a matched route and the request's Origin header (null = absent) → `{ok: true, allowOrigin}` (null = no CORS header) or `origin_forbidden`. `preflight` cases: OPTIONS with Origin and Access-Control-Request-Method (and -Headers, null = absent) on a path with these routes → the answer or `preflight_rejected`. Origins compare exactly; only Content-Type may be requested; credentials are never allowed.",
+  "description": "FR-15: origin binding and CORS. `origin` cases: a matched route, the request's Origin and Sec-Fetch-Site headers (null = absent) → `{ok: true, allowOrigin}` (null = no CORS header) or `origin_forbidden`; without Origin, a route with origins refuses `cross-site` and `same-site`. `preflight` cases: OPTIONS with Origin and Access-Control-Request-Method (and -Headers, null = absent) on a path with these routes → the answer or `preflight_rejected`. Origins compare exactly; only Content-Type may be requested; credentials are never allowed.",
   "origin": [
     {
       "name": "route without origins, no Origin header",
@@ -8,6 +8,7 @@
         "origins": []
       },
       "origin": null,
+      "fetchSite": null,
       "expect": {
         "ok": true,
         "allowOrigin": null
@@ -20,6 +21,7 @@
         "origins": []
       },
       "origin": "https://evil.example",
+      "fetchSite": null,
       "expect": {
         "ok": true,
         "allowOrigin": null
@@ -34,6 +36,7 @@
         ]
       },
       "origin": "https://www.example.ch",
+      "fetchSite": null,
       "expect": {
         "ok": true,
         "allowOrigin": "https://www.example.ch"
@@ -48,6 +51,7 @@
         ]
       },
       "origin": null,
+      "fetchSite": null,
       "expect": {
         "ok": true,
         "allowOrigin": null
@@ -62,6 +66,7 @@
         ]
       },
       "origin": "https://evil.example",
+      "fetchSite": null,
       "expect": {
         "ok": false,
         "error": "origin_forbidden"
@@ -76,6 +81,7 @@
         ]
       },
       "origin": "https://WWW.example.ch",
+      "fetchSite": null,
       "expect": {
         "ok": false,
         "error": "origin_forbidden"
@@ -90,6 +96,7 @@
         ]
       },
       "origin": "https://www.example.ch/",
+      "fetchSite": null,
       "expect": {
         "ok": false,
         "error": "origin_forbidden"
@@ -104,6 +111,7 @@
         ]
       },
       "origin": "null",
+      "fetchSite": null,
       "expect": {
         "ok": false,
         "error": "origin_forbidden"
@@ -118,6 +126,7 @@
         ]
       },
       "origin": "https://www.example.ch:8443",
+      "fetchSite": null,
       "expect": {
         "ok": false,
         "error": "origin_forbidden"
@@ -132,6 +141,7 @@
         ]
       },
       "origin": "http://www.example.ch",
+      "fetchSite": null,
       "expect": {
         "ok": false,
         "error": "origin_forbidden"
@@ -146,9 +156,83 @@
         ]
       },
       "origin": "https://www.example.ch.evil.example",
+      "fetchSite": null,
       "expect": {
         "ok": false,
         "error": "origin_forbidden"
+      }
+    },
+    {
+      "name": "no Origin, but the browser says another site sent it (<img src>)",
+      "route": {
+        "method": "POST",
+        "origins": [
+          "https://www.example.ch"
+        ]
+      },
+      "origin": null,
+      "fetchSite": "cross-site",
+      "expect": {
+        "ok": false,
+        "error": "origin_forbidden"
+      }
+    },
+    {
+      "name": "no Origin, sent from another subdomain of the site",
+      "route": {
+        "method": "POST",
+        "origins": [
+          "https://www.example.ch"
+        ]
+      },
+      "origin": null,
+      "fetchSite": "same-site",
+      "expect": {
+        "ok": false,
+        "error": "origin_forbidden"
+      }
+    },
+    {
+      "name": "no Origin, same origin",
+      "route": {
+        "method": "POST",
+        "origins": [
+          "https://www.example.ch"
+        ]
+      },
+      "origin": null,
+      "fetchSite": "same-origin",
+      "expect": {
+        "ok": true,
+        "allowOrigin": null
+      }
+    },
+    {
+      "name": "no Origin, typed into the address bar",
+      "route": {
+        "method": "POST",
+        "origins": [
+          "https://www.example.ch"
+        ]
+      },
+      "origin": null,
+      "fetchSite": "none",
+      "expect": {
+        "ok": true,
+        "allowOrigin": null
+      }
+    },
+    {
+      "name": "route without origins ignores Sec-Fetch-Site",
+      "route": {
+        "method": "POST",
+        "origins": []
+      },
+      "origin": null,
+      "fetchSite": "cross-site",
+      "expect": {
+        "ok": true,
+        "allowOrigin": null
       }
     }
   ],

@@ -505,7 +505,7 @@ function corsVectors(): Json {
   const site = 'https://www.example.ch';
   type Route = { method: string; origins: string[] };
   const open: Route[] = [{ method: 'POST', origins: [site] }];
-  const origin: [string, Route, string | null][] = [
+  const origin: [string, Route, string | null, (string | null)?][] = [
     [
       'route without origins, no Origin header',
       { method: 'POST', origins: [] },
@@ -529,6 +529,26 @@ function corsVectors(): Json {
     ['origin with another port', open[0] as Route, `${site}:8443`],
     ['plain http variant', open[0] as Route, 'http://www.example.ch'],
     ['suffix attack', open[0] as Route, 'https://www.example.ch.evil.example'],
+    [
+      'no Origin, but the browser says another site sent it (<img src>)',
+      open[0] as Route,
+      null,
+      'cross-site',
+    ],
+    [
+      'no Origin, sent from another subdomain of the site',
+      open[0] as Route,
+      null,
+      'same-site',
+    ],
+    ['no Origin, same origin', open[0] as Route, null, 'same-origin'],
+    ['no Origin, typed into the address bar', open[0] as Route, null, 'none'],
+    [
+      'route without origins ignores Sec-Fetch-Site',
+      { method: 'POST', origins: [] },
+      null,
+      'cross-site',
+    ],
   ];
   const both: Route[] = [
     { method: 'GET', origins: [site] },
@@ -570,12 +590,15 @@ function corsVectors(): Json {
   ];
   return {
     description:
-      "FR-15: origin binding and CORS. `origin` cases: a matched route and the request's Origin header (null = absent) → `{ok: true, allowOrigin}` (null = no CORS header) or `origin_forbidden`. `preflight` cases: OPTIONS with Origin and Access-Control-Request-Method (and -Headers, null = absent) on a path with these routes → the answer or `preflight_rejected`. Origins compare exactly; only Content-Type may be requested; credentials are never allowed.",
-    origin: origin.map(([name, route, header]) => ({
+      "FR-15: origin binding and CORS. `origin` cases: a matched route, the request's Origin and Sec-Fetch-Site headers (null = absent) → `{ok: true, allowOrigin}` (null = no CORS header) or `origin_forbidden`; without Origin, a route with origins refuses `cross-site` and `same-site`. `preflight` cases: OPTIONS with Origin and Access-Control-Request-Method (and -Headers, null = absent) on a path with these routes → the answer or `preflight_rejected`. Origins compare exactly; only Content-Type may be requested; credentials are never allowed.",
+    origin: origin.map(([name, route, header, fetchSite = null]) => ({
       name,
       route,
       origin: header,
-      expect: outcome(() => ({ allowOrigin: checkOrigin(route, header) })),
+      fetchSite,
+      expect: outcome(() => ({
+        allowOrigin: checkOrigin(route, header, fetchSite),
+      })),
     })),
     preflight: flights.map(([name, routes, from, method, headers]) => ({
       name,
@@ -788,6 +811,35 @@ function policyVectors(): Json {
     [
       'policy store above 20 000 clients (SEC-27)',
       (_c, p) => ((p['limits'] as Record<string, Json>)['maxClients'] = 20001),
+    ],
+    [
+      'the counter store fits the worst case (SEC-27)',
+      (c, p) => {
+        route(c)['rateLimit'] = { requests: 5, windowSeconds: 600, per: 'ip' };
+        (p['limits'] as Record<string, Json>)['maxClients'] = 7801;
+      },
+    ],
+    [
+      'a per-IP window too long for the counter store (SEC-27)',
+      (c, p) => {
+        route(c)['rateLimit'] = { requests: 5, windowSeconds: 600, per: 'ip' };
+        (p['limits'] as Record<string, Json>)['maxClients'] = 7800;
+      },
+    ],
+    [
+      'a whole-route limit needs one counter',
+      (c, p) => {
+        route(c)['rateLimit'] = {
+          requests: 5,
+          windowSeconds: 86400,
+          per: 'route',
+        };
+        (p['limits'] as Record<string, Json>)['maxClients'] = 1202;
+      },
+    ],
+    [
+      'the policy alone may not overflow the store (SEC-27)',
+      (_c, p) => ((p['limits'] as Record<string, Json>)['maxClients'] = 1200),
     ],
     [
       'a looser route limit is allowed: the policy limits still apply (T-21)',

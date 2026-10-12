@@ -108,8 +108,9 @@ routes:
   answers or send it JSON.
 
 The website's own pages send an `Origin` too (on POST), so list the site itself when you list
-origins. A request without `Origin` passes: origin binding stops browsers, not scripts (T-01,
-SEC-58). Rate limits are what stops scripts.
+origins. A request without `Origin` passes, unless the browser marks it `Sec-Fetch-Site:
+cross-site` or `same-site` (an `<img src>` or a link on another site). Origin binding stops
+browsers, not scripts (T-01, SEC-58); rate limits are what stops scripts.
 
 ## Rate limits (FR-30, SEC-45)
 
@@ -125,9 +126,12 @@ A window opens with the first request and lasts its length. A request over a lim
 `429 rate_limited` with `Retry-After` and is not forwarded; refused requests do not count. The
 client is `REMOTE_ADDR` only, never `X-Forwarded-For` (SEC-26); IPv6 clients count per /64.
 
-The counters live in `limits.php`, at most `maxClients` of them. When the store is full, new
-clients get `503 rate_limit_unavailable` until old windows expire (SEC-27, fail closed). A damaged
-store refuses every request the same way; deleting `limits.php` resets it.
+The counters live in `limits.php`, at most `maxClients` of them. A counter is only created for a
+request that passes `total`, so the gate can compute how many can be alive at once; a bundle
+whose limits could need more than `maxClients` is rejected (`policy_violation`), and `moat policy
+suggest` sizes `maxClients` to fit. A flood therefore cannot fill the store. Should it still be
+full, damaged, or locked for more than 250 ms, the request gets `503 rate_limit_unavailable`
+(SEC-27, fail closed); deleting `limits.php` resets it.
 
 ## The `testing` block
 
@@ -145,5 +149,6 @@ pnpm check:gate-php
 Unit tests, the shared vectors in `conformance/vectors/`, and `conformance/http/gate.json` against
 the built file under `php -S` with a fake HTTPS upstream (`tests/Http/`).
 
-Not built yet: quotas and budgets (FR-31), trusted proxies for the client address, the lazy pull
+Not built yet: quotas and budgets (FR-31), trusted proxies for the client address, a
+per-network counter for IPv6 clients holding a whole /56 or /48, the lazy pull
 from the Cloud, setup mode, trust mode 2 (passkeys), the hardening check.

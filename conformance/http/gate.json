@@ -245,7 +245,7 @@
         "origins": [],
         "rateLimit": {
           "requests": 2,
-          "windowSeconds": 3600,
+          "windowSeconds": 600,
           "per": "ip"
         }
       }
@@ -279,14 +279,14 @@
     "maxTimeoutMs": 5000,
     "limits": {
       "perIp": {
-        "requests": 1000,
+        "requests": 200,
         "windowSeconds": 60
       },
       "total": {
-        "requests": 1000,
+        "requests": 200,
         "windowSeconds": 60
       },
-      "maxClients": 1000
+      "maxClients": 5000
     },
     "testing": {
       "resolve": {
@@ -1054,6 +1054,22 @@
         "headers": {
           "allow": "GET, POST"
         },
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "CORS: no Origin, but the browser marks the request as cross-site (<img src>) on a route with origins",
+      "request": {
+        "method": "GET",
+        "path": "/cors",
+        "headers": {
+          "Sec-Fetch-Site": "cross-site"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 403,
+        "error": "origin_forbidden",
         "upstreamCalls": 0
       }
     },

@@ -80,4 +80,22 @@ final class RateLimiterTest extends TestCase
             self::assertStringStartsWith(DataDir::MARKER . "\n", (string) file_get_contents($this->data->path . '/' . $file));
         }
     }
+
+    public function testABusyLockFailsInsteadOfQueueingEveryWorker(): void
+    {
+        $handle = fopen($this->data->path . '/lock.php', 'cb');
+        self::assertNotFalse($handle);
+        flock($handle, LOCK_EX);
+        try {
+            $start = microtime(true);
+            RateLimiter::hit($this->data, [['total', new Limit(1, 60)]], 100, 1000);
+            self::fail('a held lock must not be waited on forever');
+        } catch (\RuntimeException $e) {
+            self::assertSame('lock busy', $e->getMessage());
+            self::assertLessThan(2.0, microtime(true) - $start);
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
+    }
 }
