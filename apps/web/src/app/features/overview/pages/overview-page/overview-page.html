@@ -1,0 +1,175 @@
+<mt-page-header
+  [title]="'overview.title' | translate"
+  [subtitle]="'overview.subtitle' | translate"
+>
+  <button
+    hlmBtn
+    variant="outline"
+    type="button"
+    data-reload
+    (click)="resource.reload()"
+  >
+    <ng-icon name="lucideRefreshCw" size="16" aria-hidden="true" />
+    {{ 'common.reload' | translate }}
+  </button>
+  @if (service.canChoose) {
+  <button hlmBtn type="button" data-choose-folder (click)="service.choose()">
+    <ng-icon name="lucideFolderOpen" size="16" aria-hidden="true" />
+    {{ 'overview.folder.choose' | translate }}
+  </button>
+  }
+  <mt-help-link section="project" />
+</mt-page-header>
+
+@if (service.choice() === 'failed') {
+<p class="mt-note mb-6" role="alert" data-choose-failed>
+  <ng-icon
+    name="lucideTriangleAlert"
+    size="16"
+    aria-hidden="true"
+    class="mt-0.5 shrink-0"
+  />
+  <span>{{ 'overview.folder.failed' | translate }}</span>
+</p>
+} @if (resource.view.isLoading() && !resource.view.hasValue()) {
+<p class="text-muted-foreground text-sm" role="status">
+  {{ 'common.loading' | translate }}
+</p>
+} @else if (resource.view.error()) {
+<p class="mt-note" role="alert" data-load-error>
+  <ng-icon
+    name="lucideTriangleAlert"
+    size="16"
+    aria-hidden="true"
+    class="mt-0.5 shrink-0"
+  />
+  <span>{{ 'common.loadError' | translate }}</span>
+</p>
+} @else if (resource.project(); as project) {
+<div class="grid gap-6 md:grid-cols-2">
+  <section hlmCard aria-labelledby="folder-title">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="folder-title">
+        {{ 'overview.folder.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'overview.folder.description' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-3">
+      <p class="mt-code" data-folder>{{ resource.folder() }}</p>
+      @if (service.canChoose) {
+      <div>
+        <button
+          hlmBtn
+          variant="outline"
+          size="sm"
+          type="button"
+          (click)="service.reveal()"
+        >
+          {{ 'overview.folder.reveal' | translate }}
+        </button>
+      </div>
+      }
+    </div>
+  </section>
+
+  <section hlmCard aria-labelledby="trust-title">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="trust-title">
+        {{ 'overview.trust.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'overview.trust.description' | translate }}</p>
+    </div>
+    <div hlmCardContent>
+      <mt-trust-mode-badge mode="signed" [detailed]="true" />
+    </div>
+  </section>
+
+  <section hlmCard class="md:col-span-2" aria-labelledby="config-title">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="config-title">
+        {{ 'overview.config.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'overview.config.description' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      @switch (project.config.status) { @case ('valid') {
+      <p class="text-sm" data-config-status="valid">
+        {{ 'overview.config.valid' | translate }}
+      </p>
+      <dl class="mt-facts">
+        <dt>{{ 'overview.counts.routes' | translate }}</dt>
+        <dd data-count-routes>{{ service.counts().routes }}</dd>
+        <dt>{{ 'overview.counts.upstreams' | translate }}</dt>
+        <dd>{{ service.counts().upstreams }}</dd>
+        <dt>{{ 'overview.counts.secrets' | translate }}</dt>
+        <dd>{{ service.counts().secrets }}</dd>
+        <dt>{{ 'overview.counts.gates' | translate }}</dt>
+        <dd data-count-gates>{{ service.counts().gates }}</dd>
+      </dl>
+      @if (service.gatesMissingSecrets().length > 0) {
+      <p class="mt-warning-text text-sm" data-missing-secrets>
+        {{ 'overview.config.missingSecrets' | translate: { gates:
+        service.gatesMissingSecrets().join(', ') } }}
+      </p>
+      }
+      <div class="flex flex-wrap gap-2">
+        <a hlmBtn variant="outline" size="sm" routerLink="/app/routes">
+          {{ 'overview.config.showRoutes' | translate }}
+        </a>
+        <a hlmBtn variant="outline" size="sm" routerLink="/app/gates">
+          {{ 'overview.config.showGates' | translate }}
+        </a>
+      </div>
+      } @case ('missing') {
+      <p class="mt-warning-text text-sm" data-config-status="missing">
+        {{ 'overview.config.missing' | translate }}
+      </p>
+      } @case ('invalid') {
+      <p class="text-destructive text-sm" data-config-status="invalid">
+        {{ 'overview.config.invalid' | translate }}
+      </p>
+      @if (project.config.status === 'invalid') {
+      <ul class="flex flex-col gap-2 text-sm" data-config-issues>
+        @for (issue of project.config.issues; track $index) {
+        <li class="flex flex-col">
+          <span class="font-medium">
+            {{ 'config.errors.' + issue.code | translate }} @if (issue.line) {
+            {{ 'overview.config.at' | translate: { line: issue.line, column:
+            issue.column ?? 1 } }} }
+          </span>
+          <span class="mt-code text-muted-foreground">
+            @if (issue.path.length > 0) { {{ issue.path.join('.') }}: } {{
+            issue.message }}
+          </span>
+        </li>
+        }
+      </ul>
+      } } }
+    </div>
+  </section>
+</div>
+} @else {
+<!-- No project open yet (first start), or the folder is gone. -->
+<section hlmCard class="max-w-2xl" data-no-project>
+  <div hlmCardHeader>
+    <h2 hlmCardTitle>{{ 'overview.empty.title' | translate }}</h2>
+    <p hlmCardDescription>
+      @if (resource.folder(); as folder) { {{ 'overview.empty.gone' | translate:
+      { folder: folder } }} } @else { {{ 'overview.empty.description' |
+      translate }} }
+    </p>
+  </div>
+  <div hlmCardContent class="flex flex-col gap-4 text-sm">
+    <p><mt-rich-text [text]="'overview.empty.cli' | translate" /></p>
+    <div class="flex flex-wrap gap-2">
+      @if (service.canChoose) {
+      <button hlmBtn type="button" (click)="service.choose()">
+        <ng-icon name="lucideFolderOpen" size="16" aria-hidden="true" />
+        {{ 'overview.folder.choose' | translate }}
+      </button>
+      }
+      <mt-help-link section="project" [labelKey]="'overview.empty.help'" />
+    </div>
+  </div>
+</section>
+}

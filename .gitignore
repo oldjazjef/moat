@@ -15,3 +15,6 @@ gates/php/.php-cs-fixer.cache
 *.pem
 *.moatkey
 .DS_Store
+
+# Angular build cache
+.angular/

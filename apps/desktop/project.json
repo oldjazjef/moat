@@ -1,0 +1,49 @@
+{
+  "name": "desktop",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/desktop/src",
+  "projectType": "application",
+  "tags": ["scope:desktop"],
+  "mt-note-no-test-target": "Deliberate, as everywhere — tests run via `pnpm test` or `pnpm vitest run --project desktop`.",
+  "mt-note-no-build-target": "No `build` target on purpose (as lazy-koins): `pnpm check` runs `nx run-many -t build`, and staging the app installs dependencies. `typecheck` keeps the code in the gate; `stage`/`package` run on demand.",
+  "implicitDependencies": ["api", "web"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["{projectRoot}/**/*", "{workspaceRoot}/tsconfig.base.json"],
+      "options": {
+        "command": "tsc -p apps/desktop/tsconfig.json",
+        "cwd": "."
+      }
+    },
+    "stage": {
+      "executor": "nx:run-commands",
+      "dependsOn": [{ "projects": ["api"], "target": "build" }],
+      "options": {
+        "commands": [
+          "nx run web:build:desktop",
+          "node apps/desktop/scripts/stage.mjs"
+        ],
+        "parallel": false,
+        "cwd": "."
+      }
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["stage"],
+      "options": {
+        "command": "electron dist/apps/desktop-app",
+        "cwd": "."
+      }
+    },
+    "package": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["stage"],
+      "options": {
+        "command": "electron-builder --projectDir . --config ../../../apps/desktop/electron-builder.config.cjs --publish never",
+        "cwd": "dist/apps/desktop-app"
+      }
+    }
+  }
+}

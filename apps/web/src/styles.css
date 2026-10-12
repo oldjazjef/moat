@@ -1,0 +1,220 @@
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css';
+
+/* The `@theme inline` token mappings, `dark` + `data-*` variants, tw-animate-css and the CDK
+   overlay styles. This file supplies only the token VALUES below — never redeclare mappings. */
+@import '@spartan-ng/brain/hlm-tailwind-preset.css';
+
+/* Tailwind auto-detects sources next to this file; the UI libs sit outside that tree. */
+@source '../../../libs';
+
+/*
+ * Moat palette — calm and technical: cool greys, a deep water-blue primary, quiet surfaces, a
+ * modest radius and Inter (self-hosted via @fontsource-variable/inter, see project.json — no font
+ * CDN). The ONLY place colours live (as lazy-koins): components use semantic classes
+ * (`bg-primary`, `text-muted-foreground`, the `mt-*` classes below), and the
+ * `no-hardcoded-design-values` lint rule rejects raw colours in templates.
+ *
+ * Text colours are chosen for ≥ 4.5:1 contrast on their backgrounds in both modes.
+ */
+:root {
+  color-scheme: light;
+
+  --font-sans:
+    'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --radius: 0.5rem;
+  --background: #f6f8fa;
+  --foreground: #14202b;
+  --card: #ffffff;
+  --card-foreground: #14202b;
+  --popover: #ffffff;
+  --popover-foreground: #14202b;
+  --primary: #17324d;
+  --primary-foreground: #f3f7fb;
+  --secondary: #e6edf3;
+  --secondary-foreground: #17324d;
+  --muted: #edf1f5;
+  --muted-foreground: #526070;
+  --accent: #e5eef5;
+  --accent-foreground: #17324d;
+  --destructive: #b42318;
+  --border: #dbe2e9;
+  --input: #cdd5de;
+  --ring: #2a6f97;
+  --chart-1: #17324d;
+  --chart-2: #2a6f97;
+  --chart-3: #b7791f;
+  --chart-4: #7a5aa6;
+  --chart-5: #8a96a8;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #14202b;
+  --sidebar-primary: #17324d;
+  --sidebar-primary-foreground: #f3f7fb;
+  --sidebar-accent: #e6edf3;
+  --sidebar-accent-foreground: #17324d;
+  --sidebar-border: #dbe2e9;
+  --sidebar-ring: #2a6f97;
+
+  /* Trust modes (§2.9): "Signiert" is the good state, "Bequem" the one to improve. */
+  --trust-strong: #1f7a4a;
+  --trust-weak: #8a5a00;
+  /* Hints that need attention but are no error (a secret not sealed yet). */
+  --warning-text: #8a5a00;
+}
+
+:root.dark {
+  color-scheme: dark;
+
+  --background: #0e141a;
+  --foreground: #e3e9ef;
+  --card: #151d25;
+  --card-foreground: #e3e9ef;
+  --popover: #151d25;
+  --popover-foreground: #e3e9ef;
+  --primary: #9cc3e0;
+  --primary-foreground: #0d1a26;
+  --secondary: #213040;
+  --secondary-foreground: #d3e0ec;
+  --muted: #1b2530;
+  --muted-foreground: #9aa7b5;
+  --accent: #213040;
+  --accent-foreground: #d9e5f0;
+  --destructive: #f97066;
+  --border: #29343f;
+  --input: #33404d;
+  --ring: #6aa6cf;
+  --chart-1: #9cc3e0;
+  --chart-2: #6aa6cf;
+  --chart-3: #e0b25a;
+  --chart-4: #b49be0;
+  --chart-5: #8f9bad;
+  --sidebar: #151d25;
+  --sidebar-foreground: #e3e9ef;
+  --sidebar-primary: #9cc3e0;
+  --sidebar-primary-foreground: #0d1a26;
+  --sidebar-accent: #213040;
+  --sidebar-accent-foreground: #d3e0ec;
+  --sidebar-border: #29343f;
+  --sidebar-ring: #6aa6cf;
+  --trust-strong: #4fbf83;
+  --trust-weak: #e8bf4a;
+  --warning-text: #e8bf4a;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply tracking-tight;
+  }
+}
+
+@layer components {
+  /*
+   * Page header (as lazy-koins): title, status and page actions never scroll away. It sticks to
+   * the top of the app's scroll area (.mt-scroll-area); the negative margin covers the main
+   * element's top padding so scrolled content never shows above it. Full width: background and
+   * border reach the edges of the scroll area (100cqw, `.mt-scroll-content`) while the title stays
+   * aligned with the content column.
+   */
+  .mt-page-header {
+    @apply bg-background sticky top-0 z-30 -mt-8 mb-6 border-b pt-8 pb-4;
+    margin-inline: calc((100% - 100cqw) / 2);
+    padding-inline: calc((100cqw - 100%) / 2);
+  }
+
+  .mt-scroll-content {
+    container-type: inline-size;
+  }
+
+  /* The word mark in the sidebar. */
+  .mt-brand {
+    @apply text-primary text-lg font-semibold tracking-tight;
+  }
+
+  /* A bordered surface for tables and lists. */
+  .mt-panel {
+    @apply bg-card overflow-x-auto rounded-lg border;
+  }
+
+  /* Label/value pairs, e.g. a gate's identity. */
+  .mt-facts {
+    @apply grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm;
+  }
+
+  .mt-facts dt {
+    @apply text-muted-foreground;
+  }
+
+  .mt-facts dd {
+    @apply min-w-0 font-medium break-words;
+  }
+
+  /* Ids, fingerprints, paths and routes: monospace, wrapping anywhere instead of overflowing. */
+  .mt-code {
+    @apply font-mono text-xs break-all;
+  }
+
+  /* A hint that needs attention without being an error. */
+  .mt-warning-text {
+    color: var(--warning-text);
+  }
+
+  /* Commands and file names inside help texts (`…` in the message files). */
+  .mt-inline-code {
+    @apply bg-muted rounded px-1 py-0.5 font-mono text-[0.85em];
+  }
+
+  /* A muted note box: the "Wenn Moat Cloud gehackt wird …" sentence, the empty project. */
+  .mt-note {
+    @apply flex items-start gap-2 rounded-lg border px-4 py-3 text-sm;
+    background-color: color-mix(in oklab, var(--primary) 6%, transparent);
+    border-color: color-mix(in oklab, var(--primary) 30%, transparent);
+  }
+
+  /* Hilfe (FR-71): the table of contents and a jumped-to step (as lazy-koins). */
+  .mt-help-toc-link {
+    @apply text-muted-foreground hover:bg-muted hover:text-foreground flex items-start gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden focus-visible:ring-2;
+  }
+
+  .mt-help-toc-link[aria-current] {
+    @apply bg-muted text-foreground font-medium;
+  }
+
+  .mt-help-toc-number {
+    @apply bg-muted text-muted-foreground inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs tabular-nums;
+  }
+
+  /* An outline, not a ring: the card's own ring utility would win over a component class. */
+  .mt-help-highlight {
+    @apply outline-primary outline-2 outline-offset-2;
+  }
+}
+
+/*
+ * The trust mode badge (§2.9, SEC-58): the label, coloured by how strong the guarantee is.
+ * Unlayered on purpose: it must win over the badge variant's own text and border utilities.
+ */
+.mt-trust-strong {
+  color: var(--trust-strong);
+  border-color: color-mix(in oklab, var(--trust-strong) 45%, transparent);
+}
+
+.mt-trust-weak {
+  color: var(--trust-weak);
+  border-color: color-mix(in oklab, var(--trust-weak) 45%, transparent);
+}

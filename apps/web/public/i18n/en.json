@@ -1,0 +1,317 @@
+{
+  "app": {
+    "name": "Moat",
+    "edition": "Desktop"
+  },
+  "nav": {
+    "label": "Main navigation",
+    "overview": "Overview",
+    "gates": "Gates",
+    "routes": "Routes",
+    "help": "Help",
+    "toggleSidebar": "Show or hide the sidebar",
+    "toggleTheme": "Light or dark",
+    "toggleLanguage": "Switch language",
+    "otherLanguage": "Deutsch"
+  },
+  "common": {
+    "reload": "Reload",
+    "loading": "Loading …",
+    "loadError": "The project could not be read. Try again with “Reload”.",
+    "noProject": "No project folder is open yet.",
+    "toOverview": "To the overview"
+  },
+  "units": {
+    "seconds": "s",
+    "minutes": "min",
+    "hours": "h",
+    "days": "d",
+    "bytes": "bytes",
+    "kib": "KiB",
+    "mib": "MiB"
+  },
+  "trust": {
+    "ifHackedPrefix": "If Moat Cloud is hacked",
+    "modes": {
+      "signed": {
+        "label": "Signed",
+        "short": "You approve every change with your key file.",
+        "ifHacked": "… an attacker cannot change anything. In the browser this holds only partly; full guarantee with Moat Desktop or the CLI."
+      }
+    }
+  },
+  "config": {
+    "errors": {
+      "too_large": "moat.yaml is too large",
+      "syntax": "YAML syntax error",
+      "multiple_documents": "More than one YAML document",
+      "alias": "Anchors and aliases are not allowed",
+      "tag": "YAML tags are not allowed",
+      "too_deep": "Nested too deeply",
+      "schema": "Invalid value"
+    }
+  },
+  "overview": {
+    "title": "Overview",
+    "subtitle": "Your project folder at a glance",
+    "folder": {
+      "title": "Project folder",
+      "description": "This is where moat.yaml, the gates, the sealed secrets and the signed bundles live.",
+      "choose": "Open project folder",
+      "reveal": "Show in folder",
+      "failed": "The folder could not be opened. Choose a folder you are allowed to read."
+    },
+    "trust": {
+      "title": "Trust mode",
+      "description": "Who may approve changes to your gates."
+    },
+    "config": {
+      "title": "Configuration",
+      "description": "The routes and upstreams from moat.yaml, as the gate checks them.",
+      "valid": "moat.yaml is valid.",
+      "missing": "There is no moat.yaml in the project folder yet.",
+      "invalid": "moat.yaml contains errors. No bundle can be built until they are fixed.",
+      "at": "(line {{line}}, column {{column}})",
+      "missingSecrets": "Not all secrets are sealed yet for: {{gates}}",
+      "showRoutes": "Show routes",
+      "showGates": "Show gates"
+    },
+    "counts": {
+      "routes": "Routes",
+      "upstreams": "Upstreams",
+      "secrets": "Secrets",
+      "gates": "Gates"
+    },
+    "empty": {
+      "title": "No project open yet",
+      "description": "Open the folder that contains your moat.yaml.",
+      "gone": "The project folder {{folder}} can no longer be read. Open it again or choose another one.",
+      "cli": "You create a project folder with the Moat CLI: write moat.yaml, add a gate with `moat gate add`, seal secrets with `moat secret seal`.",
+      "help": "Open the guide"
+    }
+  },
+  "gates": {
+    "title": "Gates",
+    "subtitle": "The gates of this project and what is ready for them",
+    "empty": "No gate has been added to this project yet. Install a gate and add it with `moat gate add`.",
+    "gateId": "Gate ID",
+    "fingerprint": "Fingerprint",
+    "keyId": "Key ID",
+    "bundle": "Latest bundle",
+    "bundleVersion": "Version {{version}}",
+    "noBundle": "None built yet",
+    "secrets": "Sealed secrets",
+    "secretVersion": "{{name}} (v{{version}})",
+    "noSecrets": "None",
+    "fingerprintHint": "Compare the fingerprint group by group with the one the gate printed when it was installed.",
+    "missing": "The configuration needs these secrets, but they are not sealed for this gate yet: {{secrets}}",
+    "invalid": "The file {{file}} is damaged or not a gate file."
+  },
+  "routes": {
+    "title": "Routes",
+    "subtitle": "What the gate forwards, and to whom",
+    "unusable": "moat.yaml is missing or contains errors. The overview shows what to do.",
+    "routesTitle": "Routes",
+    "upstreamsTitle": "Upstreams",
+    "empty": "moat.yaml has no routes yet.",
+    "columns": {
+      "route": "Route",
+      "request": "Request",
+      "target": "Target",
+      "origins": "Allowed websites",
+      "rateLimit": "Rate limit",
+      "upstream": "Upstream",
+      "origin": "Address",
+      "auth": "Authentication",
+      "timeout": "Timeout"
+    },
+    "via": "via {{upstream}}",
+    "noOrigins": "No other websites",
+    "rate": {
+      "ip": "{{requests}} per {{window}} {{unit}} per visitor",
+      "route": "{{requests}} per {{window}} {{unit}} in total",
+      "policyOnly": "Only the local policy's limits"
+    },
+    "maxBody": "max. {{value}} {{unit}} per request",
+    "duration": "{{value}} {{unit}}",
+    "disabled": "Switched off",
+    "auth": {
+      "bearer": "Bearer token from secret “{{secret}}”",
+      "header": "Header {{name}} from secret “{{secret}}”",
+      "query": "Parameter {{param}} from secret “{{secret}}”",
+      "none": "None"
+    }
+  },
+  "help": {
+    "title": "Help",
+    "subtitle": "Step by step from moat.yaml to a running gate",
+    "context": "Help for this page",
+    "stepOf": "Step {{number}} of {{total}}",
+    "whereLabel": "Where:",
+    "stepsTitle": "How it works",
+    "tipsTitle": "Tips",
+    "open": "Open {{target}}",
+    "only": {
+      "cloud": "Cloud only",
+      "desktop": "Desktop only"
+    },
+    "intro": {
+      "title": "How Moat works",
+      "body": "Moat keeps your API keys out of the browser. The gate runs on your hosting and forwards only the routes you approve. You write the configuration in moat.yaml, sign it with your key file and upload it to the gate. Moat Desktop shows you what is ready in your project folder."
+    },
+    "search": {
+      "label": "Search the guide",
+      "placeholder": "A word, e.g. fingerprint",
+      "clear": "Clear search",
+      "results": "{{count}} of {{total}} steps match",
+      "none": "Nothing found. Try another word."
+    },
+    "toc": {
+      "title": "Contents",
+      "show": "Show contents",
+      "hide": "Hide contents"
+    },
+    "faq": {
+      "title": "Frequent questions",
+      "items": {
+        "noProject": {
+          "question": "The overview says “No project open yet”.",
+          "answer": "Click “Open project folder” and choose the folder that contains your moat.yaml. Moat Desktop then restarts with that folder and remembers it."
+        },
+        "invalidConfig": {
+          "question": "moat.yaml contains errors. What now?",
+          "answer": "The overview names every error with line and column. Fix the file in your editor and click “Reload”. Typical causes are missing quotes around paths and URLs, or a typo in an upstream's name."
+        },
+        "missingSecret": {
+          "question": "Under “Gates” a gate is missing a secret.",
+          "answer": "An upstream needs a secret that is not sealed for this gate yet. Seal it with `moat secret seal <gate> <name>`; you type the value in the terminal, and it never lands in the project folder in plain text."
+        },
+        "fingerprint": {
+          "question": "The fingerprint does not match the gate's.",
+          "answer": "Then the gate file does not belong to your gate. Delete it, check the output of `php moat-gate.php status` on the server and add the gate again with `moat gate add`."
+        }
+      }
+    },
+    "links": {
+      "overview": "overview",
+      "gates": "gates",
+      "routes": "routes"
+    },
+    "sections": {
+      "project": {
+        "title": "Project folder",
+        "purpose": "Everything Moat knows about your website lives in one folder: the configuration, the gates, the sealed secrets and the signed bundles. No database, no server.",
+        "where": "Overview › Project folder",
+        "steps": {
+          "cli": "Create a folder and write a moat.yaml in it. A recipe from the `recipes` folder is a good start.",
+          "folder": "The Moat CLI adds the subfolders: `gates` for the gates, `secrets` for sealed secrets, `bundles` for signed bundles.",
+          "open": "In the overview, click “Open project folder” and choose the folder. Moat Desktop restarts with that folder.",
+          "check": "The overview shows whether moat.yaml is valid, how many routes, upstreams, secrets and gates there are, and which trust mode applies."
+        },
+        "tips": {
+          "git": "The project folder works well with Git: secrets are only in it sealed, and key files do not belong in it.",
+          "reload": "When you change files in the folder, click “Reload”."
+        }
+      },
+      "gate": {
+        "title": "Install a gate",
+        "purpose": "The gate runs on your hosting. It knows your secrets and forwards only the routes you approve. It has no management interface that could be reached from outside.",
+        "where": "Gates",
+        "steps": {
+          "upload": "Upload the file moat-gate.php to your website's web space.",
+          "install": "On the server, run `php moat-gate.php install --signer=<public key>`. The gate creates a protected data folder and prints its gate ID, box key and fingerprints.",
+          "add": "Add the gate to your project folder with the `moat gate add` line the gate printed.",
+          "compare": "Compare the fingerprint the CLI prints group by group with the gate's.",
+          "check": "Under “Gates” you see every gate you added, with gate ID and fingerprint."
+        },
+        "tips": {
+          "mismatch": "If a group differs, delete the gate file and add the gate again.",
+          "php": "The gate needs PHP 8.2 or newer with the extensions sodium, curl, json and hash."
+        }
+      },
+      "trust": {
+        "title": "Trust mode",
+        "purpose": "The trust mode decides who may approve changes to a gate. Moat Desktop always uses “Signed”: the gate accepts only bundles signed with your key file.",
+        "where": "Overview › Trust mode, and Gates",
+        "steps": {
+          "keygen": "Create a key file once with `moat keygen <file>.moatkey` and choose a good passphrase.",
+          "trust": "Give the gate the public key when you install it (--signer). You can change it only on the gate itself, with `php moat-gate.php trust`.",
+          "badge": "Next to each gate you see its trust mode, with the sentence on what an attacker could do if Moat Cloud were hacked."
+        },
+        "tips": {
+          "passphrase": "Keep the key file outside the project folder and back it up. Without it you cannot sign bundles any more.",
+          "desktopOnly": "Moat Desktop works without the Cloud: you approve every change yourself with your key file."
+        }
+      },
+      "secrets": {
+        "title": "Upstreams and secrets",
+        "purpose": "An upstream is the API the gate calls. Its key is a secret: it is sealed for one particular gate and can be opened only there.",
+        "where": "Gates › Sealed secrets, and Routes › Upstreams",
+        "steps": {
+          "upstream": "Add the upstream to moat.yaml with its address and the secret's name (e.g. `secret: hubspot-token`), never its value.",
+          "seal": "Seal the value with `moat secret seal <gate> <name>`. You type it in the terminal; only encrypted text is stored.",
+          "check": "Under “Gates” you see for each gate which secrets are sealed and which are still missing."
+        },
+        "tips": {
+          "never": "Moat never shows secrets, not even in Moat Desktop. It knows only their names and versions.",
+          "rotate": "A new key? Seal it with `--secret-version` and a higher number, and build a new bundle."
+        }
+      },
+      "routes": {
+        "title": "Routes and recipes",
+        "purpose": "A route is an address on your gate that forwards exactly one kind of request to an upstream. The gate refuses everything else.",
+        "where": "Routes",
+        "steps": {
+          "write": "Add the route to moat.yaml: method, path, upstream and target path.",
+          "recipe": "For common cases there are recipes, for example the newsletter sign-up with HubSpot.",
+          "origins": "If another website calls the route in the browser, list it under `origins`. Without an entry, browsers refuse other websites.",
+          "check": "Under “Routes” you see every route as the gate checks it: path, target, allowed websites, rate limit and maximum size."
+        },
+        "tips": {
+          "exact": "Paths match exactly: `/newsletter` does not match `/newsletter/abc`.",
+          "quote": "Put paths, URLs and durations in quotes, for example `'10m'`."
+        }
+      },
+      "limits": {
+        "title": "Limits",
+        "purpose": "Rate limits protect your API quotas from scripts. The gate counts by itself.",
+        "where": "Routes › Rate limit",
+        "steps": {
+          "route": "Give a route a rate limit, for example 5 requests per 10 minutes per visitor.",
+          "policy": "The gate's local policy sets limits that always apply, whatever a bundle says. `moat policy suggest` proposes a matching policy.",
+          "answer": "When the limit is reached, the gate answers 429 and says when to try again."
+        },
+        "tips": {
+          "proxy": "If your website runs behind a proxy like Cloudflare, the gate sees only the proxy's address. Set the limits more generously then."
+        }
+      },
+      "release": {
+        "title": "Approve and sign",
+        "purpose": "A bundle is the signed configuration for exactly one gate. The gate accepts it only when the signature is valid and the version is higher than the last one.",
+        "where": "Gates › Latest bundle",
+        "steps": {
+          "build": "Build the bundle with `moat build <gate> --key <file>.moatkey`. It is then stored under `bundles`.",
+          "deploy": "Upload the bundle file to the server.",
+          "accept": "Activate it there with `php moat-gate.php accept <bundle>.json`. Under “Gates” you see the version built last."
+        },
+        "tips": {
+          "rollback": "Back to an older configuration? Build it as a new, higher version.",
+          "policy": "If a bundle does not fit the local policy, the gate refuses it. You change the policy only on the gate itself."
+        }
+      },
+      "privacy": {
+        "title": "Desktop and privacy",
+        "purpose": "Moat Desktop works only on your computer. It needs no server and no account.",
+        "where": "Overview",
+        "steps": {
+          "local": "Moat Desktop reads your project folder and sends nothing to the internet.",
+          "ciphertext": "Secrets are in the project folder only sealed. Only the gate they are sealed for can open them.",
+          "noAdmin": "The gate has no management that can be reached over the internet. It changes only through signed bundles and commands on the server."
+        },
+        "tips": {
+          "folder": "You can back up the project folder like other files, for example with Git."
+        }
+      }
+    }
+  }
+}

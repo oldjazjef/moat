@@ -22,8 +22,11 @@ Four components (ANFORDERUNGEN.md, header):
 > `conformance/vectors/` and `conformance/http/`; and `gates/php` as a working gate: single-file
 > build, CLI (`install|trust|policy|accept|status`), bundle acceptance (steps 1–10), exact routing,
 > the cURL upstream client with SSRF guard, origin binding/CORS and rate limits
-> ([gates/php/README.md](gates/php/README.md)). Not yet: Cloud, Desktop, quotas/budgets, lazy
-> pull, setup mode, trust mode 2. Everything else below is
+> ([gates/php/README.md](gates/php/README.md)). **Moat Desktop, first surface:** Electron shell
+> with the API in-process (`apps/api`, project folder read-only: `GET /api/health`,
+> `GET /api/project`) and the Angular UI (`apps/web`: Übersicht, Gates, Routen, Hilfe). Writing
+> still goes through the CLI. Not yet: Cloud, desktop editing/signing, setup wizard (FR-73),
+> quotas/budgets, lazy pull, setup mode, trust mode 2. Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
 
@@ -70,6 +73,12 @@ lazy-koins. Databases: see Database.
 protocol, `AUTH_MODE=local` + `LOCAL_MODE=true` + a per-launch access token — the lazy-koins
 desktop pattern, copied. Keys and deploy credentials through Electron `safeStorage` (OS keychain,
 DT-04). Electron over Tauri: decided by "same stack as lazy-koins" (closes ANFORDERUNGEN.md §5.2).
+
+As built: the API refuses any request whose `Host` is not exactly `127.0.0.1:<port>` (DT-16)
+or that lacks the per-launch `x-moat-desktop` token; both refusals are the same 403. IPC
+handlers take no arguments and answer only the `app://moat` origin (DT-08); the project folder
+is picked in a main-process dialog, then the app relaunches with it. `--project=<dir>` opens a
+folder for development and screenshots.
 
 ### CLI (`apps/cli`)
 
@@ -129,7 +138,8 @@ libs/core/           # PURE TypeScript (@moat/core): no Nest/Angular/Prisma/netw
   src/crypto/        #   sign/verify, seal/open secrets, key files (Argon2id) — libsodium only
   src/policy/        #   local policy + "config ≤ policy" check (SEC-10, SEC-11)
   src/package/       #   gate install packages: artifact + install files, never generated code
-  src/storage/       #   StoragePort + project-folder adapter (DT-03); DB adapters live in apps/api
+  src/storage/       #   StoragePort + readProject (DT-03); the fs adapter (FolderStorage) and DB
+                     #   adapters live in apps/api/src/persistence
   src/recipes/       #   recipes (FR-43) as data
 libs/ui/             # spartan helm components (GENERATED — vendored)
 gates/php/           # the PHP gate: src/, tests/, build/ (single-file build), composer.json
@@ -417,3 +427,14 @@ checksums + SBOM (SEC-60, SEC-61), images to ghcr, desktop installers per releas
 - The Environment gotchas of lazy-koins (Electron/better-sqlite3 ABI pin, `express.json()` trap,
   pnpm `allowBuilds`, Windows CRLF/PowerShell encoding) apply here too — copy them in here as soon
   as the matching code exists.
+
+## Environment gotchas
+
+- **Electron binary missing** (`Electron failed to install correctly`): its postinstall did not
+  run. `node node_modules/electron/install.js` fetches it; `electron` is in `allowBuilds`.
+- **Electron as root** (containers, CI): start it with `--no-sandbox`, under `xvfb-run -a`
+  when there is no display. Never in a shipped build.
+- **`pnpm start:desktop`** stages first (`nx run desktop:stage`: API + web builds, esbuild main
+  and preload into `dist/apps/desktop-app`). The packaged app has no native dependencies.
+- **Help texts:** «…» marks only UI labels the app shows (a spec checks it); commands and file
+  names go in backticks and render as code through `mt-rich-text`.

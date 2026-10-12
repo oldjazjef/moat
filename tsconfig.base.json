@@ -12,7 +12,19 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "paths": {
-      "@moat/core": ["./libs/core/src/index.ts"]
+      "@moat/core": ["./libs/core/src/index.ts"],
+      "@moat/ui/utils": ["./libs/ui/utils/src/index.ts"],
+      "@moat/ui/button": ["./libs/ui/button/src/index.ts"],
+      "@moat/ui/badge": ["./libs/ui/badge/src/index.ts"],
+      "@moat/ui/card": ["./libs/ui/card/src/index.ts"],
+      "@moat/ui/sidebar": ["./libs/ui/sidebar/src/index.ts"],
+      "@moat/ui/sheet": ["./libs/ui/sheet/src/index.ts"],
+      "@moat/ui/separator": ["./libs/ui/separator/src/index.ts"],
+      "@moat/ui/skeleton": ["./libs/ui/skeleton/src/index.ts"],
+      "@moat/ui/tooltip": ["./libs/ui/tooltip/src/index.ts"],
+      "@moat/ui/input": ["./libs/ui/input/src/index.ts"],
+      "@moat/ui/label": ["./libs/ui/label/src/index.ts"],
+      "@moat/ui/table": ["./libs/ui/table/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp", "private"]

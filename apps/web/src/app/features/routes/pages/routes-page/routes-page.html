@@ -1,0 +1,150 @@
+<mt-page-header
+  [title]="'routes.title' | translate"
+  [subtitle]="'routes.subtitle' | translate"
+>
+  <button hlmBtn variant="outline" type="button" (click)="resource.reload()">
+    <ng-icon name="lucideRefreshCw" size="16" aria-hidden="true" />
+    {{ 'common.reload' | translate }}
+  </button>
+  <mt-help-link section="routes" />
+</mt-page-header>
+
+@if (resource.view.isLoading() && !resource.view.hasValue()) {
+<p class="text-muted-foreground text-sm" role="status">
+  {{ 'common.loading' | translate }}
+</p>
+} @else if (resource.view.error()) {
+<p class="mt-note" role="alert">
+  <ng-icon
+    name="lucideTriangleAlert"
+    size="16"
+    aria-hidden="true"
+    class="mt-0.5 shrink-0"
+  />
+  <span>{{ 'common.loadError' | translate }}</span>
+</p>
+} @else if (!resource.project()) {
+<p class="mt-note" data-no-project>
+  <span class="flex-1">{{ 'common.noProject' | translate }}</span>
+  <a hlmBtn size="sm" variant="outline" routerLink="/app/overview">
+    {{ 'common.toOverview' | translate }}
+  </a>
+</p>
+} @else if (service.unusable()) {
+<p class="mt-note" data-config-unusable>
+  <span class="flex-1">{{ 'routes.unusable' | translate }}</span>
+  <a hlmBtn size="sm" variant="outline" routerLink="/app/overview">
+    {{ 'common.toOverview' | translate }}
+  </a>
+</p>
+} @else {
+<section class="flex flex-col gap-3" aria-labelledby="routes-title">
+  <h2 id="routes-title" class="text-lg font-semibold">
+    {{ 'routes.routesTitle' | translate }}
+  </h2>
+  @if (service.routes().length === 0) {
+  <p class="text-muted-foreground text-sm">{{ 'routes.empty' | translate }}</p>
+  } @else {
+  <div hlmTableContainer class="mt-panel">
+    <table hlmTable>
+      <thead hlmTHead>
+        <tr hlmTr>
+          <th hlmTh>{{ 'routes.columns.route' | translate }}</th>
+          <th hlmTh>{{ 'routes.columns.request' | translate }}</th>
+          <th hlmTh>{{ 'routes.columns.target' | translate }}</th>
+          <th hlmTh>{{ 'routes.columns.origins' | translate }}</th>
+          <th hlmTh>{{ 'routes.columns.rateLimit' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody hlmTBody>
+        @for (row of service.routes(); track row.name) {
+        <tr hlmTr data-route [attr.data-route-name]="row.name">
+          <td hlmTd>
+            <span class="mt-code font-medium">{{ row.name }}</span>
+            @if (!row.route.enabled) {
+            <span hlmBadge variant="outline" class="ml-2" data-disabled>
+              {{ 'routes.disabled' | translate }}
+            </span>
+            }
+          </td>
+          <td hlmTd>
+            <span class="mt-code">
+              <span class="font-semibold">{{ row.route.method }}</span>
+              {{ row.route.path }}
+            </span>
+            <span class="text-muted-foreground block text-xs" data-max-body>
+              {{ 'routes.maxBody' | translate: { value: row.maxBody.value, unit:
+              (row.maxBody.unitKey | translate) } }}
+            </span>
+          </td>
+          <td hlmTd>
+            <span class="mt-code">{{ row.target }}</span>
+            <span class="text-muted-foreground block text-xs">
+              {{ 'routes.via' | translate: { upstream: row.route.upstream } }}
+            </span>
+          </td>
+          <td hlmTd data-origins>
+            @if (row.route.origins.length === 0) {
+            <span class="text-muted-foreground text-xs">
+              {{ 'routes.noOrigins' | translate }}
+            </span>
+            } @else { @for (origin of row.route.origins; track origin) {
+            <span class="mt-code block">{{ origin }}</span>
+            } }
+          </td>
+          <td hlmTd data-rate-limit>
+            @if (row.route.rateLimit; as limit) { @if (row.window; as window) {
+            {{ 'routes.rate.' + limit.per | translate: { requests:
+            limit.requests, window: window.value, unit: (window.unitKey |
+            translate) } }} } } @else {
+            <span class="text-muted-foreground text-xs">
+              {{ 'routes.rate.policyOnly' | translate }}
+            </span>
+            }
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+</section>
+
+<section class="mt-8 flex flex-col gap-3" aria-labelledby="upstreams-title">
+  <h2 id="upstreams-title" class="text-lg font-semibold">
+    {{ 'routes.upstreamsTitle' | translate }}
+  </h2>
+  <div hlmTableContainer class="mt-panel">
+    <table hlmTable>
+      <thead hlmTHead>
+        <tr hlmTr>
+          <th hlmTh>{{ 'routes.columns.upstream' | translate }}</th>
+          <th hlmTh>{{ 'routes.columns.origin' | translate }}</th>
+          <th hlmTh>{{ 'routes.columns.auth' | translate }}</th>
+          <th hlmTh>{{ 'routes.columns.timeout' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody hlmTBody>
+        @for (row of service.upstreams(); track row.name) {
+        <tr hlmTr data-upstream>
+          <td hlmTd class="mt-code font-medium">{{ row.name }}</td>
+          <td hlmTd class="mt-code">{{ row.upstream.origin }}</td>
+          <td hlmTd>
+            @if (row.upstream.auth; as auth) { {{ 'routes.auth.' + auth.type |
+            translate: auth }} } @else {
+            <span class="text-muted-foreground text-xs">
+              {{ 'routes.auth.none' | translate }}
+            </span>
+            }
+          </td>
+          <td hlmTd>
+            {{ 'routes.duration' | translate: { value: row.timeout.value, unit:
+            (row.timeout.unitKey | translate) } }}
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+}

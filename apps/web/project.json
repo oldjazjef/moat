@@ -1,0 +1,67 @@
+{
+  "name": "web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "mt-note-no-test-target": "Deliberate, as in lazy-koins: tests run via `pnpm test` or `pnpm vitest run --project web`.",
+  "mt-note-desktop-build": "build:desktop = the build Moat Desktop serves via app:// (apps/desktop), into dist/apps/web-desktop. Production, but without critical-CSS inlining: its `onload` handler would need inline script under the desktop's strict CSP.",
+  "prefix": "mt",
+  "sourceRoot": "apps/web/src",
+  "tags": ["scope:web"],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/web",
+        "browser": "apps/web/src/main.ts",
+        "tsConfig": "apps/web/tsconfig.app.json",
+        "assets": [{ "glob": "**/*", "input": "apps/web/public" }],
+        "styles": [
+          "node_modules/@fontsource-variable/inter/index.css",
+          "apps/web/src/styles.css"
+        ]
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "900kb",
+              "maximumError": "1.5mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "desktop": {
+          "outputPath": "dist/apps/web-desktop",
+          "outputHashing": "all",
+          "optimization": {
+            "scripts": true,
+            "styles": { "minify": true, "inlineCritical": false },
+            "fonts": true
+          }
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "options": {
+        "command": "tsc -p apps/web/tsconfig.spec.json --noEmit",
+        "cwd": "."
+      }
+    }
+  }
+}
