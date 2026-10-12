@@ -3,8 +3,12 @@ import {
   addEnvironment,
   assignGate,
   ConfigEditError,
+  removeRoute,
+  type RouteInput,
   setEnvironmentEnabled,
   setGateEnabled,
+  setRoute,
+  setRouteEnabled,
 } from './edit';
 import { gateLockState } from './lock';
 import { ConfigError, loadMoatYaml } from './yaml';
@@ -159,5 +163,205 @@ describe('moat.yaml edits', () => {
     expect(() =>
       loadMoatYaml(`${base}gates:\n  website: { environment: prod }\n`),
     ).toThrow(/no environment "prod"/);
+  });
+});
+
+const site = `version: 1
+upstreams:
+  hubspot:
+    origin: 'https://api.hubapi.com'
+    auth:
+      type: bearer
+      secret: hubspot-token
+routes:
+  # Sign-ups from the footer form.
+  newsletter:
+    method: POST
+    path: '/newsletter' # the form posts here
+    upstream: hubspot
+    upstreamPath: '/crm/v3/objects/contacts'
+    maxBodySize: '4KiB'
+    rateLimit:
+      requests: 5
+      window: '10m'
+    origins: ['https://www.example.ch']
+`;
+
+const newsletter: RouteInput = {
+  method: 'POST',
+  path: '/newsletter',
+  upstream: 'hubspot',
+  upstreamPath: '/crm/v3/objects/contacts',
+  maxBodySize: '4096B',
+  rateLimit: { requests: 5, window: '600s' },
+  origins: ['https://www.example.ch'],
+};
+
+describe('route edits', () => {
+  it('changes nothing when every value is the same, even spelled differently', () => {
+    expect(setRoute(site, 'newsletter', newsletter, 'update')).toBe(site);
+  });
+
+  it('writes only what changed, in the quote style already used, and keeps the comments', () => {
+    const text = setRoute(
+      site,
+      'newsletter',
+      {
+        ...newsletter,
+        path: '/signup',
+        rateLimit: { requests: 10, window: '600s', per: 'route' },
+        origins: ['https://www.example.ch', 'https://shop.example.ch'],
+      },
+      'update',
+    );
+    expect(text).toContain('# Sign-ups from the footer form.');
+    expect(text).toContain("path: '/signup' # the form posts here");
+    expect(text).toContain("window: '10m'");
+    expect(text).toContain('requests: 10');
+    expect(text).toContain('per: route');
+    expect(text).toContain(
+      "origins: ['https://www.example.ch', 'https://shop.example.ch']",
+    );
+    expect(loadMoatYaml(text).routes['newsletter']?.path).toBe('/signup');
+  });
+
+  it('removes optional keys that are left empty', () => {
+    const text = setRoute(
+      site,
+      'newsletter',
+      {
+        method: 'POST',
+        path: '/newsletter',
+        upstream: 'hubspot',
+        upstreamPath: '/crm/v3/objects/contacts',
+        origins: [],
+      },
+      'update',
+    );
+    expect(text).not.toContain('maxBodySize');
+    expect(text).not.toContain('rateLimit');
+    expect(text).not.toContain('origins');
+  });
+
+  it('quotes a new route the way the file already does', () => {
+    const text = setRoute(
+      site,
+      'contact',
+      {
+        method: 'POST',
+        path: '/contact',
+        upstream: 'hubspot',
+        upstreamPath: '/notes',
+        origins: ['https://www.example.ch'],
+      },
+      'create',
+    );
+    expect(text).toContain("    path: '/contact'\n");
+    expect(text).toContain("    origins: ['https://www.example.ch']\n");
+  });
+
+  it('adds a new route with quoted paths and origins', () => {
+    const text = setRoute(
+      site.replaceAll("'", '"'),
+      'contact',
+      {
+        method: 'POST',
+        path: '/contact',
+        upstream: 'hubspot',
+        upstreamPath: '/crm/v3/objects/notes',
+        origins: ['https://www.example.ch'],
+      },
+      'create',
+    );
+    expect(text).toContain(`  contact:
+    method: POST
+    path: "/contact"
+    upstream: hubspot
+    upstreamPath: "/crm/v3/objects/notes"
+    origins: ["https://www.example.ch"]
+`);
+    expect(Object.keys(loadMoatYaml(text).routes)).toEqual([
+      'newsletter',
+      'contact',
+    ]);
+  });
+
+  it('refuses an existing or unknown route, an unknown upstream and a second route on the same path', () => {
+    const codes = (run: () => string) => {
+      try {
+        run();
+      } catch (error) {
+        return error instanceof ConfigEditError ? error.code : String(error);
+      }
+      return 'none';
+    };
+    expect(
+      codes(() => setRoute(site, 'newsletter', newsletter, 'create')),
+    ).toBe('route_exists');
+    expect(codes(() => setRoute(site, 'contact', newsletter, 'update'))).toBe(
+      'route_unknown',
+    );
+    expect(
+      codes(() =>
+        setRoute(
+          site,
+          'contact',
+          { ...newsletter, upstream: 'stripe' },
+          'create',
+        ),
+      ),
+    ).toBe('upstream_unknown');
+    expect(codes(() => setRoute(site, 'contact', newsletter, 'create'))).toBe(
+      'route_conflict',
+    );
+    expect(codes(() => setRoute(site, 'Contact', newsletter, 'create'))).toBe(
+      'name_invalid',
+    );
+    expect(codes(() => removeRoute(site, 'contact'))).toBe('route_unknown');
+  });
+
+  it('SEC-20/SEC-42: refuses values the gate would refuse, naming the fields', () => {
+    const attempt = (input: Partial<RouteInput>) => {
+      try {
+        setRoute(site, 'newsletter', { ...newsletter, ...input }, 'update');
+      } catch (error) {
+        if (error instanceof ConfigEditError) return [error.code, error.fields];
+      }
+      return ['none'];
+    };
+    expect(attempt({ path: '/a/../admin' })).toEqual([
+      'value_invalid',
+      ['path'],
+    ]);
+    expect(attempt({ path: '/ok\nInjected: yes' })).toEqual([
+      'value_invalid',
+      ['path'],
+    ]);
+    expect(attempt({ upstreamPath: 'relative' })).toEqual([
+      'value_invalid',
+      ['upstreamPath'],
+    ]);
+    expect(attempt({ maxBodySize: '1GiB' })).toEqual([
+      'value_invalid',
+      ['maxBodySize'],
+    ]);
+    expect(
+      attempt({
+        origins: ['https://ok.example.ch', 'http://plain.example.ch'],
+      }),
+    ).toEqual(['value_invalid', ['origins.1']]);
+    expect(attempt({ rateLimit: { requests: 0, window: '1m' } })).toEqual([
+      'value_invalid',
+      ['rateLimit.requests'],
+    ]);
+  });
+
+  it('switches a route off and on, and removes it', () => {
+    const off = setRouteEnabled(site, 'newsletter', false);
+    expect(loadMoatYaml(off).routes['newsletter']?.enabled).toBe(false);
+    expect(setRouteEnabled(off, 'newsletter', true)).toBe(site);
+    const removed = removeRoute(site, 'newsletter');
+    expect(loadMoatYaml(removed).routes).toEqual({});
+    expect(removed).toContain('upstreams:');
   });
 });

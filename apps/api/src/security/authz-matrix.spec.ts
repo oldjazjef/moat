@@ -164,6 +164,51 @@ describe('authorization matrix (local mode)', () => {
     expect(JSON.parse(refused.body)).toMatchObject({
       error: 'environment_unknown',
     });
+    const route = {
+      method: 'POST',
+      path: '/contact',
+      upstream: 'hubspot',
+      upstreamPath: '/contacts',
+    };
+    for (const body of [
+      { base, op: 'addRoute', route: 'contact' },
+      {
+        base,
+        op: 'addRoute',
+        route: 'contact',
+        definition: { ...route, eval: '1' },
+      },
+      {
+        base,
+        op: 'addRoute',
+        route: 'contact',
+        definition: {
+          ...route,
+          rateLimit: { requests: 1, window: '1m', code: 'x' },
+        },
+      },
+      { base, op: 'removeRoute', route: 'contact', definition: route },
+      {
+        base,
+        op: 'addRoute',
+        route: 'contact',
+        definition: { ...route, method: 'TRACE' },
+      },
+    ]) {
+      expect((await call('POST', url, 'desktop', body)).status).toBe(400);
+    }
+    const traversal = {
+      base,
+      op: 'addRoute',
+      route: 'contact',
+      definition: { ...route, upstreamPath: '/a/../../admin' },
+    };
+    const invalid = await call('POST', url, 'desktop', traversal);
+    expect(invalid.status).toBe(422);
+    expect(JSON.parse(invalid.body)).toEqual({
+      error: 'value_invalid',
+      fields: ['upstreamPath'],
+    });
     const other = `/api/projects/${'x'.repeat(22)}/config/edits`;
     const edit = { base, op: 'lockGate', gate: 'site' };
     expect((await call('POST', other, 'desktop', edit)).status).toBe(404);

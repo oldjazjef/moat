@@ -72,8 +72,13 @@ export {
   addEnvironment,
   assignGate,
   ConfigEditError,
+  removeRoute,
   setEnvironmentEnabled,
   setGateEnabled,
+  setRoute,
+  setRouteEnabled,
+  type ConfigEditCode,
+  type RouteInput,
 } from './config/edit';
 export {
   parsePolicy,

@@ -19,10 +19,35 @@
 </p>
 } @else {
 <section class="flex flex-col gap-3" aria-labelledby="routes-title">
-  <h2 id="routes-title" class="text-lg font-semibold">
-    {{ 'routes.routesTitle' | translate }}
-  </h2>
-  @if (service.routes().length === 0) {
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 id="routes-title" class="text-lg font-semibold">
+      {{ 'routes.routesTitle' | translate }}
+    </h2>
+    @if (service.editing() === undefined) {
+    <button
+      hlmBtn
+      size="sm"
+      type="button"
+      data-route-new
+      [disabled]="service.upstreamNames().length === 0"
+      (click)="service.open(null)"
+    >
+      {{ 'routes.new' | translate }}
+    </button>
+    }
+  </div>
+  @if (service.editing(); as row) {
+  <mt-route-form
+    [route]="row"
+    [upstreams]="service.upstreamNames()"
+    (closed)="service.close()"
+  />
+  } @else if (service.editing() === null) {
+  <mt-route-form
+    [upstreams]="service.upstreamNames()"
+    (closed)="service.close()"
+  />
+  } @if (service.routes().length === 0) {
   <p class="text-muted-foreground text-sm">{{ 'routes.empty' | translate }}</p>
   } @else {
   <div hlmTableContainer class="mt-panel">
@@ -46,6 +71,73 @@
               {{ 'routes.disabled' | translate }}
             </span>
             }
+            <div class="mt-1 flex flex-wrap gap-x-3" data-route-actions>
+              <button
+                hlmBtn
+                variant="link"
+                size="sm"
+                class="h-auto px-0 text-xs"
+                type="button"
+                data-route-edit
+                [disabled]="service.edits.busy()"
+                (click)="service.open(row)"
+              >
+                {{ 'routes.edit' | translate }}
+              </button>
+              @if (row.route.enabled) {
+              <button
+                hlmBtn
+                variant="link"
+                size="sm"
+                class="h-auto px-0 text-xs"
+                type="button"
+                data-route-disable
+                [disabled]="service.edits.busy()"
+                (click)="service.setEnabled(row, false)"
+              >
+                {{ 'routes.switchOff' | translate }}
+              </button>
+              } @else {
+              <button
+                hlmBtn
+                variant="link"
+                size="sm"
+                class="h-auto px-0 text-xs"
+                type="button"
+                data-route-enable
+                [disabled]="service.edits.busy()"
+                (click)="service.setEnabled(row, true)"
+              >
+                {{ 'routes.switchOn' | translate }}
+              </button>
+              } @if (service.confirmingRemove() === row.name) {
+              <button
+                hlmBtn
+                variant="link"
+                size="sm"
+                class="text-destructive h-auto px-0 text-xs"
+                type="button"
+                data-route-remove-confirm
+                [disabled]="service.edits.busy()"
+                (click)="service.remove(row)"
+              >
+                {{ 'routes.removeConfirm' | translate }}
+              </button>
+              } @else {
+              <button
+                hlmBtn
+                variant="link"
+                size="sm"
+                class="h-auto px-0 text-xs"
+                type="button"
+                data-route-remove
+                [disabled]="service.edits.busy()"
+                (click)="service.remove(row)"
+              >
+                {{ 'routes.remove' | translate }}
+              </button>
+              }
+            </div>
           </td>
           <td hlmTd>
             <span class="mt-code">

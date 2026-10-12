@@ -5,6 +5,7 @@ import { HlmBadge } from '@moat/ui/badge';
 import { HlmButtonImports } from '@moat/ui/button';
 import { HlmTableImports } from '@moat/ui/table';
 import { HelpLink } from '../../../help/components/help-link';
+import { RouteForm } from '../../components/route-form';
 import { RoutesPageService } from './routes-page.service';
 
 @Component({
@@ -13,6 +14,7 @@ import { RoutesPageService } from './routes-page.service';
     RouterLink,
     TranslatePipe,
     HelpLink,
+    RouteForm,
     HlmBadge,
     ...HlmButtonImports,
     ...HlmTableImports,

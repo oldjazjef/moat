@@ -142,7 +142,33 @@ export type ConfigEdit =
       readonly op: 'assignGate';
       readonly gate: string;
       readonly environment: string;
+    }
+  | {
+      readonly op: 'addRoute' | 'updateRoute';
+      readonly route: string;
+      readonly definition: RouteDefinition;
+    }
+  | {
+      readonly op: 'removeRoute' | 'enableRoute' | 'disableRoute';
+      readonly route: string;
     };
+
+export const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
+
+/** A route as moat.yaml writes it (RouteInput in libs/core/src/config/edit.ts). */
+export interface RouteDefinition {
+  readonly method: (typeof METHODS)[number];
+  readonly path: string;
+  readonly upstream: string;
+  readonly upstreamPath: string;
+  readonly maxBodySize?: string;
+  readonly origins?: readonly string[];
+  readonly rateLimit?: {
+    readonly requests: number;
+    readonly window: string;
+    readonly per?: 'ip' | 'route';
+  };
+}
 
 /**
  * Why an edit failed, each `edit.errors.<code>`: the API's 409/422 codes (ConfigEditRefusal),
@@ -155,6 +181,11 @@ export const EDIT_ERROR_CODES = [
   'name_invalid',
   'environment_unknown',
   'gate_in_other_environment',
+  'route_exists',
+  'route_unknown',
+  'upstream_unknown',
+  'route_conflict',
+  'value_invalid',
   'not_writable',
   'failed',
 ] as const;

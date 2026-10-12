@@ -78,7 +78,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
   },
   {
     id: 'routes',
-    steps: items('write', 'recipe', 'origins', 'check'),
+    steps: items('write', 'recipe', 'origins', 'bundle', 'check'),
     tips: items('exact', 'quote'),
     links: [PROJECTS],
   },

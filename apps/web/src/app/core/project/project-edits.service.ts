@@ -12,16 +12,31 @@ import { ProjectResource } from './project-resource.service';
 
 export type EditOutcome =
   | { readonly kind: 'saved' }
-  | { readonly kind: 'error'; readonly code: EditErrorCode };
+  | {
+      readonly kind: 'error';
+      readonly code: EditErrorCode;
+      /** For `value_invalid`: the route's refused fields, e.g. `path`, `origins.1`. */
+      readonly fields: readonly string[];
+    };
 
-function errorCode(error: unknown): EditErrorCode {
-  if (!(error instanceof HttpErrorResponse)) return 'failed';
-  const body: unknown = error.error;
-  const code =
+function failure(error: unknown): Extract<EditOutcome, { kind: 'error' }> {
+  const body: unknown =
+    error instanceof HttpErrorResponse ? error.error : undefined;
+  const fields =
+    typeof body === 'object' &&
+    body !== null &&
+    'fields' in body &&
+    Array.isArray(body.fields)
+      ? body.fields.filter(
+          (field): field is string => typeof field === 'string',
+        )
+      : [];
+  const given =
     typeof body === 'object' && body !== null && 'error' in body
       ? body.error
       : null;
-  return EDIT_ERROR_CODES.find((known) => known === code) ?? 'failed';
+  const code = EDIT_ERROR_CODES.find((known) => known === given) ?? 'failed';
+  return { kind: 'error', code, fields };
 }
 
 /**
@@ -61,10 +76,10 @@ export class ProjectEdits {
       this.outcome.set({ kind: 'saved' });
       return true;
     } catch (error) {
-      const code = errorCode(error);
-      this.outcome.set({ kind: 'error', code });
+      const outcome = failure(error);
+      this.outcome.set(outcome);
       // Show what is on disk now; the edit can then be made again on top of it.
-      if (code === 'config_changed') this.resource.reload();
+      if (outcome.code === 'config_changed') this.resource.reload();
       return false;
     } finally {
       this.runningEdit.set(false);

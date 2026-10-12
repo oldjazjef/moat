@@ -1,6 +1,20 @@
-import { isMap, parseDocument, YAMLMap, type Document } from 'yaml';
-import { NAME } from './compiled';
-import { loadMoatYaml } from './yaml';
+import {
+  isMap,
+  isScalar,
+  isSeq,
+  parseDocument,
+  Scalar,
+  YAMLMap,
+  YAMLSeq,
+  visit,
+  type Document,
+} from 'yaml';
+import { MoatRejection } from '../errors';
+import { compileConfig } from './compile';
+import { LIMIT_SCOPES, METHODS, NAME } from './compiled';
+import type { MoatConfig } from './schema';
+import { parseDuration, parseSize } from './units';
+import { ConfigError, loadMoatYaml } from './yaml';
 
 /**
  * Small, targeted edits of moat.yaml through the `yaml` Document API, so comments, key order and
@@ -9,13 +23,24 @@ import { loadMoatYaml } from './yaml';
  * produce a file the loader refuses. Pure: text in, text out.
  */
 
+export type ConfigEditCode =
+  | 'name_invalid'
+  | 'environment_unknown'
+  | 'gate_in_other_environment'
+  | 'route_exists'
+  | 'route_unknown'
+  | 'upstream_unknown'
+  | 'route_conflict'
+  | 'value_invalid';
+
 export class ConfigEditError extends Error {
   override readonly name = 'ConfigEditError';
 
   constructor(
-    readonly code:
-      'name_invalid' | 'environment_unknown' | 'gate_in_other_environment',
+    readonly code: ConfigEditCode,
     message: string,
+    /** For `value_invalid`: the route's fields that were refused, e.g. `path`, `origins.1`. */
+    readonly fields: readonly string[] = [],
   ) {
     super(message);
   }
@@ -161,5 +186,229 @@ export function assignGate(
   ensureEntry(doc, 'environments', environment);
   ensureEntry(doc, 'gates', gate);
   setIn(doc, ['gates', gate, 'environment'], environment);
+  return checked(doc);
+}
+
+/** A route as Moat Desktop edits it. `enabled` has its own edit (setRouteEnabled). */
+export interface RouteInput {
+  readonly method: (typeof METHODS)[number];
+  readonly path: string;
+  readonly upstream: string;
+  readonly upstreamPath: string;
+  /** e.g. "16KiB"; absent = the default (64 KiB), and the key is removed. */
+  readonly maxBodySize?: string;
+  /** Browser origins allowed to call the route; absent or empty = the key is removed. */
+  readonly origins?: readonly string[];
+  /** Absent = the key is removed (only the local policy's limits apply). */
+  readonly rateLimit?: {
+    readonly requests: number;
+    readonly window: string;
+    readonly per?: (typeof LIMIT_SCOPES)[number];
+  };
+}
+
+/** Same value as written, so the author's spelling ("10m" vs "600s") is kept. */
+type Same = (written: unknown, value: unknown) => boolean;
+const sameText: Same = (written, value) => written === value;
+const sameDuration: Same = (written, value) =>
+  typeof written === 'string' &&
+  typeof value === 'string' &&
+  parseDuration(written) !== null &&
+  parseDuration(written) === parseDuration(value);
+const sameSize: Same = (written, value) =>
+  typeof written === 'string' &&
+  typeof value === 'string' &&
+  parseSize(written) !== null &&
+  parseSize(written) === parseSize(value);
+
+/** The quote style the author uses: that of the first quoted value in the file (default `"`). */
+function quoteStyle(doc: Document): Scalar.Type {
+  let style: Scalar.Type = Scalar.QUOTE_DOUBLE;
+  visit(doc, {
+    Scalar(_key, node) {
+      if (
+        node.type === Scalar.QUOTE_SINGLE ||
+        node.type === Scalar.QUOTE_DOUBLE
+      ) {
+        style = node.type;
+        return visit.BREAK;
+      }
+      return undefined;
+    },
+  });
+  return style;
+}
+
+/**
+ * Sets a scalar unless it already holds the same value. Strings that could read as another type
+ * are quoted (CLAUDE.md, YAML standards), in the quote style already used at that key.
+ */
+function setScalar(
+  doc: Document,
+  path: string[],
+  value: string | number,
+  quoted: boolean,
+  same: Same = sameText,
+): void {
+  const node = doc.getIn(path, true);
+  if (isScalar(node) && same(node.value, value)) return;
+  if (isScalar(node) && typeof node.value === typeof value) {
+    // Changed in place: the comment next to it and its quote style stay.
+    node.value = value;
+    if (quoted && node.type !== Scalar.QUOTE_SINGLE)
+      node.type = Scalar.QUOTE_DOUBLE;
+    return;
+  }
+  const scalar = new Scalar(value);
+  if (quoted) scalar.type = quoteStyle(doc);
+  setIn(doc, path, scalar);
+}
+
+/** A list of quoted strings, in the style (flow or block) already used at that key. */
+function setList(doc: Document, path: string[], values: readonly string[]) {
+  const node = doc.getIn(path, true);
+  if (
+    isSeq(node) &&
+    node.items.length === values.length &&
+    node.items.every(
+      (item, index) => isScalar(item) && item.value === values[index],
+    )
+  )
+    return;
+  const seq = new YAMLSeq();
+  seq.flow = isSeq(node) ? node.flow === true : true;
+  const style = quoteStyle(doc);
+  for (const value of values) {
+    const scalar = new Scalar(value);
+    scalar.type = style;
+    seq.items.push(scalar);
+  }
+  setIn(doc, path, seq);
+}
+
+/** Every secret the upstreams use: what a bundle of this config must carry. */
+function secretsOf(config: MoatConfig): string[] {
+  return Object.values(config.upstreams).flatMap((upstream) =>
+    upstream.auth === undefined || upstream.auth === null
+      ? []
+      : [upstream.auth.secret],
+  );
+}
+
+/**
+ * The text of an edited route, checked like readProject checks it: the loader (field by field,
+ * reported as `value_invalid` with the route's fields), then the compiled config a bundle would
+ * carry.
+ */
+function checkedRoute(doc: Document, route: string): string {
+  let config: MoatConfig;
+  let text: string;
+  try {
+    text = checked(doc);
+    config = loadMoatYaml(text);
+  } catch (error) {
+    if (!(error instanceof ConfigError)) throw error;
+    const fields = error.issues
+      .filter((issue) => issue.path[0] === 'routes' && issue.path[1] === route)
+      .map((issue) => issue.path.slice(2).join('.'))
+      .filter((field) => field !== '');
+    throw new ConfigEditError(
+      'value_invalid',
+      `route "${route}": ${error.message}`,
+      fields,
+    );
+  }
+  try {
+    compileConfig(config, secretsOf(config));
+  } catch (error) {
+    if (!(error instanceof MoatRejection)) throw error;
+    throw new ConfigEditError('value_invalid', `route "${route}" is invalid`);
+  }
+  return text;
+}
+
+/**
+ * Adds the route `route` (`create`) or changes an existing one. Only the keys whose value changes
+ * are written, so comments and the author's spelling of unchanged values stay; `contentTypes`,
+ * `responseContentTypes` and `enabled` are left as they are.
+ */
+export function setRoute(
+  text: string,
+  route: string,
+  input: RouteInput,
+  mode: 'create' | 'update',
+): string {
+  checkName('route name', route);
+  checkName('upstream name', input.upstream);
+  const config = loadMoatYaml(text);
+  const exists = Object.hasOwn(config.routes, route);
+  if (mode === 'create' && exists)
+    throw new ConfigEditError('route_exists', `route "${route}" exists`);
+  if (mode === 'update' && !exists)
+    throw new ConfigEditError('route_unknown', `no route "${route}"`);
+  if (!Object.hasOwn(config.upstreams, input.upstream))
+    throw new ConfigEditError(
+      'upstream_unknown',
+      `no upstream "${input.upstream}"`,
+    );
+  const clash = Object.entries(config.routes).find(
+    ([name, other]) =>
+      name !== route &&
+      other.method === input.method &&
+      other.path === input.path,
+  );
+  if (clash !== undefined)
+    throw new ConfigEditError(
+      'route_conflict',
+      `route "${clash[0]}" already answers ${input.method} ${input.path}`,
+    );
+
+  const doc = document(text);
+  const at = (...keys: string[]) => ['routes', route, ...keys];
+  if (!exists) setIn(doc, at(), emptyMap());
+  setScalar(doc, at('method'), input.method, false);
+  setScalar(doc, at('path'), input.path, true);
+  setScalar(doc, at('upstream'), input.upstream, false);
+  setScalar(doc, at('upstreamPath'), input.upstreamPath, true);
+  if (input.maxBodySize === undefined) deleteIn(doc, at('maxBodySize'));
+  else setScalar(doc, at('maxBodySize'), input.maxBodySize, true, sameSize);
+  const limit = input.rateLimit;
+  if (limit === undefined) deleteIn(doc, at('rateLimit'));
+  else {
+    if (!isMap(doc.getIn(at('rateLimit'), true)))
+      setIn(doc, at('rateLimit'), emptyMap());
+    setScalar(doc, at('rateLimit', 'requests'), limit.requests, false);
+    setScalar(doc, at('rateLimit', 'window'), limit.window, true, sameDuration);
+    // "ip" is the default: written only when the author wrote `per` already.
+    if (limit.per === 'route' || doc.hasIn(at('rateLimit', 'per')))
+      setScalar(doc, at('rateLimit', 'per'), limit.per ?? 'ip', false);
+  }
+  if (input.origins === undefined || input.origins.length === 0)
+    deleteIn(doc, at('origins'));
+  else setList(doc, at('origins'), input.origins);
+  return checkedRoute(doc, route);
+}
+
+/** Removes a route. */
+export function removeRoute(text: string, route: string): string {
+  checkName('route name', route);
+  if (!Object.hasOwn(loadMoatYaml(text).routes, route))
+    throw new ConfigEditError('route_unknown', `no route "${route}"`);
+  const doc = document(text);
+  deleteIn(doc, ['routes', route]);
+  return checked(doc);
+}
+
+/** Switches a route off (`enabled: false`, the gate answers it like an unknown path) or on. */
+export function setRouteEnabled(
+  text: string,
+  route: string,
+  enabled: boolean,
+): string {
+  checkName('route name', route);
+  if (!Object.hasOwn(loadMoatYaml(text).routes, route))
+    throw new ConfigEditError('route_unknown', `no route "${route}"`);
+  const doc = document(text);
+  setEnabled(doc, ['routes', route], enabled);
   return checked(doc);
 }
