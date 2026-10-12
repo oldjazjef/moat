@@ -6,7 +6,12 @@ export type EditConfigResult =
   | { readonly status: 'not_found' }
   /** moat.yaml changed since `base` was read: nothing written (409). */
   | { readonly status: 'changed' }
-  | { readonly status: 'refused'; readonly code: ConfigEditRefusal };
+  | {
+      readonly status: 'refused';
+      readonly code: ConfigEditRefusal;
+      /** For `value_invalid`: the route's refused fields, e.g. `path`, `origins.1`. */
+      readonly fields?: readonly string[];
+    };
 
 /**
  * One edit of a project's moat.yaml from Moat Desktop, based on the version the window showed

@@ -102,6 +102,11 @@
       "name_invalid": "Der Name ist nicht erlaubt: nur Kleinbuchstaben, Ziffern und Bindestriche, mit einem Buchstaben am Anfang.",
       "environment_unknown": "Diese Umgebung gibt es in moat.yaml nicht mehr. Lade das Projekt neu.",
       "gate_in_other_environment": "Das Gate gehört schon zu einer anderen Umgebung.",
+      "route_exists": "Eine Route mit diesem Namen gibt es schon.",
+      "route_unknown": "Diese Route gibt es in moat.yaml nicht mehr. Lade das Projekt neu.",
+      "upstream_unknown": "Diesen Upstream gibt es in moat.yaml nicht.",
+      "route_conflict": "Eine andere Route beantwortet schon dieselbe Methode und denselben Pfad.",
+      "value_invalid": "Ein Wert der Route ist nicht gültig. Die markierten Felder zeigen, welcher.",
       "not_writable": "moat.yaml lässt sich nicht schreiben. Prüfe, ob der Ordner schreibgeschützt ist oder moat.yaml eine Verknüpfung ist.",
       "failed": "Das hat nicht geklappt. Nichts gespeichert."
     }
@@ -178,7 +183,7 @@
     "unusable": "moat.yaml fehlt oder enthält Fehler. Die Übersicht zeigt, was zu tun ist.",
     "routesTitle": "Routen",
     "upstreamsTitle": "Upstreams",
-    "empty": "moat.yaml enthält noch keine Routen.",
+    "empty": "moat.yaml enthält noch keine Routen. Lege mit «Neue Route» die erste an.",
     "columns": {
       "route": "Route",
       "request": "Anfrage",
@@ -205,6 +210,43 @@
       "header": "Header {{name}} aus Secret «{{secret}}»",
       "query": "Parameter {{param}} aus Secret «{{secret}}»",
       "none": "Keine"
+    },
+    "new": "Neue Route",
+    "edit": "Bearbeiten",
+    "switchOff": "Ausschalten",
+    "switchOn": "Einschalten",
+    "remove": "Löschen",
+    "removeConfirm": "Wirklich löschen",
+    "form": {
+      "newTitle": "Neue Route",
+      "editTitle": "Route {{name}} bearbeiten",
+      "description": "Gespeichert wird in moat.yaml. Auf dem Gate gilt die Route erst mit dem nächsten Bundle.",
+      "name": "Name",
+      "nameHint": "Kleinbuchstaben, Ziffern und Bindestriche, mit einem Buchstaben am Anfang, z. B. newsletter.",
+      "method": "Methode",
+      "path": "Pfad auf dem Gate",
+      "pathHint": "Beginnt mit /, ohne / am Ende. Gilt exakt: /newsletter passt nicht auf /newsletter/abc.",
+      "upstream": "Upstream",
+      "upstreamPath": "Pfad beim Upstream",
+      "upstreamPathHint": "Wird an die Adresse des Upstreams angehängt.",
+      "maxBodySize": "Maximale Grösse",
+      "maxBodySizeHint": "Leer heisst 64 KiB. Mit Einheit: B, KiB oder MiB, höchstens 10 MiB.",
+      "origins": "Erlaubte Websites",
+      "originsHint": "Eine Adresse pro Zeile, z. B. https://www.example.ch. Leer heisst: keine fremde Website darf die Route im Browser aufrufen.",
+      "rateLimit": "Rate-Limit",
+      "requests": "Anfragen",
+      "window": "Zeitfenster",
+      "per": "Gezählt",
+      "perIp": "je Besucher",
+      "perRoute": "insgesamt",
+      "windowHint": "Zeitfenster mit Einheit in ganzen Sekunden, z. B. 30s, 10m, 1h, höchstens 1d. Die Grenzen der lokalen Policy gelten immer zusätzlich.",
+      "refused": "Moat hat die Route nicht gespeichert: Die markierten Felder enthalten Werte, die das Gate ablehnen würde.",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "pathPlaceholder": "/newsletter",
+      "upstreamPathPlaceholder": "/crm/v3/objects/contacts",
+      "maxBodySizePlaceholder": "64KiB",
+      "originsPlaceholder": "https://www.example.ch"
     }
   },
   "help": {
@@ -330,9 +372,10 @@
         "purpose": "Eine Route ist eine Adresse auf deinem Gate, die genau eine Anfrage an einen Upstream weiterleitet. Alles andere lehnt das Gate ab.",
         "where": "Projekt › Routen",
         "steps": {
-          "write": "Trage die Route in moat.yaml ein: Methode, Pfad, Upstream und Ziel-Pfad.",
+          "write": "Klicke unter «Routen» auf «Neue Route» und fülle Methode, Pfad, Upstream und Ziel-Pfad aus. «Bearbeiten» ändert eine Route, «Ausschalten» legt sie still, ohne sie zu löschen. Wer lieber im Editor arbeitet, trägt sie direkt in moat.yaml ein.",
           "recipe": "Für häufige Fälle gibt es Recipes, zum Beispiel die Newsletter-Anmeldung bei HubSpot.",
-          "origins": "Ruft eine andere Website die Route im Browser auf, trage sie unter `origins` ein. Ohne Eintrag lehnen Browser fremde Websites ab.",
+          "origins": "Ruft eine andere Website die Route im Browser auf, trage sie unter «Erlaubte Websites» ein (in moat.yaml: `origins`). Ohne Eintrag lehnen Browser fremde Websites ab.",
+          "bundle": "Eine neue oder geänderte Route gilt auf dem Gate erst mit dem nächsten Bundle: `moat build <gate>`, hochladen und annehmen. Upstreams änderst du vorerst in moat.yaml.",
           "check": "Unter «Routen» siehst du jede Route so, wie das Gate sie prüft: Pfad, Ziel, erlaubte Websites, Rate-Limit und maximale Grösse."
         },
         "tips": {

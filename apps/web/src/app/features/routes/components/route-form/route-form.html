@@ -1,0 +1,246 @@
+<form
+  hlmCard
+  class="mb-6"
+  data-route-form
+  [attr.aria-labelledby]="'route-form-title'"
+  (submit)="$event.preventDefault(); save()"
+>
+  <div hlmCardHeader>
+    <h3 hlmCardTitle id="route-form-title">
+      @if (route(); as row) { {{ 'routes.form.editTitle' | translate: { name:
+      row.name } }} } @else { {{ 'routes.form.newTitle' | translate }} }
+    </h3>
+    <p hlmCardDescription>{{ 'routes.form.description' | translate }}</p>
+  </div>
+  <div hlmCardContent class="grid gap-4 md:grid-cols-2" [formGroup]="form">
+    @if (route() === null) {
+    <div class="flex flex-col gap-1.5 md:col-span-2">
+      <label hlmLabel for="route-name"
+        >{{ 'routes.form.name' | translate }}</label
+      >
+      <input
+        hlmInput
+        id="route-name"
+        class="mt-code max-w-80"
+        autocomplete="off"
+        spellcheck="false"
+        formControlName="name"
+        [attr.aria-invalid]="invalid('name')"
+        [class.border-destructive]="invalid('name')"
+        aria-describedby="route-name-hint"
+      />
+      <p
+        id="route-name-hint"
+        class="text-xs"
+        [class.text-destructive]="invalid('name')"
+        [class.text-muted-foreground]="!invalid('name')"
+      >
+        {{ 'routes.form.nameHint' | translate }}
+      </p>
+    </div>
+    }
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="route-method">
+        {{ 'routes.form.method' | translate }}
+      </label>
+      <select
+        hlmInput
+        id="route-method"
+        class="mt-code"
+        formControlName="method"
+      >
+        @for (method of methods; track method) {
+        <option [value]="method">{{ method }}</option>
+        }
+      </select>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="route-path"
+        >{{ 'routes.form.path' | translate }}</label
+      >
+      <input
+        hlmInput
+        id="route-path"
+        class="mt-code"
+        autocomplete="off"
+        spellcheck="false"
+        [placeholder]="'routes.form.pathPlaceholder' | translate"
+        formControlName="path"
+        [attr.aria-invalid]="invalid('path')"
+        [class.border-destructive]="invalid('path')"
+        aria-describedby="route-path-hint"
+      />
+      <p
+        id="route-path-hint"
+        class="text-xs"
+        [class.text-destructive]="invalid('path')"
+        [class.text-muted-foreground]="!invalid('path')"
+      >
+        {{ 'routes.form.pathHint' | translate }}
+      </p>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="route-upstream">
+        {{ 'routes.form.upstream' | translate }}
+      </label>
+      <select
+        hlmInput
+        id="route-upstream"
+        class="mt-code"
+        formControlName="upstream"
+      >
+        @for (upstream of upstreams(); track upstream) {
+        <option [value]="upstream">{{ upstream }}</option>
+        }
+      </select>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="route-upstream-path">
+        {{ 'routes.form.upstreamPath' | translate }}
+      </label>
+      <input
+        hlmInput
+        id="route-upstream-path"
+        class="mt-code"
+        autocomplete="off"
+        spellcheck="false"
+        [placeholder]="'routes.form.upstreamPathPlaceholder' | translate"
+        formControlName="upstreamPath"
+        [attr.aria-invalid]="invalid('upstreamPath')"
+        [class.border-destructive]="invalid('upstreamPath')"
+        aria-describedby="route-upstream-path-hint"
+      />
+      <p
+        id="route-upstream-path-hint"
+        class="text-xs"
+        [class.text-destructive]="invalid('upstreamPath')"
+        [class.text-muted-foreground]="!invalid('upstreamPath')"
+      >
+        {{ 'routes.form.upstreamPathHint' | translate }}
+      </p>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="route-max-body">
+        {{ 'routes.form.maxBodySize' | translate }}
+      </label>
+      <input
+        hlmInput
+        id="route-max-body"
+        class="mt-code max-w-40"
+        autocomplete="off"
+        spellcheck="false"
+        [placeholder]="'routes.form.maxBodySizePlaceholder' | translate"
+        formControlName="maxBodySize"
+        [attr.aria-invalid]="invalid('maxBodySize')"
+        [class.border-destructive]="invalid('maxBodySize')"
+        aria-describedby="route-max-body-hint"
+      />
+      <p
+        id="route-max-body-hint"
+        class="text-xs"
+        [class.text-destructive]="invalid('maxBodySize')"
+        [class.text-muted-foreground]="!invalid('maxBodySize')"
+      >
+        {{ 'routes.form.maxBodySizeHint' | translate }}
+      </p>
+    </div>
+    <div class="flex flex-col gap-1.5 md:col-span-2">
+      <label hlmLabel for="route-origins">
+        {{ 'routes.form.origins' | translate }}
+      </label>
+      <textarea
+        hlmInput
+        id="route-origins"
+        class="mt-code min-h-20"
+        rows="3"
+        spellcheck="false"
+        [placeholder]="'routes.form.originsPlaceholder' | translate"
+        formControlName="origins"
+        [attr.aria-invalid]="invalid('origins')"
+        [class.border-destructive]="invalid('origins')"
+        aria-describedby="route-origins-hint"
+      ></textarea>
+      <p
+        id="route-origins-hint"
+        class="text-xs"
+        [class.text-destructive]="invalid('origins')"
+        [class.text-muted-foreground]="!invalid('origins')"
+      >
+        {{ 'routes.form.originsHint' | translate }}
+      </p>
+    </div>
+    <fieldset class="flex flex-col gap-3 md:col-span-2">
+      <label class="flex items-center gap-2 text-sm font-medium">
+        <input type="checkbox" formControlName="limited" data-route-limited />
+        {{ 'routes.form.rateLimit' | translate }}
+      </label>
+      @if (form.controls.limited.value) {
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-requests">
+            {{ 'routes.form.requests' | translate }}
+          </label>
+          <input
+            hlmInput
+            id="route-requests"
+            type="number"
+            min="1"
+            class="w-28"
+            formControlName="requests"
+            [attr.aria-invalid]="invalid('requests')"
+            [class.border-destructive]="invalid('requests')"
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-window">
+            {{ 'routes.form.window' | translate }}
+          </label>
+          <input
+            hlmInput
+            id="route-window"
+            class="mt-code w-28"
+            autocomplete="off"
+            spellcheck="false"
+            formControlName="window"
+            [attr.aria-invalid]="invalid('window')"
+            [class.border-destructive]="invalid('window')"
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-per">
+            {{ 'routes.form.per' | translate }}
+          </label>
+          <select hlmInput id="route-per" formControlName="per">
+            <option value="ip">{{ 'routes.form.perIp' | translate }}</option>
+            <option value="route">
+              {{ 'routes.form.perRoute' | translate }}
+            </option>
+          </select>
+        </div>
+      </div>
+      <p class="text-muted-foreground text-xs">
+        {{ 'routes.form.windowHint' | translate }}
+      </p>
+      }
+    </fieldset>
+    @if (refused().size > 0) {
+    <p class="text-destructive text-sm md:col-span-2" role="alert" data-refused>
+      {{ 'routes.form.refused' | translate }}
+    </p>
+    }
+  </div>
+  <div hlmCardFooter class="flex flex-wrap gap-2">
+    <button hlmBtn type="submit" data-route-save [disabled]="edits.busy()">
+      {{ 'routes.form.save' | translate }}
+    </button>
+    <button
+      hlmBtn
+      variant="outline"
+      type="button"
+      data-route-cancel
+      (click)="closed.emit()"
+    >
+      {{ 'routes.form.cancel' | translate }}
+    </button>
+  </div>
+</form>

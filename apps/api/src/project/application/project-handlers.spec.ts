@@ -216,4 +216,50 @@ describe('editing moat.yaml', () => {
       ).toEqual({ status: 'not_found' });
     }
   });
+
+  it('adds, changes, switches off and removes a route', async () => {
+    const { edit, id, text } = await shop();
+    const run = async (
+      change: ConstructorParameters<typeof EditConfigCommand>[2],
+    ) => edit.execute(new EditConfigCommand(id, configHash(text()), change));
+    const contact = {
+      method: 'POST',
+      path: '/contact',
+      upstream: 'hubspot',
+      upstreamPath: '/notes',
+    } as const;
+    expect(
+      await run({ op: 'addRoute', route: 'contact', definition: contact }),
+    ).toEqual({ status: 'saved' });
+    expect(text()).toContain('path: "/contact"');
+    await run({
+      op: 'updateRoute',
+      route: 'contact',
+      definition: { ...contact, origins: ['https://www.example.ch'] },
+    });
+    expect(text()).toContain('origins: ["https://www.example.ch"]');
+    await run({ op: 'disableRoute', route: 'contact' });
+    expect(text()).toContain('enabled: false');
+    await run({ op: 'removeRoute', route: 'contact' });
+    expect(text()).toBe(YAML);
+  });
+
+  it('refuses a route value the gate would refuse and names the field', async () => {
+    const { edit, id, text } = await shop();
+    expect(
+      await edit.execute(
+        new EditConfigCommand(id, configHash(YAML), {
+          op: 'updateRoute',
+          route: 'newsletter',
+          definition: {
+            method: 'POST',
+            path: '/newsletter/',
+            upstream: 'hubspot',
+            upstreamPath: '/contacts',
+          },
+        }),
+      ),
+    ).toEqual({ status: 'refused', code: 'value_invalid', fields: ['path'] });
+    expect(text()).toBe(YAML);
+  });
 });

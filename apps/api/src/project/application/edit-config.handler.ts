@@ -5,8 +5,11 @@ import {
   CONFIG_FILE,
   ConfigEditError,
   ConfigError,
+  removeRoute,
   setEnvironmentEnabled,
   setGateEnabled,
+  setRoute,
+  setRouteEnabled,
 } from '@moat/core';
 import { ProjectFilesPort } from '../ports/project-files.port';
 import { ProjectRegistryPort } from '../ports/project-registry.port';
@@ -33,6 +36,16 @@ function apply(text: string, edit: ConfigEdit): string {
     case 'assignGate':
       // Choosing another environment in the window is the explicit move the CLI asks `--move` for.
       return assignGate(text, edit.gate, edit.environment, true);
+    case 'addRoute':
+      return setRoute(text, edit.route, edit.definition, 'create');
+    case 'updateRoute':
+      return setRoute(text, edit.route, edit.definition, 'update');
+    case 'removeRoute':
+      return removeRoute(text, edit.route);
+    case 'enableRoute':
+      return setRouteEnabled(text, edit.route, true);
+    case 'disableRoute':
+      return setRouteEnabled(text, edit.route, false);
   }
 }
 
@@ -56,7 +69,9 @@ export class EditConfigHandler implements ICommandHandler<EditConfigCommand> {
       next = apply(text, command.edit);
     } catch (error) {
       if (error instanceof ConfigEditError)
-        return { status: 'refused', code: error.code };
+        return error.code === 'value_invalid'
+          ? { status: 'refused', code: error.code, fields: error.fields }
+          : { status: 'refused', code: error.code };
       if (error instanceof ConfigError)
         return { status: 'refused', code: 'config_invalid' };
       throw error;

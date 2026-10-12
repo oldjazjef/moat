@@ -27,9 +27,9 @@ The gate's own local policy always wins over anything it receives.
 
 > **Status (October 2026):** early development. Working today: Moat Core, the `moat` CLI, the PHP
 > gate (signed bundles, exact routing, SSRF guard, CORS, rate limits, locking a gate or a whole
-> environment) and Moat Desktop (project list, a view of each project, and editing environments
-> and locks). Not built yet: Moat Cloud, editing routes and signing in the desktop, quotas and
-> budgets, the setup wizard. The full target is in
+> environment) and Moat Desktop (project list, a view of each project, and editing environments,
+> locks and routes). Not built yet: Moat Cloud, editing upstreams and signing in the desktop,
+> quotas and budgets, the setup wizard. The full target is in
 > [ANFORDERUNGEN.md](ANFORDERUNGEN.md) (German).
 
 ## How it fits together
@@ -135,7 +135,17 @@ bundle does not carry the lock yet (or still carries one you lifted), it says so
 - its rate limit and maximum body size;
 - for each upstream, which sealed secret it sends (by name).
 
+**New route** opens a form with the route's fields: name, method, path on the gate, upstream,
+path at the upstream, maximum size, allowed websites (one per line) and an optional rate limit.
+**Edit** opens the same form for an existing route, **Switch off** disables a route without
+deleting it, and **Delete** asks once more before it removes the route. Values are checked by the
+same schema as every `moat.yaml`: a value the gate would refuse (a path with `..`, an `http://`
+origin, a size above 10 MiB) is not saved, and the form marks the field. Upstreams are still
+edited in `moat.yaml`.
+
 ![Routes and upstreams](docs/screenshots/moat-desktop-routes.webp)
+
+![Editing a route](docs/screenshots/moat-desktop-route-edit.webp)
 
 ### Help
 
@@ -161,8 +171,9 @@ right, next to light and dark mode.
   and never typed in by the page (DT-08).
 - Project folders are read only inside the folder: symbolic links pointing elsewhere, special
   files and oversized files count as missing.
-- The app writes only `moat.yaml`, and only through a fixed list of edits (add an environment,
-  lock or unlock, assign a gate) that take names, never free text. The file is replaced
+- The app writes only `moat.yaml`, and only through a fixed list of edits (environments, locks,
+  routes). Names must match the name pattern, and a route's values pass the same schema and
+  compile step as any `moat.yaml`, so the file never holds what a gate would refuse. The file is replaced
   atomically and never written through a symbolic link. Nothing the window does reaches a gate
   without a bundle signed with your key (T-56).
 - Secrets are reported by name and version. Ciphertext never leaves the folder (SEC-31).

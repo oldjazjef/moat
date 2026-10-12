@@ -1,4 +1,4 @@
-import type { ProjectState } from '@moat/core';
+import type { ProjectState, RouteInput } from '@moat/core';
 
 /**
  * A project Moat Desktop knows: an id of its own and the folder the project lives in (DT-03,
@@ -48,8 +48,9 @@ export interface ProjectView {
 
 /**
  * The edits Moat Desktop makes to moat.yaml (`POST /api/projects/:id/config/edits`): a closed list,
- * each one a function of `@moat/core` (config/edit.ts) that keeps comments and key order. No
- * free text reaches the file: only names that match the name pattern (SEC-20).
+ * each one a function of `@moat/core` (config/edit.ts) that keeps comments and key order. Names
+ * match the name pattern; a route's values pass the same schema and compile step as every
+ * moat.yaml (SEC-20, SEC-42), so the file never holds what the loader or a gate would refuse.
  */
 export const CONFIG_EDIT_OPS = [
   'addEnvironment',
@@ -58,6 +59,11 @@ export const CONFIG_EDIT_OPS = [
   'lockGate',
   'unlockGate',
   'assignGate',
+  'addRoute',
+  'updateRoute',
+  'removeRoute',
+  'enableRoute',
+  'disableRoute',
 ] as const;
 export type ConfigEditOp = (typeof CONFIG_EDIT_OPS)[number];
 
@@ -71,6 +77,15 @@ export type ConfigEdit =
       readonly op: 'assignGate';
       readonly gate: string;
       readonly environment: string;
+    }
+  | {
+      readonly op: 'addRoute' | 'updateRoute';
+      readonly route: string;
+      readonly definition: RouteInput;
+    }
+  | {
+      readonly op: 'removeRoute' | 'enableRoute' | 'disableRoute';
+      readonly route: string;
     };
 
 /** Why an edit was refused (422), as `{ error: <code> }`; the UI shows `edit.errors.<code>`. */
@@ -80,4 +95,10 @@ export type ConfigEditRefusal =
   | 'name_invalid'
   | 'environment_unknown'
   | 'gate_in_other_environment'
+  | 'route_exists'
+  | 'route_unknown'
+  | 'upstream_unknown'
+  | 'route_conflict'
+  /** A value the gate would refuse; the 422 body lists the route's `fields`. */
+  | 'value_invalid'
   | 'not_writable';

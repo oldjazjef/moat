@@ -67,7 +67,10 @@ export class ProjectController {
       case 'changed':
         throw new ConflictException({ error: 'config_changed' });
       case 'refused':
-        throw new UnprocessableEntityException({ error: result.code });
+        throw new UnprocessableEntityException({
+          error: result.code,
+          ...(result.fields === undefined ? {} : { fields: result.fields }),
+        });
       case 'saved':
         break;
     }

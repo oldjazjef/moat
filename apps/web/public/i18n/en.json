@@ -102,6 +102,11 @@
       "name_invalid": "That name is not allowed: lowercase letters, digits and hyphens only, starting with a letter.",
       "environment_unknown": "This environment is no longer in moat.yaml. Reload the project.",
       "gate_in_other_environment": "The gate already belongs to another environment.",
+      "route_exists": "A route with this name already exists.",
+      "route_unknown": "This route is no longer in moat.yaml. Reload the project.",
+      "upstream_unknown": "This upstream is not in moat.yaml.",
+      "route_conflict": "Another route already answers the same method and path.",
+      "value_invalid": "A value of the route is not valid. The marked fields show which one.",
       "not_writable": "moat.yaml cannot be written. Check whether the folder is read-only or moat.yaml is a link.",
       "failed": "That did not work. Nothing was saved."
     }
@@ -178,7 +183,7 @@
     "unusable": "moat.yaml is missing or contains errors. The overview shows what to do.",
     "routesTitle": "Routes",
     "upstreamsTitle": "Upstreams",
-    "empty": "moat.yaml has no routes yet.",
+    "empty": "moat.yaml has no routes yet. Create the first one with “New route”.",
     "columns": {
       "route": "Route",
       "request": "Request",
@@ -205,6 +210,43 @@
       "header": "Header {{name}} from secret “{{secret}}”",
       "query": "Parameter {{param}} from secret “{{secret}}”",
       "none": "None"
+    },
+    "new": "New route",
+    "edit": "Edit",
+    "switchOff": "Switch off",
+    "switchOn": "Switch on",
+    "remove": "Delete",
+    "removeConfirm": "Really delete",
+    "form": {
+      "newTitle": "New route",
+      "editTitle": "Edit route {{name}}",
+      "description": "Saved to moat.yaml. On the gate, the route applies only with the next bundle.",
+      "name": "Name",
+      "nameHint": "Lowercase letters, digits and hyphens, starting with a letter, e.g. newsletter.",
+      "method": "Method",
+      "path": "Path on the gate",
+      "pathHint": "Starts with /, no / at the end. Matched exactly: /newsletter does not match /newsletter/abc.",
+      "upstream": "Upstream",
+      "upstreamPath": "Path at the upstream",
+      "upstreamPathHint": "Appended to the upstream’s address.",
+      "maxBodySize": "Maximum size",
+      "maxBodySizeHint": "Empty means 64 KiB. With a unit: B, KiB or MiB, at most 10 MiB.",
+      "origins": "Allowed websites",
+      "originsHint": "One address per line, e.g. https://www.example.ch. Empty means no other website may call the route in a browser.",
+      "rateLimit": "Rate limit",
+      "requests": "Requests",
+      "window": "Window",
+      "per": "Counted",
+      "perIp": "per visitor",
+      "perRoute": "in total",
+      "windowHint": "A window with a unit in whole seconds, e.g. 30s, 10m, 1h, at most 1d. The local policy’s limits always apply as well.",
+      "refused": "Moat did not save the route: the marked fields hold values the gate would refuse.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "pathPlaceholder": "/newsletter",
+      "upstreamPathPlaceholder": "/crm/v3/objects/contacts",
+      "maxBodySizePlaceholder": "64KiB",
+      "originsPlaceholder": "https://www.example.ch"
     }
   },
   "help": {
@@ -330,9 +372,10 @@
         "purpose": "A route is an address on your gate that forwards exactly one kind of request to an upstream. The gate refuses everything else.",
         "where": "Project › Routes",
         "steps": {
-          "write": "Add the route to moat.yaml: method, path, upstream and target path.",
+          "write": "Under “Routes”, click “New route” and fill in method, path, upstream and target path. “Edit” changes a route, “Switch off” disables it without deleting it. If you prefer your editor, write it into moat.yaml directly.",
           "recipe": "For common cases there are recipes, for example the newsletter sign-up with HubSpot.",
-          "origins": "If another website calls the route in the browser, list it under `origins`. Without an entry, browsers refuse other websites.",
+          "origins": "If another website calls the route in a browser, add it under “Allowed websites” (in moat.yaml: `origins`). Without an entry, browsers refuse other websites.",
+          "bundle": "A new or changed route applies on the gate only with the next bundle: `moat build <gate>`, upload it and accept it. For now, upstreams are changed in moat.yaml.",
           "check": "Under “Routes” you see every route as the gate checks it: path, target, allowed websites, rate limit and maximum size."
         },
         "tips": {
