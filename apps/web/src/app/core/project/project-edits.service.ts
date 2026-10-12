@@ -15,7 +15,7 @@ export type EditOutcome =
   | {
       readonly kind: 'error';
       readonly code: EditErrorCode;
-      /** For `value_invalid`: the route's refused fields, e.g. `path`, `origins.1`. */
+      /** `value_invalid`: the refused fields (`path`, `auth.name`); `upstream_in_use`: the calling routes. */
       readonly fields: readonly string[];
     };
 

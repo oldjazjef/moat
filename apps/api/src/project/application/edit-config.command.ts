@@ -9,7 +9,10 @@ export type EditConfigResult =
   | {
       readonly status: 'refused';
       readonly code: ConfigEditRefusal;
-      /** For `value_invalid`: the route's refused fields, e.g. `path`, `origins.1`. */
+      /**
+       * For `value_invalid`: the refused fields, e.g. `path`, `origins.1`, `auth.name`; for
+       * `upstream_in_use`: the routes that call the upstream.
+       */
       readonly fields?: readonly string[];
     };
 

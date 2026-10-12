@@ -31,6 +31,8 @@ export type ConfigEditCode =
   | 'route_unknown'
   | 'upstream_unknown'
   | 'route_conflict'
+  | 'upstream_exists'
+  | 'upstream_in_use'
   | 'value_invalid';
 
 export class ConfigEditError extends Error {
@@ -39,7 +41,10 @@ export class ConfigEditError extends Error {
   constructor(
     readonly code: ConfigEditCode,
     message: string,
-    /** For `value_invalid`: the route's fields that were refused, e.g. `path`, `origins.1`. */
+    /**
+     * For `value_invalid`: the route's or upstream's fields that were refused, e.g. `path`,
+     * `origins.1`, `auth.name`. For `upstream_in_use`: the routes that call the upstream.
+     */
     readonly fields: readonly string[] = [],
   ) {
     super(message);
@@ -296,11 +301,16 @@ function secretsOf(config: MoatConfig): string[] {
 }
 
 /**
- * The text of an edited route, checked like readProject checks it: the loader (field by field,
- * reported as `value_invalid` with the route's fields), then the compiled config a bundle would
- * carry.
+ * The text of an edited route or upstream, checked like readProject checks it: the loader (field by
+ * field, reported as `value_invalid` with the entry's fields), then the compiled config a bundle
+ * would carry.
  */
-function checkedRoute(doc: Document, route: string): string {
+function checkedEntry(
+  doc: Document,
+  section: 'routes' | 'upstreams',
+  name: string,
+): string {
+  const what = `${section === 'routes' ? 'route' : 'upstream'} "${name}"`;
   let config: MoatConfig;
   let text: string;
   try {
@@ -309,12 +319,12 @@ function checkedRoute(doc: Document, route: string): string {
   } catch (error) {
     if (!(error instanceof ConfigError)) throw error;
     const fields = error.issues
-      .filter((issue) => issue.path[0] === 'routes' && issue.path[1] === route)
+      .filter((issue) => issue.path[0] === section && issue.path[1] === name)
       .map((issue) => issue.path.slice(2).join('.'))
       .filter((field) => field !== '');
     throw new ConfigEditError(
       'value_invalid',
-      `route "${route}": ${error.message}`,
+      `${what}: ${error.message}`,
       fields,
     );
   }
@@ -322,7 +332,7 @@ function checkedRoute(doc: Document, route: string): string {
     compileConfig(config, secretsOf(config));
   } catch (error) {
     if (!(error instanceof MoatRejection)) throw error;
-    throw new ConfigEditError('value_invalid', `route "${route}" is invalid`);
+    throw new ConfigEditError('value_invalid', `${what} is invalid`);
   }
   return text;
 }
@@ -386,7 +396,7 @@ export function setRoute(
   if (input.origins === undefined || input.origins.length === 0)
     deleteIn(doc, at('origins'));
   else setList(doc, at('origins'), input.origins);
-  return checkedRoute(doc, route);
+  return checkedEntry(doc, 'routes', route);
 }
 
 /** Removes a route. */
@@ -410,5 +420,93 @@ export function setRouteEnabled(
     throw new ConfigEditError('route_unknown', `no route "${route}"`);
   const doc = document(text);
   setEnabled(doc, ['routes', route], enabled);
+  return checked(doc);
+}
+
+/** How the gate authenticates to an upstream; `secret` names a sealed secret, never a value. */
+export type UpstreamAuthInput =
+  | { readonly type: 'bearer'; readonly secret: string }
+  | { readonly type: 'header'; readonly name: string; readonly secret: string }
+  | { readonly type: 'query'; readonly param: string; readonly secret: string };
+
+/** An upstream as Moat Desktop edits it. */
+export interface UpstreamInput {
+  /** `https://host[:port]`, no path. */
+  readonly origin: string;
+  /** Absent = the key is removed (the gate calls the API without credentials). */
+  readonly auth?: UpstreamAuthInput;
+  /** e.g. "10s"; absent = the default, and the key is removed. */
+  readonly timeout?: string;
+}
+
+/** The keys of each auth type, in the order they are written. */
+const AUTH_KEYS = {
+  bearer: ['secret'],
+  header: ['name', 'secret'],
+  query: ['param', 'secret'],
+} as const;
+
+/**
+ * Adds the upstream `upstream` (`create`) or changes an existing one. As setRoute, only changed
+ * values are written. The secret is a name only: sealing it stays with the CLI (SEC-37).
+ */
+export function setUpstream(
+  text: string,
+  upstream: string,
+  input: UpstreamInput,
+  mode: 'create' | 'update',
+): string {
+  checkName('upstream name', upstream);
+  if (input.auth !== undefined) checkName('secret name', input.auth.secret);
+  const exists = Object.hasOwn(loadMoatYaml(text).upstreams, upstream);
+  if (mode === 'create' && exists)
+    throw new ConfigEditError(
+      'upstream_exists',
+      `upstream "${upstream}" exists`,
+    );
+  if (mode === 'update' && !exists)
+    throw new ConfigEditError('upstream_unknown', `no upstream "${upstream}"`);
+
+  const doc = document(text);
+  const at = (...keys: string[]) => ['upstreams', upstream, ...keys];
+  if (!exists) setIn(doc, at(), emptyMap());
+  setScalar(doc, at('origin'), input.origin, true);
+  const auth = input.auth;
+  if (auth === undefined) deleteIn(doc, at('auth'));
+  else {
+    const written = doc.getIn(at('auth', 'type'));
+    if (written !== auth.type || !isMap(doc.getIn(at('auth'), true)))
+      setIn(doc, at('auth'), emptyMap());
+    setScalar(doc, at('auth', 'type'), auth.type, false);
+    for (const key of AUTH_KEYS[auth.type])
+      setScalar(
+        doc,
+        at('auth', key),
+        (auth as Record<string, string>)[key] ?? '',
+        false,
+      );
+  }
+  if (input.timeout === undefined) deleteIn(doc, at('timeout'));
+  else setScalar(doc, at('timeout'), input.timeout, true, sameDuration);
+  return checkedEntry(doc, 'upstreams', upstream);
+}
+
+/** Removes an upstream no route calls any more. */
+export function removeUpstream(text: string, upstream: string): string {
+  checkName('upstream name', upstream);
+  const config = loadMoatYaml(text);
+  if (!Object.hasOwn(config.upstreams, upstream))
+    throw new ConfigEditError('upstream_unknown', `no upstream "${upstream}"`);
+  const callers = Object.entries(config.routes)
+    .filter(([, route]) => route.upstream === upstream)
+    .map(([name]) => name);
+  if (callers.length > 0)
+    throw new ConfigEditError(
+      'upstream_in_use',
+      `upstream "${upstream}" is called by route ${callers.join(', ')}`,
+      callers,
+    );
+  const doc = document(text);
+  deleteIn(doc, ['upstreams', upstream]);
   return checked(doc);
 }

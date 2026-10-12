@@ -209,6 +209,83 @@ describe('authorization matrix (local mode)', () => {
       error: 'value_invalid',
       fields: ['upstreamPath'],
     });
+    // SEC-31: an upstream carries a secret's name only; a field for its value is refused.
+    const upstream = {
+      origin: 'https://api.example.ch',
+      auth: { type: 'bearer', secret: 'example-token' },
+    };
+    for (const body of [
+      { base, op: 'addUpstream', upstream: 'example' },
+      {
+        base,
+        op: 'addUpstream',
+        upstream: 'example',
+        upstreamDefinition: {
+          ...upstream,
+          auth: { ...upstream.auth, value: 'sk-live-1' },
+        },
+      },
+      {
+        base,
+        op: 'addUpstream',
+        upstream: 'example',
+        upstreamDefinition: {
+          ...upstream,
+          auth: { ...upstream.auth, name: 'X-Key' },
+        },
+      },
+      {
+        base,
+        op: 'addUpstream',
+        upstream: 'example',
+        upstreamDefinition: {
+          ...upstream,
+          auth: { type: 'header', secret: 'a' },
+        },
+      },
+      {
+        base,
+        op: 'addUpstream',
+        upstream: 'example',
+        upstreamDefinition: {
+          ...upstream,
+          auth: { type: 'basic', secret: 'a' },
+        },
+      },
+      {
+        base,
+        op: 'removeUpstream',
+        upstream: 'hubspot',
+        upstreamDefinition: upstream,
+      },
+      {
+        base,
+        op: 'addUpstream',
+        route: 'contact',
+        upstreamDefinition: upstream,
+      },
+    ]) {
+      expect((await call('POST', url, 'desktop', body)).status).toBe(400);
+    }
+    // SEC-41: HTTPS only.
+    const plain = await call('POST', url, 'desktop', {
+      base,
+      op: 'addUpstream',
+      upstream: 'example',
+      upstreamDefinition: { origin: 'http://api.example.ch' },
+    });
+    expect(plain.status).toBe(422);
+    expect(JSON.parse(plain.body)).toEqual({
+      error: 'value_invalid',
+      fields: ['origin'],
+    });
+    const inUse = await call('POST', url, 'desktop', {
+      base,
+      op: 'removeUpstream',
+      upstream: 'hubspot',
+    });
+    expect(inUse.status).toBe(422);
+    expect(JSON.parse(inUse.body)).toMatchObject({ error: 'upstream_in_use' });
     const other = `/api/projects/${'x'.repeat(22)}/config/edits`;
     const edit = { base, op: 'lockGate', gate: 'site' };
     expect((await call('POST', other, 'desktop', edit)).status).toBe(404);

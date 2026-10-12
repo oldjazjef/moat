@@ -4,11 +4,14 @@ import {
   assignGate,
   ConfigEditError,
   removeRoute,
+  removeUpstream,
   type RouteInput,
   setEnvironmentEnabled,
   setGateEnabled,
   setRoute,
   setRouteEnabled,
+  setUpstream,
+  type UpstreamInput,
 } from './edit';
 import { gateLockState } from './lock';
 import { ConfigError, loadMoatYaml } from './yaml';
@@ -363,5 +366,147 @@ describe('route edits', () => {
     const removed = removeRoute(site, 'newsletter');
     expect(loadMoatYaml(removed).routes).toEqual({});
     expect(removed).toContain('upstreams:');
+  });
+});
+
+const hubspot: UpstreamInput = {
+  origin: 'https://api.hubapi.com',
+  auth: { type: 'bearer', secret: 'hubspot-token' },
+};
+
+describe('upstream edits', () => {
+  it('changes nothing when every value is the same', () => {
+    expect(setUpstream(site, 'hubspot', hubspot, 'update')).toBe(site);
+  });
+
+  it('adds an upstream after the others, quoted as the file does', () => {
+    const text = setUpstream(
+      site,
+      'mailchimp',
+      {
+        origin: 'https://us21.api.mailchimp.com',
+        auth: { type: 'header', name: 'X-Api-Key', secret: 'mailchimp-key' },
+        timeout: '5s',
+      },
+      'create',
+    );
+    expect(text).toContain(`      secret: hubspot-token
+  mailchimp:
+    origin: 'https://us21.api.mailchimp.com'
+    auth:
+      type: header
+      name: X-Api-Key
+      secret: mailchimp-key
+    timeout: '5s'
+routes:
+`);
+    expect(Object.keys(loadMoatYaml(text).upstreams)).toEqual([
+      'hubspot',
+      'mailchimp',
+    ]);
+  });
+
+  it('switches the auth type without leftover keys, and removes auth and timeout', () => {
+    const query = setUpstream(
+      site,
+      'hubspot',
+      { ...hubspot, auth: { type: 'query', param: 'hapikey', secret: 'key' } },
+      'update',
+    );
+    expect(loadMoatYaml(query).upstreams['hubspot']?.auth).toEqual({
+      type: 'query',
+      param: 'hapikey',
+      secret: 'key',
+    });
+    const bare = setUpstream(
+      query,
+      'hubspot',
+      { origin: 'https://api.hubapi.com' },
+      'update',
+    );
+    expect(bare).not.toContain('auth');
+    expect(loadMoatYaml(bare).upstreams['hubspot']).toEqual({
+      origin: 'https://api.hubapi.com',
+    });
+  });
+
+  it('keeps the timeout as written when it means the same', () => {
+    const text = setUpstream(
+      site,
+      'hubspot',
+      { ...hubspot, timeout: '10s' },
+      'update',
+    );
+    expect(
+      setUpstream(
+        text,
+        'hubspot',
+        { ...hubspot, timeout: '10000ms' },
+        'update',
+      ),
+    ).toBe(text);
+  });
+
+  it('SEC-41/SEC-43: refuses a plain-HTTP origin, a path and a reserved auth header, naming the fields', () => {
+    const attempt = (input: UpstreamInput) => {
+      try {
+        setUpstream(site, 'hubspot', input, 'update');
+      } catch (error) {
+        if (error instanceof ConfigEditError) return [error.code, error.fields];
+      }
+      return ['none'];
+    };
+    expect(attempt({ origin: 'http://api.hubapi.com' })).toEqual([
+      'value_invalid',
+      ['origin'],
+    ]);
+    expect(attempt({ origin: 'https://api.hubapi.com/crm' })).toEqual([
+      'value_invalid',
+      ['origin'],
+    ]);
+    expect(
+      attempt({
+        ...hubspot,
+        auth: { type: 'header', name: 'Host', secret: 'hubspot-token' },
+      }),
+    ).toEqual(['value_invalid', ['auth.name']]);
+    expect(attempt({ ...hubspot, timeout: '5m' })).toEqual([
+      'value_invalid',
+      ['timeout'],
+    ]);
+  });
+
+  it('refuses an existing or unknown upstream, a bad secret name and removing one a route calls', () => {
+    const fail = (run: () => string) => {
+      try {
+        run();
+      } catch (error) {
+        if (error instanceof ConfigEditError) return [error.code, error.fields];
+      }
+      return ['none'];
+    };
+    expect(fail(() => setUpstream(site, 'hubspot', hubspot, 'create'))).toEqual(
+      ['upstream_exists', []],
+    );
+    expect(fail(() => setUpstream(site, 'stripe', hubspot, 'update'))).toEqual([
+      'upstream_unknown',
+      [],
+    ]);
+    expect(
+      fail(() =>
+        setUpstream(
+          site,
+          'hubspot',
+          { ...hubspot, auth: { type: 'bearer', secret: 'sk_live_x' } },
+          'update',
+        ),
+      ),
+    ).toEqual(['name_invalid', []]);
+    expect(fail(() => removeUpstream(site, 'hubspot'))).toEqual([
+      'upstream_in_use',
+      ['newsletter'],
+    ]);
+    const free = removeUpstream(removeRoute(site, 'newsletter'), 'hubspot');
+    expect(loadMoatYaml(free).upstreams).toEqual({});
   });
 });

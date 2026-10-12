@@ -30,6 +30,9 @@ const DYNAMIC_KEYS = [
   ...CONFIG_ISSUE_CODES.map((code) => `config.errors.${code}`),
   ...EDIT_ERROR_CODES.map((code) => `edit.errors.${code}`),
   ...AUTH_TYPES.map((type) => `routes.auth.${type}`),
+  ...['none', ...AUTH_TYPES].map(
+    (type) => `routes.upstreamForm.authTypes.${type}`,
+  ),
   ...['ip', 'route'].map((per) => `routes.rate.${per}`),
   ...PROJECT_TABS.map((tab) => `projects.tabs.${tab}`),
 ];

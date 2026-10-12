@@ -20,13 +20,15 @@ export interface UpstreamRow {
   readonly name: string;
   readonly upstream: CompiledUpstream;
   readonly timeout: ReturnType<typeof durationParts>;
+  /** The routes that call it: it can be removed only when there are none. */
+  readonly callers: readonly string[];
 }
 
 /**
  * Routes (FR-10 ff.): every route of the compiled moat.yaml as the gate enforces it — method and
  * exact path, the upstream it forwards to, browser origins (FR-15), rate limit (FR-30), body
- * limit — and the upstreams with the secret each one uses (by name only). Routes are added,
- * changed, switched off and removed here (ProjectEdits); upstreams still in moat.yaml.
+ * limit — and the upstreams with the secret each one uses (by name only). Routes and upstreams
+ * are added, changed and removed here (ProjectEdits); secrets are sealed with the CLI.
  */
 @Injectable()
 export class RoutesPageService {
@@ -37,6 +39,9 @@ export class RoutesPageService {
   readonly editing = signal<RouteRow | null | undefined>(undefined);
   /** «Löschen» asks once: the route waiting for the second click. */
   readonly confirmingRemove = signal<string | null>(null);
+  /** The open upstream form: «Neuer Upstream» (`null`) or the one being changed. */
+  readonly editingUpstream = signal<UpstreamRow | null | undefined>(undefined);
+  readonly confirmingUpstreamRemove = signal<string | null>(null);
 
   private readonly config = computed(() => {
     const config = this.resource.config();
@@ -73,6 +78,10 @@ export class RoutesPageService {
         name,
         upstream,
         timeout: durationParts(upstream.timeoutMs / 1000),
+        callers: Object.entries(config.routes)
+          .filter(([, route]) => route.upstream === name)
+          .map(([route]) => route)
+          .sort((a, b) => a.localeCompare(b)),
       }));
   });
 
@@ -83,7 +92,30 @@ export class RoutesPageService {
   open(row: RouteRow | null): void {
     this.edits.dismiss();
     this.confirmingRemove.set(null);
+    this.editingUpstream.set(undefined);
     this.editing.set(row);
+  }
+
+  openUpstream(row: UpstreamRow | null): void {
+    this.edits.dismiss();
+    this.confirmingUpstreamRemove.set(null);
+    this.editing.set(undefined);
+    this.editingUpstream.set(row);
+  }
+
+  closeUpstream(): void {
+    this.editingUpstream.set(undefined);
+  }
+
+  async removeUpstream(row: UpstreamRow): Promise<void> {
+    if (row.callers.length > 0) return;
+    if (this.confirmingUpstreamRemove() !== row.name) {
+      this.confirmingUpstreamRemove.set(row.name);
+      return;
+    }
+    this.confirmingUpstreamRemove.set(null);
+    if (this.editingUpstream()?.name === row.name) this.closeUpstream();
+    await this.edits.run({ op: 'removeUpstream', upstream: row.name });
   }
 
   close(): void {

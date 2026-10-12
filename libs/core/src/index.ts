@@ -73,12 +73,16 @@ export {
   assignGate,
   ConfigEditError,
   removeRoute,
+  removeUpstream,
   setEnvironmentEnabled,
   setGateEnabled,
   setRoute,
   setRouteEnabled,
+  setUpstream,
   type ConfigEditCode,
   type RouteInput,
+  type UpstreamAuthInput,
+  type UpstreamInput,
 } from './config/edit';
 export {
   parsePolicy,

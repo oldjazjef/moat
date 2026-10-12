@@ -13,7 +13,12 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { METHODS, type RouteInput } from '@moat/core';
+import {
+  METHODS,
+  type RouteInput,
+  type UpstreamAuthInput,
+  type UpstreamInput,
+} from '@moat/core';
 import {
   CONFIG_EDIT_OPS,
   type ConfigEdit,
@@ -79,6 +84,48 @@ export class RouteDto {
   rateLimit?: RateLimitDto;
 }
 
+export const AUTH_TYPES = ['bearer', 'header', 'query'] as const;
+
+/** `secret` names a sealed secret; the value never travels here (SEC-31). */
+export class UpstreamAuthDto {
+  @IsIn(AUTH_TYPES)
+  type!: (typeof AUTH_TYPES)[number];
+
+  @IsString()
+  @Matches(NAME)
+  secret!: string;
+
+  /** The header, for `type: header`. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  name?: string;
+
+  /** The query parameter, for `type: query`. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  param?: string;
+}
+
+/** An upstream as the desktop's form sends it; the core's schema decides the values. */
+export class UpstreamDto {
+  @IsString()
+  @MaxLength(MAX_VALUE)
+  origin!: string;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => UpstreamAuthDto)
+  auth?: UpstreamAuthDto;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(16)
+  timeout?: string;
+}
+
 /** `POST /api/projects/:id/config/edits`: one edit, based on the moat.yaml the window showed. */
 export class ConfigEditDto {
   /** ProjectView.configHash of the version the edit is based on. */
@@ -109,6 +156,17 @@ export class ConfigEditDto {
   @ValidateNested()
   @Type(() => RouteDto)
   definition?: RouteDto;
+
+  @IsOptional()
+  @IsString()
+  @Matches(NAME)
+  upstream?: string;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => UpstreamDto)
+  upstreamDefinition?: UpstreamDto;
 }
 
 /** Plain data for the core: no class instances, no keys the DTO does not name. */
@@ -134,14 +192,39 @@ function routeInput(dto: RouteDto): RouteInput {
   };
 }
 
+/** The auth the DTO describes, or null when it has a key its type does not take or lacks one. */
+function authInput(dto: UpstreamAuthDto): UpstreamAuthInput | null {
+  const { type, secret, name, param } = dto;
+  if (type === 'bearer')
+    return name === undefined && param === undefined ? { type, secret } : null;
+  if (type === 'header')
+    return name !== undefined && param === undefined
+      ? { type, name, secret }
+      : null;
+  return param !== undefined && name === undefined
+    ? { type, param, secret }
+    : null;
+}
+
+function upstreamInput(dto: UpstreamDto): UpstreamInput | null {
+  const auth = dto.auth === undefined ? undefined : authInput(dto.auth);
+  if (auth === null) return null;
+  return {
+    origin: dto.origin,
+    ...(auth === undefined ? {} : { auth }),
+    ...(dto.timeout === undefined ? {} : { timeout: dto.timeout }),
+  };
+}
+
 /**
  * The edit the DTO describes, or null when a field its operation needs is missing or one it does
  * not take is present (400).
  */
 export function toConfigEdit(dto: ConfigEditDto): ConfigEdit | null {
   const { op, environment, gate, route, definition } = dto;
+  const { upstream, upstreamDefinition } = dto;
   const only = (...given: readonly unknown[]) =>
-    [environment, gate, route, definition].filter(
+    [environment, gate, route, definition, upstream, upstreamDefinition].filter(
       (value) => value !== undefined,
     ).length === given.length && given.every((value) => value !== undefined);
   switch (op) {
@@ -171,5 +254,20 @@ export function toConfigEdit(dto: ConfigEditDto): ConfigEdit | null {
     case 'enableRoute':
     case 'disableRoute':
       return route !== undefined && only(route) ? { op, route } : null;
+    case 'addUpstream':
+    case 'updateUpstream': {
+      if (
+        upstream === undefined ||
+        upstreamDefinition === undefined ||
+        !only(upstream, upstreamDefinition)
+      )
+        return null;
+      const input = upstreamInput(upstreamDefinition);
+      return input === null
+        ? null
+        : { op, upstream, upstreamDefinition: input };
+    }
+    case 'removeUpstream':
+      return upstream !== undefined && only(upstream) ? { op, upstream } : null;
   }
 }

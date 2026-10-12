@@ -28,7 +28,7 @@ The gate's own local policy always wins over anything it receives.
 > **Status (October 2026):** early development. Working today: Moat Core, the `moat` CLI, the PHP
 > gate (signed bundles, exact routing, SSRF guard, CORS, rate limits, locking a gate or a whole
 > environment) and Moat Desktop (project list, a view of each project, and editing environments,
-> locks and routes). Not built yet: Moat Cloud, editing upstreams and signing in the desktop,
+> locks, routes and upstreams). Not built yet: Moat Cloud, sealing secrets and signing in the desktop,
 > quotas and budgets, the setup wizard. The full target is in
 > [ANFORDERUNGEN.md](ANFORDERUNGEN.md) (German).
 
@@ -140,12 +140,19 @@ path at the upstream, maximum size, allowed websites (one per line) and an optio
 **Edit** opens the same form for an existing route, **Switch off** disables a route without
 deleting it, and **Delete** asks once more before it removes the route. Values are checked by the
 same schema as every `moat.yaml`: a value the gate would refuse (a path with `..`, an `http://`
-origin, a size above 10 MiB) is not saved, and the form marks the field. Upstreams are still
-edited in `moat.yaml`.
+origin, a size above 10 MiB) is not saved, and the form marks the field.
+
+**New upstream** adds the API the gate calls: its HTTPS address (host only, no path), an optional
+timeout and how the gate authenticates (bearer token, a custom header or a query parameter). The form
+takes only the **name** of the secret; there is no field for its value. Seal the value for each
+gate in the terminal with `moat secret seal <gate> <name>`. An upstream that routes still call
+cannot be deleted; the row names those routes.
 
 ![Routes and upstreams](docs/screenshots/moat-desktop-routes.webp)
 
 ![Editing a route](docs/screenshots/moat-desktop-route-edit.webp)
+
+![Adding an upstream](docs/screenshots/moat-desktop-upstream-edit.webp)
 
 ### Help
 
