@@ -4,7 +4,8 @@
  * (`pnpm start:desktop`) and what electron-builder packages (as lazy-koins):
  *
  *   main.js, preload.js   the main process + preload, bundled here with esbuild
- *   sign-preload.js, sign/ the signing dialog (DT-15): its preload and its static page
+ *   sign-preload.js,      the signing (DT-15) and seal dialogs: their preloads and static pages
+ *   seal-preload.js, dialogs/
  *   api/main.js           the NestJS API as a library (`nx run api:build`)
  *   web/                  the Angular build (`nx run web:build:desktop`), served via app://
  *   package.json          name/version/main + the API's runtime dependencies
@@ -63,6 +64,10 @@ await esbuild.build({
       repoRoot,
       'apps/desktop/src/preload/sign-preload.ts',
     ),
+    'seal-preload': path.join(
+      repoRoot,
+      'apps/desktop/src/preload/seal-preload.ts',
+    ),
   },
   outdir: out,
   bundle: true,
@@ -74,10 +79,12 @@ await esbuild.build({
   logLevel: 'warning',
 });
 
-// --- the signing dialog's page (no script: its preload renders it) ---
-cpSync(path.join(repoRoot, 'apps/desktop/src/sign'), path.join(out, 'sign'), {
-  recursive: true,
-});
+// --- the dialogs' pages (no script: their preloads render them) ---
+cpSync(
+  path.join(repoRoot, 'apps/desktop/src/dialogs'),
+  path.join(out, 'dialogs'),
+  { recursive: true },
+);
 
 // --- API, web ---
 cpSync(apiDist, path.join(out, 'api'), {

@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
-import { HlmBadge } from '@moat/ui/badge';
 import { HlmButtonImports } from '@moat/ui/button';
 import { HlmCardImports } from '@moat/ui/card';
 import { HlmInputImports } from '@moat/ui/input';
 import { HelpLink } from '../../../help/components/help-link';
 import { LockBadge } from '../../../../shared/components/lock-badge';
 import { RichText } from '../../../../shared/components/rich-text';
+import { RowActions } from '../../../../shared/components/row-actions';
 import { TrustModeBadge } from '../../../../shared/components/trust-mode-badge';
 import { GatesPageService } from './gates-page.service';
 
@@ -15,10 +15,10 @@ import { GatesPageService } from './gates-page.service';
   imports: [
     TranslatePipe,
     RichText,
+    RowActions,
     HelpLink,
     TrustModeBadge,
     LockBadge,
-    HlmBadge,
     ...HlmButtonImports,
     ...HlmCardImports,
     ...HlmInputImports,

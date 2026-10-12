@@ -27,4 +27,15 @@ export abstract class ProjectFilesPort {
     version: number,
     text: string,
   ): void;
+
+  /**
+   * Writes a sealed secret to `secrets/<gate>/<name>.json`, replacing the one there (atomically,
+   * never through a symbolic link). Ciphertext only (SEC-31). Throws when it cannot be written.
+   */
+  abstract writeSecret(
+    folder: string,
+    gate: string,
+    name: string,
+    text: string,
+  ): void;
 }

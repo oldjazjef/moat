@@ -4,9 +4,32 @@ import type { GateState } from '../../../../core/api/project.types';
 import {
   type BundleSignResult,
   desktopBridge,
+  type SecretSealResult,
 } from '../../../../core/desktop/desktop-bridge';
+import type { RowAction } from '../../../../shared/components/row-actions';
 import { ProjectEdits } from '../../../../core/project/project-edits.service';
 import { ProjectResource } from '../../../../core/project/project-resource.service';
+
+/** Every seal outcome with a text (`gates.sealResult.<outcome>`); a cancel says nothing. */
+export const SEAL_OUTCOMES = [
+  'sealed',
+  'config_missing',
+  'config_invalid',
+  'gate_unknown',
+  'secret_unknown',
+  'secret_unreadable',
+  'not_writable',
+  'failed',
+] as const;
+
+/** One secret of a gate: what the config uses and what is sealed for the gate. */
+export interface SecretRow {
+  readonly name: string;
+  /** Sealed version, null when not sealed for this gate yet. */
+  readonly version: number | null;
+  /** moat.yaml uses it (an upstream sends it). */
+  readonly used: boolean;
+}
 
 /** Every outcome with a text (`gates.signResult.<outcome>`); a cancel says nothing. */
 export const SIGN_OUTCOMES = [
@@ -38,6 +61,16 @@ export class GatesPageService {
 
   /** Only Moat Desktop signs (with the key file, in its own dialog). */
   readonly canSign = this.bridge !== null;
+  /** Only Moat Desktop seals (in its own window: the page never sees a value). */
+  readonly canSeal = this.bridge !== null;
+  /** `<gate>/<secret>` whose seal window is open. */
+  readonly sealing = signal<string | null>(null);
+  readonly sealed = signal<{
+    readonly gate: string;
+    readonly name: string;
+    readonly result: Exclude<SecretSealResult, { status: 'cancelled' }>;
+  } | null>(null);
+
   /** The gate whose signing dialog is open. */
   readonly signing = signal<string | null>(null);
   /** The last signing outcome worth saying, by gate (a cancel says nothing). */
@@ -134,5 +167,68 @@ export class GatesPageService {
     if (result.status === 'refused')
       return { gate, secrets: result.secrets.join(', ') };
     return { gate };
+  }
+
+  /** What the config uses and what is sealed, by name; names only (SEC-31). */
+  secretRows(gate: ValidGate): readonly SecretRow[] {
+    const config = this.resource.config();
+    const used = new Set(config?.status === 'valid' ? config.secretNames : []);
+    const versions = new Map(
+      gate.secrets.map((secret) => [secret.name, secret.secretVersion]),
+    );
+    return [...new Set([...used, ...versions.keys()])].sort().map((name) => ({
+      name,
+      version: versions.get(name) ?? null,
+      used: used.has(name),
+    }));
+  }
+
+  /** One action, so a plain button at the row's end: seal, or seal a new version. */
+  secretActions(row: SecretRow): readonly RowAction[] {
+    return [
+      {
+        id: 'seal',
+        labelKey: row.version === null ? 'gates.seal' : 'gates.reseal',
+      },
+    ];
+  }
+
+  async seal(gate: ValidGate, name: string): Promise<void> {
+    if (this.bridge === null || this.sealing() !== null) return;
+    this.sealing.set(`${gate.name}/${name}`);
+    this.sealed.set(null);
+    let result: SecretSealResult;
+    try {
+      result = await this.bridge.secret.seal(
+        this.resource.id(),
+        gate.name,
+        name,
+        this.translate.getCurrentLang() ?? '',
+      );
+    } catch {
+      result = { status: 'failed' };
+    } finally {
+      this.sealing.set(null);
+    }
+    if (result.status === 'cancelled') return;
+    this.sealed.set({ gate: gate.name, name, result });
+    if (result.status === 'sealed' || result.status === 'refused')
+      this.resource.reload();
+  }
+
+  sealText(result: Exclude<SecretSealResult, { status: 'cancelled' }>): string {
+    return result.status === 'refused'
+      ? `gates.sealResult.${result.code}`
+      : `gates.sealResult.${result.status}`;
+  }
+
+  sealParams(
+    result: Exclude<SecretSealResult, { status: 'cancelled' }>,
+    gate: string,
+    name: string,
+  ): Record<string, string | number> {
+    return result.status === 'sealed'
+      ? { gate, name, version: result.secretVersion }
+      : { gate, name };
   }
 }

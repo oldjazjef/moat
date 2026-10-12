@@ -17,6 +17,7 @@ import {
   IPC,
   PROJECT_ID,
   type ProjectAddResult,
+  type SecretSealResult,
 } from '../shared/bridge';
 import { type RunningApi, startApi } from './api-host';
 import { readConfig, updateConfig } from './lib/config';
@@ -27,6 +28,8 @@ import {
   systemLocale,
 } from './lib/messages';
 import { PassphraseVault, SigningSession } from './lib/signing';
+import { SealingSession } from './lib/sealing';
+import { registerSealDialogIpc, showSealDialog } from './seal-window';
 import { registerSignDialogIpc, showSignDialog } from './sign-window';
 import { APP_ORIGIN, isAppUrl } from './lib/web-protocol';
 import { handleAppScheme, registerAppScheme } from './protocol';
@@ -232,6 +235,48 @@ function registerIpc(): void {
     },
   );
   registerSignDialogIpc();
+  // The value of a secret is typed only in the main process's seal window, never in the page.
+  ipcMain.handle(
+    IPC.secretSeal,
+    async (
+      event,
+      id: unknown,
+      gate: unknown,
+      name: unknown,
+      locale: unknown,
+    ): Promise<SecretSealResult> => {
+      if (!fromApp(event) || mainWindow === null || api === null)
+        return { status: 'failed' };
+      if (typeof id !== 'string' || !PROJECT_ID.test(id))
+        return { status: 'failed' };
+      if (typeof gate !== 'string' || !GATE_NAME.test(gate))
+        return { status: 'failed' };
+      if (typeof name !== 'string' || !GATE_NAME.test(name))
+        return { status: 'failed' };
+      const text = MESSAGES[pageLocale(locale, app.getLocale())];
+      const running = api;
+      const session = new SealingSession({
+        texts: text.sealDialog,
+        prepare: () => running.prepareSeal(id, gate, name),
+        seal: (digest, value) =>
+          running.sealSecret(id, gate, name, digest, value),
+      });
+      try {
+        const opened = await session.open();
+        if ('done' in opened) return opened.done;
+        return await showSealDialog({
+          parent: mainWindow,
+          appDir,
+          title: text.sealDialog.title,
+          session,
+        });
+      } catch {
+        console.error('[desktop] sealing failed');
+        return { status: 'failed' };
+      }
+    },
+  );
+  registerSealDialogIpc();
 }
 
 /**

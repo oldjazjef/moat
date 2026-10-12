@@ -1,7 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController } from '@angular/common/http/testing';
 import type { ProjectView } from '../../../../core/api/project.types';
-import type { BundleSignResult } from '../../../../core/desktop/desktop-bridge';
+import type {
+  BundleSignResult,
+  SecretSealResult,
+} from '../../../../core/desktop/desktop-bridge';
 import {
   expectEdit,
   openProjectTab,
@@ -19,7 +22,15 @@ describe('GatesPage', () => {
     expect(el.querySelectorAll('[data-gate]')).toHaveLength(1);
     expect(text(el, '[data-fingerprint]')).toBe('MOAT-ABCD-EFGH-IJKL');
     expect(text(el, '[data-trust-mode]')).toBe('Signiert');
-    expect(text(el, '[data-secrets]')).toBe('hubspot-token (v2)');
+    expect(text(el, '[data-secret-name="hubspot-token"]')).toBe(
+      'hubspot-token Versiegelt, Version 2',
+    );
+    // Sealing happens in Moat Desktop only.
+    expect(
+      el.querySelector(
+        '[data-secret] [data-row-actions], [data-secret] [data-action]',
+      ),
+    ).toBeNull();
     expect(text(el, '[data-bundle]')).toBe('Version 3');
     expect(el.querySelector('[data-missing]')).toBeNull();
     expect(text(el, '[data-environment]')).toBe('production');
@@ -132,6 +143,9 @@ describe('GatesPage', () => {
     };
     const { el } = await openProjectTab('gates', GatesPage, view);
     expect(text(el, '[data-missing]')).toContain('hubspot-token');
+    expect(
+      text(el, '[data-secret-name="hubspot-token"] [data-secret-state]'),
+    ).toBe('Noch nicht versiegelt');
     expect(text(el, '[data-bundle]')).toBe('Noch keins gebaut');
     expect(text(el, '[data-gate-invalid]')).toContain('gates/old.json');
   });
@@ -239,6 +253,7 @@ describe('GatesPage', () => {
         platform: 'linux',
         project: { add: vi.fn(), reveal: vi.fn() },
         bundle: { sign },
+        secret: { seal: vi.fn() },
       };
       return sign;
     };
@@ -292,6 +307,61 @@ describe('GatesPage', () => {
       expect(
         (el.querySelector('[data-bundle-sign]') as HTMLButtonElement).disabled,
       ).toBe(true);
+    });
+  });
+
+  describe('sealing in Moat Desktop', () => {
+    afterEach(() => delete window.moatDesktop);
+
+    const desktop = (result: SecretSealResult) => {
+      const seal = vi.fn().mockResolvedValue(result);
+      window.moatDesktop = {
+        platform: 'linux',
+        project: { add: vi.fn(), reveal: vi.fn() },
+        bundle: { sign: vi.fn() },
+        secret: { seal },
+      };
+      return seal;
+    };
+
+    it('asks the shell by names only, then says the bundle still has to be signed', async () => {
+      const seal = desktop({ status: 'sealed', secretVersion: 3 });
+      const { el, harness } = await openProjectTab('gates', GatesPage, PROJECT);
+      const button = el.querySelector(
+        '[data-secret-name="hubspot-token"] [data-action="seal"]',
+      ) as HTMLButtonElement;
+      expect(button.textContent?.trim()).toBe('Neu versiegeln');
+      button.click();
+      await new Promise((resolve) => setTimeout(resolve));
+      TestBed.inject(HttpTestingController)
+        .expectOne(`/api/projects/${PROJECT.id}`)
+        .flush(PROJECT);
+      await settle(harness);
+      expect(seal).toHaveBeenCalledWith(
+        PROJECT.id,
+        'site',
+        'hubspot-token',
+        'de-CH',
+      );
+      expect(text(el, '[data-seal-outcome]')).toBe(
+        'hubspot-token ist für site versiegelt (Version 3). Signiere ein neues Bundle, damit das Gate es erhält.',
+      );
+    });
+
+    it('offers «Versiegeln» for a missing secret and says nothing on cancel', async () => {
+      desktop({ status: 'cancelled' });
+      const { el, harness } = await openProjectTab(
+        'gates',
+        GatesPage,
+        withGate({ ...site(), secrets: [], missingSecrets: ['hubspot-token'] }),
+      );
+      const button = el.querySelector(
+        '[data-secret-name="hubspot-token"] [data-action="seal"]',
+      ) as HTMLButtonElement;
+      expect(button.textContent?.trim()).toBe('Versiegeln');
+      button.click();
+      await settle(harness);
+      expect(el.querySelector('[data-seal-outcome]')).toBeNull();
     });
   });
 });

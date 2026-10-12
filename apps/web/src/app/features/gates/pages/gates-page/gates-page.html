@@ -98,27 +98,63 @@
           </span>
           }
         </dd>
-        <dt>{{ 'gates.secrets' | translate }}</dt>
-        <dd>
-          @if (gate.secrets.length === 0) {
-          <span class="text-muted-foreground">
-            {{ 'gates.noSecrets' | translate }}
-          </span>
-          } @else {
-          <span class="flex flex-wrap gap-1" data-secrets>
-            @for (secret of gate.secrets; track secret.name) {
-            <span hlmBadge variant="secondary" class="font-mono font-normal">
-              {{ 'gates.secretVersion' | translate: { name: secret.name,
-              version: secret.secretVersion } }}
-            </span>
-            }
-          </span>
-          }
-        </dd>
       </dl>
       <p class="text-muted-foreground text-xs">
         {{ 'gates.fingerprintHint' | translate }}
       </p>
+      <div data-secrets>
+        <h3 class="mb-2 text-sm font-medium">
+          {{ 'gates.secrets' | translate }}
+        </h3>
+        @if (service.secretRows(gate); as rows) { @if (rows.length === 0) {
+        <p class="text-muted-foreground text-sm" data-no-secrets>
+          {{ 'gates.noSecrets' | translate }}
+        </p>
+        } @else {
+        <ul class="divide-border divide-y rounded-md border">
+          @for (row of rows; track row.name) {
+          <li
+            class="flex items-center gap-3 px-3 py-2"
+            data-secret
+            [attr.data-secret-name]="row.name"
+          >
+            <span class="mt-code text-sm">{{ row.name }}</span>
+            <span
+              class="flex-1 text-sm"
+              data-secret-state
+              [class.text-muted-foreground]="row.version !== null"
+              [class.mt-warning-text]="row.version === null"
+            >
+              @if (row.version === null) { {{ 'gates.secretMissing' | translate
+              }} } @else if (row.used) { {{ 'gates.secretSealed' | translate: {
+              version: row.version } }} } @else { {{ 'gates.secretUnused' |
+              translate: { version: row.version } }} }
+            </span>
+            @if (service.canSeal) {
+            <mt-row-actions
+              [actions]="service.secretActions(row)"
+              [name]="row.name"
+              [disabled]="service.sealing() !== null || service.signing() !== null"
+              (run)="service.seal(gate, row.name)"
+            />
+            }
+          </li>
+          }
+        </ul>
+        } } @if (service.sealed(); as sealed) { @if (sealed.gate === gate.name)
+        {
+        <p
+          class="mt-2 text-sm"
+          data-seal-outcome
+          [class.text-destructive]="sealed.result.status !== 'sealed'"
+          role="status"
+        >
+          <mt-rich-text
+            [text]="service.sealText(sealed.result) | translate: service.sealParams(sealed.result, gate.name, sealed.name)"
+          />
+        </p>
+        } }
+      </div>
       @if (gate.missingSecrets.length > 0) {
       <p class="mt-warning-text text-sm" data-missing>
         {{ 'gates.missing' | translate: { secrets: gate.missingSecrets.join(',

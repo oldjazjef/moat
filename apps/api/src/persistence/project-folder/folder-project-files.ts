@@ -30,4 +30,8 @@ export class FolderProjectFiles extends ProjectFilesPort {
       throw error;
     }
   }
+
+  writeSecret(folder: string, gate: string, name: string, text: string): void {
+    new FolderStorage(folder).replace(`secrets/${gate}/${name}.json`, text);
+  }
 }

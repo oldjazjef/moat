@@ -40,6 +40,7 @@ describe('ProjectWorkspace', () => {
       platform: 'linux',
       project: { add: vi.fn(), reveal },
       bundle: { sign: vi.fn() },
+      secret: { seal: vi.fn() },
     };
     const { el } = await openProjectTab('overview', OverviewPage, PROJECT);
     click(el, '[data-reveal]');

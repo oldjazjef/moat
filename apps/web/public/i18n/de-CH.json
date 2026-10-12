@@ -167,9 +167,8 @@
     "bundle": "Letztes Bundle",
     "bundleVersion": "Version {{version}}",
     "noBundle": "Noch keins gebaut",
-    "secrets": "Versiegelte Secrets",
-    "secretVersion": "{{name}} (v{{version}})",
-    "noSecrets": "Keine",
+    "secrets": "Secrets",
+    "noSecrets": "Die Konfiguration verwendet kein Secret.",
     "fingerprintHint": "Vergleiche den Fingerprint Gruppe für Gruppe mit dem, den das Gate bei der Installation ausgegeben hat.",
     "missing": "Diese Secrets braucht die Konfiguration, sie sind für dieses Gate aber noch nicht versiegelt: {{secrets}}",
     "invalid": "Die Datei {{file}} ist beschädigt oder keine Gate-Datei.",
@@ -191,6 +190,21 @@
       "secrets_missing": "Diese Secrets sind für das Gate noch nicht versiegelt: {{secrets}}",
       "not_writable": "Der Ordner `bundles/{{gate}}` kann nicht beschrieben werden. Es wurde nichts gespeichert.",
       "failed": "Das Signieren hat nicht geklappt. Es wurde nichts gespeichert."
+    },
+    "secretMissing": "Noch nicht versiegelt",
+    "secretSealed": "Versiegelt, Version {{version}}",
+    "secretUnused": "Versiegelt, Version {{version}}, wird nicht verwendet",
+    "seal": "Versiegeln",
+    "reseal": "Neu versiegeln",
+    "sealResult": {
+      "sealed": "{{name}} ist für {{gate}} versiegelt (Version {{version}}). Signiere ein neues Bundle, damit das Gate es erhält.",
+      "config_missing": "Es gibt noch keine moat.yaml in diesem Projekt.",
+      "config_invalid": "moat.yaml ist nicht gültig. Behebe die Fehler in der «Übersicht», dann kannst du versiegeln.",
+      "gate_unknown": "Die Gate-Datei fehlt oder ist beschädigt.",
+      "secret_unknown": "Kein Upstream verwendet {{name}}.",
+      "secret_unreadable": "Die versiegelte Datei `secrets/{{gate}}/{{name}}.json` ist beschädigt. Lösche sie, dann versiegle {{name}} neu (die Version beginnt wieder bei 1).",
+      "not_writable": "Der Ordner `secrets/{{gate}}` kann nicht beschrieben werden. Es wurde nichts gespeichert.",
+      "failed": "Das Versiegeln hat nicht geklappt. Es wurde nichts gespeichert."
     }
   },
   "routes": {
@@ -402,15 +416,16 @@
       "secrets": {
         "title": "Upstreams und Secrets",
         "purpose": "Ein Upstream ist die API, die das Gate aufruft. Ihr Schlüssel ist ein Secret: Er wird für ein bestimmtes Gate versiegelt und kann nur dort wieder geöffnet werden.",
-        "where": "Projekt › Gates › Versiegelte Secrets und Routen › Upstreams",
+        "where": "Projekt › Gates › Secrets und Routen › Upstreams",
         "steps": {
           "upstream": "Klicke unter «Routen» bei den Upstreams auf «Neuer Upstream» und trage Adresse, Anmeldung und den Namen des Secrets ein (z. B. `hubspot-token`), nie den Wert. In moat.yaml: `secret: hubspot-token`.",
-          "seal": "Versiegle den Wert mit `moat secret seal <gate> <name>`. Du gibst ihn im Terminal ein; gespeichert wird nur verschlüsselter Text.",
-          "check": "Unter «Gates» siehst du je Gate, welche Secrets versiegelt sind und welche noch fehlen."
+          "sealDesktop": "Klicke unter «Gates» in der Liste «Secrets» auf «Versiegeln». Ein eigenes Fenster von Moat Desktop zeigt Gate und Fingerprint. Vergleiche den Fingerprint mit dem des Gates und füge dann den Wert ein. Gespeichert wird nur verschlüsselter Text.",
+          "seal": "Im CLI versiegelst du den Wert mit `moat secret seal <gate> <name>`. Du gibst ihn im Terminal ein; gespeichert wird nur verschlüsselter Text.",
+          "check": "Unter «Gates» zeigt die Liste «Secrets» je Gate, welche Secrets versiegelt sind und welche noch fehlen."
         },
         "tips": {
           "never": "Moat zeigt Secrets nie an, auch nicht in Moat Desktop. Es kennt nur ihre Namen und Versionen.",
-          "rotate": "Ein neuer Schlüssel? Versiegle ihn mit `--secret-version` und einer höheren Nummer und baue ein neues Bundle."
+          "rotate": "Ein neuer Schlüssel? Klicke auf «Neu versiegeln» (im CLI: `--secret-version` mit einer höheren Nummer) und signiere ein neues Bundle."
         }
       },
       "routes": {

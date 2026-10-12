@@ -80,6 +80,7 @@ describe('ProjectsPage', () => {
       platform: 'linux',
       project: { add, reveal: vi.fn() },
       bundle: { sign: vi.fn() },
+      secret: { seal: vi.fn() },
     };
     const { el, harness } = await open([]);
     (el.querySelector('[data-add-project]') as HTMLButtonElement).click();
@@ -94,6 +95,7 @@ describe('ProjectsPage', () => {
       platform: 'linux',
       project: { add, reveal: vi.fn() },
       bundle: { sign: vi.fn() },
+      secret: { seal: vi.fn() },
     };
     const { el, harness } = await open([]);
     (el.querySelector('[data-add-project]') as HTMLButtonElement).click();

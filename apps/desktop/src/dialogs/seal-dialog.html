@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!-- No script on this page: its preload renders the view with textContent. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="dialog.css" />
+    <title>Moat</title>
+  </head>
+  <body>
+    <form id="form" hidden>
+      <h1 id="title"></h1>
+      <p id="intro" class="muted"></p>
+      <dl class="facts">
+        <dt id="project-label"></dt>
+        <dd id="project"></dd>
+        <dt id="gate-label"></dt>
+        <dd id="gate" class="code"></dd>
+        <dt id="fingerprint-label"></dt>
+        <dd id="fingerprint" class="code"></dd>
+        <dt id="secret-label"></dt>
+        <dd id="secret" class="code"></dd>
+        <dt id="version-label"></dt>
+        <dd id="version"></dd>
+        <dt id="used-by-label"></dt>
+        <dd id="used-by"></dd>
+      </dl>
+      <p id="fingerprint-hint" class="muted small"></p>
+      <fieldset>
+        <label for="value" id="value-label" class="label"></label>
+        <input
+          id="value"
+          type="password"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <p id="value-hint" class="muted small"></p>
+        <label class="check">
+          <input id="show" type="checkbox" />
+          <span id="show-label"></span>
+        </label>
+      </fieldset>
+      <p id="notice" class="error" role="alert" hidden></p>
+      <div class="buttons">
+        <button id="cancel" type="button" class="secondary"></button>
+        <button id="seal" type="submit"></button>
+      </div>
+    </form>
+  </body>
+</html>

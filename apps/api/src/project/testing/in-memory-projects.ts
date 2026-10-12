@@ -67,6 +67,13 @@ export class InMemoryProjectFiles extends ProjectFilesPort {
     files[path] = text;
   }
 
+  writeSecret(folder: string, gate: string, name: string, text: string): void {
+    const files = this.folders[folder];
+    if (files === undefined || this.readOnly.has(folder))
+      throw new Error('not writable');
+    files[`secrets/${gate}/${name}.json`] = text;
+  }
+
   open(folder: string): StoragePort | null {
     const files = this.folders[folder];
     if (files === undefined) return null;

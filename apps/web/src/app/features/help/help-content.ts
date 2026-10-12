@@ -72,7 +72,12 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
   },
   {
     id: 'secrets',
-    steps: items('upstream', 'seal', 'check'),
+    steps: items(
+      'upstream',
+      { id: 'sealDesktop', only: 'desktop' },
+      'seal',
+      'check',
+    ),
     tips: items('never', 'rotate'),
     links: [PROJECTS],
   },

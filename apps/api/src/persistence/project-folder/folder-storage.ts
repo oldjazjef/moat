@@ -102,15 +102,16 @@ export class FolderStorage implements StoragePort {
   }
 
   /**
-   * Replaces the file `name` directly in the project folder, atomically: the text goes into a new
-   * temporary file in the same folder, is flushed, and is renamed over the old one, so a reader
-   * sees the old or the new file and never half of one (CLAUDE.md, PHP standards: Files, applied
-   * here too). Refuses a name with a path in it and anything at `name` that is not a regular file:
-   * a symbolic link is never written through. The old file's permissions are kept.
+   * Replaces the file at `path` (`moat.yaml`, `secrets/site/hubspot-token.json`), atomically: the
+   * text goes into a new temporary file in the same folder, is flushed, and is renamed over the old
+   * one, so a reader sees the old or the new file and never half of one (CLAUDE.md, PHP standards:
+   * Files, applied here too). Folders on the way are created when missing and must be real
+   * folders; every part of the path is a plain name. Anything at `path` that is not a regular file
+   * is refused: a symbolic link is never written through. The old file's permissions are kept.
    */
-  replace(name: string, text: string): void {
-    if (!WRITABLE_NAME.test(name)) throw new FolderWriteError('invalid name');
-    const target = join(this.root, name);
+  replace(path: string, text: string): void {
+    const { dir, name } = this.folderFor(path);
+    const target = join(dir, name);
     let mode = 0o644;
     try {
       const stat = lstatSync(target);
@@ -121,22 +122,10 @@ export class FolderStorage implements StoragePort {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
         throw new FolderWriteError('cannot check the file');
     }
-    const temp = join(
-      this.root,
-      `.${name}.${randomBytes(8).toString('hex')}.tmp`,
-    );
+    const temp = join(dir, `.${name}.${randomBytes(8).toString('hex')}.tmp`);
     try {
       // 'wx': a file that appeared under the random name is never overwritten or followed.
-      const fd = openSync(temp, 'wx', mode);
-      try {
-        const bytes = Buffer.from(text, 'utf8');
-        let written = 0;
-        while (written < bytes.length)
-          written += writeSync(fd, bytes, written, bytes.length - written);
-        fsyncSync(fd);
-      } finally {
-        closeSync(fd);
-      }
+      writeNew(temp, text, mode);
       renameSync(temp, target);
     } catch {
       rmSync(temp, { force: true });
@@ -145,14 +134,30 @@ export class FolderStorage implements StoragePort {
   }
 
   /**
-   * Creates a new file at `path` (e.g. `bundles/site/3.json`), never replacing one: the folders on
-   * the way are created when missing and must be real folders (no symbolic links), every part of
-   * the path is a plain name, and the text is written to a temporary file and then hard-linked to
-   * its name, which fails when a file is there already. A reader never sees half a file.
+   * Creates a new file at `path` (e.g. `bundles/site/3.json`), never replacing one: folders as in
+   * replace(), and the text is written to a temporary file and then hard-linked to its name, which
+   * fails when a file is there already. A reader never sees half a file.
    */
   create(path: string, text: string): void {
+    const { dir, name } = this.folderFor(path);
+    const target = join(dir, name);
+    const temp = join(dir, `.${name}.${randomBytes(8).toString('hex')}.tmp`);
+    try {
+      writeNew(temp, text, 0o644);
+      linkSync(temp, target);
+    } catch (error) {
+      throw (error as NodeJS.ErrnoException).code === 'EEXIST'
+        ? new FolderWriteError('exists', 'exists')
+        : new FolderWriteError('write failed');
+    } finally {
+      rmSync(temp, { force: true });
+    }
+  }
+
+  /** The folder of `path` (created when missing, never a symbolic link) and the file's name. */
+  private folderFor(path: string): { dir: string; name: string } {
     const parts = path.split('/');
-    if (parts.length === 0 || !parts.every((part) => WRITABLE_NAME.test(part)))
+    if (!parts.every((part) => WRITABLE_NAME.test(part)))
       throw new FolderWriteError('invalid path');
     const name = parts.pop() as string;
     let dir = this.root;
@@ -172,27 +177,7 @@ export class FolderStorage implements StoragePort {
         throw new FolderWriteError('cannot check the folder');
       }
     }
-    const target = join(dir, name);
-    const temp = join(dir, `.${name}.${randomBytes(8).toString('hex')}.tmp`);
-    try {
-      const fd = openSync(temp, 'wx', 0o644);
-      try {
-        const bytes = Buffer.from(text, 'utf8');
-        let written = 0;
-        while (written < bytes.length)
-          written += writeSync(fd, bytes, written, bytes.length - written);
-        fsyncSync(fd);
-      } finally {
-        closeSync(fd);
-      }
-      linkSync(temp, target);
-    } catch (error) {
-      throw (error as NodeJS.ErrnoException).code === 'EEXIST'
-        ? new FolderWriteError('exists', 'exists')
-        : new FolderWriteError('write failed');
-    } finally {
-      rmSync(temp, { force: true });
-    }
+    return { dir, name };
   }
 
   /** The real path of `path` below the root, or null when it is absent or leads outside. */
@@ -211,5 +196,19 @@ export class FolderStorage implements StoragePort {
       !isAbsolute(rest)
       ? real
       : null;
+  }
+}
+
+/** Writes a file that must not exist yet ('wx': never overwritten, never followed), flushed. */
+function writeNew(path: string, text: string, mode: number): void {
+  const fd = openSync(path, 'wx', mode);
+  try {
+    const bytes = Buffer.from(text, 'utf8');
+    let written = 0;
+    while (written < bytes.length)
+      written += writeSync(fd, bytes, written, bytes.length - written);
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
   }
 }
