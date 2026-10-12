@@ -235,6 +235,12 @@ describe('moat CLI', () => {
     expect(output.at(-1)).toMatch(/^moat: 8:13 routes\.newsletter\.method: /);
   });
 
+  it('version prints the dev version outside a release build', async () => {
+    const { output, context } = project([]);
+    expect(await run(['version'], context)).toBe(0);
+    expect(output).toEqual(['moat 0.0.0-dev (unknown)']);
+  });
+
   it('policy suggest prints the narrowest policy', async () => {
     const { output, context } = project([]);
     expect(await run(['policy', 'suggest'], context)).toBe(0);

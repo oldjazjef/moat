@@ -1,0 +1,245 @@
+# Release: Actions → Release → Run workflow (on main, also from GitHub Mobile). Creates the next
+# release vX.Y.Z for the newest commit of main and attaches what it built:
+#
+#   moat-gate.php                 the gate (gates/php/build, version + commit in its header)
+#   moat.cjs                      the CLI (`node moat.cjs version`)
+#   Moat-Setup-X.Y.Z.exe          Moat Desktop, Windows (NSIS, x64)
+#   Moat-X.Y.Z-arm64.dmg / -x64   Moat Desktop, macOS
+#   Moat-X.Y.Z.AppImage           Moat Desktop, Linux
+#   SHA256SUMS.txt                checksums of all of the above
+#
+# How: `prepare` checks the version and that CI passed on this commit, then creates a DRAFT
+# release (invisible to the public, no tag yet). The build jobs upload into the draft; `publish`
+# adds the checksums and publishes it, which creates the tag. If anything fails, `discard` deletes
+# the draft, so a release is either complete or not there.
+#
+# Unsigned for now (decided 12.10.2026; signing is an open decision, CLAUDE.md): no desktop code
+# signing (CSC_IDENTITY_AUTO_DISCOVERY=false), no release signature for the gate (SEC-60), no SBOM
+# (SEC-61) yet. The release notes (.github/release-notes.md) say so and explain the OS warnings.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version part to increase
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+      version:
+        description: Exact version instead (e.g. 1.2.3), optional
+        type: string
+        default: ''
+
+# Minimal by default; every job asks for what it needs.
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read # did CI pass on this commit?
+      contents: write # create the draft release
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          filter: tree:0
+          fetch-depth: 0
+
+      - name: Version
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::Run this workflow on main (got $GITHUB_REF)."
+            exit 1
+          fi
+          if [ -n "$VERSION" ]; then
+            tag="v${VERSION#v}"
+          else
+            latest="$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)"
+            IFS=. read -r major minor patch <<<"${latest:-v0.0.0}"
+            major="${major#v}"
+            case "$BUMP" in
+              major) tag="v$((major + 1)).0.0" ;;
+              minor) tag="v$major.$((minor + 1)).0" ;;
+              *) tag="v$major.$minor.$((patch + 1))" ;;
+            esac
+            echo "Latest release: ${latest:-none}, next: $tag"
+          fi
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::The version must look like 1.2.3 (got $tag)."
+            exit 1
+          fi
+          if git rev-parse --quiet --verify "refs/tags/$tag" > /dev/null || gh release view "$tag" > /dev/null 2>&1; then
+            echo "::error::$tag already exists (as a tag or a release, maybe a leftover draft)."
+            exit 1
+          fi
+          {
+            echo "tag=$tag"
+            echo "version=${tag#v}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: CI passed on this commit
+        run: |
+          passed="$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --status success --json databaseId --jq length)"
+          if [ "$passed" = 0 ]; then
+            echo "::error::CI has not passed on $GITHUB_SHA yet. Wait for it, then run this again."
+            exit 1
+          fi
+
+      - name: Create the draft release
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: gh release create "$TAG" --draft --target "$GITHUB_SHA" --title "Moat $TAG" --generate-notes
+
+  gate-and-cli:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # upload into the draft
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+      MOAT_VERSION: ${{ needs.prepare.outputs.version }}
+      MOAT_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.2'
+          extensions: none, ctype, tokenizer, sodium, curl, json, hash
+          coverage: none
+          tools: none
+      - run: pnpm install --frozen-lockfile
+      - name: Build the gate and the CLI
+        run: |
+          mkdir -p dist/release
+          php gates/php/build/build.php --version="$MOAT_VERSION" --commit="$MOAT_COMMIT" --out=dist/release/moat-gate.php
+          pnpm build
+          cp dist/apps/cli/moat.cjs dist/release/moat.cjs
+          test "$(node dist/release/moat.cjs version)" = "moat $MOAT_VERSION ($MOAT_COMMIT)"
+      - name: Attach to the draft
+        run: gh release upload "$TAG" dist/release/moat-gate.php dist/release/moat.cjs --clobber
+
+  desktop:
+    needs: prepare
+    name: desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: write # upload into the draft
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+      MOAT_VERSION: ${{ needs.prepare.outputs.version }}
+      NX_DAEMON: 'false'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        shell: bash
+      - name: Build the installer
+        shell: bash
+        env:
+          # No signing yet: don't let electron-builder pick up a certificate from the keychain.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: pnpm nx run desktop:package
+      - name: Attach to the draft
+        shell: bash
+        run: |
+          shopt -s nullglob
+          installers=(dist/desktop/*.exe dist/desktop/*.dmg dist/desktop/*.AppImage)
+          if [ "${#installers[@]}" -eq 0 ]; then
+            echo "::error::No installer in dist/desktop/."
+            ls -la dist/desktop || true
+            exit 1
+          fi
+          printf 'Uploading %s\n' "${installers[@]}"
+          gh release upload "$TAG" "${installers[@]}" --clobber
+
+  publish:
+    needs: [prepare, gate-and-cli, desktop]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # checksums, notes, publish
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/release-notes.md
+          sparse-checkout-cone-mode: false
+      - name: Checksums, notes, publish
+        run: |
+          mkdir "$RUNNER_TEMP/assets"
+          gh release download "$TAG" --dir "$RUNNER_TEMP/assets"
+          (cd "$RUNNER_TEMP/assets" && sha256sum -- * > "$RUNNER_TEMP/SHA256SUMS.txt")
+          cat "$RUNNER_TEMP/SHA256SUMS.txt"
+          gh release upload "$TAG" "$RUNNER_TEMP/SHA256SUMS.txt" --clobber
+          notes="$RUNNER_TEMP/notes.md"
+          {
+            gh release view "$TAG" --json body --jq .body
+            echo
+            cat .github/release-notes.md
+          } > "$notes"
+          gh release edit "$TAG" --notes-file "$notes" --draft=false --latest
+
+  discard:
+    needs: [prepare, gate-and-cli, desktop, publish]
+    if: failure() && needs.prepare.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # delete the draft
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - name: Delete the draft release
+        run: |
+          if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = true ]; then
+            gh release delete "$TAG" --yes
+          else
+            echo "$TAG is not a draft (already published); left as is."
+          fi
