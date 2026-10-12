@@ -69,6 +69,14 @@ describe('readProject', () => {
       secrets: [{ name: 'hubspot-token', secretVersion: 3 }],
       missingSecrets: [],
       latestBundle: 12,
+      lock: {
+        environment: null,
+        gateLocked: false,
+        environmentLocked: false,
+        enabled: true,
+      },
+      // '{}' is no bundle: nothing to say about its lock.
+      latestBundleLocked: null,
     });
     expect(gate?.status === 'valid' && gate.boxKeyFingerprint).toMatch(
       /^MOAT(-[A-Z2-7]{1,4})+$/,
@@ -137,5 +145,69 @@ describe('readProject', () => {
       }),
     );
     expect(project.gates).toEqual([]);
+  });
+
+  it("reports environments, each gate's locks and whether its latest bundle carries the lock", async () => {
+    const bundle = (gateId: string, version: number, enabled?: boolean) =>
+      JSON.stringify({
+        moat: 'bundle',
+        v: 1,
+        payload: toBase64Url(
+          new TextEncoder().encode(
+            JSON.stringify({
+              gateId,
+              version,
+              config: enabled === undefined ? {} : { enabled },
+            }),
+          ),
+        ),
+        sigs: [],
+      });
+    const yaml = RECIPE.replace(
+      /^version: 1$/m,
+      `version: 1
+environments:
+  staging: { enabled: false }
+  production: {}
+gates:
+  site: { environment: staging }
+  shop: { environment: production, enabled: false }
+  other: { environment: production }`,
+    );
+    const project = await readProject(
+      folder({
+        'moat.yaml': yaml,
+        'gates/site.json': GATE,
+        'gates/shop.json': GATE,
+        'gates/loose.json': GATE,
+        'gates/forged.json': GATE,
+        'bundles/site/1.json': bundle('AAAAAAAAAAAAAAAAAAAAAA', 1, false),
+        'bundles/shop/2.json': bundle('AAAAAAAAAAAAAAAAAAAAAA', 2),
+        'bundles/forged/1.json': bundle('BBBBBBBBBBBBBBBBBBBBBB', 1, false),
+      }),
+    );
+    expect(
+      project.config.status === 'valid' && project.config.environments,
+    ).toEqual([
+      { name: 'production', enabled: true, gates: ['other', 'shop'] },
+      { name: 'staging', enabled: false, gates: ['site'] },
+    ]);
+    const byName = Object.fromEntries(
+      project.gates.map((gate) => [gate.name, gate]),
+    );
+    expect(byName['site']).toMatchObject({
+      lock: { environment: 'staging', environmentLocked: true, enabled: false },
+      latestBundleLocked: true,
+    });
+    expect(byName['shop']).toMatchObject({
+      lock: { environment: 'production', gateLocked: true, enabled: false },
+      latestBundleLocked: false,
+    });
+    expect(byName['loose']).toMatchObject({
+      lock: { environment: null, enabled: true },
+      latestBundleLocked: null,
+    });
+    // A bundle for another gate id says nothing about this gate.
+    expect(byName['forged']).toMatchObject({ latestBundleLocked: null });
   });
 });

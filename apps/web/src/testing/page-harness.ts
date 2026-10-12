@@ -113,7 +113,10 @@ export function openProjectTab(
   );
 }
 
-/** A valid project: the HubSpot recipe, one gate with its secret sealed, bundle 3 built. */
+/**
+ * A valid project: the HubSpot recipe, one gate in environment production with its secret sealed,
+ * bundle 3 built, nothing locked.
+ */
 export const PROJECT: ProjectView = {
   id: 'projectExample00000000',
   name: 'example',
@@ -122,6 +125,7 @@ export const PROJECT: ProjectView = {
     config: {
       status: 'valid',
       secretNames: ['hubspot-token'],
+      environments: [{ name: 'production', enabled: true, gates: ['site'] }],
       config: {
         version: 1,
         upstreams: {
@@ -158,6 +162,13 @@ export const PROJECT: ProjectView = {
         secrets: [{ name: 'hubspot-token', secretVersion: 2 }],
         missingSecrets: [],
         latestBundle: 3,
+        lock: {
+          environment: 'production',
+          gateLocked: false,
+          environmentLocked: false,
+          enabled: true,
+        },
+        latestBundleLocked: false,
       },
     ],
   },

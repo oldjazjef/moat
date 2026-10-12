@@ -55,6 +55,7 @@ describe('buildBundle', () => {
     const envelope = await buildBundle(
       {
         config,
+        gate: 'website',
         gateId: 'gate-1',
         secrets: { 'hubspot-token': sealed, unrelated: sealed },
         version: 1,
@@ -73,13 +74,79 @@ describe('buildBundle', () => {
       expiryEnabled: false,
     });
     expect(Object.keys(verified.payload.secrets)).toEqual(['hubspot-token']);
+    // An unlocked gate's config has no `enabled` key: bundles from before locks are unchanged.
+    expect(Object.keys(verified.payload.config).sort()).toEqual([
+      'routes',
+      'upstreams',
+      'version',
+    ]);
+  });
+
+  it.each([
+    ['the gate itself', { gates: { website: { enabled: false } } }],
+    [
+      'its environment',
+      {
+        environments: { staging: { enabled: false } },
+        gates: { website: { environment: 'staging' } },
+      },
+    ],
+  ])('signs enabled: false when %s is locked', async (_what, locks) => {
+    const { signer, config, sealed } = await fixture();
+    const envelope = await buildBundle(
+      {
+        config: { ...config, ...locks },
+        gate: 'website',
+        gateId: 'gate-1',
+        secrets: { 'hubspot-token': sealed },
+        version: 2,
+        issuedAt: 1000,
+      },
+      [signer],
+    );
+    const verified = await verifyBundle(utf8(envelope), {
+      gateId: 'gate-1',
+      signers: [
+        { kid: signer.kid, alg: 'ed25519', publicKey: signer.publicKey },
+      ],
+      threshold: 1,
+      currentVersion: 0,
+      now: 1000,
+      expiryEnabled: false,
+    });
+    expect(verified.payload.config).toMatchObject({ enabled: false });
+  });
+
+  it('a lock on another gate or environment does not lock this one', async () => {
+    const { config } = await fixture();
+    const compiled = compileConfig(
+      {
+        ...config,
+        environments: { staging: { enabled: false }, production: {} },
+        gates: {
+          'website-staging': { environment: 'staging' },
+          other: { enabled: false },
+          website: { environment: 'production' },
+        },
+      },
+      ['hubspot-token'],
+      'website',
+    );
+    expect(compiled).not.toHaveProperty('enabled');
   });
 
   it('fails before signing when a referenced secret is not sealed (SEC-46)', async () => {
     const { signer, config } = await fixture();
     await expect(
       buildBundle(
-        { config, gateId: 'gate-1', secrets: {}, version: 1, issuedAt: 0 },
+        {
+          config,
+          gate: 'website',
+          gateId: 'gate-1',
+          secrets: {},
+          version: 1,
+          issuedAt: 0,
+        },
         [signer],
       ),
     ).rejects.toThrow('config_invalid');
@@ -103,6 +170,7 @@ describe('buildBundle', () => {
       buildBundle(
         {
           config: widened,
+          gate: 'website',
           gateId: 'gate-1',
           secrets: { 'hubspot-token': sealed },
           version: 1,

@@ -9,21 +9,22 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * conformance/http/gate.json against the built gate file under a real web server and a fake
+ * One file of conformance/http/ against the built gate file under a real web server and a fake
  * HTTPS upstream (SEC-41 to SEC-46, FR-18). The planted secret must never reach a client answer
- * or the gate's log.
+ * or the gate's log. Each file has its own subclass and its own gate.
  */
-final class HttpConformanceTest extends TestCase
+abstract class HttpConformanceCase extends TestCase
 {
-    private const CASES = 'http/gate.json';
-
     private static ?GateFixture $gate = null;
+
+    /** The file under conformance/, e.g. `http/gate.json`. */
+    abstract protected static function casesFile(): string;
 
     public static function setUpBeforeClass(): void
     {
         $dir = sys_get_temp_dir() . '/moat-http-' . bin2hex(random_bytes(6));
         mkdir($dir, 0o700);
-        self::$gate = new GateFixture($dir, (string) file_get_contents(\dirname(__DIR__, 4) . '/conformance/' . self::CASES));
+        self::$gate = new GateFixture($dir, (string) file_get_contents(\dirname(__DIR__, 4) . '/conformance/' . static::casesFile()));
     }
 
     public static function tearDownAfterClass(): void
@@ -35,7 +36,7 @@ final class HttpConformanceTest extends TestCase
     /** @return iterable<string, array{array<string, mixed>}> */
     public static function cases(): iterable
     {
-        $file = \dirname(__DIR__, 4) . '/conformance/' . self::CASES;
+        $file = \dirname(__DIR__, 4) . '/conformance/' . static::casesFile();
         $doc = json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
         foreach (Vectors::list(Vectors::map($doc)['cases'] ?? null) as $case) {
             $case = Vectors::map($case);

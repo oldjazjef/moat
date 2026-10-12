@@ -96,6 +96,7 @@ describe('conformance vectors', () => {
       'http/cors.json',
       'http/rate-limit.json',
       '../http/gate.json',
+      '../http/gate-locked.json',
     ]) {
       for (const list of lists(load<unknown>(file))) {
         const names = list.flatMap((item) =>
@@ -107,6 +108,20 @@ describe('conformance vectors', () => {
       }
     }
   });
+
+  it.each(['../http/gate.json', '../http/gate-locked.json'])(
+    '%s: its config and policy are what Moat Core would build and accept',
+    (file) => {
+      const doc = JSON.parse(
+        JSON.stringify(load<unknown>(file)).replaceAll('{port}', '8443'),
+      ) as { config: JsonValue; policy: JsonValue; secrets: object };
+      const config = validateCompiledConfig(
+        doc.config,
+        Object.keys(doc.secrets),
+      );
+      expect(() => checkPolicy(config, parsePolicy(doc.policy))).not.toThrow();
+    },
+  );
 
   it.each(Object.keys(built))(
     '%s matches scripts/build-vectors.ts (`pnpm vectors` rewrites it)',

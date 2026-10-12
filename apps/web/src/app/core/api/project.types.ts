@@ -58,11 +58,28 @@ export type ConfigState =
       readonly status: 'valid';
       readonly config: {
         readonly version: 1;
+        readonly enabled?: boolean;
         readonly upstreams: Readonly<Record<string, CompiledUpstream>>;
         readonly routes: Readonly<Record<string, CompiledRoute>>;
       };
       readonly secretNames: readonly string[];
+      readonly environments: readonly EnvironmentState[];
     };
+
+export interface EnvironmentState {
+  readonly name: string;
+  /** False: every gate in it is locked. */
+  readonly enabled: boolean;
+  readonly gates: readonly string[];
+}
+
+export interface GateLockState {
+  readonly environment: string | null;
+  readonly gateLocked: boolean;
+  readonly environmentLocked: boolean;
+  /** False when either lock applies. */
+  readonly enabled: boolean;
+}
 
 export type GateState =
   | { readonly name: string; readonly status: 'invalid' }
@@ -79,6 +96,10 @@ export type GateState =
       }[];
       readonly missingSecrets: readonly string[];
       readonly latestBundle: number;
+      /** null while moat.yaml is not valid. */
+      readonly lock: GateLockState | null;
+      /** Whether the latest bundle carries the lock; null without a readable bundle. */
+      readonly latestBundleLocked: boolean | null;
     };
 
 export interface ProjectState {
@@ -96,6 +117,8 @@ export interface ProjectSummary {
   readonly routes: number;
   readonly gates: number;
   readonly gatesMissingSecrets: readonly string[];
+  /** Gates moat.yaml locks, on their own or with their environment. */
+  readonly gatesLocked: readonly string[];
 }
 
 /** `GET /api/projects/:id`; `project` is null when the folder can no longer be read. */

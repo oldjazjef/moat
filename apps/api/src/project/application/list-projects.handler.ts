@@ -35,6 +35,7 @@ export class ListProjectsHandler implements IQueryHandler<ListProjectsQuery> {
         routes: 0,
         gates: 0,
         gatesMissingSecrets: [],
+        gatesLocked: [],
       };
     }
     const project = await readProject(storage);
@@ -49,6 +50,11 @@ export class ListProjectsHandler implements IQueryHandler<ListProjectsQuery> {
       gatesMissingSecrets: project.gates
         .filter(
           (gate) => gate.status === 'valid' && gate.missingSecrets.length > 0,
+        )
+        .map((gate) => gate.name),
+      gatesLocked: project.gates
+        .filter(
+          (gate) => gate.status === 'valid' && gate.lock?.enabled === false,
         )
         .map((gate) => gate.name),
     };

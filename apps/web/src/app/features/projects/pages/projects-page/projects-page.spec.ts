@@ -20,6 +20,7 @@ const SHOP: ProjectSummary = {
   routes: 2,
   gates: 2,
   gatesMissingSecrets: ['staging'],
+  gatesLocked: ['staging'],
 };
 const GONE: ProjectSummary = {
   id: 'goneProject00000000000',
@@ -29,6 +30,7 @@ const GONE: ProjectSummary = {
   routes: 0,
   gates: 0,
   gatesMissingSecrets: [],
+  gatesLocked: [],
 };
 
 const open = (list: unknown) =>
@@ -48,6 +50,12 @@ describe('ProjectsPage', () => {
     expect(text(cards[0] as HTMLElement, '[data-missing-secrets]')).toContain(
       'staging',
     );
+    expect(text(cards[0] as HTMLElement, '[data-gates-locked]')).toBe(
+      'Gesperrte Gates: staging',
+    );
+    expect(
+      (cards[1] as HTMLElement).querySelector('[data-gates-locked]'),
+    ).toBeNull();
     expect(text(cards[0] as HTMLElement, '[data-trust-mode]')).toBe('Signiert');
     expect(
       (cards[1] as HTMLElement).querySelector('[data-project-status="gone"]'),

@@ -7,6 +7,8 @@ import { signBundle, type BundlePayload, type Ed25519Signer } from './bundle';
 
 export interface BuildBundleInput {
   readonly config: MoatConfig;
+  /** The gate's name in the project (`gates/<gate>.json`): decides whether the bundle locks it. */
+  readonly gate: string;
   readonly gateId: string;
   /** Sealed for this gate (sealSecret), by the name the config references. */
   readonly secrets: Readonly<Record<string, SealedSecret>>;
@@ -19,8 +21,8 @@ export interface BuildBundleInput {
 }
 
 /**
- * Compiles the config, checks it as the gate will (schema, references, optional local policy)
- * and signs the bundle. Only secrets the config references go in — nothing else leaves the
+ * Compiles the config for this gate (locked when the gate or its environment is), checks it as
+ * the gate will (schema, references, optional local policy) and signs the bundle. Only secrets the config references go in — nothing else leaves the
  * project folder.
  */
 export async function buildBundle(
@@ -37,7 +39,7 @@ export async function buildBundle(
     const sealed = input.secrets[name];
     if (sealed !== undefined) secrets[name] = sealed as unknown as JsonValue;
   }
-  const config = compileConfig(input.config, Object.keys(secrets));
+  const config = compileConfig(input.config, Object.keys(secrets), input.gate);
   if (input.policy !== undefined) checkPolicy(config, input.policy);
   const payload: BundlePayload = {
     type: 'moat.bundle',

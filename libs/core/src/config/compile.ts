@@ -1,6 +1,7 @@
 import { reject } from '../errors';
 import type { JsonValue } from '../json/strict-json';
 import { validateCompiledConfig, type CompiledConfig } from './compiled';
+import { gateLockState } from './lock';
 import type { MoatConfig } from './schema';
 import { parseDuration, parseSize } from './units';
 
@@ -12,10 +13,14 @@ export const DEFAULT_CONTENT_TYPES = ['application/json'];
  * moat.yaml → the compiled config a bundle carries: defaults filled in, units turned into
  * integers, then validated exactly as a gate will (step 9 of docs/CRYPTO.md §4.3) against the
  * names of the secrets that go into the bundle. Throws `config_invalid`.
+ *
+ * With `gate`, the config is compiled for that gate: when the gate or its environment is locked,
+ * it carries `enabled: false` and the gate refuses every request.
  */
 export function compileConfig(
   config: MoatConfig,
   secretNames: readonly string[],
+  gate?: string,
 ): CompiledConfig {
   const upstreams: Record<string, JsonValue> = {};
   for (const [name, upstream] of Object.entries(config.upstreams)) {
@@ -55,5 +60,14 @@ export function compileConfig(
             },
     };
   }
-  return validateCompiledConfig({ version: 1, upstreams, routes }, secretNames);
+  const locked = gate !== undefined && !gateLockState(config, gate).enabled;
+  return validateCompiledConfig(
+    {
+      version: 1,
+      ...(locked ? { enabled: false } : {}),
+      upstreams,
+      routes,
+    },
+    secretNames,
+  );
 }

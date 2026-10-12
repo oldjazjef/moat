@@ -23,11 +23,43 @@
         <h2 hlmCardTitle class="mt-code text-base" [id]="'gate-' + gate.name">
           {{ gate.name }}
         </h2>
-        <mt-trust-mode-badge [mode]="gate.trustMode" />
+        <div class="flex flex-wrap items-center gap-2">
+          <mt-lock-badge [locked]="gate.lock?.enabled === false" />
+          <mt-trust-mode-badge [mode]="gate.trustMode" />
+        </div>
       </div>
     </div>
     <div hlmCardContent class="flex flex-col gap-4">
+      @if (gate.lock; as lock) { @if (!lock.enabled) {
+      <p class="text-destructive text-sm" data-lock-reason>
+        @if (lock.gateLocked) { {{ 'gates.lockedGate' | translate }} } @else {
+        {{ 'gates.lockedEnvironment' | translate: { environment:
+        lock.environment } }} }
+      </p>
+      } } @if (service.pending(gate); as pending) {
+      <p class="mt-warning-text text-sm" data-lock-pending>
+        @if (pending === 'lockPending') {
+        <mt-rich-text
+          [text]="'gates.lockPending' | translate: { gate: gate.name }"
+        />
+        } @else {
+        <mt-rich-text
+          [text]="'gates.unlockPending' | translate: { gate: gate.name }"
+        />
+        }
+      </p>
+      }
       <dl class="mt-facts">
+        <dt>{{ 'gates.environment' | translate }}</dt>
+        <dd data-environment>
+          @if (gate.lock?.environment; as environment) {
+          <span class="mt-code">{{ environment }}</span>
+          } @else {
+          <span class="text-muted-foreground">
+            {{ 'gates.noEnvironment' | translate }}
+          </span>
+          }
+        </dd>
         <dt>{{ 'gates.gateId' | translate }}</dt>
         <dd class="mt-code">{{ gate.gateId }}</dd>
         <dt>{{ 'gates.fingerprint' | translate }}</dt>
@@ -36,8 +68,9 @@
         <dd class="mt-code">{{ gate.boxKeyId }}</dd>
         <dt>{{ 'gates.bundle' | translate }}</dt>
         <dd data-bundle>
-          @if (gate.latestBundle > 0) { {{ 'gates.bundleVersion' | translate: {
-          version: gate.latestBundle } }} } @else {
+          @if (gate.latestBundle > 0) { {{ (gate.latestBundleLocked ?
+          'gates.bundleLocked' : 'gates.bundleVersion') | translate: { version:
+          gate.latestBundle } }} } @else {
           <span class="text-muted-foreground">
             {{ 'gates.noBundle' | translate }}
           </span>

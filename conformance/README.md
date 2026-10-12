@@ -45,7 +45,9 @@ config, one local policy, the secrets to seal and the cases; the runner builds t
 installs it through its own CLI, serves it with a web server (`php -S` for PHP) and points it at a
 fake HTTPS upstream on 127.0.0.1 through the policy's `testing` block. Every case names the
 answer the client gets and how many requests reached the upstream; the planted secret must never
-appear in an answer or the gate's log. PHP: `gates/php/tests/Http/`.
+appear in an answer or the gate's log. `http/gate-locked.json` does the same for a locked gate
+(`enabled: false` in the config): every request is refused with `gate_disabled`. Each file runs
+against its own gate. PHP: `gates/php/tests/Http/` (one test class per file).
 
 Still to come (docs/CRYPTO.md §11): WebAuthn, gate authentication, release manifests; HTTP cases
 for CORS, rate limits and the lazy pull once the gate has them.

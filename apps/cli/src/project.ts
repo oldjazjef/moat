@@ -4,7 +4,7 @@ import {
   fingerprint,
   type SealedSecret,
 } from '@moat/core';
-import { list, readJson, UsageError, type Context } from './context';
+import { exists, list, readJson, UsageError, type Context } from './context';
 
 /**
  * The project folder (DT-14): plain files that live well in Git.
@@ -15,7 +15,7 @@ import { list, readJson, UsageError, type Context } from './context';
  *   bundles/<gate>/<version>.json     signed bundles, ready to deploy
  */
 export const CONFIG_FILE = 'moat.yaml';
-const NAME = /^[a-z][a-z0-9-]{0,62}$/;
+export const NAME = /^[a-z][a-z0-9-]{0,62}$/;
 
 export interface GateFile {
   readonly moat: 'gate';
@@ -40,6 +40,10 @@ export function readGate(
   context: Context,
   gate: string,
 ): GateFile & { boxPublicKey: Uint8Array } {
+  if (!exists(context, gatePath(gate)))
+    throw new UsageError(
+      `no gate "${gate}": ${gatePath(gate)} is missing (moat gate add)`,
+    );
   const value = readJson(context, gatePath(gate)) as Partial<GateFile>;
   if (
     value.moat !== 'gate' ||

@@ -14,6 +14,82 @@ describe('GatesPage', () => {
     expect(text(el, '[data-secrets]')).toBe('hubspot-token (v2)');
     expect(text(el, '[data-bundle]')).toBe('Version 3');
     expect(el.querySelector('[data-missing]')).toBeNull();
+    expect(text(el, '[data-environment]')).toBe('production');
+    expect(el.querySelector('[data-locked]')).toBeNull();
+    expect(el.querySelector('[data-lock-pending]')).toBeNull();
+  });
+
+  const site = () => {
+    const gate = PROJECT.project?.gates[0];
+    if (gate?.status !== 'valid' || PROJECT.project === null)
+      throw new Error('fixture');
+    return gate;
+  };
+  const withGate = (gate: ReturnType<typeof site>): ProjectView => ({
+    ...PROJECT,
+    project: {
+      config: PROJECT.project?.config ?? { status: 'missing' },
+      gates: [gate],
+    },
+  });
+
+  it('marks a gate its environment locks and says the last bundle does not carry the lock yet', async () => {
+    const { el } = await openProjectTab(
+      'gates',
+      GatesPage,
+      withGate({
+        ...site(),
+        lock: {
+          environment: 'production',
+          gateLocked: false,
+          environmentLocked: true,
+          enabled: false,
+        },
+        latestBundleLocked: false,
+      }),
+    );
+    expect(text(el, '[data-locked]')).toBe('Gesperrt');
+    expect(text(el, '[data-lock-reason]')).toContain(
+      'Die Umgebung production ist gesperrt',
+    );
+    expect(text(el, '[data-lock-pending]')).toBe(
+      'Das letzte Bundle enthält die Sperre noch nicht. Baue mit moat build site ein neues und nimm es auf dem Gate an.',
+    );
+  });
+
+  it('shows a lock that the last bundle already carries', async () => {
+    const locked = await openProjectTab(
+      'gates',
+      GatesPage,
+      withGate({
+        ...site(),
+        lock: {
+          environment: null,
+          gateLocked: true,
+          environmentLocked: false,
+          enabled: false,
+        },
+        latestBundleLocked: true,
+      }),
+    );
+    expect(text(locked.el, '[data-lock-reason]')).toContain(
+      'Dieses Gate ist gesperrt.',
+    );
+    expect(text(locked.el, '[data-bundle]')).toBe('Version 3, mit Sperre gebaut');
+    expect(text(locked.el, '[data-environment]')).toBe('Ohne Umgebung');
+    expect(locked.el.querySelector('[data-lock-pending]')).toBeNull();
+  });
+
+  it('says an unlock applies only with the next bundle', async () => {
+    const unlocked = await openProjectTab(
+      'gates',
+      GatesPage,
+      withGate({ ...site(), latestBundleLocked: true }),
+    );
+    expect(unlocked.el.querySelector('[data-locked]')).toBeNull();
+    expect(text(unlocked.el, '[data-lock-pending]')).toContain(
+      'Das letzte Bundle sperrt das Gate noch.',
+    );
   });
 
   it('names the secrets still to seal and marks a damaged gate file', async () => {

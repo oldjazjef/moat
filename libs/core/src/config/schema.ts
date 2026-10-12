@@ -84,11 +84,44 @@ export const routeSchema = z.strictObject({
     .optional(),
 });
 
+/** FR-01: dev, staging, production … A locked environment locks every gate in it. */
+export const environmentSchema = z.strictObject({
+  enabled: z
+    .boolean()
+    .optional()
+    .describe('false locks every gate of this environment; default true'),
+});
+
+/** A gate of the project (`gates/<name>.json`): its environment and its own lock. */
+export const gateSchema = z.strictObject({
+  environment: name.optional().describe('the environment this gate belongs to'),
+  enabled: z
+    .boolean()
+    .optional()
+    .describe('false locks this gate; default true'),
+});
+
 export const moatConfigSchema = z
   .strictObject({
     version: z.literal(1),
+    environments: z.record(name, environmentSchema).optional(),
+    gates: z.record(name, gateSchema).optional(),
     upstreams: z.record(name, upstreamSchema),
     routes: z.record(name, routeSchema),
+  })
+  .superRefine((config, context) => {
+    for (const [gate, entry] of Object.entries(config.gates ?? {})) {
+      if (
+        entry.environment !== undefined &&
+        !Object.hasOwn(config.environments ?? {}, entry.environment)
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['gates', gate, 'environment'],
+          message: `no environment "${entry.environment}" under environments`,
+        });
+      }
+    }
   })
   .describe('Moat configuration (moat.yaml), version 1');
 

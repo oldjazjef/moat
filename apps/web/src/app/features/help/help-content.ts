@@ -32,6 +32,7 @@ export const HELP_SECTION_IDS = [
   'routes',
   'limits',
   'release',
+  'environments',
   'privacy',
 ] as const;
 export type HelpSectionId = (typeof HELP_SECTION_IDS)[number];
@@ -94,6 +95,12 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     links: [PROJECTS],
   },
   {
+    id: 'environments',
+    steps: items('define', 'lock', 'build', 'check'),
+    tips: items('unlock', 'one', 'answer'),
+    links: [PROJECTS],
+  },
+  {
     id: 'privacy',
     steps: items('local', 'ciphertext', 'noAdmin'),
     tips: items('folder'),
@@ -107,6 +114,7 @@ export const HELP_FAQ = [
   'invalidConfig',
   'missingSecret',
   'fingerprint',
+  'lockPending',
 ] as const;
 export type HelpFaqId = (typeof HELP_FAQ)[number];
 

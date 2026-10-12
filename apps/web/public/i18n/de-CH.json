@@ -56,7 +56,8 @@
       "yes": "Ja, entfernen",
       "no": "Abbrechen",
       "failed": "Das Projekt konnte nicht entfernt werden. Versuche es noch einmal."
-    }
+    },
+    "locked": "Gesperrte Gates: {{gates}}"
   },
   "units": {
     "seconds": "s",
@@ -76,6 +77,9 @@
         "ifHacked": "… kann ein Angreifer nichts ändern. Im Browser gilt das nur eingeschränkt, volle Garantie mit Moat Desktop oder CLI."
       }
     }
+  },
+  "locks": {
+    "locked": "Gesperrt"
   },
   "config": {
     "errors": {
@@ -114,6 +118,14 @@
       "upstreams": "Upstreams",
       "secrets": "Secrets",
       "gates": "Gates"
+    },
+    "environments": {
+      "title": "Umgebungen",
+      "description": "Eine gesperrte Umgebung sperrt alle ihre Gates.",
+      "none": "Dieses Projekt hat noch keine Umgebungen. Lege mit `moat env add staging` eine an und ordne ihr mit `moat gate assign <gate> staging` ein Gate zu.",
+      "noGates": "Noch kein Gate",
+      "unassigned": "Ohne Umgebung: {{gates}}",
+      "hint": "Sperren und entsperren: `moat env disable <umgebung>` oder `moat gate disable <gate>` (`enable` hebt die Sperre auf), danach für jedes betroffene Gate `moat build`."
     }
   },
   "gates": {
@@ -130,7 +142,14 @@
     "noSecrets": "Keine",
     "fingerprintHint": "Vergleiche den Fingerprint Gruppe für Gruppe mit dem, den das Gate bei der Installation ausgegeben hat.",
     "missing": "Diese Secrets braucht die Konfiguration, sie sind für dieses Gate aber noch nicht versiegelt: {{secrets}}",
-    "invalid": "Die Datei {{file}} ist beschädigt oder keine Gate-Datei."
+    "invalid": "Die Datei {{file}} ist beschädigt oder keine Gate-Datei.",
+    "environment": "Umgebung",
+    "noEnvironment": "Ohne Umgebung",
+    "lockedGate": "Dieses Gate ist gesperrt. Sobald das Bundle mit der Sperre angenommen ist, beantwortet es jede Anfrage mit einem Fehler und leitet nichts weiter.",
+    "lockedEnvironment": "Die Umgebung {{environment}} ist gesperrt und damit auch dieses Gate. Sobald das Bundle mit der Sperre angenommen ist, beantwortet es jede Anfrage mit einem Fehler und leitet nichts weiter.",
+    "bundleLocked": "Version {{version}}, mit Sperre gebaut",
+    "lockPending": "Das letzte Bundle enthält die Sperre noch nicht. Baue mit `moat build {{gate}}` ein neues und nimm es auf dem Gate an.",
+    "unlockPending": "Das letzte Bundle sperrt das Gate noch. Baue mit `moat build {{gate}}` ein neues und nimm es auf dem Gate an, dann leitet es wieder weiter."
   },
   "routes": {
     "subtitle": "Was das Gate weiterleitet, und an wen",
@@ -213,6 +232,10 @@
         "fingerprint": {
           "question": "Der Fingerprint stimmt nicht mit dem des Gates überein.",
           "answer": "Dann gehört die Gate-Datei nicht zu deinem Gate. Lösche sie, prüfe die Ausgabe von `php moat-gate.php status` auf dem Server und trage das Gate erneut mit `moat gate add` ein."
+        },
+        "lockPending": {
+          "question": "Ich habe ein Gate gesperrt, aber es leitet noch weiter.",
+          "answer": "Die Sperre steht erst in moat.yaml. Sie gilt, sobald das Gate ein Bundle mit der Sperre angenommen hat: `moat build <gate>`, die Datei hochladen und auf dem Server `php moat-gate.php accept` ausführen. `php moat-gate.php status` zeigt dann `LOCKED`."
         }
       }
     },
@@ -320,6 +343,22 @@
         "tips": {
           "rollback": "Zurück zu einer älteren Konfiguration? Baue sie als neue, höhere Version.",
           "policy": "Passt ein Bundle nicht zur lokalen Policy, lehnt das Gate es ab. Die Policy änderst du nur am Gate selbst."
+        }
+      },
+      "environments": {
+        "title": "Umgebungen und Sperren",
+        "purpose": "Mit Umgebungen (etwa dev, staging, production) ordnest du deine Gates. Eine ganze Umgebung oder ein einzelnes Gate lässt sich sperren: Ein gesperrtes Gate beantwortet jede Anfrage mit einem Fehler und leitet nichts mehr weiter. Die Sperre steht signiert im Bundle.",
+        "where": "Projekt › Übersicht › Umgebungen",
+        "steps": {
+          "define": "Lege eine Umgebung mit `moat env add staging` an. Ein Gate ordnest du beim Eintragen mit `moat gate add <gate> … --env staging` zu, oder später mit `moat gate assign <gate> staging`.",
+          "lock": "Sperre die ganze Umgebung mit `moat env disable staging` oder ein einzelnes Gate mit `moat gate disable <gate>`. Das CLI nennt die Gates, die betroffen sind.",
+          "build": "Baue für jedes betroffene Gate ein neues Bundle mit `moat build <gate>` und nimm es auf dem Gate mit `php moat-gate.php accept` an. Erst dann gilt die Sperre.",
+          "check": "In der «Übersicht» zeigt die Karte «Umgebungen» jede Umgebung mit ihren Gates, unter «Gates» trägt jedes gesperrte Gate das Abzeichen «Gesperrt»."
+        },
+        "tips": {
+          "unlock": "Entsperren geht genauso: `moat env enable staging` oder `moat gate enable <gate>`, danach ein neues Bundle.",
+          "one": "Ein Gate gehört zu höchstens einer Umgebung. Ist eine Umgebung gesperrt, nützt es nichts, ein einzelnes Gate darin zu entsperren.",
+          "answer": "Besucher bekommen von einem gesperrten Gate den Status 503 mit dem Code `gate_disabled`, auch für Pfade, die es gar nicht gibt."
         }
       },
       "privacy": {

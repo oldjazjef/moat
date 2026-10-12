@@ -4,6 +4,7 @@ import { HlmBadge } from '@moat/ui/badge';
 import { HlmButtonImports } from '@moat/ui/button';
 import { HlmCardImports } from '@moat/ui/card';
 import { HelpLink } from '../../../help/components/help-link';
+import { LockBadge } from '../../../../shared/components/lock-badge';
 import { RichText } from '../../../../shared/components/rich-text';
 import { TrustModeBadge } from '../../../../shared/components/trust-mode-badge';
 import { GatesPageService } from './gates-page.service';
@@ -15,6 +16,7 @@ import { GatesPageService } from './gates-page.service';
     RichText,
     HelpLink,
     TrustModeBadge,
+    LockBadge,
     HlmBadge,
     ...HlmButtonImports,
     ...HlmCardImports,

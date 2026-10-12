@@ -1,0 +1,206 @@
+{
+  "description": "A locked gate (moat.yaml `environments`: the gate or its whole environment disabled; the bundle's config carries `enabled: false`). Same runner and fake upstream as gate.json. A locked gate answers every request, whatever its method or path, with 503 `gate_disabled` and forwards nothing: no route matching, no CORS answer, no preflight. Unknown paths get the same answer, so a locked gate does not reveal its routes.",
+  "config": {
+    "version": 1,
+    "enabled": false,
+    "upstreams": {
+      "fake": {
+        "origin": "https://upstream.test:{port}",
+        "auth": {
+          "type": "bearer",
+          "secret": "api-token"
+        },
+        "timeoutMs": 5000
+      }
+    },
+    "routes": {
+      "newsletter": {
+        "method": "POST",
+        "path": "/newsletter",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 1024,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": ["https://www.example.ch"],
+        "rateLimit": null
+      },
+      "status": {
+        "method": "GET",
+        "path": "/status",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
+      }
+    }
+  },
+  "policy": {
+    "v": 1,
+    "upstreams": {
+      "upstream.test:{port}": {
+        "pathPrefixes": ["/echo"],
+        "methods": ["GET", "POST"],
+        "secrets": ["api-token"]
+      }
+    },
+    "maxBodyBytes": 1024,
+    "maxResponseBytes": 65536,
+    "maxTimeoutMs": 5000,
+    "limits": {
+      "perIp": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "total": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "maxClients": 5000
+    },
+    "testing": {
+      "resolve": {
+        "upstream.test:{port}": "127.0.0.1"
+      },
+      "caFile": "{caFile}"
+    }
+  },
+  "secrets": {
+    "api-token": "TEST-ONLY-planted-secret-7f3a9c"
+  },
+  "cases": [
+    {
+      "name": "a GET route of a locked gate is refused, nothing forwarded",
+      "request": {
+        "method": "GET",
+        "path": "/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 503,
+        "error": "gate_disabled",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "a POST route of a locked gate is refused, nothing forwarded",
+      "request": {
+        "method": "POST",
+        "path": "/newsletter",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 503,
+        "error": "gate_disabled",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "a listed origin gets no CORS answer from a locked gate",
+      "request": {
+        "method": "POST",
+        "path": "/newsletter",
+        "headers": {
+          "Content-Type": "application/json",
+          "Origin": "https://www.example.ch"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 503,
+        "error": "gate_disabled",
+        "upstreamCalls": 0,
+        "headers": {
+          "access-control-allow-origin": null
+        }
+      }
+    },
+    {
+      "name": "preflight to a locked gate is refused",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/newsletter",
+        "headers": {
+          "Origin": "https://www.example.ch",
+          "Access-Control-Request-Method": "POST",
+          "Access-Control-Request-Headers": "content-type"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 503,
+        "error": "gate_disabled",
+        "upstreamCalls": 0,
+        "headers": {
+          "access-control-allow-origin": null,
+          "access-control-allow-methods": null
+        }
+      }
+    },
+    {
+      "name": "an unknown path gets the same answer (routes are not revealed)",
+      "request": {
+        "method": "GET",
+        "path": "/admin",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 503,
+        "error": "gate_disabled",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "no route path after the gate file",
+      "request": {
+        "method": "GET",
+        "path": "",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 503,
+        "error": "gate_disabled",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "a wrong method gets the same answer",
+      "request": {
+        "method": "DELETE",
+        "path": "/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 503,
+        "error": "gate_disabled",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "a malformed path gets the same answer",
+      "request": {
+        "method": "GET",
+        "path": "/a/%2e%2e/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 503,
+        "error": "gate_disabled",
+        "upstreamCalls": 0
+      }
+    }
+  ]
+}

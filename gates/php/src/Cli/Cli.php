@@ -117,6 +117,9 @@ final class Cli
         $bytes = self::readArg($args, 'usage: php moat-gate.php accept <bundle.json>');
         $active = $gate->accept($bytes, time());
         self::out('Accepted bundle version ' . $active->version . ': ' . \count($active->config->routes) . ' route(s).');
+        if (!$active->config->enabled) {
+            self::out('LOCKED: the gate answers every request with gate_disabled and forwards nothing.');
+        }
         foreach ($active->config->routes as $name => $route) {
             self::out(\sprintf('  %-6s %s → %s%s%s', $route->method->value, $route->path, $active->config->upstreamOf($route)->origin, $route->upstreamPath, $route->enabled ? '' : ' (disabled)'));
         }
@@ -135,7 +138,7 @@ final class Cli
         }
         try {
             $active = $gate->active(time());
-            self::out('Bundle:     version ' . $active->version . ', ' . \count($active->config->routes) . ' route(s)');
+            self::out('Bundle:     version ' . $active->version . ', ' . \count($active->config->routes) . ' route(s)' . ($active->config->enabled ? '' : ', LOCKED (every request is refused with gate_disabled)'));
         } catch (NotConfigured) {
             self::out('Bundle:     none active (missing, or no longer valid for the current trust and policy)');
         }
