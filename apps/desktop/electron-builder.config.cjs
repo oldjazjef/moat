@@ -26,6 +26,8 @@ module.exports = {
     'package.json',
     'main.js',
     'preload.js',
+    'sign-preload.js',
+    'sign/**',
     'api/**',
     'web/**',
     'node_modules/**',

@@ -7,13 +7,27 @@ import {
   type IpcMainInvokeEvent,
   ipcMain,
   Menu,
+  safeStorage,
   session,
   shell,
 } from 'electron';
-import { IPC, PROJECT_ID, type ProjectAddResult } from '../shared/bridge';
+import {
+  type BundleSignResult,
+  GATE_NAME,
+  IPC,
+  PROJECT_ID,
+  type ProjectAddResult,
+} from '../shared/bridge';
 import { type RunningApi, startApi } from './api-host';
-import { readConfig, writeConfig } from './lib/config';
-import { MESSAGES, systemLocale } from './lib/messages';
+import { readConfig, updateConfig } from './lib/config';
+import {
+  type DesktopMessages,
+  MESSAGES,
+  pageLocale,
+  systemLocale,
+} from './lib/messages';
+import { PassphraseVault, SigningSession } from './lib/signing';
+import { registerSignDialogIpc, showSignDialog } from './sign-window';
 import { APP_ORIGIN, isAppUrl } from './lib/web-protocol';
 import { handleAppScheme, registerAppScheme } from './protocol';
 
@@ -95,7 +109,7 @@ async function start(): Promise<void> {
   const legacy = readConfig(userData).projectDir;
   if (legacy !== null) {
     if (isFolder(legacy)) await api.addProject(legacy).catch(() => undefined);
-    writeConfig(userData, { projectDir: null });
+    updateConfig(userData, { projectDir: null });
   }
   // A folder given on the command line (`--project=<dir>`) is added and opened: demos and tests.
   const projectArg = process.argv
@@ -191,6 +205,92 @@ function registerIpc(): void {
       await shell.openPath(real);
     },
   );
+  // DT-15: the page asks for a gate's next bundle; the person checks it and confirms in the
+  // main process's own dialog. The page passes only ids and learns only the outcome.
+  ipcMain.handle(
+    IPC.bundleSign,
+    async (
+      event,
+      id: unknown,
+      gate: unknown,
+      locale: unknown,
+    ): Promise<BundleSignResult> => {
+      if (!fromApp(event) || mainWindow === null || api === null)
+        return { status: 'failed' };
+      if (typeof id !== 'string' || !PROJECT_ID.test(id))
+        return { status: 'failed' };
+      if (typeof gate !== 'string' || !GATE_NAME.test(gate))
+        return { status: 'failed' };
+      const text = MESSAGES[pageLocale(locale, app.getLocale())];
+      try {
+        return await signBundle(mainWindow, api, id, gate, text);
+      } catch (error) {
+        // Never a message to the page: it could name paths (SEC-46).
+        console.error('[desktop] signing failed', error);
+        return { status: 'failed' };
+      }
+    },
+  );
+  registerSignDialogIpc();
+}
+
+/**
+ * Electron safeStorage, but only with a real keychain behind it: on Linux without a secret
+ * service it falls back to a fixed key (`basic_text`), which is no protection — then the
+ * passphrase is not remembered at all (DT-04, §1.5: never a stronger claim).
+ */
+const keychain = {
+  isEncryptionAvailable: () =>
+    safeStorage.isEncryptionAvailable() &&
+    (process.platform !== 'linux' ||
+      !['basic_text', 'unknown'].includes(
+        safeStorage.getSelectedStorageBackend(),
+      )),
+  encryptString: (text: string) => safeStorage.encryptString(text),
+  decryptString: (sealed: Buffer) => safeStorage.decryptString(sealed),
+};
+
+async function signBundle(
+  parent: BrowserWindow,
+  running: RunningApi,
+  id: string,
+  gate: string,
+  text: DesktopMessages,
+): Promise<BundleSignResult> {
+  const userData = app.getPath('userData');
+  const session = new SigningSession({
+    texts: text.signDialog,
+    prepare: (signer) => running.prepareBundle(id, gate, signer),
+    sign: (digest, keyFile, passphrase) =>
+      running.signBundle(id, gate, digest, keyFile, passphrase),
+    keyFilePath: () => readConfig(userData).keyFile,
+    chooseKeyFile: async () => {
+      const owner = BrowserWindow.getFocusedWindow() ?? parent;
+      const picked = await dialog.showOpenDialog(owner, {
+        title: text.chooseKey.title,
+        buttonLabel: text.chooseKey.button,
+        properties: ['openFile'],
+        filters: [{ name: text.chooseKey.filter, extensions: ['moatkey'] }],
+      });
+      const file = picked.filePaths[0];
+      if (picked.canceled || file === undefined) return null;
+      updateConfig(userData, { keyFile: file });
+      return file;
+    },
+    vault: new PassphraseVault(
+      keychain,
+      () => readConfig(userData).passphrases,
+      (passphrases) => updateConfig(userData, { passphrases }),
+    ),
+  });
+  const opened = await session.open();
+  if ('done' in opened) return opened.done;
+  return showSignDialog({
+    parent,
+    appDir,
+    title: text.signDialog.title,
+    session,
+  });
 }
 
 /** The resolved path when it is a directory, otherwise null. */

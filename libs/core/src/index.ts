@@ -101,6 +101,15 @@ export {
 export { buildBundle, type BuildBundleInput } from './bundle/build';
 export type { StoragePort } from './storage/storage-port';
 export {
+  BundlePlanError,
+  planBundle,
+  type BundleChange,
+  type BundlePlan,
+  type BundlePlanErrorCode,
+  type FieldChange,
+  type PlanSigner,
+} from './storage/bundle-plan';
+export {
   readProject,
   CONFIG_FILE,
   type ConfigState,

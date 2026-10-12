@@ -4,7 +4,9 @@ import {
   constants,
   fstatSync,
   fsyncSync,
+  linkSync,
   lstatSync,
+  mkdirSync,
   openSync,
   readdirSync,
   readSync,
@@ -33,6 +35,14 @@ const WRITABLE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 /** A file the desktop may not replace: not a regular file, or the write failed. */
 export class FolderWriteError extends Error {
   override readonly name = 'FolderWriteError';
+
+  constructor(
+    message: string,
+    /** `exists`: create() found a file at the path already (nothing was written). */
+    readonly reason: 'exists' | 'failed' = 'failed',
+  ) {
+    super(message);
+  }
 }
 
 /**
@@ -131,6 +141,57 @@ export class FolderStorage implements StoragePort {
     } catch {
       rmSync(temp, { force: true });
       throw new FolderWriteError('write failed');
+    }
+  }
+
+  /**
+   * Creates a new file at `path` (e.g. `bundles/site/3.json`), never replacing one: the folders on
+   * the way are created when missing and must be real folders (no symbolic links), every part of
+   * the path is a plain name, and the text is written to a temporary file and then hard-linked to
+   * its name, which fails when a file is there already. A reader never sees half a file.
+   */
+  create(path: string, text: string): void {
+    const parts = path.split('/');
+    if (parts.length === 0 || !parts.every((part) => WRITABLE_NAME.test(part)))
+      throw new FolderWriteError('invalid path');
+    const name = parts.pop() as string;
+    let dir = this.root;
+    for (const part of parts) {
+      dir = join(dir, part);
+      try {
+        mkdirSync(dir);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST')
+          throw new FolderWriteError('cannot create the folder');
+      }
+      try {
+        if (!lstatSync(dir).isDirectory())
+          throw new FolderWriteError('not a folder');
+      } catch (error) {
+        if (error instanceof FolderWriteError) throw error;
+        throw new FolderWriteError('cannot check the folder');
+      }
+    }
+    const target = join(dir, name);
+    const temp = join(dir, `.${name}.${randomBytes(8).toString('hex')}.tmp`);
+    try {
+      const fd = openSync(temp, 'wx', 0o644);
+      try {
+        const bytes = Buffer.from(text, 'utf8');
+        let written = 0;
+        while (written < bytes.length)
+          written += writeSync(fd, bytes, written, bytes.length - written);
+        fsyncSync(fd);
+      } finally {
+        closeSync(fd);
+      }
+      linkSync(temp, target);
+    } catch (error) {
+      throw (error as NodeJS.ErrnoException).code === 'EEXIST'
+        ? new FolderWriteError('exists', 'exists')
+        : new FolderWriteError('write failed');
+    } finally {
+      rmSync(temp, { force: true });
     }
   }
 

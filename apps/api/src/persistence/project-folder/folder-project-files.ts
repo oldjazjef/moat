@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { CONFIG_FILE, type StoragePort } from '@moat/core';
-import { ProjectFilesPort } from '../../project/ports/project-files.port';
-import { FolderStorage } from './folder-storage';
+import {
+  BundleExistsError,
+  ProjectFilesPort,
+} from '../../project/ports/project-files.port';
+import { FolderStorage, FolderWriteError } from './folder-storage';
 
 /** A project folder on disk, opened anew per request (it may change on disk). */
 @Injectable()
@@ -16,5 +19,15 @@ export class FolderProjectFiles extends ProjectFilesPort {
 
   writeConfig(folder: string, text: string): void {
     new FolderStorage(folder).replace(CONFIG_FILE, text);
+  }
+
+  writeBundle(folder: string, gate: string, version: number, text: string) {
+    try {
+      new FolderStorage(folder).create(`bundles/${gate}/${version}.json`, text);
+    } catch (error) {
+      if (error instanceof FolderWriteError && error.reason === 'exists')
+        throw new BundleExistsError(`bundle ${version} exists`);
+      throw error;
+    }
   }
 }

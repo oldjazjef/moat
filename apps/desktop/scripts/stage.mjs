@@ -4,6 +4,7 @@
  * (`pnpm start:desktop`) and what electron-builder packages (as lazy-koins):
  *
  *   main.js, preload.js   the main process + preload, bundled here with esbuild
+ *   sign-preload.js, sign/ the signing dialog (DT-15): its preload and its static page
  *   api/main.js           the NestJS API as a library (`nx run api:build`)
  *   web/                  the Angular build (`nx run web:build:desktop`), served via app://
  *   package.json          name/version/main + the API's runtime dependencies
@@ -58,6 +59,10 @@ await esbuild.build({
     // entry.ts installs the fatal-error dialog, then loads main.ts.
     main: path.join(repoRoot, 'apps/desktop/src/main/entry.ts'),
     preload: path.join(repoRoot, 'apps/desktop/src/preload/preload.ts'),
+    'sign-preload': path.join(
+      repoRoot,
+      'apps/desktop/src/preload/sign-preload.ts',
+    ),
   },
   outdir: out,
   bundle: true,
@@ -67,6 +72,11 @@ await esbuild.build({
   external: ['electron'],
   sourcemap: true,
   logLevel: 'warning',
+});
+
+// --- the signing dialog's page (no script: its preload renders it) ---
+cpSync(path.join(repoRoot, 'apps/desktop/src/sign'), path.join(out, 'sign'), {
+  recursive: true,
 });
 
 // --- API, web ---

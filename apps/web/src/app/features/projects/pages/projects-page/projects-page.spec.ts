@@ -79,6 +79,7 @@ describe('ProjectsPage', () => {
     window.moatDesktop = {
       platform: 'linux',
       project: { add, reveal: vi.fn() },
+      bundle: { sign: vi.fn() },
     };
     const { el, harness } = await open([]);
     (el.querySelector('[data-add-project]') as HTMLButtonElement).click();
@@ -92,6 +93,7 @@ describe('ProjectsPage', () => {
     window.moatDesktop = {
       platform: 'linux',
       project: { add, reveal: vi.fn() },
+      bundle: { sign: vi.fn() },
     };
     const { el, harness } = await open([]);
     (el.querySelector('[data-add-project]') as HTMLButtonElement).click();

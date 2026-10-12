@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { AddProjectHandler } from './application/add-project.handler';
+import { BundleSigningService } from './application/bundle-signing.service';
 import { EditConfigHandler } from './application/edit-config.handler';
 import { GetProjectHandler } from './application/get-project.handler';
 import { ListProjectsHandler } from './application/list-projects.handler';
@@ -18,7 +19,8 @@ import { ProjectService } from './project.service';
     AddProjectHandler,
     RemoveProjectHandler,
     EditConfigHandler,
+    BundleSigningService,
   ],
-  exports: [ProjectService],
+  exports: [ProjectService, BundleSigningService],
 })
 export class ProjectModule {}

@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { desktopApiEnv } from './lib/api-env';
+import type { PlanSigner, PrepareResult, SignResult } from './lib/signing';
 
 interface ApiHandle {
   app: { close(): Promise<void> };
@@ -18,6 +19,20 @@ interface ApiBundle {
   }): Promise<ApiHandle>;
   addProject(api: ApiHandle, folder: string): Promise<{ id: string }>;
   projectFolder(api: ApiHandle, id: string): Promise<string | null>;
+  prepareBundle(
+    api: ApiHandle,
+    id: string,
+    gate: string,
+    signer: PlanSigner | null,
+  ): Promise<PrepareResult>;
+  signBundle(
+    api: ApiHandle,
+    id: string,
+    gate: string,
+    digest: string,
+    keyFile: string,
+    passphrase: string,
+  ): Promise<SignResult>;
 }
 
 export interface RunningApi {
@@ -28,6 +43,19 @@ export interface RunningApi {
   /** In-process, never over HTTP: only the main process adds folders (DT-08). */
   addProject(folder: string): Promise<{ id: string }>;
   projectFolder(id: string): Promise<string | null>;
+  /** In-process only, for the signing dialog (DT-15): the page has no way to sign. */
+  prepareBundle(
+    id: string,
+    gate: string,
+    signer: PlanSigner | null,
+  ): Promise<PrepareResult>;
+  signBundle(
+    id: string,
+    gate: string,
+    digest: string,
+    keyFile: string,
+    passphrase: string,
+  ): Promise<SignResult>;
   close(): Promise<void>;
 }
 
@@ -58,6 +86,10 @@ export async function startApi(options: {
     accessToken,
     addProject: (folder) => api.addProject(running, folder),
     projectFolder: (id) => api.projectFolder(running, id),
+    prepareBundle: (id, gate, signer) =>
+      api.prepareBundle(running, id, gate, signer),
+    signBundle: (id, gate, digest, keyFile, passphrase) =>
+      api.signBundle(running, id, gate, digest, keyFile, passphrase),
     close: () => running.app.close(),
   };
 }

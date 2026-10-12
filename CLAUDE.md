@@ -28,8 +28,8 @@ Four components (ANFORDERUNGEN.md, header):
 > with the API in-process (`apps/api`: the project list in `<MOAT_DATA_DIR>/projects.json`,
 > `GET /api/projects`, `GET|DELETE /api/projects/:id`, `POST /api/projects/:id/config/edits` — the closed list of moat.yaml edits: add/lock/unlock environments, lock/unlock and assign gates, add/update/enable/disable/remove routes and add/update/remove upstreams (`setRoute`, `setUpstream` & co. in `libs/core/src/config/edit.ts`), with a `base` hash against lost updates) and the Angular
 > UI (`apps/web`: Projekte → workspace with Übersicht incl. Umgebungen, Gates with lock state, Routen;
-> Hilfe). Everything else
-> (sealing secrets, building and signing) still goes through the CLI. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, desktop secret sealing and signing, setup wizard (FR-73),
+> Hilfe), and signing a gate's next bundle («Bundle signieren» → the main-process dialog of DT-15,
+> `BundleSigningService` + `planBundle` in core). Sealing secrets still goes through the CLI. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, desktop secret sealing, setup wizard (FR-73),
 > quotas/budgets, lazy pull, setup mode, trust mode 2, the local file kill switch (SEC-15). Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
@@ -88,7 +88,13 @@ DT-04). Electron over Tauri: decided by "same stack as lazy-koins" (closes ANFOR
 
 As built: the API refuses any request whose `Host` is not exactly `127.0.0.1:<port>` (DT-16)
 or that lacks the per-launch `x-moat-desktop` token; both refusals are the same 403. IPC
-handlers answer only the `app://moat` origin (DT-08) and take at most a project id. Everything
+handlers answer only the `app://moat` origin (DT-08) and take at most a project id, a gate name
+and a language. Signing (DT-15): the page only asks; `src/main/sign-window.ts` opens a modal window
+from a local file with no script of its own, rendered by its own preload (`sign-preload.ts`,
+`textContent` only), whose IPC answers only that window's main frame. The main process reads the
+key file (path in `config.json`), calls `signBundle` in-process (never HTTP) with the digest the
+person confirmed, and remembers the passphrase only through `safeStorage` with a real keychain
+(not Linux `basic_text`). Pure logic in `src/main/lib/signing.ts`. Everything
 is project-based: a project is a folder in the API's project list. A folder is added only in the
 main-process dialog, in-process (`addProject` in `apps/api/src/desktop.ts`) — there is no HTTP
 route that takes a path. `--project=<dir>` adds and opens a folder for development and

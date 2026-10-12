@@ -21,7 +21,7 @@ import type { StoragePort } from './storage-port';
  */
 export const CONFIG_FILE = 'moat.yaml';
 export const NAME_PATTERN = /^[a-z][a-z0-9-]{0,62}$/;
-const GATE_ID = /^[A-Za-z0-9_-]{22}$/;
+export const GATE_ID = /^[A-Za-z0-9_-]{22}$/;
 /** More gates, secrets or bundles than any real project has: the rest is not listed. */
 export const MAX_LISTED = 500;
 
@@ -225,7 +225,8 @@ function readSecrets(storage: StoragePort, gate: string): SealedSecretInfo[] {
   });
 }
 
-function latestBundle(storage: StoragePort, gate: string): number {
+/** Highest bundle version in `bundles/<gate>/`, 0 when none. */
+export function latestBundle(storage: StoragePort, gate: string): number {
   return storage
     .list(`bundles/${gate}`)
     .map((file) => /^([1-9][0-9]{0,8})\.json$/.exec(file)?.[1])
@@ -234,7 +235,7 @@ function latestBundle(storage: StoragePort, gate: string): number {
 }
 
 /** `<name>.json` entries with a valid name, sorted, at most MAX_LISTED. */
-function jsonNames(storage: StoragePort, dir: string): string[] {
+export function jsonNames(storage: StoragePort, dir: string): string[] {
   return storage
     .list(dir)
     .map((file) => /^(.+)\.json$/.exec(file)?.[1])
@@ -245,7 +246,7 @@ function jsonNames(storage: StoragePort, dir: string): string[] {
     .slice(0, MAX_LISTED);
 }
 
-function parseJson(text: string | null): unknown {
+export function parseJson(text: string | null): unknown {
   if (text === null) return null;
   try {
     return JSON.parse(text) as unknown;
@@ -254,7 +255,7 @@ function parseJson(text: string | null): unknown {
   }
 }
 
-function decode(value: string): Uint8Array | null {
+export function decode(value: string): Uint8Array | null {
   try {
     return fromBase64Url(value);
   } catch {
@@ -262,6 +263,6 @@ function decode(value: string): Uint8Array | null {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

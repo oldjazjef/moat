@@ -178,10 +178,20 @@
     "lockedGate": "Dieses Gate ist gesperrt. Sobald das Bundle mit der Sperre angenommen ist, beantwortet es jede Anfrage mit einem Fehler und leitet nichts weiter.",
     "lockedEnvironment": "Die Umgebung {{environment}} ist gesperrt und damit auch dieses Gate. Sobald das Bundle mit der Sperre angenommen ist, beantwortet es jede Anfrage mit einem Fehler und leitet nichts weiter.",
     "bundleLocked": "Version {{version}}, mit Sperre gebaut",
-    "lockPending": "Das letzte Bundle enthält die Sperre noch nicht. Baue mit `moat build {{gate}}` ein neues und nimm es auf dem Gate an.",
-    "unlockPending": "Das letzte Bundle sperrt das Gate noch. Baue mit `moat build {{gate}}` ein neues und nimm es auf dem Gate an, dann leitet es wieder weiter.",
+    "lockPending": "Das letzte Bundle enthält die Sperre noch nicht. Signiere ein neues (in Moat Desktop mit «Bundle signieren», im CLI mit `moat build {{gate}}`) und nimm es auf dem Gate an.",
+    "unlockPending": "Das letzte Bundle sperrt das Gate noch. Signiere ein neues (in Moat Desktop mit «Bundle signieren», im CLI mit `moat build {{gate}}`) und nimm es auf dem Gate an, dann leitet es wieder weiter.",
     "lock": "Gate sperren",
-    "unlock": "Gate entsperren"
+    "unlock": "Gate entsperren",
+    "sign": "Bundle signieren",
+    "signResult": {
+      "signed": "Version {{version}} ist signiert und liegt unter `bundles/{{gate}}/{{version}}.json`. Lade die Datei auf den Server und nimm sie mit `php moat-gate.php accept` an.",
+      "config_missing": "Es gibt noch keine moat.yaml in diesem Projekt.",
+      "config_invalid": "moat.yaml ist nicht gültig. Behebe die Fehler in der «Übersicht», dann kannst du signieren.",
+      "gate_unknown": "Die Gate-Datei fehlt oder ist beschädigt.",
+      "secrets_missing": "Diese Secrets sind für das Gate noch nicht versiegelt: {{secrets}}",
+      "not_writable": "Der Ordner `bundles/{{gate}}` kann nicht beschrieben werden. Es wurde nichts gespeichert.",
+      "failed": "Das Signieren hat nicht geklappt. Es wurde nichts gespeichert."
+    }
   },
   "routes": {
     "subtitle": "Was das Gate weiterleitet, und an wen",
@@ -335,7 +345,7 @@
         },
         "lockPending": {
           "question": "Ich habe ein Gate gesperrt, aber es leitet noch weiter.",
-          "answer": "Die Sperre steht erst in moat.yaml. Sie gilt, sobald das Gate ein Bundle mit der Sperre angenommen hat: `moat build <gate>`, die Datei hochladen und auf dem Server `php moat-gate.php accept` ausführen. `php moat-gate.php status` zeigt dann `LOCKED`."
+          "answer": "Die Sperre steht erst in moat.yaml. Sie gilt, sobald das Gate ein Bundle mit der Sperre angenommen hat: ein neues Bundle signieren («Bundle signieren» oder `moat build <gate>`), die Datei hochladen und auf dem Server `php moat-gate.php accept` ausführen. `php moat-gate.php status` zeigt dann `LOCKED`."
         }
       }
     },
@@ -437,13 +447,15 @@
         "purpose": "Ein Bundle ist die signierte Konfiguration für genau ein Gate. Das Gate nimmt es nur an, wenn die Signatur stimmt und die Version höher ist als die letzte.",
         "where": "Projekt › Gates › Letztes Bundle",
         "steps": {
-          "build": "Baue das Bundle mit `moat build <gate> --key <datei>.moatkey`. Es liegt danach unter `bundles`.",
+          "sign": "Klicke unter «Gates» beim Gate auf «Bundle signieren». Ein eigenes Fenster von Moat Desktop zeigt, was sich gegenüber dem letzten Bundle ändert. Wähle beim ersten Mal deine Schlüsseldatei (`.moatkey`), gib die Passphrase ein und bestätige. Das Bundle liegt danach unter `bundles`.",
+          "build": "Im CLI baust du das Bundle mit `moat build <gate> --key <datei>.moatkey`. Es liegt danach unter `bundles`.",
           "deploy": "Lade die Bundle-Datei auf den Server.",
           "accept": "Aktiviere sie dort mit `php moat-gate.php accept <bundle>.json`. Unter «Gates» siehst du die zuletzt gebaute Version."
         },
         "tips": {
           "rollback": "Zurück zu einer älteren Konfiguration? Baue sie als neue, höhere Version.",
-          "policy": "Passt ein Bundle nicht zur lokalen Policy, lehnt das Gate es ab. Die Policy änderst du nur am Gate selbst."
+          "policy": "Passt ein Bundle nicht zur lokalen Policy, lehnt das Gate es ab. Die Policy änderst du nur am Gate selbst.",
+          "keychain": "Auf Wunsch merkt sich Moat Desktop die Passphrase im Schlüsselbund deines Betriebssystems. Nimmst du das Häkchen beim nächsten Signieren weg, wird sie dort gelöscht. Ohne echten Schlüsselbund bietet Moat Desktop das gar nicht an."
         }
       },
       "environments": {
@@ -453,7 +465,7 @@
         "steps": {
           "define": "Lege in der «Übersicht» unter «Umgebungen» eine Umgebung an: Name eintragen, «Umgebung hinzufügen». Unter «Gates» wählst du bei jedem Gate seine «Umgebung». Im CLI geht das mit `moat env add staging` und `moat gate assign <gate> staging`.",
           "lock": "Sperre die ganze Umgebung mit «Sperren» in der Karte «Umgebungen» oder ein einzelnes Gate mit «Gate sperren» unter «Gates». Im CLI: `moat env disable staging` oder `moat gate disable <gate>`.",
-          "build": "Baue für jedes betroffene Gate ein neues Bundle mit `moat build <gate>` und nimm es auf dem Gate mit `php moat-gate.php accept` an. Erst dann gilt die Sperre.",
+          "build": "Signiere für jedes betroffene Gate ein neues Bundle (mit «Bundle signieren» oder `moat build <gate>`) und nimm es auf dem Gate mit `php moat-gate.php accept` an. Erst dann gilt die Sperre.",
           "check": "In der «Übersicht» zeigt die Karte «Umgebungen» jede Umgebung mit ihren Gates, unter «Gates» trägt jedes gesperrte Gate das Abzeichen «Gesperrt»."
         },
         "tips": {

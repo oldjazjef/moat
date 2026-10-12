@@ -1,4 +1,7 @@
+import { TestBed } from '@angular/core/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
 import type { ProjectView } from '../../../../core/api/project.types';
+import type { BundleSignResult } from '../../../../core/desktop/desktop-bridge';
 import {
   expectEdit,
   openProjectTab,
@@ -58,7 +61,7 @@ describe('GatesPage', () => {
       'Die Umgebung production ist gesperrt',
     );
     expect(text(el, '[data-lock-pending]')).toBe(
-      'Das letzte Bundle enthält die Sperre noch nicht. Baue mit moat build site ein neues und nimm es auf dem Gate an.',
+      'Das letzte Bundle enthält die Sperre noch nicht. Signiere ein neues (in Moat Desktop mit «Bundle signieren», im CLI mit moat build site) und nimm es auf dem Gate an.',
     );
   });
 
@@ -216,5 +219,79 @@ describe('GatesPage', () => {
       'Das letzte Bundle enthält die Sperre noch nicht.',
     );
     expect(el.querySelector('[data-gate-unlock]')).not.toBeNull();
+  });
+
+  describe('signing in Moat Desktop (DT-15)', () => {
+    afterEach(() => delete window.moatDesktop);
+
+    /** The bundle was signed or refused: the page reads the project again. */
+    const answerReload = async (harness: Parameters<typeof settle>[0]) => {
+      await new Promise((resolve) => setTimeout(resolve));
+      TestBed.inject(HttpTestingController)
+        .expectOne(`/api/projects/${PROJECT.id}`)
+        .flush(PROJECT);
+      await settle(harness);
+    };
+
+    const desktop = (result: BundleSignResult) => {
+      const sign = vi.fn().mockResolvedValue(result);
+      window.moatDesktop = {
+        platform: 'linux',
+        project: { add: vi.fn(), reveal: vi.fn() },
+        bundle: { sign },
+      };
+      return sign;
+    };
+
+    it('offers no signing in a browser', async () => {
+      const { el } = await openProjectTab('gates', GatesPage, PROJECT);
+      expect(el.querySelector('[data-bundle-sign]')).toBeNull();
+    });
+
+    it('asks the desktop shell by ids only, then says where the bundle is and reads the project again', async () => {
+      const sign = desktop({ status: 'signed', version: 4 });
+      const { el, harness } = await openProjectTab('gates', GatesPage, PROJECT);
+      const button = el.querySelector(
+        '[data-bundle-sign]',
+      ) as HTMLButtonElement;
+      expect(button.textContent?.trim()).toBe('Bundle signieren');
+      button.click();
+      await answerReload(harness);
+      expect(sign).toHaveBeenCalledWith(PROJECT.id, 'site', 'de-CH');
+      expect(text(el, '[data-sign-outcome]')).toBe(
+        'Version 4 ist signiert und liegt unter bundles/site/4.json. Lade die Datei auf den Server und nimm sie mit php moat-gate.php accept an.',
+      );
+    });
+
+    it('says nothing on cancel and names what blocks the bundle', async () => {
+      const sign = desktop({ status: 'cancelled' });
+      const { el, harness } = await openProjectTab('gates', GatesPage, PROJECT);
+      (el.querySelector('[data-bundle-sign]') as HTMLButtonElement).click();
+      await settle(harness);
+      expect(el.querySelector('[data-sign-outcome]')).toBeNull();
+
+      sign.mockResolvedValue({
+        status: 'refused',
+        code: 'secrets_missing',
+        secrets: ['hubspot-token'],
+      });
+      (el.querySelector('[data-bundle-sign]') as HTMLButtonElement).click();
+      await answerReload(harness);
+      expect(text(el, '[data-sign-outcome]')).toBe(
+        'Diese Secrets sind für das Gate noch nicht versiegelt: hubspot-token',
+      );
+    });
+
+    it('keeps the button off while a secret is missing', async () => {
+      desktop({ status: 'failed' });
+      const { el } = await openProjectTab(
+        'gates',
+        GatesPage,
+        withGate({ ...site(), missingSecrets: ['hubspot-token'] }),
+      );
+      expect(
+        (el.querySelector('[data-bundle-sign]') as HTMLButtonElement).disabled,
+      ).toBe(true);
+    });
   });
 });
