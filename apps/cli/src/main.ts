@@ -5,7 +5,13 @@ import { UsageError, type Context } from './context';
 import {
   build,
   describeError,
+  envAdd,
+  envDisable,
+  envEnable,
   gateAdd,
+  gateAssign,
+  gateDisable,
+  gateEnable,
   keygen,
   policySuggest,
   secretSeal,
@@ -18,9 +24,17 @@ const HELP = `moat — Moat CLI (sign and seal locally; nothing here talks to a 
   moat keygen <file.moatkey>                         new signing key (trust mode 1)
   moat validate [--config moat.yaml] [--policy p.json]
   moat policy suggest [--config moat.yaml]           narrowest gate policy for the config
-  moat gate add <gate> --gate-id=<id> --box-key=<k>  pin a gate after comparing fingerprints
+  moat gate add <gate> --gate-id=<id> --box-key=<k> [--env <environment>]
+                                                     pin a gate after comparing fingerprints
+  moat gate assign <gate> <environment> [--force]    put a gate into an environment
+  moat gate disable|enable <gate>                    lock or unlock one gate
+  moat env add <environment>                         a new environment (dev, staging, …)
+  moat env disable|enable <environment>              lock or unlock every gate in it
   moat secret seal <gate> <name> [--secret-version n] value from stdin or a hidden prompt
   moat build <gate> --key <file.moatkey> [--version n] [--policy p.json]
+
+A lock takes effect with the gate's next bundle (moat build, then accept on the gate): a locked
+gate refuses every request and forwards nothing.
 
 Passphrases and secret values: MOAT_PASSPHRASE (passphrase only), piped stdin, or a hidden prompt.`;
 
@@ -35,6 +49,12 @@ const COMMANDS: Record<string, Command> = {
   validate,
   'policy suggest': policySuggest,
   'gate add': gateAdd,
+  'gate assign': gateAssign,
+  'gate disable': gateDisable,
+  'gate enable': gateEnable,
+  'env add': envAdd,
+  'env disable': envDisable,
+  'env enable': envEnable,
   'secret seal': secretSeal,
   build,
 };
@@ -93,6 +113,7 @@ export async function run(argv: string[], context: Context): Promise<number> {
       'secret-version': { type: 'string' },
       'gate-id': { type: 'string' },
       'box-key': { type: 'string' },
+      env: { type: 'string' },
       force: { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
     },

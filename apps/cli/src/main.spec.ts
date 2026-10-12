@@ -248,4 +248,163 @@ describe('moat CLI', () => {
       },
     });
   });
+
+  describe('environments and locks', () => {
+    async function pin(context: Context, gate: string, extra: string[] = []) {
+      const { pair, gateId } = await gateKeys();
+      expect(
+        await run(
+          [
+            'gate',
+            'add',
+            gate,
+            `--gate-id=${gateId}`,
+            `--box-key=${toBase64Url(pair.publicKey)}`,
+            ...extra,
+          ],
+          context,
+        ),
+      ).toBe(0);
+      return { pair, gateId };
+    }
+
+    it('gate add --env puts the gate into a new environment, keeping the file as written', async () => {
+      const { cwd, context } = project([]);
+      writeFileSync(path.join(cwd, 'moat.yaml'), `# my config\n${yaml}`);
+      await pin(context, 'www-staging', ['--env', 'staging']);
+      const text = readFileSync(path.join(cwd, 'moat.yaml'), 'utf8');
+      expect(text.startsWith('# my config\nversion: 1\nenvironments:\n')).toBe(
+        true,
+      );
+      expect(text).toContain('www-staging:\n    environment: staging');
+    });
+
+    it('a bad --env pins nothing', async () => {
+      const { cwd, output, context } = project([]);
+      const { pair, gateId } = await gateKeys();
+      expect(
+        await run(
+          [
+            'gate',
+            'add',
+            'www',
+            `--gate-id=${gateId}`,
+            `--box-key=${toBase64Url(pair.publicKey)}`,
+            '--env',
+            'Staging',
+          ],
+          context,
+        ),
+      ).toBe(1);
+      expect(output.at(-1)).toContain('environment name must match');
+      expect(readdirSync(cwd)).not.toContain('gates');
+    });
+
+    it('env disable locks every gate of the environment and names them; build signs the lock', async () => {
+      const passphrase = 'a long test passphrase';
+      const { cwd, output, context, answers } = project([
+        passphrase,
+        passphrase,
+      ]);
+      await run(['keygen', 'signer.moatkey'], context);
+      const staging = await pin(context, 'www-staging', ['--env', 'staging']);
+      await pin(context, 'www', ['--env', 'production']);
+      expect(await run(['env', 'disable', 'staging'], context)).toBe(0);
+      expect(output.slice(-2)).toEqual([
+        'Takes effect with the next bundle. Build and accept one for each gate:',
+        '  moat build www-staging --key <file.moatkey>',
+      ]);
+
+      answers.push('value', passphrase);
+      await run(['secret', 'seal', 'www-staging', 'hubspot-token'], context);
+      expect(
+        await run(['build', 'www-staging', '--key', 'signer.moatkey'], context),
+      ).toBe(0);
+      expect(output.at(-1)).toBe(
+        'LOCKED (environment staging): once accepted, the gate refuses every request.',
+      );
+      const keyFile = JSON.parse(
+        readFileSync(path.join(cwd, 'signer.moatkey'), 'utf8'),
+      ) as { pk: string };
+      const publicKey = fromBase64Url(keyFile.pk);
+      const verified = await verifyBundle(
+        readFileSync(path.join(cwd, 'bundles/www-staging/1.json')),
+        {
+          gateId: staging.gateId,
+          signers: [
+            {
+              kid: await keyId('ed25519', publicKey),
+              alg: 'ed25519',
+              publicKey,
+            },
+          ],
+          threshold: 1,
+          currentVersion: 0,
+          now: 1_791_792_000,
+          expiryEnabled: false,
+        },
+      );
+      expect(verified.payload.config).toMatchObject({ enabled: false });
+
+      expect(await run(['env', 'enable', 'staging'], context)).toBe(0);
+      expect(readFileSync(path.join(cwd, 'moat.yaml'), 'utf8')).not.toContain(
+        'enabled',
+      );
+    });
+
+    it('gate disable locks one gate; gate enable says when its environment still locks it', async () => {
+      const { cwd, output, context } = project([]);
+      await pin(context, 'www', ['--env', 'staging']);
+      expect(await run(['gate', 'disable', 'www'], context)).toBe(0);
+      expect(output).toContain(
+        'Gate www is locked: it will refuse every request.',
+      );
+      expect(readFileSync(path.join(cwd, 'moat.yaml'), 'utf8')).toContain(
+        'www:\n    environment: staging\n    enabled: false',
+      );
+      await run(['env', 'disable', 'staging'], context);
+      expect(await run(['gate', 'enable', 'www'], context)).toBe(0);
+      expect(output).toContain(
+        'Gate www is unlocked, but its environment staging is still locked.',
+      );
+    });
+
+    it('refuses a lock on an unknown gate or environment, and moving a gate without --force', async () => {
+      const { output, context } = project([]);
+      expect(await run(['gate', 'disable', 'nope'], context)).toBe(1);
+      expect(output.at(-1)).toBe(
+        'moat: no gate "nope": gates/nope.json is missing (moat gate add)',
+      );
+      expect(await run(['env', 'disable', 'prod'], context)).toBe(1);
+      expect(output.at(-1)).toBe('moat: no environment "prod" in moat.yaml');
+      await pin(context, 'www', ['--env', 'staging']);
+      expect(await run(['gate', 'assign', 'www', 'production'], context)).toBe(
+        1,
+      );
+      expect(output.at(-1)).toBe(
+        'moat: gate "www" is in environment "staging" (--force moves it)',
+      );
+      await run(['env', 'add', 'production'], context);
+      await run(['env', 'disable', 'production'], context);
+      expect(
+        await run(['gate', 'assign', 'www', 'production', '--force'], context),
+      ).toBe(0);
+      expect(output.slice(-4)).toEqual([
+        'Gate www is in environment production.',
+        'Environment production is locked: so is this gate now.',
+        'Takes effect with the next bundle. Build and accept one for each gate:',
+        '  moat build www --key <file.moatkey>',
+      ]);
+      await run(['env', 'add', 'dev'], context);
+      expect(
+        await run(['gate', 'assign', 'www', 'dev', '--force'], context),
+      ).toBe(0);
+      expect(output.at(-1)).toBe('  moat build www --key <file.moatkey>');
+      expect(output.at(-3)).toBe(
+        'Environment dev is not locked: this gate is no longer locked.',
+      );
+      await run(['gate', 'assign', 'www', 'staging', '--force'], context);
+      expect(output.at(-1)).toBe('Gate www is in environment staging.');
+    });
+  });
 });

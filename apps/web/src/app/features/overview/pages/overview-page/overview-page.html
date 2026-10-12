@@ -102,5 +102,67 @@
       } } }
     </div>
   </section>
+
+  @if (project.config.status === 'valid') {
+  <section
+    hlmCard
+    class="md:col-span-2"
+    aria-labelledby="environments-title"
+    data-environments
+  >
+    <div hlmCardHeader>
+      <div class="flex items-center justify-between gap-3">
+        <h2 hlmCardTitle id="environments-title">
+          {{ 'overview.environments.title' | translate }}
+        </h2>
+        <mt-help-link section="environments" />
+      </div>
+      <p hlmCardDescription>
+        {{ 'overview.environments.description' | translate }}
+      </p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      @if (service.environments().length === 0) {
+      <p class="text-muted-foreground text-sm" data-no-environments>
+        <mt-rich-text [text]="'overview.environments.none' | translate" />
+      </p>
+      } @else {
+      <ul class="flex flex-col gap-3">
+        @for (environment of service.environments(); track environment.name) {
+        <li
+          class="flex flex-wrap items-center gap-2"
+          data-environment
+          [attr.data-environment-name]="environment.name"
+        >
+          <span class="mt-code min-w-28 font-medium">
+            {{ environment.name }}
+          </span>
+          <mt-lock-badge [locked]="!environment.enabled" />
+          @if (environment.gates.length === 0) {
+          <span class="text-muted-foreground text-xs">
+            {{ 'overview.environments.noGates' | translate }}
+          </span>
+          } @else { @for (gate of environment.gates; track gate) {
+          <span hlmBadge variant="secondary" class="font-mono font-normal">
+            {{ gate }}
+          </span>
+          @if (service.gatesLocked().has(gate)) {
+          <mt-lock-badge [locked]="true" />
+          } } }
+        </li>
+        }
+      </ul>
+      } @if (service.unassigned().length > 0) {
+      <p class="text-muted-foreground text-sm" data-unassigned>
+        {{ 'overview.environments.unassigned' | translate: { gates:
+        service.unassigned().join(', ') } }}
+      </p>
+      }
+      <p class="text-muted-foreground text-xs">
+        <mt-rich-text [text]="'overview.environments.hint' | translate" />
+      </p>
+    </div>
+  </section>
+  }
 </div>
 }

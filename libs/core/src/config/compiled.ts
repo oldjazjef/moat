@@ -100,6 +100,12 @@ export const compiledRouteSchema = z.strictObject({
 
 export const compiledConfigSchema = z.strictObject({
   version: z.literal(1),
+  /**
+   * `false` locks the gate: it answers every request with `gate_disabled` and forwards nothing
+   * (the lock of a gate or of its whole environment, moat.yaml `environments`). Compiled only
+   * when locked, so bundles of an unlocked gate are unchanged; absent = `true`.
+   */
+  enabled: z.boolean().optional(),
   upstreams: z.record(name, compiledUpstreamSchema),
   routes: z.record(name, compiledRouteSchema),
 });

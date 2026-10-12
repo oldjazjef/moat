@@ -97,6 +97,11 @@
           {{ 'overview.config.missingSecrets' | translate: { gates:
           project.gatesMissingSecrets.join(', ') } }}
         </p>
+        } @if (project.gatesLocked.length > 0) {
+        <p class="text-destructive" data-gates-locked>
+          {{ 'projects.locked' | translate: { gates: project.gatesLocked.join(',
+          ') } }}
+        </p>
         }
         <div>
           <a

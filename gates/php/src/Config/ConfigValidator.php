@@ -33,7 +33,16 @@ final class ConfigValidator
     /** @param list<string> $secretNames the names of the bundle's sealed secrets */
     public static function validate(mixed $config, array $secretNames): CompiledConfig
     {
-        if (!$config instanceof JsonObject || !$config->hasExactKeys('version', 'upstreams', 'routes') || $config->get('version') !== 1) {
+        if (!$config instanceof JsonObject || $config->get('version') !== 1) {
+            self::fail();
+        }
+        // `enabled` is optional: compiled only when the gate or its environment is locked.
+        $hasEnabled = $config->has('enabled');
+        if (!($hasEnabled ? $config->hasExactKeys('version', 'enabled', 'upstreams', 'routes') : $config->hasExactKeys('version', 'upstreams', 'routes'))) {
+            self::fail();
+        }
+        $enabled = $hasEnabled ? $config->get('enabled') : true;
+        if (!\is_bool($enabled)) {
             self::fail();
         }
         $upstreams = [];
@@ -55,7 +64,7 @@ final class ConfigValidator
             $routes[$name] = $route;
         }
 
-        return new CompiledConfig($upstreams, $routes);
+        return new CompiledConfig($upstreams, $routes, $enabled);
     }
 
     /** `https://host[:port]`, as isOrigin() in libs/core. */

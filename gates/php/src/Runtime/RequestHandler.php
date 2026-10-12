@@ -25,8 +25,10 @@ use Moat\Gate\Upstream\UpstreamRequest;
  * normalised before matching, exact route match (SEC-42), then gating — origin (FR-15) and rate
  * limits (FR-30, SEC-45) — then body size and content type (FR-18), then the secret, opened only
  * for this call and wiped after (SEC-35), and the answer reduced to status, media type and body.
- * A CORS preflight is answered by the gate itself and never reaches an upstream. Anything
- * unexpected ends in a generic error (SEC-46).
+ * A CORS preflight is answered by the gate itself and never reaches an upstream. A locked gate
+ * (the bundle's `enabled: false`) refuses every request before any of this, with the same answer
+ * whatever the method or path, so it reveals no route. Anything unexpected ends in a generic
+ * error (SEC-46).
  */
 final class RequestHandler
 {
@@ -47,6 +49,9 @@ final class RequestHandler
 
     private static function dispatch(Request $request, ActiveBundle $bundle, Gate $gate, int $now): Response
     {
+        if (!$bundle->config->enabled) {
+            throw new Failure(GateError::GateDisabled);
+        }
         $routes = self::routesAt($request, $bundle);
         if ($request->method === 'OPTIONS' && $request->origin !== null && $request->requestMethod !== null) {
             try {

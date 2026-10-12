@@ -67,6 +67,14 @@ export {
   type ConfigIssue,
 } from './config/yaml';
 export { compileConfig } from './config/compile';
+export { gateLockState, type GateLockState } from './config/lock';
+export {
+  addEnvironment,
+  assignGate,
+  ConfigEditError,
+  setEnvironmentEnabled,
+  setGateEnabled,
+} from './config/edit';
 export {
   parsePolicy,
   checkPolicy,
@@ -87,6 +95,7 @@ export {
   readProject,
   CONFIG_FILE,
   type ConfigState,
+  type EnvironmentState,
   type GateState,
   type ProjectState,
   type SealedSecretInfo,

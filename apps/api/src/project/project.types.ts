@@ -26,6 +26,8 @@ export interface ProjectSummary {
   readonly gates: number;
   /** Gates that still lack a secret the config uses. */
   readonly gatesMissingSecrets: readonly string[];
+  /** Gates moat.yaml locks, on their own or with their environment. */
+  readonly gatesLocked: readonly string[];
 }
 
 /**

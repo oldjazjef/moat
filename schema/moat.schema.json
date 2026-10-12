@@ -6,6 +6,45 @@
       "type": "number",
       "const": 1
     },
+    "environments": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,62}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "description": "false locks every gate of this environment; default true",
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "gates": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,62}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "environment": {
+            "description": "the environment this gate belongs to",
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,62}$"
+          },
+          "enabled": {
+            "description": "false locks this gate; default true",
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "upstreams": {
       "type": "object",
       "propertyNames": {

@@ -26,10 +26,10 @@ Configuration is data, never code. Secrets are sealed for one gate and can be op
 The gate's own local policy always wins over anything it receives.
 
 > **Status (October 2026):** early development. Working today: Moat Core, the `moat` CLI, the PHP
-> gate (signed bundles, exact routing, SSRF guard, CORS, rate limits) and the first version of
-> Moat Desktop (project list and a read-only view of each project). Not built yet: Moat Cloud,
-> editing and signing in the desktop, environments and locking a whole environment or gate,
-> quotas and budgets, the setup wizard. The full target is in
+> gate (signed bundles, exact routing, SSRF guard, CORS, rate limits, locking a gate or a whole
+> environment) and the first version of Moat Desktop (project list and a read-only view of each
+> project). Not built yet: Moat Cloud, editing and signing in the desktop, quotas and budgets, the
+> setup wizard. The full target is in
 > [ANFORDERUNGEN.md](ANFORDERUNGEN.md) (German).
 
 ## How it fits together
@@ -45,7 +45,7 @@ The gate's own local policy always wins over anything it receives.
 | Component        | Where                                    | What it does                                                                     |
 | ---------------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
 | **Moat Core**    | `libs/core`                              | Config schema, bundle building, signing, sealing secrets: the one implementation |
-| **Moat CLI**     | `apps/cli`                               | `moat keygen`, `validate`, `policy suggest`, `gate add`, `secret seal`, `build`  |
+| **Moat CLI**     | `apps/cli`                               | `moat keygen`, `validate`, `gate add`, `env add`, `secret seal`, `build`, locks  |
 | **Moat Desktop** | `apps/desktop` + `apps/api` + `apps/web` | The app for your computer: projects, gates and routes at a glance                |
 | **Moat Gate**    | `gates/php`                              | One PHP file on the website's hosting, enforcing everything locally              |
 | **Moat Cloud**   | `apps/api` + `apps/web`                  | Dashboard and API, as SaaS or self-hosted (planned)                              |
@@ -102,6 +102,18 @@ with line and column. **Show in folder** opens the folder in the file manager.
 
 ![Gates of a project](docs/screenshots/moat-desktop-gates.webp)
 
+Each project also has an **Environments** card: every environment (dev, staging, production …)
+with its gates, which of them are locked, and the gates that belong to no environment.
+
+![Environments and locks](docs/screenshots/moat-desktop-environments.webp)
+
+A locked gate carries a **Locked** badge under **Gates**, with the reason (the gate itself or its
+environment). The app also compares `moat.yaml` with the latest bundle built: as long as that
+bundle does not carry the lock yet (or still carries one you lifted), it says so and names the
+`moat build` that fixes it.
+
+![A locked gate](docs/screenshots/moat-desktop-gate-locked.webp)
+
 ### Routes
 
 **Routes** shows every route as the gate enforces it:
@@ -117,7 +129,7 @@ with line and column. **Show in folder** opens the folder in the file manager.
 ### Help
 
 **Help** is a step-by-step guide in the order of the work: projects, installing a gate, the trust
-mode, upstreams and secrets, routes, limits, releasing, and privacy. It has frequent questions, a
+mode, upstreams and secrets, routes, limits, releasing, environments and locks, and privacy. It has frequent questions, a
 search, and deep links. Every page and every trust-mode badge has a **?** that opens the
 matching step.
 
@@ -238,10 +250,52 @@ The website now calls `POST https://www.example.ch/moat-gate.php/newsletter`. Ev
 through the checks in [gates/php/README.md](gates/php/README.md): exact route, origin, body size,
 content type, rate limits, and a pinned public upstream address.
 
+### 6. Environments and locks
+
+Environments group your gates (FR-01). A gate belongs to at most one:
+
+```bash
+moat env add staging
+moat gate add website-staging --gate-id=<id> --box-key=<key> --env staging
+moat gate assign website production                 # an existing gate (--force moves it)
+```
+
+This writes to `moat.yaml`, keeping your comments and order:
+
+```yaml
+version: 1
+environments:
+  staging:
+    enabled: false # locked: every gate in it refuses every request
+  production: {}
+gates:
+  website-staging:
+    environment: staging
+  website:
+    environment: production
+```
+
+Lock a whole environment or a single gate, and unlock it the same way with `enable`:
+
+```bash
+moat env disable staging      # names every gate affected
+moat gate disable website
+moat build website --key ~/keys/me.moatkey
+php moat-gate.php accept 2.json                  # on the server
+```
+
+The lock is part of the next bundle (`"enabled": false` in its config), signed like everything
+else. Once the gate accepts it, it answers **every** request with 503 `gate_disabled` and forwards
+nothing, not even a CORS preflight; `php moat-gate.php status` shows `LOCKED`. Lifting the lock
+takes a new, higher bundle, so replaying an old, unlocked one does not work. A locked bundle is
+checked like any other: every secret the config uses must be sealed for the gate and it must
+fit the gate's policy, otherwise `moat build` refuses it. Update the gate first: an older gate
+refuses a bundle with a lock (`config_invalid`) and keeps serving its last one.
+
 ### The project folder
 
 ```
-moat.yaml                       the configuration (no secrets)
+moat.yaml                       the configuration: routes, upstreams, environments, locks (no secrets)
 gates/<gate>.json               a gate's public identity, pinned after comparing fingerprints
 secrets/<gate>/<name>.json      secrets sealed for that gate (ciphertext only)
 bundles/<gate>/<version>.json   signed bundles, ready to upload

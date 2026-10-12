@@ -21,6 +21,8 @@ The gate runs on shared hosting (H1) and must survive a compromised Cloud. Read 
    schema → build the upstream request from scratch (allowlisted headers only) → inject the
    bound secret → call → filter the response → log without values. Any failure: generic error,
    fail closed.
+   A locked gate (the bundle's `enabled: false`) refuses before all of this, with the same
+   `gate_disabled` answer for every method and path.
 
 4. **Secrets**: decrypt as late as possible, `sodium_memzero` after use, never in an exception
    message, log line or response — the planted-secret test checks it.

@@ -83,10 +83,21 @@ body come back. Errors are `{"error":"<code>"}`:
 | 500    | `secret_unavailable`, `internal_error`                                     |
 | 502    | `upstream_forbidden`, `upstream_unreachable`, `upstream_redirect`,         |
 |        | `upstream_content_type`, `upstream_too_large`, `upstream_reflected_secret` |
-| 503    | `gate_not_configured`, `route_disabled`, `rate_limit_unavailable`          |
+| 503    | `gate_not_configured`, `gate_disabled`, `route_disabled`,                  |
+|        | `rate_limit_unavailable`                                                   |
 | 504    | `upstream_timeout`                                                         |
 
 The log gets these codes only, never a value.
+
+## Locked gate
+
+A gate can be locked from the project: on its own (`moat gate disable website`) or with its whole
+environment (`moat env disable staging`). The next bundle then carries `"enabled": false` in its
+config, signed like everything else. A locked gate answers **every** request, whatever its method
+or path, with 503 `gate_disabled`: no route matching, no CORS answer, nothing forwarded, and
+unknown paths get the same answer, so a locked gate reveals no route. `status` and `accept` print
+`LOCKED`. Unlocking is a new bundle with a higher version (`moat gate enable`, `moat build`,
+`accept`). Cases: [`conformance/http/gate-locked.json`](../../conformance/http/gate-locked.json).
 
 ## Origins and CORS (FR-15)
 

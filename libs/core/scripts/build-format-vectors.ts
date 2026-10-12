@@ -284,6 +284,10 @@ function configVectors(): Json {
       (c) => (route(c)['responseContentTypes'] = ['Application/JSON']),
     ],
     ['enabled as string', (c) => (route(c)['enabled'] = 'yes')],
+    ['gate locked', (c) => (c['enabled'] = false)],
+    ['gate enabled explicitly', (c) => (c['enabled'] = true)],
+    ['gate enabled as string', (c) => (c['enabled'] = 'no')],
+    ['gate enabled as null', (c) => (c['enabled'] = null)],
     ['route to an unknown upstream', (c) => (route(c)['upstream'] = 'stripe')],
     ['secret missing from the bundle', () => undefined, []],
     [

@@ -21,6 +21,76 @@ describe('OverviewPage', () => {
     ).toBeGreaterThanOrEqual(2);
   });
 
+  it('FR-01: lists the environments with their gates and locks', async () => {
+    const project = PROJECT.project;
+    const config = project?.config;
+    if (project == null || config?.status !== 'valid')
+      throw new Error('fixture');
+    const [site] = project.gates;
+    if (site?.status !== 'valid') throw new Error('fixture');
+    const { el } = await openProjectTab('overview', OverviewPage, {
+      ...PROJECT,
+      project: {
+        config: {
+          ...config,
+          environments: [
+            { name: 'production', enabled: true, gates: ['site'] },
+            { name: 'staging', enabled: false, gates: [] },
+          ],
+        },
+        gates: [
+          {
+            ...site,
+            lock: {
+              environment: 'production',
+              gateLocked: true,
+              environmentLocked: false,
+              enabled: false,
+            },
+          },
+          {
+            ...site,
+            name: 'loose',
+            lock: {
+              environment: null,
+              gateLocked: false,
+              environmentLocked: false,
+              enabled: true,
+            },
+          },
+        ],
+      },
+    });
+    const production = el.querySelector(
+      '[data-environment-name="production"]',
+    ) as HTMLElement;
+    const staging = el.querySelector(
+      '[data-environment-name="staging"]',
+    ) as HTMLElement;
+    // Production is active, but its gate "site" is locked on its own.
+    expect(production.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'production site Gesperrt',
+    );
+    expect(staging.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'staging Gesperrt Noch kein Gate',
+    );
+    expect(text(el, '[data-unassigned]')).toBe('Ohne Umgebung: loose');
+  });
+
+  it('explains how to create environments when there are none', async () => {
+    const project = PROJECT.project;
+    const config = project?.config;
+    if (project == null || config?.status !== 'valid')
+      throw new Error('fixture');
+    const { el } = await openProjectTab('overview', OverviewPage, {
+      ...PROJECT,
+      project: { ...project, config: { ...config, environments: [] } },
+    });
+    expect(text(el, '[data-no-environments]')).toContain(
+      'moat env add staging',
+    );
+  });
+
   it('lists config errors with line and column', async () => {
     const { el } = await openProjectTab('overview', OverviewPage, {
       ...PROJECT,

@@ -1,5 +1,7 @@
 import { compileConfig } from '../config/compile';
 import type { CompiledConfig } from '../config/compiled';
+import { gateLockState, type GateLockState } from '../config/lock';
+import type { MoatConfig } from '../config/schema';
 import { ConfigError, loadMoatYaml, type ConfigIssue } from '../config/yaml';
 import { keyId, fingerprint } from '../crypto/kid';
 import { fromBase64Url } from '../encoding/base64url';
@@ -39,7 +41,17 @@ export type ConfigState =
       readonly config: CompiledConfig;
       /** Every secret the upstreams use, sorted. */
       readonly secretNames: readonly string[];
+      /** moat.yaml `environments`, sorted by name (FR-01). */
+      readonly environments: readonly EnvironmentState[];
     };
+
+export interface EnvironmentState {
+  readonly name: string;
+  /** False: every gate in it is locked. */
+  readonly enabled: boolean;
+  /** Gates moat.yaml puts into it, sorted (pinned or not). */
+  readonly gates: readonly string[];
+}
 
 export interface SealedSecretInfo {
   readonly name: string;
@@ -64,6 +76,13 @@ export type GateState =
       readonly missingSecrets: readonly string[];
       /** Highest bundle version built, 0 when none. */
       readonly latestBundle: number;
+      /** Environment and locks from moat.yaml; null while the config is not valid. */
+      readonly lock: GateLockState | null;
+      /**
+       * Whether the latest bundle built carries the lock (`enabled: false`). Null when there is no
+       * bundle or it cannot be read. Read for display only: the gate verifies, not the desktop.
+       */
+      readonly latestBundleLocked: boolean | null;
     };
 
 export interface ProjectState {
@@ -72,18 +91,21 @@ export interface ProjectState {
 }
 
 export async function readProject(storage: StoragePort): Promise<ProjectState> {
-  const config = readConfig(storage);
+  const { state: config, parsed } = readConfig(storage);
   const used = config.status === 'valid' ? config.secretNames : [];
   const gates: GateState[] = [];
   for (const name of jsonNames(storage, 'gates')) {
-    gates.push(await readGate(storage, name, used));
+    gates.push(await readGate(storage, name, used, parsed));
   }
   return { config, gates };
 }
 
-function readConfig(storage: StoragePort): ConfigState {
+function readConfig(storage: StoragePort): {
+  state: ConfigState;
+  parsed: MoatConfig | null;
+} {
   const text = storage.read(CONFIG_FILE);
-  if (text === null) return { status: 'missing' };
+  if (text === null) return { state: { status: 'missing' }, parsed: null };
   try {
     const parsed = loadMoatYaml(text);
     const secretNames = [
@@ -93,18 +115,38 @@ function readConfig(storage: StoragePort): ConfigState {
         ),
       ),
     ].sort();
+    const environments = Object.entries(parsed.environments ?? {})
+      .map(([name, environment]) => ({
+        name,
+        enabled: environment.enabled !== false,
+        gates: Object.entries(parsed.gates ?? {})
+          .filter(([, gate]) => gate.environment === name)
+          .map(([gate]) => gate)
+          .sort(),
+      }))
+      .sort((a, b) => (a.name < b.name ? -1 : 1));
     return {
-      status: 'valid',
-      config: compileConfig(parsed, secretNames),
-      secretNames,
+      state: {
+        status: 'valid',
+        config: compileConfig(parsed, secretNames),
+        secretNames,
+        environments,
+      },
+      parsed,
     };
   } catch (error) {
     if (error instanceof ConfigError)
-      return { status: 'invalid', issues: error.issues };
+      return {
+        state: { status: 'invalid', issues: error.issues },
+        parsed: null,
+      };
     if (error instanceof MoatRejection)
       return {
-        status: 'invalid',
-        issues: [{ code: 'schema', path: [], message: error.code }],
+        state: {
+          status: 'invalid',
+          issues: [{ code: 'schema', path: [], message: error.code }],
+        },
+        parsed: null,
       };
     throw error;
   }
@@ -114,6 +156,7 @@ async function readGate(
   storage: StoragePort,
   name: string,
   used: readonly string[],
+  config: MoatConfig | null,
 ): Promise<GateState> {
   const file = parseJson(storage.read(`gates/${name}.json`));
   const boxPublicKey =
@@ -131,6 +174,7 @@ async function readGate(
     return { name, status: 'invalid' };
   }
   const secrets = readSecrets(storage, name);
+  const latest = latestBundle(storage, name);
   const sealed = new Set(secrets.map((secret) => secret.name));
   return {
     name,
@@ -141,8 +185,34 @@ async function readGate(
     boxKeyFingerprint: await fingerprint('x25519', boxPublicKey),
     secrets,
     missingSecrets: used.filter((secret) => !sealed.has(secret)),
-    latestBundle: latestBundle(storage, name),
+    latestBundle: latest,
+    lock: config === null ? null : gateLockState(config, name),
+    latestBundleLocked:
+      latest === 0 ? null : bundleLocked(storage, name, latest, file['gateId']),
   };
+}
+
+/** `enabled: false` in the bundle's config; null when the file is not a bundle for this gate. */
+function bundleLocked(
+  storage: StoragePort,
+  gate: string,
+  version: number,
+  gateId: string,
+): boolean | null {
+  const envelope = parseJson(storage.read(`bundles/${gate}/${version}.json`));
+  if (!isRecord(envelope) || typeof envelope['payload'] !== 'string')
+    return null;
+  const bytes = decode(envelope['payload']);
+  const payload =
+    bytes === null ? null : parseJson(new TextDecoder().decode(bytes));
+  if (
+    !isRecord(payload) ||
+    payload['gateId'] !== gateId ||
+    payload['version'] !== version ||
+    !isRecord(payload['config'])
+  )
+    return null;
+  return payload['config']['enabled'] === false;
 }
 
 function readSecrets(storage: StoragePort, gate: string): SealedSecretInfo[] {

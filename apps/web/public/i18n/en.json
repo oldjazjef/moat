@@ -56,7 +56,8 @@
       "yes": "Yes, remove",
       "no": "Cancel",
       "failed": "The project could not be removed. Try again."
-    }
+    },
+    "locked": "Locked gates: {{gates}}"
   },
   "units": {
     "seconds": "s",
@@ -76,6 +77,9 @@
         "ifHacked": "… an attacker cannot change anything. In the browser this holds only partly; full guarantee with Moat Desktop or the CLI."
       }
     }
+  },
+  "locks": {
+    "locked": "Locked"
   },
   "config": {
     "errors": {
@@ -114,6 +118,14 @@
       "upstreams": "Upstreams",
       "secrets": "Secrets",
       "gates": "Gates"
+    },
+    "environments": {
+      "title": "Environments",
+      "description": "A locked environment locks all of its gates.",
+      "none": "This project has no environments yet. Create one with `moat env add staging` and put a gate into it with `moat gate assign <gate> staging`.",
+      "noGates": "No gate yet",
+      "unassigned": "No environment: {{gates}}",
+      "hint": "To lock and unlock: `moat env disable <environment>` or `moat gate disable <gate>` (`enable` lifts the lock), then `moat build` for every gate affected."
     }
   },
   "gates": {
@@ -130,7 +142,14 @@
     "noSecrets": "None",
     "fingerprintHint": "Compare the fingerprint group by group with the one the gate printed when it was installed.",
     "missing": "The configuration needs these secrets, but they are not sealed for this gate yet: {{secrets}}",
-    "invalid": "The file {{file}} is damaged or not a gate file."
+    "invalid": "The file {{file}} is damaged or not a gate file.",
+    "environment": "Environment",
+    "noEnvironment": "No environment",
+    "lockedGate": "This gate is locked. Once the bundle with the lock is accepted, it answers every request with an error and forwards nothing.",
+    "lockedEnvironment": "The environment {{environment}} is locked, and with it this gate. Once the bundle with the lock is accepted, it answers every request with an error and forwards nothing.",
+    "bundleLocked": "Version {{version}}, built with the lock",
+    "lockPending": "The latest bundle does not carry the lock yet. Build a new one with `moat build {{gate}}` and accept it on the gate.",
+    "unlockPending": "The latest bundle still locks the gate. Build a new one with `moat build {{gate}}` and accept it on the gate, then it forwards again."
   },
   "routes": {
     "subtitle": "What the gate forwards, and to whom",
@@ -213,6 +232,10 @@
         "fingerprint": {
           "question": "The fingerprint does not match the gate's.",
           "answer": "Then the gate file does not belong to your gate. Delete it, check the output of `php moat-gate.php status` on the server and add the gate again with `moat gate add`."
+        },
+        "lockPending": {
+          "question": "I locked a gate, but it still forwards.",
+          "answer": "So far the lock is only in moat.yaml. It applies once the gate has accepted a bundle that carries it: `moat build <gate>`, upload the file and run `php moat-gate.php accept` on the server. `php moat-gate.php status` then shows `LOCKED`."
         }
       }
     },
@@ -320,6 +343,22 @@
         "tips": {
           "rollback": "Back to an older configuration? Build it as a new, higher version.",
           "policy": "If a bundle does not fit the local policy, the gate refuses it. You change the policy only on the gate itself."
+        }
+      },
+      "environments": {
+        "title": "Environments and locks",
+        "purpose": "Environments (such as dev, staging, production) group your gates. A whole environment or a single gate can be locked: a locked gate answers every request with an error and forwards nothing. The lock is signed into the bundle.",
+        "where": "Project › Overview › Environments",
+        "steps": {
+          "define": "Create an environment with `moat env add staging`. Put a gate into it when you add it, with `moat gate add <gate> … --env staging`, or later with `moat gate assign <gate> staging`.",
+          "lock": "Lock the whole environment with `moat env disable staging`, or a single gate with `moat gate disable <gate>`. The CLI names the gates affected.",
+          "build": "Build a new bundle for every gate affected with `moat build <gate>` and accept it on the gate with `php moat-gate.php accept`. Only then does the lock apply.",
+          "check": "In the “Overview”, the “Environments” card shows every environment with its gates; under “Gates”, every locked gate carries the “Locked” badge."
+        },
+        "tips": {
+          "unlock": "Unlocking works the same way: `moat env enable staging` or `moat gate enable <gate>`, then a new bundle.",
+          "one": "A gate belongs to at most one environment. While an environment is locked, unlocking a single gate in it changes nothing.",
+          "answer": "Visitors get status 503 with the code `gate_disabled` from a locked gate, even for paths that do not exist."
         }
       },
       "privacy": {

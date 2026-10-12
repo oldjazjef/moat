@@ -18,16 +18,19 @@ Four components (ANFORDERUNGEN.md, header):
 > **Status (12.10.2026): requirements v0.5 + threat model v0.1 + crypto spec v0.1.** Code so far:
 > the Nx/pnpm workspace; `libs/core` (encodings, strict JSON, JCS, key ids, bundle sign/verify and
 > building, sealed secrets, key files, the `moat.yaml` schema and loader, local policy, path and
-> content-type rules); `apps/cli` (`moat keygen|validate|policy suggest|gate add|secret seal|build`);
+> content-type rules, environments and locks, comment-preserving `moat.yaml` edits); `apps/cli`
+> (`moat keygen|validate|policy suggest|gate add|assign|disable|enable|env add|disable|enable|secret seal|build`);
 > `conformance/vectors/` and `conformance/http/`; and `gates/php` as a working gate: single-file
 > build, CLI (`install|trust|policy|accept|status`), bundle acceptance (steps 1–10), exact routing,
-> the cURL upstream client with SSRF guard, origin binding/CORS and rate limits
+> the cURL upstream client with SSRF guard, origin binding/CORS, rate limits and the signed lock
+> of a gate or a whole environment (`moat env|gate disable`, `gate_disabled`)
 > ([gates/php/README.md](gates/php/README.md)). **Moat Desktop, first surface:** Electron shell
 > with the API in-process (`apps/api`: the project list in `<MOAT_DATA_DIR>/projects.json`,
 > `GET /api/projects`, `GET|DELETE /api/projects/:id`, project folders read-only) and the Angular
-> UI (`apps/web`: Projekte → workspace with Übersicht, Gates, Routen; Hilfe). Writing still goes
+> UI (`apps/web`: Projekte → workspace with Übersicht incl. Umgebungen, Gates with lock state, Routen;
+> Hilfe). Writing still goes
 > through the CLI. Not yet: Cloud, desktop editing/signing, setup wizard (FR-73),
-> quotas/budgets, lazy pull, setup mode, trust mode 2. Everything else below is
+> quotas/budgets, lazy pull, setup mode, trust mode 2, the local file kill switch (SEC-15). Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
 

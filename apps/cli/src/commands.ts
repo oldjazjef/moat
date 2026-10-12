@@ -1,23 +1,30 @@
 import {
+  addEnvironment,
+  assignGate,
   buildBundle,
   checkPolicy,
   compileConfig,
+  ConfigEditError,
   ConfigError,
   createKeyFile,
   fingerprint,
   formatIssue,
+  gateLockState,
   loadMoatYaml,
   MoatRejection,
   openKeyFile,
   parsePolicy,
   parseStrictJson,
   sealSecret,
+  setEnvironmentEnabled,
+  setGateEnabled,
   suggestPolicy,
   fromBase64Url,
   type MoatConfig,
 } from '@moat/core';
 import {
   exists,
+  list,
   readJson,
   readText,
   UsageError,
@@ -29,6 +36,7 @@ import {
   bundleDir,
   checkName,
   CONFIG_FILE,
+  NAME,
   gatePath,
   lastVersion,
   readGate,
@@ -144,7 +152,10 @@ export async function policySuggest(
   );
 }
 
-/** `moat gate add <name> --gate-id=<id> --box-key=<key>` — pin a gate after comparing fingerprints. */
+/**
+ * `moat gate add <name> --gate-id=<id> --box-key=<key> [--env <environment>]` — pin a gate after
+ * comparing fingerprints, optionally into an environment.
+ */
 export async function gateAdd(
   context: Context,
   [name]: string[],
@@ -160,10 +171,23 @@ export async function gateAdd(
   const boxPublicKey = fromBase64Url(boxKey);
   if (boxPublicKey.length !== 32)
     throw new UsageError('--box-key must be a 32-byte base64url key');
+  const environment = option(options, 'env');
+  const configFile = option(options, 'config') ?? CONFIG_FILE;
+  // Checked before anything is written, so a bad --env leaves no half-added gate.
+  const edited =
+    environment === undefined
+      ? null
+      : assignGate(readText(context, configFile), gate, environment);
   const file: GateFile = { moat: 'gate', v: 1, gateId, boxKey };
   writeFile(context, gatePath(gate), `${JSON.stringify(file, null, 2)}\n`, {
     overwrite: options['force'] === true,
   });
+  if (edited !== null) {
+    writeFile(context, configFile, edited, { overwrite: true });
+    context.out(
+      `Added gate ${gate} to environment ${environment} in ${configFile}.`,
+    );
+  }
   const { fingerprint: print } = await boxFingerprint(boxPublicKey);
   context.out(`Wrote ${gatePath(gate)}.`);
   context.out(`Box key fingerprint: ${print}`);
@@ -246,6 +270,7 @@ export async function build(
     const envelope = await buildBundle(
       {
         config,
+        gate: gateName,
         gateId: gate.gateId,
         secrets: readSealedSecrets(context, gateName),
         version,
@@ -260,13 +285,159 @@ export async function build(
       `Signed bundle version ${version} for gate ${gateName} → ${file}`,
     );
     context.out(`Signer: ${signer.kid}`);
+    const lock = gateLockState(config, gateName);
+    if (!lock.enabled)
+      context.out(
+        `LOCKED (${lockReason(lock.gateLocked, lock.environment)}): once accepted, the gate refuses every request.`,
+      );
   } finally {
     signer.secretKey.fill(0);
   }
 }
 
+function lockReason(gateLocked: boolean, environment: string | null): string {
+  return gateLocked ? 'gate' : `environment ${environment ?? ''}`;
+}
+
+function editConfig(
+  context: Context,
+  options: Options,
+  edit: (text: string) => string,
+): MoatConfig {
+  const file = option(options, 'config') ?? CONFIG_FILE;
+  const text = edit(readText(context, file));
+  writeFile(context, file, text, { overwrite: true });
+  return loadMoatYaml(text);
+}
+
+/** The pinned gates (gates/<gate>.json) whose next bundle changes with this edit. */
+function affectedGates(
+  context: Context,
+  match: (gate: string) => boolean,
+): string[] {
+  return list(context, 'gates')
+    .filter((file) => file.endsWith('.json'))
+    .map((file) => file.slice(0, -'.json'.length))
+    .filter((gate) => NAME.test(gate) && match(gate))
+    .sort();
+}
+
+function nextStep(context: Context, gates: string[]): void {
+  if (gates.length === 0) {
+    context.out('No pinned gate is affected.');
+    return;
+  }
+  context.out(
+    'Takes effect with the next bundle. Build and accept one for each gate:',
+  );
+  for (const gate of gates)
+    context.out(`  moat build ${gate} --key <file.moatkey>`);
+}
+
+/** `moat env add <environment>` — a new, empty environment in moat.yaml. */
+export async function envAdd(
+  context: Context,
+  [environment]: string[],
+  options: Options,
+): Promise<void> {
+  if (environment === undefined)
+    throw new UsageError('usage: moat env add <environment>');
+  editConfig(context, options, (text) => addEnvironment(text, environment));
+  context.out(`Environment ${environment} is in moat.yaml.`);
+}
+
+function envSetEnabled(enabled: boolean) {
+  return async (
+    context: Context,
+    [environment]: string[],
+    options: Options,
+  ): Promise<void> => {
+    if (environment === undefined)
+      throw new UsageError(
+        `usage: moat env ${enabled ? 'enable' : 'disable'} <environment>`,
+      );
+    const config = editConfig(context, options, (text) =>
+      setEnvironmentEnabled(text, environment, enabled),
+    );
+    context.out(
+      `Environment ${environment} is ${enabled ? 'unlocked' : 'locked: every gate in it refuses every request'}.`,
+    );
+    nextStep(
+      context,
+      affectedGates(
+        context,
+        (gate) => gateLockState(config, gate).environment === environment,
+      ),
+    );
+  };
+}
+
+/** `moat env disable <environment>` — lock every gate of the environment (signed in the bundle). */
+export const envDisable = envSetEnabled(false);
+/** `moat env enable <environment>` — lift the environment's lock. */
+export const envEnable = envSetEnabled(true);
+
+function gateSetEnabled(enabled: boolean) {
+  return async (
+    context: Context,
+    [gateName]: string[],
+    options: Options,
+  ): Promise<void> => {
+    if (gateName === undefined)
+      throw new UsageError(
+        `usage: moat gate ${enabled ? 'enable' : 'disable'} <gate>`,
+      );
+    readGate(context, gateName);
+    const config = editConfig(context, options, (text) =>
+      setGateEnabled(text, gateName, enabled),
+    );
+    const lock = gateLockState(config, gateName);
+    context.out(
+      enabled
+        ? lock.enabled
+          ? `Gate ${gateName} is unlocked.`
+          : `Gate ${gateName} is unlocked, but its environment ${lock.environment ?? ''} is still locked.`
+        : `Gate ${gateName} is locked: it will refuse every request.`,
+    );
+    nextStep(context, [gateName]);
+  };
+}
+
+/** `moat gate disable <gate>` — lock one gate (signed in its next bundle). */
+export const gateDisable = gateSetEnabled(false);
+/** `moat gate enable <gate>` — lift the gate's own lock. */
+export const gateEnable = gateSetEnabled(true);
+
+/** `moat gate assign <gate> <environment> [--force]` — put a pinned gate into an environment. */
+export async function gateAssign(
+  context: Context,
+  [gateName, environment]: string[],
+  options: Options,
+): Promise<void> {
+  if (gateName === undefined || environment === undefined)
+    throw new UsageError('usage: moat gate assign <gate> <environment>');
+  readGate(context, gateName);
+  const before = gateLockState(loadConfig(context, options), gateName).enabled;
+  const config = editConfig(context, options, (text) =>
+    assignGate(text, gateName, environment, options['force'] === true),
+  );
+  context.out(`Gate ${gateName} is in environment ${environment}.`);
+  const after = gateLockState(config, gateName).enabled;
+  if (before === after) return;
+  context.out(
+    after
+      ? `Environment ${environment} is not locked: this gate is no longer locked.`
+      : `Environment ${environment} is locked: so is this gate now.`,
+  );
+  nextStep(context, [gateName]);
+}
+
 export function describeError(error: unknown): string | null {
   if (error instanceof UsageError) return error.message;
+  if (error instanceof ConfigEditError)
+    return error.code === 'gate_in_other_environment'
+      ? `${error.message} (--force moves it)`
+      : error.message;
   if (error instanceof ConfigError)
     return error.issues.map(formatIssue).join('\n');
   if (error instanceof MoatRejection) {
