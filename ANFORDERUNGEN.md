@@ -14,6 +14,7 @@
 |---|---|
 | Produktwording | Feste Bezeichnungen für Vertrauensmodi und Härtungsstufen, jeweils mit einem Satz, was eine gehackte Cloud könnte (Abschnitt 2.9). |
 | Teamarbeit ohne Cloud | MVP über Git im Projektordner; geteilte DB mit Rollen erst später (DT-14, DT-18). |
+| Hilfe und Einrichtung | Hilfe-Seite, kontextuelle „?“ und Einrichtungsassistent von Anfang an, analog lazy-koins (Abschnitt 3.9). |
 | Default-Vertrauensmodus | **Bequem** mit aktiver Empfehlung zu „Signiert“ (FR-46 bis FR-48, Abschnitt 2.9). |
 
 ## Änderungen gegenüber v0.3
@@ -304,6 +305,16 @@ gehackt wird …“ an, damit die Garantie ehrlich bleibt (§1.5, SEC-58).
 | FR-65 | Backups ohne Klartext-Secrets (vgl. SEC-31). | M |
 
 ---
+
+### 3.9 Hilfe und Einrichtung (analog lazy-koins, ab MVP)
+
+| ID | Anforderung | Prio |
+|---|---|---|
+| FR-70 | **Hilfe:** Menüpunkt „Hilfe“ in der Seitenleiste direkt über dem Benutzermenü, in Cloud und Desktop, auch während der Einrichtung erreichbar. Anleitung in einfacher Sprache, Schritt für Schritt in der Reihenfolge der Arbeit: Einrichtung, Projekt und Umgebungen, Gate installieren (je Hosting-Art), Vertrauensmodus wählen, Upstreams und Secrets, Routen und Recipes, Limits und Budgets, Freigeben/Signieren, Kill-Switch, Logs, Härtungsstufe verbessern, Desktop/Cloud und Datenschutz. Je Schritt: wozu, wo in der App, nummerierte Schritte, Tipps und „Öffnen“ zur passenden Seite; dazu häufige Fragen. | M |
+| FR-71 | Hilfe-Seite mit Inhaltsverzeichnis (breit links, schmal aufklappbar), Suche über alle Texte, „Schritt N von M“, Direktlinks `/app/help#<abschnitt>` (springen und markieren), Deutsch und Englisch, hell/dunkel, ab 375 px. Was nur für Cloud oder Desktop gilt, erscheint nur dort und ist markiert. | M |
+| FR-72 | **Kontextuelle Hilfe:** Ein „?“ in den Seitenköpfen (Gate, Routen, Secrets, Freigabe, Logs) und an jeder Anzeige von Vertrauensmodus und Härtungsstufe öffnet den passenden Abschnitt. Ergebnisse des Hardening-Checks (SEC-49) verlinken die Anleitung zur nächsthöheren Stufe. | M |
+| FR-73 | **Einrichtungsassistent** beim ersten Start (Desktop) bzw. nach der ersten Anmeldung (Cloud): Stepper mit Zustand je Schritt (offen / erledigt / übersprungen / Fehler), „Zurück“/„Weiter“ fix unten, „Später“ für optionale Schritte, Zwischenstand gespeichert, jederzeit über Einstellungen wieder aufrufbar. Schritte: Profil, Signaturschlüssel bzw. Passkey (je Modus), erstes Projekt, erstes Gate mit Installation und Fingerprint-Bestätigung, erstes Recipe mit Test-Request, Zusammenfassung mit erreichtem Modus und Härtungsstufe. Wo möglich mit **Test-Knopf**. | M |
+| FR-74 | Ändert sich eine Funktion, wird die Hilfe im selben Change angepasst. Die Hilfe beschreibt nur, was existiert. | M |
 
 ### 3.8 Moat Desktop (Betrieb ohne Cloud)
 

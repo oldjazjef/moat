@@ -40,5 +40,10 @@ description: Add a routed feature or page to apps/web (the Moat Cloud dashboard,
 7. **Text**: every string in `public/i18n/de-CH.json` + `en.json`; `pnpm test` fails on a missing
    key. **Styling**: semantic token classes only; new colours in `src/styles.css` (both themes).
 
-8. **Test** the page service with `HttpTestingController`, then `pnpm check`. For anything
+8. **Help** (FR-70–FR-74, CLAUDE.md "Help and setup wizard"): add or update the section in
+   `features/help/help-content.ts` and its `help.*` texts in **both** message files, add an
+   `mt-help-link` to the page header, and quote UI labels exactly as the app shows them
+   (`help-content.spec.ts` checks it). The help describes only what exists.
+
+9. **Test** the page service with `HttpTestingController`, then `pnpm check`. For anything
    visible, run the app and look at it — in the browser and in the desktop shell.

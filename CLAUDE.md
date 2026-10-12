@@ -275,6 +275,33 @@ JSON, readable without YAML and without any test framework:
 gate. A case is never deleted to make an implementation pass. `libs/core` and every gate target
 run the full suite in CI.
 
+## Help and setup wizard (FR-70–FR-74) — from the first feature on
+
+Ported from lazy-koins (its CLAUDE.md, "Help (F11.21)" and "Setup wizard"); copy the shape.
+
+- **Texts are i18n keys** under `help.*` in both message files (no Markdown files, no
+  `innerHTML`): `help.sections.<id>.{title,purpose,where}`, `….steps.<item>`, `….tips.<item>`,
+  `help.links.<id>`, `help.faq.items.<id>.{question,answer}`. UI labels quoted in «…» (de-CH) /
+  “…” (en); no `{{…}}` in help texts.
+- **Structure is code**: `features/help/help-content.ts` — `HELP_SECTIONS` (id, steps, tips,
+  "Öffnen" links, items optionally `only: 'cloud' | 'desktop'`), `HELP_FAQ`,
+  `HELP_SECTION_FOR_PAGE`, `allHelpKeys()`. Order = "Schritt N von M".
+- **Page** `/app/help` (lazy, no API): sticky TOC + search (every word, case/accent-insensitive,
+  current language, FAQ included), deep links `#<id>` that scroll, focus and mark; items for the
+  other app hidden, the rest badged. Reachable from the sidebar footer above the user menu and
+  during the setup wizard ("Einrichtung fortsetzen").
+- **Contextual "?"** = `mt-help-link [section]` in page headers and next to every trust-mode /
+  hardening-level badge (FR-72). Trust modes and levels are explained with the §2.9 wording only.
+- **Setup wizard** (FR-73) as lazy-koins: `/app/setup`, progress per user in the API, a guard that
+  routes there until done, steps reuse the settings forms (`embedded`), "Testen" buttons where a
+  check exists (test request through the gate, fingerprint comparison).
+- **Tests** as lazy-koins: `help-content.spec.ts` (every "Öffnen" path resolves through the real
+  router, no orphan `help.*` key, **every quoted UI label in the help is a text the app shows**),
+  page service + page specs, `i18n-keys.spec.ts` covers `help.*`.
+- **Rule: a feature change updates the help** (FR-74) — new page, renamed button, changed flow →
+  the matching section in **both** message files (and `HELP_SECTIONS`) in the same PR. The guide
+  describes only what exists.
+
 ## Persistence (API)
 
 Same four layers as lazy-koins: Controller → Service façade → Command/QueryBus → Handler →
