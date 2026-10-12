@@ -18,7 +18,7 @@ const HELP = `moat — Moat CLI (sign and seal locally; nothing here talks to a 
   moat keygen <file.moatkey>                         new signing key (trust mode 1)
   moat validate [--config moat.yaml] [--policy p.json]
   moat policy suggest [--config moat.yaml]           narrowest gate policy for the config
-  moat gate add <gate> --gate-id <id> --box-key <k>  pin a gate after comparing fingerprints
+  moat gate add <gate> --gate-id=<id> --box-key=<k>  pin a gate after comparing fingerprints
   moat secret seal <gate> <name> [--secret-version n] value from stdin or a hidden prompt
   moat build <gate> --key <file.moatkey> [--version n] [--policy p.json]
 

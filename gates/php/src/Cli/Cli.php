@@ -6,6 +6,7 @@ namespace Moat\Gate\Cli;
 
 use Moat\Gate\Bundle\BundleVerifier;
 use Moat\Gate\Bundle\PinnedSigner;
+use Moat\Gate\Config\Limit;
 use Moat\Gate\Crypto\KeyAlgorithm;
 use Moat\Gate\Crypto\KeyId;
 use Moat\Gate\Encoding\Base64Url;
@@ -75,7 +76,8 @@ final class Cli
         self::describe($identity, $signers);
         self::out('');
         self::out('Next: compare the fingerprints, then in the project folder run');
-        self::out('  moat gate add <name> --gate-id ' . $identity->gateId . ' --box-key ' . Base64Url::encode($identity->boxPublicKey));
+        // `=` form: a base64url value may start with "-" and would read as an option.
+        self::out('  moat gate add <name> --gate-id=' . $identity->gateId . ' --box-key=' . Base64Url::encode($identity->boxPublicKey));
         self::out('and install a local policy: php moat-gate.php policy <policy.json>');
 
         return 0;
@@ -127,6 +129,10 @@ final class Cli
         $gate = Gate::open($gateDir);
         self::describe($gate->identity, $gate->trust === null ? [] : $gate->trust->signers);
         self::out('Policy:     ' . ($gate->policy === null ? 'missing — the gate serves nothing' : 'installed' . ($gate->policy->testing ? ' (TESTING block present)' : '')));
+        if ($gate->policy !== null) {
+            $limits = $gate->policy->limits;
+            self::out('Limits:     ' . self::limitText($limits->perIp) . ' per IP, ' . self::limitText($limits->total) . ' in total, at most ' . $limits->maxClients . ' clients tracked');
+        }
         try {
             $active = $gate->active(time());
             self::out('Bundle:     version ' . $active->version . ', ' . \count($active->config->routes) . ' route(s)');
@@ -135,6 +141,11 @@ final class Cli
         }
 
         return 0;
+    }
+
+    private static function limitText(Limit $limit): string
+    {
+        return $limit->requests . ' requests / ' . $limit->windowSeconds . ' s';
     }
 
     /** @param list<PinnedSigner> $signers */

@@ -6,6 +6,8 @@ namespace Moat\Gate\Policy;
 
 use Moat\Gate\Config\CompiledConfig;
 use Moat\Gate\Config\ConfigValidator;
+use Moat\Gate\Config\Limit;
+use Moat\Gate\Config\LimitScope;
 use Moat\Gate\Config\Method;
 use Moat\Gate\Http\PathNormaliser;
 use Moat\Gate\Json\JsonObject;
@@ -28,7 +30,7 @@ final class PolicyCheck
             self::invalid();
         }
         $testing = $value->has('testing');
-        if (!$value->hasExactKeys('v', 'upstreams', 'maxBodyBytes', 'maxResponseBytes', 'maxTimeoutMs', ...($testing ? ['testing'] : []))) {
+        if (!$value->hasExactKeys('v', 'upstreams', 'maxBodyBytes', 'maxResponseBytes', 'maxTimeoutMs', 'limits', ...($testing ? ['testing'] : []))) {
             self::invalid();
         }
         $upstreams = $value->get('upstreams');
@@ -47,9 +49,10 @@ final class PolicyCheck
         foreach ($upstreams->keys() as $hostKey) {
             $allowed[self::hostKey($hostKey)] = self::upstream($upstreams->get($hostKey));
         }
+        $limits = self::limits($value->get('limits'));
         [$resolve, $caFile] = $testing ? self::testing($value->get('testing')) : [[], null];
 
-        return new Policy($allowed, $maxBodyBytes, $maxResponseBytes, $maxTimeoutMs, $testing, $resolve, $caFile);
+        return new Policy($allowed, $maxBodyBytes, $maxResponseBytes, $maxTimeoutMs, $limits, $testing, $resolve, $caFile);
     }
 
     /** Throws `policy_violation` unless every upstream, route and limit lies within the policy. */
@@ -80,6 +83,27 @@ final class PolicyCheck
                 self::violation();
             }
         }
+        if (self::counterCapacity($config, $policy) > $policy->limits->maxClients) {
+            self::violation();
+        }
+    }
+
+    /**
+     * SEC-27: the most rate-limit counters alive at once, as counterCapacity() in libs/core — a
+     * counter is created only for a request that passes `total`, so a flood cannot fill the store.
+     */
+    public static function counterCapacity(CompiledConfig $config, Policy $policy): int
+    {
+        $total = $policy->limits->total;
+        $live = static fn(int $window): int => $total->requests * (intdiv($window + $total->windowSeconds - 1, $total->windowSeconds) + 1);
+        $count = 1 + $live($policy->limits->perIp->windowSeconds);
+        foreach ($config->routes as $route) {
+            if ($route->rateLimit !== null) {
+                $count += $route->rateLimit->per === LimitScope::Ip ? $live($route->rateLimit->limit->windowSeconds) : 1;
+            }
+        }
+
+        return $count;
     }
 
     /** True when `path` equals the prefix or continues it at a segment boundary. */
@@ -146,6 +170,28 @@ final class PolicyCheck
         } catch (Rejection) {
             return false;
         }
+    }
+
+    private static function limits(mixed $value): PolicyLimits
+    {
+        if (!$value instanceof JsonObject || !$value->hasExactKeys('perIp', 'total', 'maxClients')) {
+            self::invalid();
+        }
+        $maxClients = $value->get('maxClients');
+        if (!\is_int($maxClients) || !ConfigValidator::intIn($maxClients, PolicyLimits::MIN_CLIENTS, PolicyLimits::MAX_CLIENTS)) {
+            self::invalid();
+        }
+
+        return new PolicyLimits(self::limit($value->get('perIp')), self::limit($value->get('total')), $maxClients);
+    }
+
+    private static function limit(mixed $value): Limit
+    {
+        if (!$value instanceof JsonObject || !$value->hasExactKeys('requests', 'windowSeconds')) {
+            self::invalid();
+        }
+
+        return ConfigValidator::limit($value, RejectionCode::PolicyInvalid);
     }
 
     /** @return array{array<string, string>, ?non-empty-string} */

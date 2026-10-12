@@ -1,5 +1,5 @@
 {
-  "description": "Request-level cases against a running gate (SEC-41 to SEC-46, FR-18): the gate file under a web server, with this config and policy accepted, calls a fake HTTPS upstream on 127.0.0.1. The runner replaces {port} with the fake upstream's port and {caFile} with its certificate, seals `secrets` for the gate and signs the bundle. The fake upstream answers by path: /echo returns what it received as JSON {method, path, query, headers (lower-case names), body}, with every occurrence of the secret replaced by <SECRET>; /redirect answers 302; /html text/html; /big 100 000 bytes of JSON; /slow waits 2 s; /reflect returns the Authorization header as is; /set-cookie adds Set-Cookie and X-Upstream; /status/<code> answers that status. `expect.json` is a subset of the client's JSON answer (null = key absent), `expect.headers` of its headers (null = absent), `upstreamCalls` counts requests the fake upstream saw. The secret must never appear in an answer or in the gate's log.",
+  "description": "Request-level cases against a running gate (SEC-41 to SEC-46, FR-18): the gate file under a web server, with this config and policy accepted, calls a fake HTTPS upstream on 127.0.0.1. The runner replaces {port} with the fake upstream's port and {caFile} with its certificate, seals `secrets` for the gate and signs the bundle. The fake upstream answers by path: /echo returns what it received as JSON {method, path, query, headers (lower-case names), body}, with every occurrence of the secret replaced by <SECRET>; /redirect answers 302; /html text/html; /big 100 000 bytes of JSON; /slow waits 2 s; /reflect returns the Authorization header as is; /set-cookie adds Set-Cookie and X-Upstream; /status/<code> answers that status. `expect.json` is a subset of the client's JSON answer (null = key absent), `expect.headers` of its headers (null = absent), `upstreamCalls` counts requests the fake upstream saw; a header expected as \"<any>\" must be present with any value. Cases run in order against one gate, so the rate-limit cases see the counts of the cases before them. The secret must never appear in an answer or in the gate's log.",
   "config": {
     "version": 1,
     "upstreams": {
@@ -49,7 +49,9 @@
         "maxBodyBytes": 1024,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
-        "enabled": true
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
       },
       "status": {
         "method": "GET",
@@ -59,7 +61,9 @@
         "maxBodyBytes": 0,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
-        "enabled": true
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
       },
       "header-auth": {
         "method": "GET",
@@ -69,7 +73,9 @@
         "maxBodyBytes": 0,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
-        "enabled": true
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
       },
       "query-auth": {
         "method": "GET",
@@ -79,7 +85,9 @@
         "maxBodyBytes": 0,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
-        "enabled": true
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
       },
       "redirect": {
         "method": "GET",
@@ -89,7 +97,9 @@
         "maxBodyBytes": 0,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
-        "enabled": true
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
       },
       "html": {
         "method": "GET",
@@ -99,7 +109,9 @@
         "maxBodyBytes": 0,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
-        "enabled": true
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
       },
       "big": {
         "method": "GET",
@@ -109,7 +121,9 @@
         "maxBodyBytes": 0,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
-        "enabled": true
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
       },
       "slow": {
         "method": "GET",
@@ -119,7 +133,9 @@
         "maxBodyBytes": 0,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
-        "enabled": true
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
       },
       "reflect": {
         "method": "GET",
@@ -129,7 +145,9 @@
         "maxBodyBytes": 0,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
-        "enabled": true
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
       },
       "set-cookie": {
         "method": "GET",
@@ -139,7 +157,9 @@
         "maxBodyBytes": 0,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
-        "enabled": true
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
       },
       "fail": {
         "method": "GET",
@@ -149,7 +169,9 @@
         "maxBodyBytes": 0,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
-        "enabled": true
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
       },
       "empty": {
         "method": "DELETE",
@@ -159,7 +181,9 @@
         "maxBodyBytes": 0,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
-        "enabled": true
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
       },
       "disabled": {
         "method": "GET",
@@ -169,7 +193,9 @@
         "maxBodyBytes": 0,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
-        "enabled": false
+        "enabled": false,
+        "origins": [],
+        "rateLimit": null
       },
       "loopback": {
         "method": "GET",
@@ -179,7 +205,49 @@
         "maxBodyBytes": 0,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
-        "enabled": true
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
+      },
+      "cors": {
+        "method": "POST",
+        "path": "/cors",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 1024,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": ["https://www.example.ch"],
+        "rateLimit": null
+      },
+      "cors-read": {
+        "method": "GET",
+        "path": "/cors",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": ["https://www.example.ch"],
+        "rateLimit": null
+      },
+      "limited": {
+        "method": "GET",
+        "path": "/limited",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": {
+          "requests": 2,
+          "windowSeconds": 600,
+          "per": "ip"
+        }
       }
     }
   },
@@ -209,6 +277,17 @@
     "maxBodyBytes": 1024,
     "maxResponseBytes": 65536,
     "maxTimeoutMs": 5000,
+    "limits": {
+      "perIp": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "total": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "maxClients": 5000
+    },
     "testing": {
       "resolve": {
         "upstream.test:{port}": "127.0.0.1"
@@ -736,6 +815,322 @@
       "expect": {
         "status": 502,
         "error": "upstream_forbidden",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "CORS: a listed origin gets Access-Control-Allow-Origin (FR-15)",
+      "request": {
+        "method": "POST",
+        "path": "/cors",
+        "headers": {
+          "Content-Type": "application/json",
+          "Origin": "https://www.example.ch"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-origin": "https://www.example.ch",
+          "vary": "Origin",
+          "access-control-allow-credentials": null
+        },
+        "upstreamCalls": 1,
+        "json": {
+          "path": "/echo",
+          "headers": {
+            "origin": null,
+            "authorization": "Bearer <SECRET>"
+          }
+        }
+      }
+    },
+    {
+      "name": "CORS: another origin is refused before anything is forwarded (FR-15)",
+      "request": {
+        "method": "POST",
+        "path": "/cors",
+        "headers": {
+          "Content-Type": "application/json",
+          "Origin": "https://evil.example"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 403,
+        "error": "origin_forbidden",
+        "headers": {
+          "access-control-allow-origin": null
+        },
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "CORS: an origin that only starts with a listed one is refused",
+      "request": {
+        "method": "POST",
+        "path": "/cors",
+        "headers": {
+          "Content-Type": "application/json",
+          "Origin": "https://www.example.ch.evil.example"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 403,
+        "error": "origin_forbidden",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "CORS: a request without Origin passes without CORS headers (T-01: binds browsers only)",
+      "request": {
+        "method": "POST",
+        "path": "/cors",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 200,
+        "headers": {
+          "access-control-allow-origin": null,
+          "vary": "Origin"
+        },
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "CORS: an error after the origin check still carries the CORS headers",
+      "request": {
+        "method": "POST",
+        "path": "/cors",
+        "headers": {
+          "Content-Type": "text/plain",
+          "Origin": "https://www.example.ch"
+        },
+        "body": "x"
+      },
+      "expect": {
+        "status": 415,
+        "error": "unsupported_media_type",
+        "headers": {
+          "access-control-allow-origin": "https://www.example.ch"
+        },
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "preflight: answered by the gate, never forwarded",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/cors",
+        "headers": {
+          "Origin": "https://www.example.ch",
+          "Access-Control-Request-Method": "POST",
+          "Access-Control-Request-Headers": "content-type"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 204,
+        "headers": {
+          "access-control-allow-origin": "https://www.example.ch",
+          "access-control-allow-methods": "GET, POST",
+          "access-control-allow-headers": "Content-Type",
+          "access-control-max-age": "600",
+          "access-control-allow-credentials": null,
+          "content-type": null
+        },
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "preflight: another origin is rejected",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/cors",
+        "headers": {
+          "Origin": "https://evil.example",
+          "Access-Control-Request-Method": "POST"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 403,
+        "error": "preflight_rejected",
+        "headers": {
+          "access-control-allow-origin": null
+        },
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "preflight: a request header other than Content-Type is rejected",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/cors",
+        "headers": {
+          "Origin": "https://www.example.ch",
+          "Access-Control-Request-Method": "POST",
+          "Access-Control-Request-Headers": "content-type, authorization"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 403,
+        "error": "preflight_rejected",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "preflight: a method of no route is rejected",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/cors",
+        "headers": {
+          "Origin": "https://www.example.ch",
+          "Access-Control-Request-Method": "DELETE"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 403,
+        "error": "preflight_rejected",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "preflight: a route without origins allows no cross-origin call",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/newsletter",
+        "headers": {
+          "Origin": "https://www.example.ch",
+          "Access-Control-Request-Method": "POST",
+          "Access-Control-Request-Headers": "content-type"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 403,
+        "error": "preflight_rejected",
+        "headers": {
+          "access-control-allow-origin": null
+        },
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "preflight: an unknown path is 404",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/nowhere",
+        "headers": {
+          "Origin": "https://www.example.ch",
+          "Access-Control-Request-Method": "POST"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "OPTIONS without CORS headers is just another method (405)",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/cors",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 405,
+        "error": "method_not_allowed",
+        "headers": {
+          "allow": "GET, POST"
+        },
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "CORS: no Origin, but the browser marks the request as cross-site (<img src>) on a route with origins",
+      "request": {
+        "method": "GET",
+        "path": "/cors",
+        "headers": {
+          "Sec-Fetch-Site": "cross-site"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 403,
+        "error": "origin_forbidden",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "rate limit: first request in the window (FR-30)",
+      "request": {
+        "method": "GET",
+        "path": "/limited",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "rate limit: second request in the window",
+      "request": {
+        "method": "GET",
+        "path": "/limited",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "rate limit: third request is refused with Retry-After, nothing forwarded (SEC-45)",
+      "request": {
+        "method": "GET",
+        "path": "/limited",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 429,
+        "error": "rate_limited",
+        "headers": {
+          "retry-after": "<any>"
+        },
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "rate limit: X-Forwarded-For does not make a new client (SEC-26)",
+      "request": {
+        "method": "GET",
+        "path": "/limited",
+        "headers": {
+          "X-Forwarded-For": "198.51.100.9",
+          "X-Real-IP": "198.51.100.9",
+          "Forwarded": "for=198.51.100.9"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 429,
+        "error": "rate_limited",
         "upstreamCalls": 0
       }
     }

@@ -5,10 +5,17 @@ declare(strict_types=1);
 namespace Moat\Gate\Tests\Conformance;
 
 use Moat\Gate\Config\ConfigValidator;
+use Moat\Gate\Config\Limit;
+use Moat\Gate\Config\Method;
+use Moat\Gate\Config\Route;
 use Moat\Gate\Http\ContentType;
+use Moat\Gate\Http\Cors;
 use Moat\Gate\Http\PathNormaliser;
 use Moat\Gate\Policy\PolicyCheck;
 use Moat\Gate\Rejection;
+use Moat\Gate\Runtime\ClientKey;
+use Moat\Gate\Runtime\RateLimiter;
+use Moat\Gate\Storage\DataDir;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -29,6 +36,30 @@ final class FormatVectorsTest extends TestCase
     public static function contentType(): iterable
     {
         return Vectors::cases('http/content-type.json');
+    }
+
+    /** @return iterable<string, array{array<string, mixed>}> */
+    public static function origin(): iterable
+    {
+        return Vectors::cases('http/cors.json', 'origin');
+    }
+
+    /** @return iterable<string, array{array<string, mixed>}> */
+    public static function preflight(): iterable
+    {
+        return Vectors::cases('http/cors.json', 'preflight');
+    }
+
+    /** @return iterable<string, array{array<string, mixed>}> */
+    public static function limitSequence(): iterable
+    {
+        return Vectors::cases('http/rate-limit.json', 'sequences');
+    }
+
+    /** @return iterable<string, array{array<string, mixed>}> */
+    public static function client(): iterable
+    {
+        return Vectors::cases('http/rate-limit.json', 'clients');
     }
 
     /** @return iterable<string, array{array<string, mixed>}> */
@@ -59,6 +90,85 @@ final class FormatVectorsTest extends TestCase
         $allowed = array_map(Vectors::string(...), array_values(Vectors::list($case['allowed'])));
         $ok = ContentType::isAllowed(Vectors::string($case['header']), $allowed);
         self::assertSame(Vectors::map($case['expect']), ['ok' => $ok]);
+    }
+
+    /** @param array<string, mixed> $case */
+    #[DataProvider('origin')]
+    public function testOrigin(array $case): void
+    {
+        $route = self::route(Vectors::map($case['route']));
+        $origin = $case['origin'] === null ? null : Vectors::string($case['origin']);
+        $fetchSite = $case['fetchSite'] === null ? null : Vectors::string($case['fetchSite']);
+        $result = self::outcome(static fn(): array => ['allowOrigin' => Cors::check($route, $origin, $fetchSite)]);
+        self::assertSame(Vectors::map($case['expect']), $result);
+    }
+
+    /** @param array<string, mixed> $case */
+    #[DataProvider('preflight')]
+    public function testPreflight(array $case): void
+    {
+        $routes = array_map(static fn(mixed $route): Route => self::route(Vectors::map($route)), array_values(Vectors::list($case['routes'])));
+        $headers = $case['requestHeaders'] === null ? null : Vectors::string($case['requestHeaders']);
+        $result = self::outcome(static function () use ($routes, $case, $headers): array {
+            $answer = Cors::preflight($routes, Vectors::string($case['origin']), Vectors::string($case['requestMethod']), $headers);
+
+            return [
+                'allowOrigin' => $answer['Access-Control-Allow-Origin'],
+                'allowMethods' => explode(', ', $answer['Access-Control-Allow-Methods']),
+                'allowHeaders' => [$answer['Access-Control-Allow-Headers']],
+                'maxAge' => (int) $answer['Access-Control-Max-Age'],
+            ];
+        });
+        self::assertSame(Vectors::map($case['expect']), $result);
+    }
+
+    /**
+     * The sequence against the real counter store in a fresh data folder.
+     *
+     * @param array<string, mixed> $case
+     */
+    #[DataProvider('limitSequence')]
+    public function testLimitSequence(array $case): void
+    {
+        $dir = sys_get_temp_dir() . '/moat-limits-' . bin2hex(random_bytes(6));
+        mkdir($dir, 0o700);
+        $data = DataDir::create($dir);
+        $counters = [];
+        foreach (Vectors::list($case['limits']) as $index => $limit) {
+            $limit = Vectors::map($limit);
+            $counters[] = ['c' . $index, new Limit(Vectors::int($limit['requests']), Vectors::int($limit['windowSeconds']))];
+        }
+        $got = [];
+        foreach (Vectors::list($case['times']) as $now) {
+            $retryAfter = RateLimiter::hit($data, $counters, 100, Vectors::int($now));
+            $got[] = ['allowed' => $retryAfter === null, 'retryAfter' => $retryAfter ?? 0];
+        }
+        self::assertSame(Vectors::list($case['expect']), $got);
+    }
+
+    /** @param array<string, mixed> $case */
+    #[DataProvider('client')]
+    public function testClient(array $case): void
+    {
+        self::assertSame($case['expect'], ClientKey::of(Vectors::string($case['address'])));
+    }
+
+    /** @param array<string, mixed> $route `{method, origins}` of a cors.json case */
+    private static function route(array $route): Route
+    {
+        return new Route(
+            'r',
+            Method::from(Vectors::string($route['method'])),
+            '/r',
+            'u',
+            '/r',
+            0,
+            ['application/json'],
+            ['application/json'],
+            true,
+            array_map(Vectors::string(...), array_values(Vectors::list($route['origins']))),
+            null,
+        );
     }
 
     /** @param array<string, mixed> $case */

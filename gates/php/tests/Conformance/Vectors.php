@@ -38,9 +38,9 @@ final class Vectors
      *
      * @return iterable<string, array{array<string, mixed>}>
      */
-    public static function cases(string $file): iterable
+    public static function cases(string $file, string $group = 'cases'): iterable
     {
-        $cases = self::load($file)['cases'] ?? null;
+        $cases = self::load($file)[$group] ?? null;
         if (!\is_array($cases)) {
             throw new \RuntimeException("{$file} has no cases");
         }

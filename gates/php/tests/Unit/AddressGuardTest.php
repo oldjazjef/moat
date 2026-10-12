@@ -58,7 +58,7 @@ final class AddressGuardTest extends TestCase
     public function testSec41LoopbackOnlyThroughTheLocalPolicysTestingBlock(): void
     {
         $policy = PolicyCheck::parse(StrictJson::decode(
-            '{"v":1,"upstreams":{},"maxBodyBytes":0,"maxResponseBytes":1,"maxTimeoutMs":1,'
+            '{"v":1,"upstreams":{},"maxBodyBytes":0,"maxResponseBytes":1,"maxTimeoutMs":1,"limits":{"perIp":{"requests":30,"windowSeconds":60},"total":{"requests":600,"windowSeconds":60},"maxClients":10000},'
             . '"testing":{"resolve":{"upstream.test:8443":"127.0.0.1"},"caFile":null}}',
         ));
         self::assertSame('127.0.0.1', AddressGuard::resolve('upstream.test', 8443, $policy));

@@ -10,6 +10,13 @@ import { validateCompiledConfig } from '../src/config/compiled';
 import { normalisePath } from '../src/http/path';
 import { checkPolicy, parsePolicy } from '../src/policy/policy';
 import { isAllowedContentType } from '../src/http/content-type';
+import { checkOrigin, preflight } from '../src/http/cors';
+import {
+  clientKey,
+  hitLimits,
+  type Limit,
+  type Window,
+} from '../src/http/rate-limit';
 import { toBase64Url } from '../src/encoding/base64url';
 import { utf8 } from '../src/encoding/utf8';
 import type { JsonValue } from '../src/json/strict-json';
@@ -133,6 +140,8 @@ const baseConfig = (): Record<string, Json> => ({
       contentTypes: ['application/json'],
       responseContentTypes: ['application/json'],
       enabled: true,
+      origins: [],
+      rateLimit: null,
     },
   },
 });
@@ -345,6 +354,112 @@ function configVectors(): Json {
     ],
     ['timeout 0', (c) => (upstream(c)['timeoutMs'] = 0)],
     ['timeout above 60 s', (c) => (upstream(c)['timeoutMs'] = 60001)],
+    [
+      'route with origins (FR-15)',
+      (c) =>
+        (route(c)['origins'] = [
+          'https://www.example.ch',
+          'https://shop.example.ch:8443',
+          'http://localhost:4200',
+          'http://127.0.0.1',
+        ]),
+    ],
+    ['route without origins key', (c) => delete route(c)['origins']],
+    ['route origin wildcard', (c) => (route(c)['origins'] = ['*'])],
+    ['route origin "null"', (c) => (route(c)['origins'] = ['null'])],
+    [
+      'route origin with a trailing slash',
+      (c) => (route(c)['origins'] = ['https://www.example.ch/']),
+    ],
+    [
+      'route origin with a path',
+      (c) => (route(c)['origins'] = ['https://www.example.ch/shop']),
+    ],
+    [
+      'route plain http origin other than localhost',
+      (c) => (route(c)['origins'] = ['http://www.example.ch']),
+    ],
+    [
+      'route http localhost with port 80',
+      (c) => (route(c)['origins'] = ['http://localhost:80']),
+    ],
+    [
+      'route origin with upper-case host',
+      (c) => (route(c)['origins'] = ['https://WWW.example.ch']),
+    ],
+    [
+      'route 17 origins',
+      (c) =>
+        (route(c)['origins'] = Array.from(
+          { length: 17 },
+          (_, i) => `https://site${i}.example.ch`,
+        )),
+    ],
+    [
+      'rate limit per ip (FR-30)',
+      (c) =>
+        (route(c)['rateLimit'] = {
+          requests: 5,
+          windowSeconds: 60,
+          per: 'ip',
+        }),
+    ],
+    [
+      'rate limit per route',
+      (c) =>
+        (route(c)['rateLimit'] = {
+          requests: 1000000,
+          windowSeconds: 86400,
+          per: 'route',
+        }),
+    ],
+    ['route without rateLimit key', (c) => delete route(c)['rateLimit']],
+    [
+      'rate limit of 0 requests',
+      (c) =>
+        (route(c)['rateLimit'] = { requests: 0, windowSeconds: 60, per: 'ip' }),
+    ],
+    [
+      'rate limit window above a day',
+      (c) =>
+        (route(c)['rateLimit'] = {
+          requests: 5,
+          windowSeconds: 86401,
+          per: 'ip',
+        }),
+    ],
+    [
+      'rate limit window as a string',
+      (c) =>
+        (route(c)['rateLimit'] = {
+          requests: 5,
+          windowSeconds: '60',
+          per: 'ip',
+        }),
+    ],
+    [
+      'rate limit with an unknown scope',
+      (c) =>
+        (route(c)['rateLimit'] = {
+          requests: 5,
+          windowSeconds: 60,
+          per: 'user',
+        }),
+    ],
+    [
+      'rate limit without a scope',
+      (c) => (route(c)['rateLimit'] = { requests: 5, windowSeconds: 60 }),
+    ],
+    [
+      'rate limit with an extra key',
+      (c) =>
+        (route(c)['rateLimit'] = {
+          requests: 5,
+          windowSeconds: 60,
+          per: 'ip',
+          burst: 10,
+        }),
+    ],
   ];
   return {
     description:
@@ -379,7 +494,187 @@ const basePolicy = (): Record<string, Json> => ({
   maxBodyBytes: 65536,
   maxResponseBytes: 1048576,
   maxTimeoutMs: 15000,
+  limits: {
+    perIp: { requests: 30, windowSeconds: 60 },
+    total: { requests: 600, windowSeconds: 60 },
+    maxClients: 10000,
+  },
 });
+
+function corsVectors(): Json {
+  const site = 'https://www.example.ch';
+  type Route = { method: string; origins: string[] };
+  const open: Route[] = [{ method: 'POST', origins: [site] }];
+  const origin: [string, Route, string | null, (string | null)?][] = [
+    [
+      'route without origins, no Origin header',
+      { method: 'POST', origins: [] },
+      null,
+    ],
+    [
+      'route without origins ignores any Origin',
+      { method: 'POST', origins: [] },
+      'https://evil.example',
+    ],
+    ['listed origin', open[0] as Route, site],
+    [
+      'no Origin header (not a browser, or same-origin GET)',
+      open[0] as Route,
+      null,
+    ],
+    ['other origin', open[0] as Route, 'https://evil.example'],
+    ['origin differs only in case', open[0] as Route, 'https://WWW.example.ch'],
+    ['origin with a trailing slash', open[0] as Route, `${site}/`],
+    ['origin "null" (sandboxed frame, file://)', open[0] as Route, 'null'],
+    ['origin with another port', open[0] as Route, `${site}:8443`],
+    ['plain http variant', open[0] as Route, 'http://www.example.ch'],
+    ['suffix attack', open[0] as Route, 'https://www.example.ch.evil.example'],
+    [
+      'no Origin, but the browser says another site sent it (<img src>)',
+      open[0] as Route,
+      null,
+      'cross-site',
+    ],
+    [
+      'no Origin, sent from another subdomain of the site',
+      open[0] as Route,
+      null,
+      'same-site',
+    ],
+    ['no Origin, same origin', open[0] as Route, null, 'same-origin'],
+    ['no Origin, typed into the address bar', open[0] as Route, null, 'none'],
+    [
+      'route without origins ignores Sec-Fetch-Site',
+      { method: 'POST', origins: [] },
+      null,
+      'cross-site',
+    ],
+  ];
+  const both: Route[] = [
+    { method: 'GET', origins: [site] },
+    { method: 'POST', origins: [site] },
+    { method: 'DELETE', origins: ['https://admin.example.ch'] },
+  ];
+  const flights: [string, Route[], string, string, string | null][] = [
+    ['allowed method, no headers', both, site, 'POST', null],
+    ['allowed method with Content-Type', both, site, 'POST', 'content-type'],
+    ['header names are case-insensitive', both, site, 'POST', 'Content-Type'],
+    [
+      'empty header list items are skipped',
+      both,
+      site,
+      'GET',
+      ' , content-type ,',
+    ],
+    [
+      'method of a route that does not list the origin',
+      both,
+      site,
+      'DELETE',
+      null,
+    ],
+    ['method of no route', both, site, 'PUT', null],
+    ['method in lower case', both, site, 'post', null],
+    ['origin of no route', both, 'https://evil.example', 'GET', null],
+    ['an extra request header', both, site, 'POST', 'content-type, x-api-key'],
+    ['Authorization is not allowed', both, site, 'GET', 'authorization'],
+    ['Cookie is not allowed', both, site, 'GET', 'cookie'],
+    ['a header name with a space', both, site, 'POST', 'content type'],
+    [
+      'route without origins',
+      [{ method: 'POST', origins: [] }],
+      site,
+      'POST',
+      null,
+    ],
+  ];
+  return {
+    description:
+      "FR-15: origin binding and CORS. `origin` cases: a matched route, the request's Origin and Sec-Fetch-Site headers (null = absent) → `{ok: true, allowOrigin}` (null = no CORS header) or `origin_forbidden`; without Origin, a route with origins refuses `cross-site` and `same-site`. `preflight` cases: OPTIONS with Origin and Access-Control-Request-Method (and -Headers, null = absent) on a path with these routes → the answer or `preflight_rejected`. Origins compare exactly; only Content-Type may be requested; credentials are never allowed.",
+    origin: origin.map(([name, route, header, fetchSite = null]) => ({
+      name,
+      route,
+      origin: header,
+      fetchSite,
+      expect: outcome(() => ({
+        allowOrigin: checkOrigin(route, header, fetchSite),
+      })),
+    })),
+    preflight: flights.map(([name, routes, from, method, headers]) => ({
+      name,
+      routes,
+      origin: from,
+      requestMethod: method,
+      requestHeaders: headers,
+      expect: outcome(
+        () =>
+          preflight(
+            routes as { method: 'GET'; origins: string[] }[],
+            from,
+            method,
+            headers,
+          ) as unknown as Record<string, Json>,
+      ),
+    })),
+  };
+}
+
+function rateLimitVectors(): Json {
+  const minute: Limit = { requests: 2, windowSeconds: 60 };
+  const sequences: [string, Limit[], number[]][] = [
+    ['two per minute', [minute], [1000, 1001, 1002, 1059, 1060, 1061, 1062]],
+    ['refused requests do not count', [minute], [0, 0, 0, 0, 59, 60]],
+    ['one per second', [{ requests: 1, windowSeconds: 1 }], [5, 5, 6, 6, 8]],
+    [
+      'several limits: every one must have room, all count together',
+      [minute, { requests: 3, windowSeconds: 3600 }],
+      [0, 1, 2, 60, 61, 120, 3600],
+    ],
+  ];
+  const addresses: [string, string][] = [
+    ['IPv4', '203.0.113.7'],
+    ['IPv4 with a leading zero', '203.0.113.07'],
+    ['IPv4 out of range', '203.0.113.256'],
+    ['IPv6 counts per /64', '2001:db8:1:2:3:4:5:6'],
+    ['IPv6 compressed', '2001:db8::1'],
+    ['IPv6 upper case', '2001:DB8:A::1'],
+    ['IPv6 loopback', '::1'],
+    ['IPv4-mapped IPv6 counts as IPv4', '::ffff:203.0.113.7'],
+    ['IPv4-mapped in hex', '::ffff:cb00:7107'],
+    ['IPv6 with a zone id', 'fe80::1%eth0'],
+    ['two "::"', '2001::db8::1'],
+    ['nine groups', '1:2:3:4:5:6:7:8:9'],
+    ['"::" standing for no group', '1:2:3:4::5:6:7:8'],
+    ['dotted IPv4 not at the end', '::1.2.3.4:1'],
+    ['empty', ''],
+    ['a host name', 'localhost'],
+  ];
+  return {
+    description:
+      'FR-30, SEC-26, SEC-45. `sequences`: requests at these unix times against these limits, starting with no counters → per request `{allowed, retryAfter}` (retryAfter 0 when allowed). A window opens with the first request and lasts windowSeconds; a refused request does not count; with several limits a request passes only if each has room, and then each counts it. `clients`: REMOTE_ADDR → the key a per-IP limit counts (IPv4 as is, IPv6 by /64 as `xxxx:xxxx:xxxx:xxxx::/64`, IPv4-mapped as IPv4), or null = not an address (the gate refuses the request).',
+    sequences: sequences.map(([name, limits, times]) => {
+      let windows: (Window | null)[] = limits.map(() => null);
+      return {
+        name,
+        limits: limits as unknown as Json,
+        times,
+        expect: times.map((now) => {
+          const result = hitLimits(windows, limits, now);
+          if (result.allowed) {
+            windows = result.windows;
+            return { allowed: true, retryAfter: 0 };
+          }
+          return { allowed: false, retryAfter: result.retryAfter };
+        }),
+      };
+    }),
+    clients: addresses.map(([name, address]) => ({
+      name,
+      address,
+      expect: clientKey(address),
+    })),
+  };
+}
 
 function policyVectors(): Json {
   type PolicyMutation = (
@@ -486,6 +781,74 @@ function policyVectors(): Json {
     [
       'policy secret name not a name',
       (_c, p) => (allowed(p)['secrets'] = ['Hubspot Token']),
+    ],
+    ['policy without limits (SEC-14)', (_c, p) => delete p['limits']],
+    [
+      'policy limits without total',
+      (_c, p) => delete (p['limits'] as Record<string, Json>)['total'],
+    ],
+    [
+      'policy per-ip limit of 0 requests',
+      (_c, p) =>
+        ((p['limits'] as Record<string, Json>)['perIp'] = {
+          requests: 0,
+          windowSeconds: 60,
+        }),
+    ],
+    [
+      'policy limit with an extra key',
+      (_c, p) =>
+        ((p['limits'] as Record<string, Json>)['perIp'] = {
+          requests: 30,
+          windowSeconds: 60,
+          per: 'ip',
+        }),
+    ],
+    [
+      'policy store below 100 clients',
+      (_c, p) => ((p['limits'] as Record<string, Json>)['maxClients'] = 99),
+    ],
+    [
+      'policy store above 20 000 clients (SEC-27)',
+      (_c, p) => ((p['limits'] as Record<string, Json>)['maxClients'] = 20001),
+    ],
+    [
+      'the counter store fits the worst case (SEC-27)',
+      (c, p) => {
+        route(c)['rateLimit'] = { requests: 5, windowSeconds: 600, per: 'ip' };
+        (p['limits'] as Record<string, Json>)['maxClients'] = 7801;
+      },
+    ],
+    [
+      'a per-IP window too long for the counter store (SEC-27)',
+      (c, p) => {
+        route(c)['rateLimit'] = { requests: 5, windowSeconds: 600, per: 'ip' };
+        (p['limits'] as Record<string, Json>)['maxClients'] = 7800;
+      },
+    ],
+    [
+      'a whole-route limit needs one counter',
+      (c, p) => {
+        route(c)['rateLimit'] = {
+          requests: 5,
+          windowSeconds: 86400,
+          per: 'route',
+        };
+        (p['limits'] as Record<string, Json>)['maxClients'] = 1202;
+      },
+    ],
+    [
+      'the policy alone may not overflow the store (SEC-27)',
+      (_c, p) => ((p['limits'] as Record<string, Json>)['maxClients'] = 1200),
+    ],
+    [
+      'a looser route limit is allowed: the policy limits still apply (T-21)',
+      (c) =>
+        (route(c)['rateLimit'] = {
+          requests: 1000000,
+          windowSeconds: 1,
+          per: 'route',
+        }),
     ],
     [
       'testing block with loopback',
@@ -621,6 +984,8 @@ export async function buildFormatVectors(): Promise<Record<string, Json>> {
   return {
     'http/path.json': pathVectors(),
     'http/content-type.json': contentTypeVectors(),
+    'http/cors.json': corsVectors(),
+    'http/rate-limit.json': rateLimitVectors(),
     'config/config.json': configVectors(),
     'config/policy.json': policyVectors(),
     'crypto/keyfile.json': await keyFileVectors(),

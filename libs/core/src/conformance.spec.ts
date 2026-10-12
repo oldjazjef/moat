@@ -14,6 +14,13 @@ import { parseStrictJson, type JsonValue } from './json/strict-json';
 import { openSecret } from './secrets/seal';
 import { normalisePath } from './http/path';
 import { isAllowedContentType } from './http/content-type';
+import { checkOrigin, preflight } from './http/cors';
+import {
+  clientKey,
+  hitLimits,
+  type Limit,
+  type Window,
+} from './http/rate-limit';
 import { validateCompiledConfig } from './config/compiled';
 import { checkPolicy, parsePolicy } from './policy/policy';
 import { openKeyFile } from './crypto/keyfile';
@@ -74,6 +81,33 @@ if (WRITE) {
 }
 
 describe('conformance vectors', () => {
+  it('case names are unique per list (PHPUnit uses them as data set keys)', () => {
+    const lists = (value: unknown): unknown[][] =>
+      Array.isArray(value)
+        ? [value, ...value.flatMap(lists)]
+        : typeof value === 'object' && value !== null
+          ? Object.values(value).flatMap(lists)
+          : [];
+    for (const file of [
+      'config/config.json',
+      'config/policy.json',
+      'http/path.json',
+      'http/content-type.json',
+      'http/cors.json',
+      'http/rate-limit.json',
+      '../http/gate.json',
+    ]) {
+      for (const list of lists(load<unknown>(file))) {
+        const names = list.flatMap((item) =>
+          typeof item === 'object' && item !== null && 'name' in item
+            ? [String(item.name)]
+            : [],
+        );
+        expect(new Set(names).size, file).toBe(names.length);
+      }
+    }
+  });
+
   it.each(Object.keys(built))(
     '%s matches scripts/build-vectors.ts (`pnpm vectors` rewrites it)',
     (file) => {
@@ -255,6 +289,74 @@ describe('conformance vectors', () => {
     }>('http/content-type.json');
     it.each(cases)('$name', ({ header, allowed, expect: expected }) => {
       expect(isAllowedContentType(header, allowed)).toBe(expected.ok);
+    });
+  });
+
+  describe('http/cors.json', () => {
+    type Route = { method: 'GET'; origins: string[] };
+    const { origin, preflight: flights } = load<{
+      origin: {
+        name: string;
+        route: Route;
+        origin: string | null;
+        fetchSite: string | null;
+        expect: Expect;
+      }[];
+      preflight: {
+        name: string;
+        routes: Route[];
+        origin: string;
+        requestMethod: string;
+        requestHeaders: string | null;
+        expect: Expect;
+      }[];
+    }>('http/cors.json');
+    it.each(origin)('origin: $name', async (vector) => {
+      const result = await outcome(() =>
+        checkOrigin(vector.route, vector.origin, vector.fetchSite),
+      );
+      expect(
+        result.ok ? { ok: true, allowOrigin: result.value } : result,
+      ).toEqual(vector.expect);
+    });
+    it.each(flights)('preflight: $name', async (vector) => {
+      const result = await outcome(() =>
+        preflight(
+          vector.routes,
+          vector.origin,
+          vector.requestMethod,
+          vector.requestHeaders,
+        ),
+      );
+      expect(
+        result.ok ? { ok: true, ...(result.value as object) } : result,
+      ).toEqual(vector.expect);
+    });
+  });
+
+  describe('http/rate-limit.json', () => {
+    const { sequences, clients } = load<{
+      sequences: {
+        name: string;
+        limits: Limit[];
+        times: number[];
+        expect: { allowed: boolean; retryAfter: number }[];
+      }[];
+      clients: { name: string; address: string; expect: string | null }[];
+    }>('http/rate-limit.json');
+    it.each(sequences)('sequence: $name', ({ limits, times, expect: want }) => {
+      let windows: (Window | null)[] = limits.map(() => null);
+      const got = times.map((now) => {
+        const result = hitLimits(windows, limits, now);
+        if (!result.allowed)
+          return { allowed: false, retryAfter: result.retryAfter };
+        windows = result.windows;
+        return { allowed: true, retryAfter: 0 };
+      });
+      expect(got).toEqual(want);
+    });
+    it.each(clients)('client: $name', ({ address, expect: want }) => {
+      expect(clientKey(address)).toBe(want);
     });
   });
 

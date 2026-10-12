@@ -21,6 +21,7 @@ final class ConfigValidator
     public const NAME = '/^[a-z][a-z0-9-]{0,62}$/D';
     public const MAX_BODY_BYTES = 10 * 1024 * 1024;
     public const MAX_TIMEOUT_MS = 60_000;
+    public const MAX_ORIGINS = 16;
     private const HEADER_NAME = '/^[A-Za-z0-9-]{1,64}$/D';
     private const QUERY_PARAM = '/^[A-Za-z0-9_.-]{1,64}$/D';
     /** Headers the gate sets itself; an auth header may not replace them. */
@@ -154,6 +155,8 @@ final class ConfigValidator
             'contentTypes',
             'responseContentTypes',
             'enabled',
+            'origins',
+            'rateLimit',
         )) {
             self::fail();
         }
@@ -184,7 +187,65 @@ final class ConfigValidator
             self::mediaTypes($value->get('contentTypes')),
             self::mediaTypes($value->get('responseContentTypes')),
             $enabled,
+            self::origins($value->get('origins')),
+            $value->get('rateLimit') === null ? null : self::routeLimit($value->get('rateLimit')),
         );
+    }
+
+    /** @return list<string> */
+    private static function origins(mixed $value): array
+    {
+        if (!\is_array($value) || !array_is_list($value) || \count($value) > self::MAX_ORIGINS) {
+            self::fail();
+        }
+        $origins = [];
+        foreach ($value as $origin) {
+            if (!\is_string($origin) || !self::isWebOrigin($origin)) {
+                self::fail();
+            }
+            $origins[] = $origin;
+        }
+
+        return $origins;
+    }
+
+    private static function routeLimit(mixed $value): RouteLimit
+    {
+        if (!$value instanceof JsonObject || !$value->hasExactKeys('requests', 'windowSeconds', 'per')) {
+            self::fail();
+        }
+        $per = \is_string($value->get('per')) ? LimitScope::tryFrom($value->get('per')) : null;
+
+        return new RouteLimit(self::limit($value, RejectionCode::ConfigInvalid), $per ?? self::fail());
+    }
+
+    /** `requests` and `windowSeconds` of a limit object (route or policy); else a Rejection with `$code`. */
+    public static function limit(JsonObject $value, RejectionCode $code): Limit
+    {
+        $requests = $value->get('requests');
+        $window = $value->get('windowSeconds');
+        if (!\is_int($requests) || !self::intIn($requests, 1, Limit::MAX_REQUESTS) || !\is_int($window) || !self::intIn($window, 1, Limit::MAX_WINDOW_SECONDS)) {
+            throw new Rejection($code);
+        }
+
+        return new Limit($requests, $window);
+    }
+
+    /**
+     * A browser origin as isWebOrigin() in libs/core: an HTTPS origin as isOrigin(), or
+     * `http://localhost[:port]` / `http://127.0.0.1[:port]` for local development.
+     */
+    public static function isWebOrigin(string $value): bool
+    {
+        if (self::isOrigin($value)) {
+            return true;
+        }
+        if (preg_match('~^http://(?:localhost|127\.0\.0\.1)(?::([1-9][0-9]{0,4}))?$~D', $value, $match) !== 1) {
+            return false;
+        }
+        $port = $match[1] ?? null;
+
+        return $port === null || ((int) $port <= 65535 && $port !== '80');
     }
 
     /** @return list<string> */

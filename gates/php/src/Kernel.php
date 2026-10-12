@@ -27,6 +27,8 @@ final class Kernel
         ini_set('display_errors', '0');
         ini_set('html_errors', '0');
         ini_set('log_errors', '1');
+        // No PHP default Content-Type (text/html) on answers without a body, e.g. a preflight.
+        ini_set('default_mimetype', '');
         error_reporting(E_ALL);
         set_error_handler(static function (int $severity, string $message, string $file, int $line): never {
             throw new \ErrorException('php_error', 0, $severity, $file, $line);
@@ -60,7 +62,7 @@ final class Kernel
 
             return;
         }
-        RequestHandler::handle(Request::fromServer($_SERVER), $bundle, $gate)->send();
+        RequestHandler::handle(Request::fromServer($_SERVER), $bundle, $gate, time())->send();
     }
 
     private static function missingExtension(): ?string

@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
 final class GateTest extends TestCase
 {
     private const POLICY = '{"v":1,"upstreams":{"api.example.com":{"pathPrefixes":["/v1"],"methods":["POST"],"secrets":["token"]}},'
-        . '"maxBodyBytes":4096,"maxResponseBytes":65536,"maxTimeoutMs":10000}';
+        . '"maxBodyBytes":4096,"maxResponseBytes":65536,"maxTimeoutMs":10000,"limits":{"perIp":{"requests":30,"windowSeconds":60},"total":{"requests":600,"windowSeconds":60},"maxClients":10000}}';
 
     private string $dir;
     /** @var non-empty-string */
@@ -146,7 +146,7 @@ final class GateTest extends TestCase
         $config = json_decode(
             '{"version":1,"upstreams":{"api":{"origin":"https://api.example.com","auth":{"type":"bearer","secret":"token"},"timeoutMs":5000}},'
             . '"routes":{"contact":{"method":"POST","path":"/contact","upstream":"api","upstreamPath":"' . $path . '","maxBodyBytes":1024,'
-            . '"contentTypes":["application/json"],"responseContentTypes":["application/json"],"enabled":true}}}',
+            . '"contentTypes":["application/json"],"responseContentTypes":["application/json"],"enabled":true,"origins":[],"rateLimit":null}}}',
             false,
             512,
             JSON_THROW_ON_ERROR,

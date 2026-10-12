@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   hostKey,
   isOrigin,
+  limitSchema,
   MAX_BODY_BYTES,
   MAX_TIMEOUT_MS,
   METHODS,
@@ -20,6 +21,8 @@ import { hasProtoKey, type JsonValue } from '../json/strict-json';
  */
 
 export const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
+/** SEC-27: the rate-limit store holds at most this many counters (about 1 MiB on disk). */
+export const MAX_TRACKED_CLIENTS = 20_000;
 
 const hostKeySchema = z.string().refine((key) => isOrigin(`https://${key}`));
 const prefix = z.string().refine((value) => {
@@ -47,6 +50,17 @@ export const policySchema = z.strictObject({
   maxBodyBytes: z.int().min(0).max(MAX_BODY_BYTES),
   maxResponseBytes: z.int().min(1).max(MAX_RESPONSE_BYTES),
   maxTimeoutMs: z.int().min(1).max(MAX_TIMEOUT_MS),
+  /**
+   * Rate limits the gate enforces on every route, whatever the bundle says (SEC-14, SEC-45,
+   * T-21): a bundle can add stricter limits per route but never lift these. `perIp` counts each
+   * client address (SEC-26: `REMOTE_ADDR` only), `total` all requests together. `maxClients`
+   * bounds the counter store; when it is full, new clients are refused (SEC-27, fail closed).
+   */
+  limits: z.strictObject({
+    perIp: limitSchema,
+    total: limitSchema,
+    maxClients: z.int().min(100).max(MAX_TRACKED_CLIENTS),
+  }),
   /**
    * Local test setups only (the conformance runner, a demo): send these `host[:port]`s to a fixed
    * IP — loopback included — and trust an extra CA file. Never set by a bundle; the hardening
@@ -109,7 +123,39 @@ export function checkPolicy(config: CompiledConfig, policy: Policy): void {
     }
     if (route.maxBodyBytes > policy.maxBodyBytes) reject('policy_violation');
   }
+  if (counterCapacity(config, policy) > policy.limits.maxClients)
+    reject('policy_violation');
 }
+
+/**
+ * SEC-27: the most counters the gate can hold at once with this config, so a full store — which
+ * refuses every new client — cannot be reached by flooding. A counter is created only for a
+ * request that passes the `total` limit, so per kind of per-IP counter (the policy's, and each
+ * route limited per IP) at most `total.requests × (⌈window / total.windowSeconds⌉ + 1)` are alive
+ * at once; plus one per route limited as a whole, plus `total` itself.
+ */
+export function counterCapacity(
+  config: CompiledConfig,
+  policy: Policy,
+): number {
+  const { total, perIp } = policy.limits;
+  const live = (windowSeconds: number) =>
+    total.requests * (Math.ceil(windowSeconds / total.windowSeconds) + 1);
+  let count = 1 + live(perIp.windowSeconds);
+  for (const route of Object.values(config.routes)) {
+    if (route.rateLimit === null) continue;
+    count +=
+      route.rateLimit.per === 'ip' ? live(route.rateLimit.windowSeconds) : 1;
+  }
+  return count;
+}
+
+/** What `moat policy suggest` proposes: enough for a contact form, little for an abuser. */
+export const DEFAULT_LIMITS: Policy['limits'] = {
+  perIp: { requests: 30, windowSeconds: 60 },
+  total: { requests: 600, windowSeconds: 60 },
+  maxClients: 10_000,
+};
 
 /**
  * SEC-14: the narrowest policy that admits this config — what `moat policy suggest` prints and a
@@ -132,7 +178,7 @@ export function suggestPolicy(config: CompiledConfig): Policy {
     if (!entry.methods.includes(route.method)) entry.methods.push(route.method);
   }
   const routes = Object.values(config.routes);
-  return {
+  const policy: Policy = {
     v: 1,
     upstreams,
     maxBodyBytes: Math.max(0, ...routes.map((route) => route.maxBodyBytes)),
@@ -141,5 +187,13 @@ export function suggestPolicy(config: CompiledConfig): Policy {
       1,
       ...Object.values(config.upstreams).map((upstream) => upstream.timeoutMs),
     ),
+    limits: DEFAULT_LIMITS,
   };
+  const needed = counterCapacity(config, policy);
+  if (needed > policy.limits.maxClients)
+    policy.limits = {
+      ...policy.limits,
+      maxClients: Math.min(MAX_TRACKED_CLIENTS, needed),
+    };
+  return policy;
 }

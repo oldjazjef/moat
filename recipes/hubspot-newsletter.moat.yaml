@@ -19,3 +19,9 @@ routes:
     upstream: hubspot
     upstreamPath: '/crm/v3/objects/contacts'
     maxBodySize: '4KiB'
+    # A sign-up form needs few requests per visitor (FR-30).
+    rateLimit:
+      requests: 5
+      window: '10m'
+    # When the form runs on another site than the gate, list that site (FR-15):
+    # origins: ['https://www.example.ch']

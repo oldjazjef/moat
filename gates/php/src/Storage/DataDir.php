@@ -68,6 +68,21 @@ final readonly class DataDir
         Files::writeAtomic($this->file($name), self::MARKER . "\n" . $content);
     }
 
+    /**
+     * Runs `$critical` under the data folder's one exclusive lock (`lock.php`, guarded like the
+     * data files) — for read-modify-write of a data file by concurrent requests.
+     *
+     * @template T
+     *
+     * @param \Closure(): T $critical
+     *
+     * @return T
+     */
+    public function locked(\Closure $critical): mixed
+    {
+        return Files::withLock($this->file('lock'), self::MARKER . "\n", $critical);
+    }
+
     private function file(string $name): string
     {
         if (preg_match('/^[a-z]{1,16}$/D', $name) !== 1) {

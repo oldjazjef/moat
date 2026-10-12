@@ -58,7 +58,7 @@ final class GateFixture
         file_put_contents($site . '/' . self::GATE_FILE, Builder::build(\dirname(__DIR__, 2) . '/src', '0.0.0-test', 'test'));
         $signer = sodium_crypto_sign_keypair();
         $install = $this->cli($site, ['install', '--signer=' . Base64Url::encode(sodium_crypto_sign_publickey($signer))]);
-        if (preg_match('/--gate-id (\S+) --box-key (\S+)/', $install, $match) !== 1) {
+        if (preg_match('/--gate-id=(\S+) --box-key=(\S+)/', $install, $match) !== 1) {
             throw new \RuntimeException('install printed no gate id');
         }
         [, $gateId, $boxKey] = $match;

@@ -64,6 +64,27 @@ async function gateKeys() {
 }
 
 describe('moat CLI', () => {
+  it('gate add takes a gate id and box key starting with "-" in the --opt=value form the gate prints', async () => {
+    const { cwd, context } = project([]);
+    const { pair } = await gateKeys();
+    const boxKey = `-${toBase64Url(pair.publicKey).slice(1)}`;
+    expect(
+      await run(
+        [
+          'gate',
+          'add',
+          'www',
+          '--gate-id=-AAAAAAAAAAAAAAAAAAAAA',
+          `--box-key=${boxKey}`,
+        ],
+        context,
+      ),
+    ).toBe(0);
+    expect(readFileSync(path.join(cwd, 'gates/www.json'), 'utf8')).toContain(
+      boxKey,
+    );
+  });
+
   it('keygen → gate add → secret seal → build produces a bundle the gate accepts', async () => {
     const passphrase = 'a long test passphrase';
     const { cwd, output, context, answers } = project([passphrase, passphrase]);
@@ -79,10 +100,8 @@ describe('moat CLI', () => {
           'gate',
           'add',
           'www',
-          '--gate-id',
-          gateId,
-          '--box-key',
-          toBase64Url(pair.publicKey),
+          `--gate-id=${gateId}`,
+          `--box-key=${toBase64Url(pair.publicKey)}`,
         ],
         context,
       ),
@@ -142,10 +161,8 @@ describe('moat CLI', () => {
         'gate',
         'add',
         'www',
-        '--gate-id',
-        gateId,
-        '--box-key',
-        toBase64Url(pair.publicKey),
+        `--gate-id=${gateId}`,
+        `--box-key=${toBase64Url(pair.publicKey)}`,
       ],
       context,
     );
@@ -169,10 +186,8 @@ describe('moat CLI', () => {
         'gate',
         'add',
         'www',
-        '--gate-id',
-        gateId,
-        '--box-key',
-        toBase64Url(pair.publicKey),
+        `--gate-id=${gateId}`,
+        `--box-key=${toBase64Url(pair.publicKey)}`,
       ],
       context,
     );
@@ -187,6 +202,11 @@ describe('moat CLI', () => {
         maxBodyBytes: 65536,
         maxResponseBytes: 1048576,
         maxTimeoutMs: 30000,
+        limits: {
+          perIp: { requests: 30, windowSeconds: 60 },
+          total: { requests: 600, windowSeconds: 60 },
+          maxClients: 10000,
+        },
       }),
     );
     expect(
