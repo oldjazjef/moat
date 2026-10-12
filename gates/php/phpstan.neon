@@ -1,0 +1,37 @@
+includes:
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    - vendor/spaze/phpstan-disallowed-calls/extension.neon
+    - vendor/spaze/phpstan-disallowed-calls/disallowed-dangerous-calls.neon
+    - vendor/spaze/phpstan-disallowed-calls/disallowed-execution-calls.neon
+    - vendor/spaze/phpstan-disallowed-calls/disallowed-insecure-calls.neon
+    - vendor/spaze/phpstan-disallowed-calls/disallowed-loose-calls.neon
+
+# CLAUDE.md, PHP standards: level max, no baseline (a baseline may only shrink). eval, exec and
+# friends come from the disallowed-* includes; `@`, backticks, `$$` and dynamic include are
+# checked token by token in tests/Unit/BannedConstructsTest.php.
+parameters:
+    level: max
+    phpVersion:
+        min: 80200
+        max: 80599
+    paths:
+        - src
+        - tests
+    disallowedFunctionCalls:
+        -
+            function:
+                - 'unserialize()'
+                - 'serialize()'
+                - 'extract()'
+                - 'create_function()'
+                - 'assert()'
+                - 'var_dump()'
+                - 'print_r()'
+                - 'var_export()'
+                - 'file_get_contents()'
+                - 'fopen()'
+                - 'parse_str()'
+            message: 'banned in the gate (CLAUDE.md, PHP standards); HTTP goes through the one cURL client'
+            allowIn:
+                - tests/*

@@ -140,6 +140,7 @@ function jsonVectors(): Json {
     { name: 'lone high surrogate', input: '"\\ud800"' },
     { name: 'lone low surrogate in key', input: '{"\\udc00":1}' },
     { name: 'reversed surrogate pair', input: '"\\ude00\\ud83d"' },
+    { name: 'key starting with NUL', input: '{"\\u0000a":1}' },
     { name: 'byte order mark', inputHex: 'efbbbf7b7d' },
     { name: 'invalid utf-8', inputHex: '22ff22' },
     { name: 'overlong utf-8', inputHex: '22c0af22' },
@@ -153,7 +154,7 @@ function jsonVectors(): Json {
   ];
   return {
     description:
-      'Strict JSON as every implementation parses envelopes, payloads and data files (docs/CRYPTO.md §2): UTF-8 without BOM, integers 0 … 2^53 − 1 only (-0 counts as 0), no lone surrogates, at most 32 nested containers. `inputHex` is used where the input is not valid UTF-8.',
+      'Strict JSON as every implementation parses envelopes, payloads and data files (docs/CRYPTO.md §2): UTF-8 without BOM, integers 0 … 2^53 − 1 only (-0 counts as 0), no lone surrogates, no object key starting with NUL, at most 32 nested containers. `inputHex` is used where the input is not valid UTF-8.',
     cases: [
       ...ok.map(([name, input]) => ({ name, input, expect: { ok: true } })),
       ...invalid.map((item) => ({

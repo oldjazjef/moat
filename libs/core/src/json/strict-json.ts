@@ -17,7 +17,7 @@ export type JsonValue =
 
 /**
  * Parses JSON the way every gate does: strict UTF-8, non-negative integers only (no fraction or
- * exponent, at most 2^53 − 1), no lone surrogates, at most MAX_JSON_DEPTH levels, and
+ * exponent, at most 2^53 − 1), no lone surrogates, no key starting with NUL, at most MAX_JSON_DEPTH levels, and
  * objects without a prototype so a `__proto__` key is plain data (DT-17). Anything else →
  * `json_invalid`.
  */
@@ -30,6 +30,9 @@ export function parseStrictJson(bytes: Uint8Array): JsonValue {
       text,
       (key, item: unknown, context?: { source?: string }) => {
         if (LONE_SURROGATE.test(key)) throw new RangeError('surrogate');
+        // PHP's json_decode refuses object keys that start with NUL (its marker for private
+        // properties); reject them here too so both sides accept the same documents.
+        if (key.startsWith('\u0000')) throw new RangeError('key');
         if (typeof item === 'string' && LONE_SURROGATE.test(item))
           throw new RangeError('surrogate');
         if (typeof item === 'number') {

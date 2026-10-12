@@ -15,9 +15,12 @@ Four components (ANFORDERUNGEN.md, header):
 - **Moat Gate** (`gates/php` first, later `gates/node`, `gates/dotnet`): runs on the customer's
   hosting, enforces everything locally, trusts nobody it does not have to.
 
-> **Status (12.10.2026): requirements v0.5 + threat model v0.1 + crypto spec v0.1 + this setup.** No code yet. The stack and the
-> conventions below are the target; each section becomes concrete when the code lands. Update
-> this file whenever the code makes a section concrete or wrong.
+> **Status (12.10.2026): requirements v0.5 + threat model v0.1 + crypto spec v0.1.** Code so far:
+> the Nx/pnpm workspace, `libs/core` (encodings, strict JSON, JCS, key ids, bundle sign/verify,
+> sealed secrets), `conformance/vectors/crypto/`, and `gates/php` (bundle verification and secret
+> opening against the same vectors). Everything else below is the target; each section becomes
+> concrete when the code lands. Update this file whenever the code makes a section concrete or
+> wrong.
 
 **The one rule above all others:** a fully compromised Moat Cloud must not compromise a gate
 (ANFORDERUNGEN.md §1, §2.8). Every change is checked against that. When a change would let data
@@ -97,6 +100,7 @@ pnpm test:integration
 pnpm test:authz      # the authorization matrix alone (also part of pnpm check)
 pnpm test:dast       # ZAP against a locally started Cloud + gate (needs Docker)
 pnpm conformance     # the conformance suite against libs/core and every gate target present
+pnpm vectors         # regenerate conformance/vectors/crypto/ from libs/core/scripts/build-vectors.ts
 pnpm schema          # regenerate schema/moat.schema.json from the Zod schema (committed)
 pnpm format          # prettier --write .
 ```

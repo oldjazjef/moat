@@ -1,0 +1,58 @@
+# CI only calls the gates defined in package.json (CLAUDE.md, CI): add checks there, not here.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check (TypeScript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Install yamllint
+        run: pip install yamllint==1.37.1
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+
+  gate-php:
+    name: gate-php (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: ${{ matrix.php }}
+          # Exactly the extensions the gate needs on shared hosting (CLAUDE.md, Gate PHP).
+          extensions: none, ctype, dom, mbstring, tokenizer, xml, xmlwriter, phar, filter, iconv, sodium, curl, json, hash, openssl
+          coverage: none
+          tools: composer:v2
+      - run: composer --working-dir=gates/php install --no-interaction --no-progress
+      - run: composer --working-dir=gates/php check
