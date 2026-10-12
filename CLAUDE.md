@@ -27,7 +27,7 @@ it is wrong, whatever the ticket says.
 ## Stack
 
 Same as **lazy-koins** (`oldjazjef/lazy-koins`), minus its domain (decimal.js engine, tax rules,
-PDF/Excel exports, mappings, AI plugin) and minus Firebase (see Auth); plus a PHP gate with its
+PDF/Excel exports, mappings, AI plugin) and minus Firebase entirely (see Auth); plus a PHP gate with its
 own toolchain, Postgres for clustered Cloud deployments, and a Helm chart. When in doubt about a
 convention, look at how lazy-koins does it.
 
@@ -304,9 +304,10 @@ in-memory port doubles; a cross-tenant isolation suite covers every endpoint.
 ## Auth
 
 - **Desktop**: `AUTH_MODE=local` exactly as lazy-koins (no login, 127.0.0.1, access token).
-- **Cloud**: Firebase does not fit a self-hosted product. Default proposal: built-in accounts
-  (e-mail + password with Argon2id, TOTP, **passkeys/WebAuthn**) plus **OIDC** for SSO (SEC-51);
-  SAML later. **Open decision — ask before building.**
+- **Cloud** (decided 12.10.2026): **no Firebase, in no form** — no SDK, no service, no token
+  format. Built-in accounts (e-mail + password with Argon2id, TOTP, **passkeys/WebAuthn**) plus
+  **OIDC** for SSO (SEC-51); SAML later. The API issues and verifies its own sessions/tokens, so
+  self-hosting needs no external identity provider.
 - RBAC with a separate **sign/release** permission (SEC-52); scoped, short-lived, revocable API
   tokens (SEC-54); gates authenticate with their own key, no shared secret (SEC-55).
 
@@ -342,7 +343,6 @@ checksums + SBOM (SEC-60, SEC-61), images to ghcr, desktop installers per releas
 
 ## Open decisions — ask, don't decide
 
-- **Cloud auth** (see Auth).
 - **License**: the repo is MIT; the product plan was FSL for the gate and a proprietary Cloud.
 - **Crypto spec** (ANFORDERUNGEN.md §5.3) — the defaults above are proposals.
 - **Default trust mode** in the Cloud (§5.4) and the product wording (§5.5).
