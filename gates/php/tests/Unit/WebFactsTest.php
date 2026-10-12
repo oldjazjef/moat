@@ -15,6 +15,8 @@ final class WebFactsTest extends TestCase
     private string $dir;
     private string $gateFile;
     private DataDir $data;
+    /** This process's user id, read from a file it created (CI has no posix extension). */
+    private int $uid;
 
     protected function setUp(): void
     {
@@ -22,6 +24,9 @@ final class WebFactsTest extends TestCase
         mkdir($this->dir, 0o700);
         $this->gateFile = $this->dir . '/moat-gate.php';
         file_put_contents($this->gateFile, "<?php\n");
+        $owner = fileowner($this->gateFile);
+        self::assertIsInt($owner);
+        $this->uid = $owner;
         $this->data = DataDir::create($this->dir);
     }
 
@@ -37,7 +42,7 @@ final class WebFactsTest extends TestCase
         self::assertNotNull($facts);
         self::assertSame(1_000, $facts->at);
         self::assertSame(PHP_SAPI, $facts->sapi);
-        self::assertSame(posix_geteuid(), $facts->uid);
+        self::assertSame($this->uid, $facts->uid);
         // The test wrote the gate file, so the process owns it.
         self::assertTrue($facts->ownsFiles);
         self::assertTrue($facts->codeWritable);
@@ -56,7 +61,7 @@ final class WebFactsTest extends TestCase
     {
         WebFacts::record($this->data, $this->gateFile, 1_000);
         // Root may write anything, so there the gate file changes owner instead.
-        $root = posix_geteuid() === 0;
+        $root = $this->uid === 0;
         if ($root) {
             chown($this->gateFile, 54321);
         } else {
