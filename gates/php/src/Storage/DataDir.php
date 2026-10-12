@@ -83,6 +83,51 @@ final readonly class DataDir
         return Files::withLock($this->file('lock'), self::MARKER . "\n", $critical);
     }
 
+    public function remove(string $name): void
+    {
+        if (is_file($this->file($name))) {
+            unlink($this->file($name));
+        }
+    }
+
+    /** The user id that owns a data file, or null when it is missing or the host does not say. */
+    public function owner(string $name): ?int
+    {
+        clearstatcache(true, $this->file($name));
+        $owner = is_file($this->file($name)) ? fileowner($this->file($name)) : false;
+
+        return $owner === false ? null : $owner;
+    }
+
+    /**
+     * The data files present (`identity.php`, `policy.php`, …): not `index.php`, not temp files.
+     *
+     * @return list<string>
+     */
+    public function fileNames(): array
+    {
+        $found = glob($this->path . '/*.php', GLOB_NOSORT);
+        $names = array_map(basename(...), $found === false ? [] : $found);
+        $names = array_filter($names, static fn(string $name): bool => $name !== 'index.php' && preg_match('/^[a-z]{1,16}\.php$/D', $name) === 1);
+        sort($names, SORT_STRING);
+
+        return array_values($names);
+    }
+
+    /** True when the group or everyone may read or write the folder or a data file (SEC-49). */
+    public function permissionsOpen(): bool
+    {
+        foreach ([$this->path, ...array_map(fn(string $name): string => $this->path . '/' . $name, $this->fileNames())] as $path) {
+            clearstatcache(true, $path);
+            $mode = fileperms($path);
+            if ($mode === false || ($mode & 0o077) !== 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function file(string $name): string
     {
         if (preg_match('/^[a-z]{1,16}$/D', $name) !== 1) {

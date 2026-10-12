@@ -410,6 +410,23 @@
           "php": "The gate needs PHP 8.2 or newer with the extensions sodium, curl, json and hash."
         }
       },
+      "hardening": {
+        "title": "Check the hosting",
+        "purpose": "The hardening check shows how well your hosting protects the gate's keys and secrets, and what you can improve. It runs on the server, on the gate's command line, and sends nothing to Moat.",
+        "where": "On the server, in the folder of moat-gate.php",
+        "steps": {
+          "run": "Run `php moat-gate.php check --url=https://<your-site>/<path>/moat-gate.php` with the public address of the gate file.",
+          "outside": "The gate then fetches its own data files over the internet, the way anyone could. If one of them comes back, it reports `data_reachable`.",
+          "process": "The check also reaches the gate itself. That way the web server records which user PHP runs as and whether open_basedir is set.",
+          "level": "At the end you see the hardening level: `H1, Basic` or `H1, Unsafe for secrets`. If something is missing for a safe verdict, it says `not determined`.",
+          "fix": "Below the level, every finding comes with a recommendation. Fix all `unsafe` ones before you bind secrets to this gate."
+        },
+        "tips": {
+          "shared": "If all websites on the server run as the same user (such as www-data) and open_basedir is not set, other websites could read the gate's files. Ask your hoster for a separate PHP user per website.",
+          "again": "Run the check again after every change to the hosting. It exits with code 1 when the gate is unsafe for secrets, and 3 when it cannot determine a level.",
+          "stronger": "Today the gate always keeps its data in the web space, so the check reports H1 at most. Higher levels come with later versions."
+        }
+      },
       "trust": {
         "title": "Trust mode",
         "purpose": "The trust mode decides who may approve changes to a gate. Moat Desktop always uses “Signed”: the gate accepts only bundles signed with your key file.",

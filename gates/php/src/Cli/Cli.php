@@ -10,6 +10,13 @@ use Moat\Gate\Config\Limit;
 use Moat\Gate\Crypto\KeyAlgorithm;
 use Moat\Gate\Crypto\KeyId;
 use Moat\Gate\Encoding\Base64Url;
+use Moat\Gate\Hardening\External;
+use Moat\Gate\Hardening\ExternalCheck;
+use Moat\Gate\Hardening\Facts;
+use Moat\Gate\Hardening\Hardening;
+use Moat\Gate\Hardening\Level;
+use Moat\Gate\Hardening\PolicyState;
+use Moat\Gate\Hardening\WebFacts;
 use Moat\Gate\Json\StrictJson;
 use Moat\Gate\Policy\PolicyCheck;
 use Moat\Gate\Rejection;
@@ -29,10 +36,11 @@ use Moat\Gate\Storage\Files;
  *   php moat-gate.php policy <policy.json>
  *   php moat-gate.php accept <bundle.json>
  *   php moat-gate.php status
+ *   php moat-gate.php check [--url=https://<site>/<path>/moat-gate.php]
  */
 final class Cli
 {
-    private const USAGE = "usage: php moat-gate.php install|trust|policy|accept|status (see the gate README)\n";
+    private const USAGE = "usage: php moat-gate.php install|trust|policy|accept|status|check (see the gate README)\n";
 
     /** @param list<string> $argv */
     public static function main(string $gateDir, array $argv): int
@@ -46,6 +54,7 @@ final class Cli
                 'policy' => self::policy($gateDir, $args),
                 'accept' => self::accept($gateDir, $args),
                 'status' => self::status($gateDir),
+                'check' => self::check($gateDir, $args, $options),
                 default => self::usage(self::USAGE),
             };
         } catch (Rejection $rejection) {
@@ -147,6 +156,74 @@ final class Cli
         }
 
         return 0;
+    }
+
+    /**
+     * The hardening check (SEC-49, SEC-49a): the web process's recorded facts, the data folder's
+     * permissions, the policy and, with --url, a fetch of the data files from outside. Exit code
+     * 0 for H1, 1 when the gate is unsafe for secrets, 3 when no level could be determined.
+     *
+     * @param list<string>          $args
+     * @param array<string, string> $options
+     */
+    private static function check(string $gateDir, array $args, array $options): int
+    {
+        if ($args !== [] || array_diff(array_keys($options), ['url']) !== []) {
+            throw new UsageError('usage: php moat-gate.php check [--url=https://<site>/<path>/moat-gate.php]');
+        }
+        $gate = Gate::open($gateDir);
+        $external = External::NotChecked;
+        if (isset($options['url'])) {
+            try {
+                // Also a request to the gate, so its web process records its facts first.
+                $external = ExternalCheck::run($options['url'], $gate->data, $gate->policy);
+            } catch (\InvalidArgumentException $error) {
+                throw new UsageError($error->getMessage());
+            }
+        }
+        $web = WebFacts::read($gate->data);
+        $policy = match (true) {
+            $gate->policy === null => PolicyState::Missing,
+            $gate->policy->testing => PolicyState::Testing,
+            default => PolicyState::Installed,
+        };
+        $now = time();
+        $report = Hardening::classify(new Facts($now, $web, $gate->data->permissionsOpen(), $policy, $external));
+
+        self::out('Web process:  ' . ($web === null ? 'not seen yet (no request has reached the gate)' : self::webText($web)));
+        self::out('Data folder:  ' . basename($gate->data->path) . ', permissions ' . ($gate->data->permissionsOpen() ? 'open to group or others' : 'owner only'));
+        self::out('Policy:       ' . $policy->value);
+        self::out('From outside: ' . match ($external) {
+            External::NotChecked => 'not checked (pass --url)',
+            External::Failed => 'failed: the gate could not be reached',
+            External::NotGate => 'the URL does not reach this gate',
+            External::Blocked => 'blocked: no data file or folder listing came back',
+            External::Reachable => 'REACHABLE: data files can be fetched from the internet',
+        });
+        self::out('Level:        ' . ($report->level === null ? 'not determined (see below)' : $report->level->label()));
+        self::out('');
+        foreach ($report->findings as $finding) {
+            self::out(\sprintf('  %-7s %s', $finding->severity(), $finding->value));
+            self::out('          ' . $finding->advice());
+        }
+
+        return match ($report->level) {
+            Level::H1 => 0,
+            Level::Unsafe => 1,
+            null => 3,
+        };
+    }
+
+    private static function webText(WebFacts $web): string
+    {
+        return 'user ' . ($web->user ?? 'unknown') . ($web->uid === null ? '' : ' (uid ' . $web->uid . ')')
+            . match ($web->ownsFiles) {
+                true => ', owns the gate file',
+                false => ', does not own the gate file',
+                null => ', owner unknown',
+            }
+            . ', open_basedir ' . ($web->openBasedir ? 'set' : 'not set')
+            . ', SAPI ' . $web->sapi . ', seen ' . gmdate('Y-m-d H:i', $web->at) . ' UTC';
     }
 
     private static function limitText(Limit $limit): string

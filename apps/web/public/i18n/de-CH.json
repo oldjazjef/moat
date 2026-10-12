@@ -410,6 +410,23 @@
           "php": "Das Gate braucht PHP 8.2 oder neuer mit den Erweiterungen sodium, curl, json und hash."
         }
       },
+      "hardening": {
+        "title": "Hosting prüfen",
+        "purpose": "Der Härtungs-Check zeigt, wie gut dein Hosting die Schlüssel und Secrets des Gates schützt, und was du verbessern kannst. Er läuft auf dem Server, an der Kommandozeile des Gates, und schickt nichts an Moat.",
+        "where": "Auf dem Server, im Ordner von moat-gate.php",
+        "steps": {
+          "run": "Führe `php moat-gate.php check --url=https://<deine-site>/<pfad>/moat-gate.php` aus, mit der öffentlichen Adresse der Gate-Datei.",
+          "outside": "Das Gate ruft dabei seine eigenen Datendateien über das Internet ab, so wie es jeder könnte. Kommt eine davon zurück, meldet es `data_reachable`.",
+          "process": "Der Aufruf erreicht auch das Gate selbst. So hält der Webserver fest, unter welchem Benutzer PHP läuft und ob open_basedir gesetzt ist.",
+          "level": "Am Ende steht die Härtungsstufe: `H1, Basic` (Basis) oder `H1, Unsafe for secrets` (Unsicher für Secrets). Fehlt etwas für ein sicheres Urteil, steht dort `not determined`.",
+          "fix": "Unter der Stufe steht jeder Befund mit einer Empfehlung. Behebe alle mit `unsafe`, bevor du Secrets an dieses Gate bindest."
+        },
+        "tips": {
+          "shared": "Laufen alle Websites auf dem Server unter demselben Benutzer (etwa www-data) und ist open_basedir nicht gesetzt, könnten andere Websites die Dateien des Gates lesen. Frage den Hoster nach einem eigenen PHP-Benutzer pro Website.",
+          "again": "Führe den Check nach jeder Änderung am Hosting erneut aus. Er gibt den Exit-Code 1 zurück, wenn das Gate unsicher für Secrets ist, und 3, wenn er keine Stufe bestimmen kann.",
+          "stronger": "Das Gate legt seine Daten heute immer im Webspace ab, darum meldet der Check höchstens H1. Höhere Stufen kommen mit späteren Versionen."
+        }
+      },
       "trust": {
         "title": "Vertrauensmodus",
         "purpose": "Der Vertrauensmodus legt fest, wer Änderungen an einem Gate freigeben darf. In Moat Desktop gilt immer «Signiert»: Das Gate nimmt nur Bundles an, die mit deiner Schlüsseldatei signiert sind.",

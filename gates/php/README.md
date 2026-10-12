@@ -34,6 +34,7 @@ HTTP they answer 404 with an empty body):
 | `state.php`    | the highest version ever accepted (a deleted bundle reopens no rollback)     |
 | `limits.php`   | rate-limit counters, keyed by hashes (no IP addresses), at most `maxClients` |
 | `lock.php`     | the lock that serialises updates to `limits.php`                             |
+| `webfacts.php` | what the web server process saw of itself, for the hardening check           |
 
 `install` prints the gate id, the box key and the fingerprints. Compare them, then pin the gate
 in the project folder with the `moat gate add` line it prints.
@@ -48,6 +49,7 @@ php moat-gate.php policy <policy.json>     # install the local policy (moat poli
 php moat-gate.php accept <bundle.json>     # verify (steps 1–10) and activate a bundle
 php moat-gate.php trust --signer=<pk>[,…] [--threshold=n]   # replace the pinned signers
 php moat-gate.php status                   # fingerprints, policy, active bundle
+php moat-gate.php check [--url=https://…/moat-gate.php]   # the hardening check (below)
 ```
 
 A bundle is accepted only when its signature is valid for the pinned signers, it is bound to this
@@ -152,6 +154,44 @@ the route counters afresh, so counters of earlier bundles (a quota's lasts up to
 fill the store. The policy's counters keep running. The first request after updating from a gate
 without quotas starts the store afresh.
 
+## Hardening check (SEC-49, SEC-49a)
+
+```bash
+php moat-gate.php check --url=https://example.ch/api/moat-gate.php
+```
+
+prints the hardening level that is actually in force and every finding with a recommendation.
+Exit code 0 for `H1, Basic`, 1 for `H1, Unsafe for secrets`, 3 when no level could be determined.
+It combines three sources:
+
+- **The web server process.** Only it knows the user PHP runs as and its `php.ini` (the CLI may
+  differ), so the gate records on requests, at most once a day unless something changed, in
+  `webfacts.php`: process user (posix), whether it owns the gate file, `open_basedir`, whether it
+  may overwrite the gate file, `allow_url_include`. Nothing from the request goes in, and nothing
+  is sent anywhere — there is still no inbound management endpoint (SEC-40).
+- **The data folder**: group or other permissions on the folder or a data file.
+- **From outside** (`--url`, through the one cURL client): `check` leaves a random nonce in
+  `checkreq.php` and requests the gate under the URL; the gate's web process copies the nonce into
+  its facts. Only then is the URL known to reach this very gate (not a staging copy, not a soft 404
+  page). Then the data folder and each data file: a file whose source comes back (the
+  `__halt_compiler` marker) or a folder listing that names a data file is `data_reachable`; a
+  redirect counts as a failed check.
+
+The classification is `classifyHardening` in libs/core, with the cases in
+`conformance/vectors/gate/hardening.json`. The process user is _shared_ when its name is a generic
+web server user (`www-data`, `nobody`, …, whoever owns the gate file) or unknown and not the
+owner; _per site_ only when the name is known, not generic, and owns the gate file; otherwise
+_unclear_. Levels (ANFORDERUNGEN.md §2.9):
+
+| Level                    | When                                                                                                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `H1, Unsafe for secrets` | any `unsafe` finding: a shared user without `open_basedir`, data reachable from outside, a `testing` block                                                                 |
+| not determined           | otherwise, when the web process was not seen, its facts are over a week old, the user is unclear, or the check from outside was not run, failed or did not reach this gate |
+| `H1, Basic`              | otherwise                                                                                                                                                                  |
+
+H2 and H3 are never reported: the gate keeps its data in the web root. Not yet: the same check
+from Moat Desktop against a deployed gate (DT-07).
+
 ## The `testing` block
 
 A local policy may contain `testing: {resolve: {"host:port": "127.0.0.1"}, caFile}` to point an
@@ -168,6 +208,6 @@ pnpm check:gate-php
 Unit tests, the shared vectors in `conformance/vectors/`, and `conformance/http/gate.json` against
 the built file under `php -S` with a fake HTTPS upstream (`tests/Http/`).
 
-Not built yet: quotas and budgets (FR-31), trusted proxies for the client address, a
+Not built yet: token and cost budgets (FR-31), trusted proxies for the client address, a
 per-network counter for IPv6 clients holding a whole /56 or /48, the lazy pull
-from the Cloud, setup mode, trust mode 2 (passkeys), the hardening check.
+from the Cloud, setup mode, trust mode 2 (passkeys), H2 (data outside the web root).

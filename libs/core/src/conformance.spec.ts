@@ -24,6 +24,14 @@ import {
 import { validateCompiledConfig } from './config/compiled';
 import { checkPolicy, parsePolicy } from './policy/policy';
 import { openKeyFile } from './crypto/keyfile';
+import {
+  BLOCKS_LEVEL,
+  classifyHardening,
+  GENERIC_WEB_USERS,
+  HARDENING_FINDINGS,
+  WEB_FACTS_STALE_SECONDS,
+  type HardeningFacts,
+} from './gate/hardening';
 
 /**
  * The shared vectors in conformance/vectors/crypto/ (docs/CRYPTO.md §11) — the same files the PHP
@@ -95,6 +103,7 @@ describe('conformance vectors', () => {
       'http/content-type.json',
       'http/cors.json',
       'http/rate-limit.json',
+      'gate/hardening.json',
       '../http/gate.json',
       '../http/gate-locked.json',
     ]) {
@@ -376,6 +385,25 @@ describe('conformance vectors', () => {
     });
     it.each(clients)('client: $name', ({ address, expect: want }) => {
       expect(clientKey(address)).toBe(want);
+    });
+  });
+
+  describe('gate/hardening.json', () => {
+    const doc = load<{
+      findings: Record<string, string>;
+      blocksLevel: string[];
+      genericUsers: string[];
+      staleSeconds: number;
+      cases: { name: string; facts: HardeningFacts; expect: unknown }[];
+    }>('gate/hardening.json');
+    it('lists the findings, users and stale limit of the core', () => {
+      expect(doc.findings).toEqual(HARDENING_FINDINGS);
+      expect(doc.blocksLevel).toEqual(BLOCKS_LEVEL);
+      expect(doc.genericUsers).toEqual(GENERIC_WEB_USERS);
+      expect(doc.staleSeconds).toBe(WEB_FACTS_STALE_SECONDS);
+    });
+    it.each(doc.cases)('$name', ({ facts, expect: want }) => {
+      expect(classifyHardening(facts)).toEqual(want);
     });
   });
 

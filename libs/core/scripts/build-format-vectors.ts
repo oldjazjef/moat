@@ -17,6 +17,15 @@ import {
   type Limit,
   type Window,
 } from '../src/http/rate-limit';
+import {
+  BLOCKS_LEVEL,
+  classifyHardening,
+  GENERIC_WEB_USERS,
+  HARDENING_FINDINGS,
+  WEB_FACTS_STALE_SECONDS,
+  type HardeningFacts,
+  type WebFacts,
+} from '../src/gate/hardening';
 import { toBase64Url } from '../src/encoding/base64url';
 import { utf8 } from '../src/encoding/utf8';
 import type { JsonValue } from '../src/json/strict-json';
@@ -1097,6 +1106,146 @@ async function keyFileVectors(): Promise<Json> {
   };
 }
 
+function hardeningVectors(): Json {
+  const now = 1_790_000_000;
+  const web = (change: Partial<WebFacts> = {}): WebFacts => ({
+    at: now - 3600,
+    user: 'shop',
+    ownsFiles: true,
+    openBasedir: true,
+    codeWritable: false,
+    allowUrlInclude: false,
+    ...change,
+  });
+  const facts = (change: Partial<HardeningFacts> = {}): HardeningFacts => ({
+    now,
+    web: web(),
+    dataPermissionsOpen: false,
+    policy: 'installed',
+    external: 'blocked',
+    ...change,
+  });
+  const cases: [string, HardeningFacts][] = [
+    ['per-site user, everything checked: H1', facts()],
+    [
+      'per-site user without open_basedir: H1',
+      facts({ web: web({ openBasedir: false }) }),
+    ],
+    ['no request seen yet: no level', facts({ web: null })],
+    [
+      'no request seen, data reachable: unsafe',
+      facts({ web: null, external: 'reachable' }),
+    ],
+    ['not checked from outside: no level', facts({ external: 'not_checked' })],
+    ['check from outside failed: no level', facts({ external: 'failed' })],
+    ['URL is not a gate: no level', facts({ external: 'not_gate' })],
+    ['data reachable from outside: unsafe', facts({ external: 'reachable' })],
+    ['testing block in the policy: unsafe', facts({ policy: 'testing' })],
+    ['no policy yet', facts({ policy: 'missing' })],
+    [
+      'www-data without open_basedir: unsafe (SEC-49a)',
+      facts({
+        web: web({ user: 'www-data', ownsFiles: false, openBasedir: false }),
+      }),
+    ],
+    [
+      'www-data with open_basedir: H1 with a warning',
+      facts({ web: web({ user: 'www-data', ownsFiles: false }) }),
+    ],
+    [
+      'generic name that owns the files is still shared',
+      facts({
+        web: web({ user: 'www-data', ownsFiles: true, openBasedir: false }),
+      }),
+    ],
+    [
+      'generic name, owner unknown, with open_basedir',
+      facts({ web: web({ user: 'nobody', ownsFiles: null }) }),
+    ],
+    [
+      'unknown user, ownership unknown, no open_basedir: unsafe',
+      facts({ web: web({ user: null, ownsFiles: null, openBasedir: false }) }),
+    ],
+    [
+      'unknown user, not the owner, with open_basedir',
+      facts({ web: web({ user: null, ownsFiles: false }) }),
+    ],
+    [
+      'unknown user who owns the files: unclear, no level',
+      facts({ web: web({ user: null, ownsFiles: true, openBasedir: false }) }),
+    ],
+    [
+      'named user, not the owner: unclear, no level',
+      facts({
+        web: web({ user: 'web42', ownsFiles: false, openBasedir: false }),
+      }),
+    ],
+    [
+      'named user, ownership unknown: unclear, no level',
+      facts({ web: web({ user: 'php-fpm', ownsFiles: null }) }),
+    ],
+    [
+      'unclear user and data reachable: unsafe',
+      facts({
+        web: web({ user: 'web42', ownsFiles: false }),
+        external: 'reachable',
+      }),
+    ],
+    [
+      'name is compared exactly (case)',
+      facts({
+        web: web({ user: 'WWW-DATA', ownsFiles: true, openBasedir: false }),
+      }),
+    ],
+    [
+      'code writable and url include',
+      facts({ web: web({ codeWritable: true, allowUrlInclude: true }) }),
+    ],
+    ['open permissions', facts({ dataPermissionsOpen: true })],
+    [
+      'facts exactly at the stale limit',
+      facts({ web: web({ at: now - WEB_FACTS_STALE_SECONDS }) }),
+    ],
+    [
+      'facts one second past the stale limit',
+      facts({ web: web({ at: now - WEB_FACTS_STALE_SECONDS - 1 }) }),
+    ],
+    [
+      'everything wrong at once',
+      facts({
+        web: web({
+          at: 0,
+          user: 'nobody',
+          ownsFiles: false,
+          openBasedir: false,
+          codeWritable: true,
+          allowUrlInclude: true,
+        }),
+        dataPermissionsOpen: true,
+        policy: 'testing',
+        external: 'reachable',
+      }),
+    ],
+    ...GENERIC_WEB_USERS.map((user): [string, HardeningFacts] => [
+      `generic user ${user}`,
+      facts({ web: web({ user, ownsFiles: false, openBasedir: false }) }),
+    ]),
+  ];
+  return {
+    description:
+      'The hardening check (SEC-49, SEC-49a): facts the gate collected → level and findings. `level` null: not enough was checked to claim one (a finding in `blocksLevel`); "unsafe" is H1 «Unsicher für Secrets», "h1" is H1 «Basis». Findings are listed in the order of `findings`.',
+    findings: HARDENING_FINDINGS as unknown as Json,
+    blocksLevel: [...BLOCKS_LEVEL],
+    genericUsers: [...GENERIC_WEB_USERS],
+    staleSeconds: WEB_FACTS_STALE_SECONDS,
+    cases: cases.map(([name, input]) => ({
+      name,
+      facts: input as unknown as Json,
+      expect: classifyHardening(input) as unknown as Json,
+    })),
+  };
+}
+
 export async function buildFormatVectors(): Promise<Record<string, Json>> {
   return {
     'http/path.json': pathVectors(),
@@ -1106,5 +1255,6 @@ export async function buildFormatVectors(): Promise<Record<string, Json>> {
     'config/config.json': configVectors(),
     'config/policy.json': policyVectors(),
     'crypto/keyfile.json': await keyFileVectors(),
+    'gate/hardening.json': hardeningVectors(),
   };
 }

@@ -92,6 +92,11 @@ final class Files
             }
             $stat = fstat($handle);
             if ($stat !== false && $stat['size'] === 0) {
+                try {
+                    chmod($path, 0o600);
+                } catch (\ErrorException) {
+                    // Some hosts forbid chmod; the hardening check reports the open permissions.
+                }
                 fwrite($handle, $initial);
                 fflush($handle);
             }

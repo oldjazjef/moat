@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Moat\Gate;
 
 use Moat\Gate\Cli\Cli;
+use Moat\Gate\Hardening\WebFacts;
 use Moat\Gate\Http\GateError;
 use Moat\Gate\Http\Request;
 use Moat\Gate\Http\Response;
 use Moat\Gate\Runtime\Gate;
 use Moat\Gate\Runtime\NotConfigured;
 use Moat\Gate\Runtime\RequestHandler;
+use Moat\Gate\Storage\DataDir;
 
 /**
  * The entry point of the built gate file. Sets its own safe runtime instead of trusting php.ini
@@ -52,6 +54,15 @@ final class Kernel
             Response::error(GateError::GateNotConfigured)->send();
 
             return;
+        }
+        $data = DataDir::locate($gateDir);
+        if ($data !== null) {
+            try {
+                WebFacts::record($data, $gateFile, time());
+            } catch (\Throwable $error) {
+                // The hardening check then reports old or missing facts; the request goes on.
+                self::log($error, 'web_facts_unwritable');
+            }
         }
         try {
             $gate = Gate::open($gateDir);

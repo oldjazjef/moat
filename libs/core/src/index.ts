@@ -130,3 +130,22 @@ export {
   type SealedSecretInfo,
   type TrustMode,
 } from './storage/project';
+export {
+  HARDENING_LEVELS,
+  HARDENING_FINDINGS,
+  FINDING_SEVERITIES,
+  GENERIC_WEB_USERS,
+  WEB_FACTS_STALE_SECONDS,
+  EXTERNAL_RESULTS,
+  BLOCKS_LEVEL,
+  classifyHardening,
+  webUser,
+  type WebUser,
+  type HardeningLevel,
+  type HardeningFinding,
+  type FindingSeverity,
+  type HardeningFacts,
+  type HardeningReport,
+  type WebFacts,
+  type ExternalResult,
+} from './gate/hardening';

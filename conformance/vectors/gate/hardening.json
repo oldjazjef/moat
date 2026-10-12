@@ -1,0 +1,948 @@
+{
+  "description": "The hardening check (SEC-49, SEC-49a): facts the gate collected → level and findings. `level` null: not enough was checked to claim one (a finding in `blocksLevel`); \"unsafe\" is H1 «Unsicher für Secrets», \"h1\" is H1 «Basis». Findings are listed in the order of `findings`.",
+  "findings": {
+    "shared_user": "unsafe",
+    "data_reachable": "unsafe",
+    "policy_testing": "unsafe",
+    "web_not_seen": "info",
+    "web_facts_stale": "warn",
+    "shared_user_basedir": "warn",
+    "user_unclear": "warn",
+    "external_not_checked": "warn",
+    "external_failed": "warn",
+    "external_not_gate": "warn",
+    "data_permissions_open": "warn",
+    "code_writable": "warn",
+    "url_include": "warn",
+    "policy_missing": "info",
+    "data_in_webroot": "info"
+  },
+  "blocksLevel": [
+    "web_not_seen",
+    "web_facts_stale",
+    "user_unclear",
+    "external_not_checked",
+    "external_failed",
+    "external_not_gate"
+  ],
+  "genericUsers": [
+    "apache",
+    "apache2",
+    "daemon",
+    "http",
+    "httpd",
+    "lighttpd",
+    "nginx",
+    "nobody",
+    "www",
+    "www-data",
+    "wwwrun",
+    "_www"
+  ],
+  "staleSeconds": 604800,
+  "cases": [
+    {
+      "name": "per-site user, everything checked: H1",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "shop",
+          "ownsFiles": true,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "h1",
+        "findings": [
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "per-site user without open_basedir: H1",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "shop",
+          "ownsFiles": true,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "h1",
+        "findings": [
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "no request seen yet: no level",
+      "facts": {
+        "now": 1790000000,
+        "web": null,
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": null,
+        "findings": [
+          "web_not_seen",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "no request seen, data reachable: unsafe",
+      "facts": {
+        "now": 1790000000,
+        "web": null,
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "reachable"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "data_reachable",
+          "web_not_seen",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "not checked from outside: no level",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "shop",
+          "ownsFiles": true,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "not_checked"
+      },
+      "expect": {
+        "level": null,
+        "findings": [
+          "external_not_checked",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "check from outside failed: no level",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "shop",
+          "ownsFiles": true,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "failed"
+      },
+      "expect": {
+        "level": null,
+        "findings": [
+          "external_failed",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "URL is not a gate: no level",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "shop",
+          "ownsFiles": true,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "not_gate"
+      },
+      "expect": {
+        "level": null,
+        "findings": [
+          "external_not_gate",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "data reachable from outside: unsafe",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "shop",
+          "ownsFiles": true,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "reachable"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "data_reachable",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "testing block in the policy: unsafe",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "shop",
+          "ownsFiles": true,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "testing",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "policy_testing",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "no policy yet",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "shop",
+          "ownsFiles": true,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "missing",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "h1",
+        "findings": [
+          "policy_missing",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "www-data without open_basedir: unsafe (SEC-49a)",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "www-data",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "www-data with open_basedir: H1 with a warning",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "www-data",
+          "ownsFiles": false,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "h1",
+        "findings": [
+          "shared_user_basedir",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "generic name that owns the files is still shared",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "www-data",
+          "ownsFiles": true,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "generic name, owner unknown, with open_basedir",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "nobody",
+          "ownsFiles": null,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "h1",
+        "findings": [
+          "shared_user_basedir",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "unknown user, ownership unknown, no open_basedir: unsafe",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": null,
+          "ownsFiles": null,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "unknown user, not the owner, with open_basedir",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": null,
+          "ownsFiles": false,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "h1",
+        "findings": [
+          "shared_user_basedir",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "unknown user who owns the files: unclear, no level",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": null,
+          "ownsFiles": true,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": null,
+        "findings": [
+          "user_unclear",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "named user, not the owner: unclear, no level",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "web42",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": null,
+        "findings": [
+          "user_unclear",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "named user, ownership unknown: unclear, no level",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "php-fpm",
+          "ownsFiles": null,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": null,
+        "findings": [
+          "user_unclear",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "unclear user and data reachable: unsafe",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "web42",
+          "ownsFiles": false,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "reachable"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "data_reachable",
+          "user_unclear",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "name is compared exactly (case)",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "WWW-DATA",
+          "ownsFiles": true,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "h1",
+        "findings": [
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "code writable and url include",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "shop",
+          "ownsFiles": true,
+          "openBasedir": true,
+          "codeWritable": true,
+          "allowUrlInclude": true
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "h1",
+        "findings": [
+          "code_writable",
+          "url_include",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "open permissions",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "shop",
+          "ownsFiles": true,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": true,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "h1",
+        "findings": [
+          "data_permissions_open",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "facts exactly at the stale limit",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789395200,
+          "user": "shop",
+          "ownsFiles": true,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "h1",
+        "findings": [
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "facts one second past the stale limit",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789395199,
+          "user": "shop",
+          "ownsFiles": true,
+          "openBasedir": true,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": null,
+        "findings": [
+          "web_facts_stale",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "everything wrong at once",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 0,
+          "user": "nobody",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": true,
+          "allowUrlInclude": true
+        },
+        "dataPermissionsOpen": true,
+        "policy": "testing",
+        "external": "reachable"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_reachable",
+          "policy_testing",
+          "web_facts_stale",
+          "data_permissions_open",
+          "code_writable",
+          "url_include",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "generic user apache",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "apache",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "generic user apache2",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "apache2",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "generic user daemon",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "daemon",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "generic user http",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "http",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "generic user httpd",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "httpd",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "generic user lighttpd",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "lighttpd",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "generic user nginx",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "nginx",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "generic user nobody",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "nobody",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "generic user www",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "www",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "generic user www-data",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "www-data",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "generic user wwwrun",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "wwwrun",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    },
+    {
+      "name": "generic user _www",
+      "facts": {
+        "now": 1790000000,
+        "web": {
+          "at": 1789996400,
+          "user": "_www",
+          "ownsFiles": false,
+          "openBasedir": false,
+          "codeWritable": false,
+          "allowUrlInclude": false
+        },
+        "dataPermissionsOpen": false,
+        "policy": "installed",
+        "external": "blocked"
+      },
+      "expect": {
+        "level": "unsafe",
+        "findings": [
+          "shared_user",
+          "data_in_webroot"
+        ]
+      }
+    }
+  ]
+}

@@ -15,10 +15,10 @@ use Moat\Gate\Policy\Policy;
  */
 final class AddressGuard
 {
-    public static function resolve(string $host, int $port, Policy $policy): string
+    public static function resolve(string $host, int $port, ?Policy $policy): string
     {
         $hostKey = $port === 443 ? $host : $host . ':' . $port;
-        if (isset($policy->testResolve[$hostKey])) {
+        if ($policy !== null && isset($policy->testResolve[$hostKey])) {
             return $policy->testResolve[$hostKey];
         }
         $addresses = gethostbynamel($host);
