@@ -64,9 +64,10 @@ final class WebFactsTest extends TestCase
         }
         WebFacts::record($this->data, $this->gateFile, 1_001);
         $facts = WebFacts::read($this->data);
-        self::assertSame(1_001, $facts?->at);
-        self::assertSame($root, $facts?->codeWritable);
-        self::assertSame(!$root, $facts?->ownsFiles);
+        self::assertNotNull($facts);
+        self::assertSame(1_001, $facts->at);
+        self::assertSame($root, $facts->codeWritable);
+        self::assertSame(!$root, $facts->ownsFiles);
     }
 
     public function testCopiesTheNonceOfAPendingCheck(): void

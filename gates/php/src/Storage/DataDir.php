@@ -111,7 +111,7 @@ final readonly class DataDir
         $names = array_filter($names, static fn(string $name): bool => $name !== 'index.php' && preg_match('/^[a-z]{1,16}\.php$/D', $name) === 1);
         sort($names, SORT_STRING);
 
-        return array_values($names);
+        return $names;
     }
 
     /** True when the group or everyone may read or write the folder or a data file (SEC-49). */

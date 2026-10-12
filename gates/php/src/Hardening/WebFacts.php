@@ -115,8 +115,10 @@ final readonly class WebFacts
     {
         $user = null;
         if ($uid !== null && \function_exists('posix_getpwuid')) {
-            $entry = posix_getpwuid($uid);
-            $user = \is_array($entry) && \is_string($entry['name'] ?? null) ? $entry['name'] : null;
+            // The user name is what SEC-49a needs (is it www-data?). It goes only into the guarded
+            // data file and the CLI output on this server, never into a response or a log.
+            $entry = posix_getpwuid($uid); // @phpstan-ignore disallowed.function
+            $user = \is_array($entry) ? $entry['name'] : null;
         }
         $owner = fileowner($gateFile);
         $basedir = \ini_get('open_basedir');

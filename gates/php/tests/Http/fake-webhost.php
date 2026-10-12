@@ -51,7 +51,7 @@ for (;;) {
     } else {
         $answer = file_get_contents('http://127.0.0.1:' . $backend . $target, false, stream_context_create(['http' => ['ignore_errors' => true, 'timeout' => 5]]));
         $body = $answer === false ? '' : $answer;
-        $statusLine = isset($http_response_header[0]) && is_string($http_response_header[0]) ? $http_response_header[0] : '';
+        $statusLine = $http_response_header[0] ?? '';
         $status = preg_match('#^HTTP/\S+ ([0-9]{3})#', $statusLine, $code) === 1 ? (int) $code[1] : 502;
     }
     fwrite($connection, "HTTP/1.1 {$status} X\r\nContent-Type: text/html\r\nContent-Length: " . strlen($body) . "\r\nConnection: close\r\n\r\n" . $body);
