@@ -23,6 +23,9 @@ use Moat\Gate\RejectionCode;
 final class PolicyCheck
 {
     public const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
+    /** Bounds of `maxConfigAgeSeconds` (SEC-15): one hour to ten years. */
+    public const MIN_CONFIG_AGE = 3_600;
+    public const MAX_CONFIG_AGE = 10 * 365 * 86_400;
 
     public static function parse(mixed $value): Policy
     {
@@ -30,8 +33,16 @@ final class PolicyCheck
             self::invalid();
         }
         $testing = $value->has('testing');
-        if (!$value->hasExactKeys('v', 'upstreams', 'maxBodyBytes', 'maxResponseBytes', 'maxTimeoutMs', 'limits', ...($testing ? ['testing'] : []))) {
+        $hasMaxAge = $value->has('maxConfigAgeSeconds');
+        if (!$value->hasExactKeys('v', 'upstreams', 'maxBodyBytes', 'maxResponseBytes', 'maxTimeoutMs', 'limits', ...($testing ? ['testing'] : []), ...($hasMaxAge ? ['maxConfigAgeSeconds'] : []))) {
             self::invalid();
+        }
+        $maxAge = null;
+        if ($hasMaxAge) {
+            $maxAge = $value->get('maxConfigAgeSeconds');
+            if (!\is_int($maxAge) || !ConfigValidator::intIn($maxAge, self::MIN_CONFIG_AGE, self::MAX_CONFIG_AGE)) {
+                self::invalid();
+            }
         }
         $upstreams = $value->get('upstreams');
         $maxBodyBytes = $value->get('maxBodyBytes');
@@ -52,7 +63,7 @@ final class PolicyCheck
         $limits = self::limits($value->get('limits'));
         [$resolve, $caFile] = $testing ? self::testing($value->get('testing')) : [[], null];
 
-        return new Policy($allowed, $maxBodyBytes, $maxResponseBytes, $maxTimeoutMs, $limits, $testing, $resolve, $caFile);
+        return new Policy($allowed, $maxBodyBytes, $maxResponseBytes, $maxTimeoutMs, $limits, $testing, $resolve, $caFile, $maxAge);
     }
 
     /** Throws `policy_violation` unless every upstream, route and limit lies within the policy. */

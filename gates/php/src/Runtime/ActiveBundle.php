@@ -16,5 +16,7 @@ final readonly class ActiveBundle
         public CompiledConfig $config,
         public JsonObject $secrets,
         public Policy $policy,
+        /** When the bundle was signed (unix seconds): `status` warns when it is older than the policy allows (T-23). */
+        public int $issuedAt,
     ) {}
 }

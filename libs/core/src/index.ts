@@ -152,6 +152,12 @@ export {
   type ExternalResult,
 } from './gate/hardening';
 export {
+  KILL_FILE,
+  killSwitchOf,
+  type KillFile,
+  type KillSwitch,
+} from './gate/kill-switch';
+export {
   USAGE_FORMATS,
   MAX_USAGE_TOKENS,
   MAX_USAGE_DEPTH,

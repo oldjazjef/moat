@@ -27,7 +27,7 @@ The gate's own local policy always wins over anything it receives.
 
 > **Status (October 2026):** early development. Working today: Moat Core, the `moat` CLI, the PHP
 > gate (signed bundles, exact routing, SSRF guard, CORS, rate limits, request quotas per day or
-> month, token and cost budgets for AI APIs, locking a gate or a whole environment) and Moat Desktop (project list, a view of each project, and editing environments,
+> month, token and cost budgets for AI APIs, locking a gate or a whole environment, a local kill switch) and Moat Desktop (project list, a view of each project, and editing environments,
 > locks, routes and upstreams, sealing secrets, signing bundles). Not built yet: Moat Cloud,
 > the setup wizard. The full target is in
 > [ANFORDERUNGEN.md](ANFORDERUNGEN.md) (German).
@@ -376,6 +376,17 @@ takes a new, higher bundle, so replaying an old, unlocked one does not work. A l
 checked like any other: every secret the config uses must be sealed for the gate and it must
 fit the gate's policy, otherwise `moat build` refuses it. Update the gate first: an older gate
 refuses a bundle with a lock (`config_invalid`) and keeps serving its last one.
+
+When it has to be off now, switch it off on the server itself, without a bundle:
+
+```bash
+php moat-gate.php kill --route=newsletter   # one route: 503 route_disabled
+php moat-gate.php kill                      # the whole gate: 503 gate_disabled
+php moat-gate.php revive                    # on again
+```
+
+Without a command line, an empty `kill.php` uploaded into the gate's data folder turns the whole
+gate off. See [gates/php/README.md](gates/php/README.md#kill-switch-sec-15-fr-33-t-23).
 
 ### The project folder
 

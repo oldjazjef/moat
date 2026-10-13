@@ -543,6 +543,22 @@
           "saved": "Jede Änderung landet sofort in moat.yaml; Kommentare und Reihenfolge bleiben erhalten. Hat jemand die Datei inzwischen anders geändert, speichert Moat nichts und lädt das Projekt neu."
         }
       },
+      "killSwitch": {
+        "title": "Notabschaltung (Kill-Switch)",
+        "purpose": "Mit dem Kill-Switch schaltest du ein Gate oder eine einzelne Route sofort ab, direkt auf dem Server. Er braucht weder Moat Cloud noch ein neues Bundle und wirkt auch dann, wenn ein Bundle mit einer Sperre nie ankommt.",
+        "where": "Auf dem Server, im Ordner von moat-gate.php",
+        "steps": {
+          "route": "Schalte eine Route ab mit `php moat-gate.php kill --route=<name>`, mit dem Namen der Route aus moat.yaml. Sie antwortet ab der nächsten Anfrage mit 503 `route_disabled`, die anderen Routen laufen weiter.",
+          "gate": "Schalte das ganze Gate ab mit `php moat-gate.php kill`. Es beantwortet dann jede Anfrage mit 503 `gate_disabled` und leitet nichts mehr weiter.",
+          "ftp": "Hast du keine Kommandozeile, lade per FTP eine leere Datei `kill.php` in den Datenordner des Gates (den Ordner `moat-data-…` neben moat-gate.php). Das schaltet das ganze Gate ab.",
+          "revive": "Schalte wieder ein mit `php moat-gate.php revive --route=<name>` für eine Route oder `php moat-gate.php revive` für alles. Ohne Kommandozeile löschst du `kill.php` wieder."
+        },
+        "tips": {
+          "status": "`php moat-gate.php status` zeigt, was der Kill-Switch gerade abschaltet.",
+          "closed": "Steht in `kill.php` etwas, das das Gate nicht versteht, schaltet es lieber das ganze Gate ab.",
+          "age": "Setzt du in der lokalen Policy `maxConfigAgeSeconds`, warnt `status`, wenn das aktive Bundle älter ist. So merkst du, wenn eine Sperre aus dem Projekt nie ankommt."
+        }
+      },
       "privacy": {
         "title": "Desktop und Datenschutz",
         "purpose": "Moat Desktop arbeitet nur auf deinem Computer. Es braucht keinen Server und kein Konto.",

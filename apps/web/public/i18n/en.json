@@ -543,6 +543,22 @@
           "saved": "Every change goes into moat.yaml right away; comments and order stay as they are. If someone changed the file differently in the meantime, Moat saves nothing and reloads the project."
         }
       },
+      "killSwitch": {
+        "title": "Kill switch",
+        "purpose": "The kill switch turns a gate or a single route off at once, right on the server. It needs neither Moat Cloud nor a new bundle, and it works even when a bundle with a lock never arrives.",
+        "where": "On the server, in the folder of moat-gate.php",
+        "steps": {
+          "route": "Turn a route off with `php moat-gate.php kill --route=<name>`, using the route's name from moat.yaml. From the next request on it answers 503 `route_disabled`; the other routes keep working.",
+          "gate": "Turn the whole gate off with `php moat-gate.php kill`. It then answers every request with 503 `gate_disabled` and forwards nothing.",
+          "ftp": "Without a command line, upload an empty file `kill.php` over FTP into the gate's data folder (the `moat-data-…` folder next to moat-gate.php). That turns the whole gate off.",
+          "revive": "Turn things on again with `php moat-gate.php revive --route=<name>` for one route or `php moat-gate.php revive` for everything. Without a command line, delete `kill.php` again."
+        },
+        "tips": {
+          "status": "`php moat-gate.php status` shows what the kill switch currently turns off.",
+          "closed": "If `kill.php` holds something the gate does not understand, it turns the whole gate off rather than guess.",
+          "age": "Set `maxConfigAgeSeconds` in the local policy and `status` warns when the active bundle is older. That way you notice when a lock from the project never arrives."
+        }
+      },
       "privacy": {
         "title": "Desktop and privacy",
         "purpose": "Moat Desktop works only on your computer. It needs no server and no account.",

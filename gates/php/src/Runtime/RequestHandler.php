@@ -28,8 +28,9 @@ use Moat\Gate\Upstream\UpstreamRequest;
  * limits (FR-30, SEC-45) — then body size and content type (FR-18), then the secret, opened only
  * for this call and wiped after (SEC-35), and the answer reduced to status, media type and body.
  * A CORS preflight is answered by the gate itself and never reaches an upstream. A locked gate
- * (the bundle's `enabled: false`) refuses every request before any of this, with the same answer
- * whatever the method or path, so it reveals no route. Anything unexpected ends in a generic
+ * (the bundle's `enabled: false`) or one switched off by the local kill switch (SEC-15) refuses
+ * every request before any of this, with the same answer whatever the method or path, so it
+ * reveals no route; a route the kill switch names answers like a disabled route. Anything unexpected ends in a generic
  * error (SEC-46).
  */
 final class RequestHandler
@@ -53,7 +54,8 @@ final class RequestHandler
 
     private static function dispatch(Request $request, ActiveBundle $bundle, Gate $gate, int $now): Response
     {
-        if (!$bundle->config->enabled) {
+        $kill = KillSwitch::read($gate->data);
+        if (!$bundle->config->enabled || $kill->gate) {
             throw new Failure(GateError::GateDisabled);
         }
         $routes = self::routesAt($request, $bundle);
@@ -66,7 +68,7 @@ final class RequestHandler
 
             return new Response(204, $headers + ['Vary' => self::PREFLIGHT_VARY], '');
         }
-        $route = self::match($request, $routes);
+        $route = self::match($request, $routes, $kill);
         try {
             $allowOrigin = Cors::check($route, $request->origin, $request->fetchSite);
         } catch (Rejection) {
@@ -301,12 +303,12 @@ final class RequestHandler
      *
      * @param non-empty-list<Route> $routes
      */
-    private static function match(Request $request, array $routes): Route
+    private static function match(Request $request, array $routes, KillSwitch $kill): Route
     {
         $allow = [];
         foreach ($routes as $route) {
             if ($route->method->value === $request->method) {
-                if (!$route->enabled) {
+                if (!$route->enabled || $kill->routeKilled($route->name)) {
                     throw new Failure(GateError::RouteDisabled);
                 }
 

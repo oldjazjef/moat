@@ -1,0 +1,257 @@
+{
+  "description": "The local kill switch (SEC-15, FR-33, T-23): the bundle is open, the data file `kill` switches things off without the Cloud. Same runner and fake upstream as gate.json. Before a case, the runner sets the kill file when the case has `killFile`: `{content}` = a data file with this text after the marker (what `php moat-gate.php kill|revive` writes), `{raw}` = a file with exactly these bytes and no marker (an upload by hand), null = no kill file; it stays as set for the next cases. A killed gate answers like a locked one (gate-locked.json): every method and path, preflights included, 503 `gate_disabled`, nothing forwarded. A killed route answers 503 `route_disabled` like a route the bundle switched off; the other routes keep working. The kill file is read on every request, so it works at once.",
+  "config": {
+    "version": 1,
+    "enabled": true,
+    "upstreams": {
+      "fake": {
+        "origin": "https://upstream.test:{port}",
+        "auth": {
+          "type": "bearer",
+          "secret": "api-token"
+        },
+        "timeoutMs": 5000
+      }
+    },
+    "routes": {
+      "newsletter": {
+        "method": "POST",
+        "path": "/newsletter",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 1024,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": ["https://www.example.ch"],
+        "rateLimit": null
+      },
+      "status": {
+        "method": "GET",
+        "path": "/status",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
+      }
+    }
+  },
+  "policy": {
+    "v": 1,
+    "upstreams": {
+      "upstream.test:{port}": {
+        "pathPrefixes": ["/echo"],
+        "methods": ["GET", "POST"],
+        "secrets": ["api-token"]
+      }
+    },
+    "maxBodyBytes": 1024,
+    "maxResponseBytes": 65536,
+    "maxTimeoutMs": 5000,
+    "limits": {
+      "perIp": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "total": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "maxClients": 5000
+    },
+    "testing": {
+      "resolve": {
+        "upstream.test:{port}": "127.0.0.1"
+      },
+      "caFile": "{caFile}"
+    }
+  },
+  "secrets": {
+    "api-token": "TEST-ONLY-planted-secret-7f3a9c"
+  },
+  "cases": [
+    {
+      "name": "without a kill file the route works",
+      "killFile": null,
+      "request": {
+        "method": "GET",
+        "path": "/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "a killed route is refused, nothing forwarded",
+      "killFile": {
+        "content": "route status\n"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 503,
+        "error": "route_disabled",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "another route keeps working while one is killed",
+      "request": {
+        "method": "POST",
+        "path": "/newsletter",
+        "headers": {
+          "Content-Type": "application/json",
+          "Origin": "https://www.example.ch"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "an unknown path stays not_found while a route is killed",
+      "request": {
+        "method": "GET",
+        "path": "/nope",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "a killed gate refuses every route",
+      "killFile": {
+        "content": "gate\n"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/newsletter",
+        "headers": {
+          "Content-Type": "application/json",
+          "Origin": "https://www.example.ch"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 503,
+        "error": "gate_disabled",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "a killed gate answers unknown paths the same way",
+      "request": {
+        "method": "GET",
+        "path": "/nope",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 503,
+        "error": "gate_disabled",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "a killed gate answers no preflight",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/newsletter",
+        "headers": {
+          "Origin": "https://www.example.ch",
+          "Access-Control-Request-Method": "POST"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 503,
+        "error": "gate_disabled",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "an empty kill.php uploaded by hand (no marker) kills the whole gate",
+      "killFile": {
+        "raw": ""
+      },
+      "request": {
+        "method": "GET",
+        "path": "/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 503,
+        "error": "gate_disabled",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "a kill file with an unknown line kills the whole gate",
+      "killFile": {
+        "content": "route newsletter\nstop\n"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 503,
+        "error": "gate_disabled",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "a kill file naming only routes not in the bundle switches nothing off",
+      "killFile": {
+        "content": "# test\nroute no-such-route\n"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "after revive (no kill file) the gate works again",
+      "killFile": null,
+      "request": {
+        "method": "POST",
+        "path": "/newsletter",
+        "headers": {
+          "Content-Type": "application/json",
+          "Origin": "https://www.example.ch"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1
+      }
+    }
+  ]
+}
