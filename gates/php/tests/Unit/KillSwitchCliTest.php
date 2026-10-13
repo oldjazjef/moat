@@ -89,7 +89,27 @@ final class KillSwitchCliTest extends TestCase
         self::assertSame(2, $this->cli('kill', '--route=')[0]);
         self::assertSame(2, $this->cli('kill', '--route=../policy')[0]);
         self::assertSame(2, $this->cli('revive', '--all=1')[0]);
+        self::assertSame(2, $this->cli('kill', '--route', 'status')[0]);
         self::assertFalse($this->killFileExists());
+    }
+
+    public function testReviveWithAPositionalNameDoesNotReviveEverything(): void
+    {
+        $this->cli('kill');
+        $this->cli('kill', '--route=chat');
+        self::assertSame(2, $this->cli('revive', 'chat')[0]);
+        self::assertTrue($this->switch()->gate);
+        self::assertSame(['chat'], $this->switch()->routes);
+    }
+
+    public function testStatusWarnsWhenAKilledRouteIsNotInTheBundle(): void
+    {
+        $this->accept(time());
+        $this->cli('kill', '--route=renamed');
+        self::assertStringContainsString('the killed route "renamed" is not in the active bundle', $this->cli('status')[1]);
+        $this->cli('revive', '--route=renamed');
+        $this->cli('kill', '--route=status');
+        self::assertStringNotContainsString('not in the active bundle', $this->cli('status')[1]);
     }
 
     public function testSec15KillWorksWithoutPolicyOrBundle(): void

@@ -126,6 +126,13 @@ and deleting it turns it on again. `kill` and `revive` work on the data folder a
 the policy or bundle is missing; a route name the active bundle does not have is noted and kept.
 `status` prints what is switched off.
 
+A route kill holds by the route's **name**. That covers a route that misbehaves or is abused, but
+not a config you no longer trust: a new bundle could serve the same thing under another name
+(`status` warns when a killed name is not in the active bundle). Against a hostile config, kill
+the whole gate. Run `kill` as the site's own user: a `kill.php` the web server cannot read turns
+the whole gate off (fail closed), and `kill` warns when the file's owner differs from the other
+data files.
+
 The local policy can set `"maxConfigAgeSeconds"` (one hour to ten years). `status` then warns when
 the active bundle was signed longer ago: a lock that never arrives shows up as a config that stops
 changing. It is only a warning; switching off is the kill switch's job. Cases:

@@ -17,6 +17,8 @@ use Moat\Gate\Storage\DataDir;
 final readonly class KillSwitch
 {
     public const FILE = 'kill';
+    /** The lock `kill` and `revive` take; requests only read the file and never wait for it. */
+    public const LOCK = 'killlock';
     private const ROUTE_LINE = '/^route ([a-z][a-z0-9-]{0,62})$/D';
 
     /** @param list<string> $routes sorted, once each */

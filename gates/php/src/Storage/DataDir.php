@@ -70,7 +70,8 @@ final readonly class DataDir
 
     /**
      * Runs `$critical` under the data folder's one exclusive lock (`lock.php`, guarded like the
-     * data files) — for read-modify-write of a data file by concurrent requests.
+     * data files) — for read-modify-write of a data file by concurrent requests. `$lock` names
+     * another lock file for writers that requests never wait for (the kill switch).
      *
      * @template T
      *
@@ -78,9 +79,9 @@ final readonly class DataDir
      *
      * @return T
      */
-    public function locked(\Closure $critical): mixed
+    public function locked(\Closure $critical, string $lock = 'lock'): mixed
     {
-        return Files::withLock($this->file('lock'), self::MARKER . "\n", $critical);
+        return Files::withLock($this->file($lock), self::MARKER . "\n", $critical);
     }
 
     public function remove(string $name): void
