@@ -58,12 +58,15 @@ export async function openPage(
   await harness.navigateByUrl(url);
   const http = TestBed.inject(HttpTestingController);
   // Answer until nothing asks any more (a tab renders only once the workspace has its project).
-  for (let round = 0; round < 10; round += 1) {
+  // A request can follow a resolved promise a macrotask later, so the page counts as quiet only
+  // after two rounds in a row without one; under load a single empty round is not enough.
+  let quiet = 0;
+  for (let round = 0; round < 20 && quiet < 2; round += 1) {
     harness.detectChanges();
     // Not whenStable() here: an open request keeps the app unstable until it is answered.
     await new Promise((resolve) => setTimeout(resolve));
     const pending = http.match(() => true);
-    if (pending.length === 0) break;
+    quiet = pending.length === 0 ? quiet + 1 : 0;
     for (const request of pending) {
       const answer = answers[request.request.url];
       if (answer === undefined) {
@@ -80,6 +83,13 @@ export async function openPage(
         request.flush(answer as object);
       }
     }
+  }
+  const open = http.match(() => true);
+  if (open.length > 0) {
+    // whenStable() would wait for these forever; name them instead of timing out.
+    throw new Error(
+      `Unanswered requests: ${open.map((r) => r.request.url).join(', ')}`,
+    );
   }
   await harness.fixture.whenStable();
   harness.detectChanges();
