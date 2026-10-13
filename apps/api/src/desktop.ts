@@ -4,6 +4,12 @@
  * import: the Electron main process sets the environment (AUTH_MODE=local, LOCAL_MODE=true,
  * MOAT_DATA_DIR), then `require`s this file and calls `bootstrap({ port: 0, accessToken })`.
  */
+import {
+  createKeyFile,
+  fingerprint,
+  fromBase64UrlLength,
+  keyId,
+} from '@moat/core';
 import type { RunningApi } from './bootstrap';
 import {
   BundleSigningService,
@@ -34,6 +40,60 @@ export async function addProject(
 ): Promise<{ id: string }> {
   const entry = await api.app.get(ProjectService).add(folder);
   return { id: entry.id };
+}
+
+/**
+ * «Neues Projekt» (FR-73): writes the moat.yaml of a new project into the folder (never over an
+ * existing one, `created: false` then) and adds it to the list. Called only by the main process,
+ * after its own folder dialog (DT-08).
+ */
+export async function createProject(
+  api: RunningApi,
+  folder: string,
+): Promise<{ id: string; created: boolean }> {
+  const { entry, created } = await api.app.get(ProjectService).create(folder);
+  return { id: entry.id, created };
+}
+
+/** The public half of a signing key, as the page may see it. */
+export interface SigningKeyInfo {
+  readonly kid: string;
+  /** base64url, what `php moat-gate.php install --signer=` takes. */
+  readonly publicKey: string;
+  /** `MOAT-…`, what the gate prints as "Signer". */
+  readonly fingerprint: string;
+}
+
+/**
+ * A new signing key (trust mode 1, docs/CRYPTO.md §6) as key file text, for the main process's
+ * key window: the passphrase was typed there, the main process writes the file. Argon2id at the
+ * write floor (KEYFILE_WRITE_MIN); the seed never leaves core's createKeyFile unencrypted.
+ */
+export async function createSigningKey(
+  passphrase: string,
+): Promise<{ text: string; key: SigningKeyInfo }> {
+  const file = await createKeyFile(passphrase);
+  const info = await signingKeyInfo(file.pk);
+  if (info === null || info.kid !== file.kid)
+    throw new Error('createKeyFile gave an inconsistent key file');
+  return { text: `${JSON.stringify(file, null, 2)}\n`, key: info };
+}
+
+/** Key id and fingerprint of an Ed25519 public key (base64url); null when it is not one. */
+export async function signingKeyInfo(
+  publicKey: string,
+): Promise<SigningKeyInfo | null> {
+  let bytes: Uint8Array;
+  try {
+    bytes = fromBase64UrlLength(publicKey, 32);
+  } catch {
+    return null;
+  }
+  return {
+    kid: await keyId('ed25519', bytes),
+    publicKey,
+    fingerprint: await fingerprint('ed25519', bytes),
+  };
 }
 
 /** The folder of a listed project (for "Im Ordner zeigen"), or null for an unknown id. */

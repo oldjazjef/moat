@@ -18,6 +18,11 @@ import {
   SIGN_OUTCOMES,
 } from '../../features/gates/pages/gates-page/gates-page.service';
 import { PROJECT_TABS } from '../../features/projects/pages/project-workspace/project-workspace.service';
+import { SETUP_STEPS, STEP_STATES } from '../api/setup.types';
+import { SETUP_ERRORS } from '../../features/setup/pages/setup-page/setup-page.service';
+import { GATE_NOTICES } from '../../features/setup/components/steps/gate-step';
+import { KEY_NOTICES } from '../../features/setup/components/steps/key-step';
+import { PROJECT_NOTICES } from '../../features/setup/components/steps/project-step';
 
 /**
  * Every i18n key the app references exists in every message file, and every text in the files is
@@ -50,6 +55,15 @@ const DYNAMIC_KEYS = [
   ...PROJECT_TABS.map((tab) => `projects.tabs.${tab}`),
   ...SIGN_OUTCOMES.map((outcome) => `gates.signResult.${outcome}`),
   ...SEAL_OUTCOMES.map((outcome) => `gates.sealResult.${outcome}`),
+  ...SETUP_STEPS.flatMap((step) => [
+    `setup.steps.${step}.title`,
+    `setup.steps.${step}.intro`,
+  ]),
+  ...STEP_STATES.map((state) => `setup.state.${state}`),
+  ...SETUP_ERRORS.map((code) => `setup.errors.${code}`),
+  ...KEY_NOTICES.map((code) => `setup.key.notices.${code}`),
+  ...PROJECT_NOTICES.map((code) => `setup.project.notices.${code}`),
+  ...GATE_NOTICES.map((code) => `setup.gate.notices.${code}`),
 ];
 
 function files(dir: string): string[] {

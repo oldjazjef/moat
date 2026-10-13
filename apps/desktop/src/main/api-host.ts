@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { desktopApiEnv } from './lib/api-env';
+import type { SigningKeyInfo } from '../shared/bridge';
 import type { PrepareSealResult, SealResult } from './lib/sealing';
 import type { PlanSigner, PrepareResult, SignResult } from './lib/signing';
 
@@ -19,6 +20,14 @@ interface ApiBundle {
     logger?: string[] | false;
   }): Promise<ApiHandle>;
   addProject(api: ApiHandle, folder: string): Promise<{ id: string }>;
+  createProject(
+    api: ApiHandle,
+    folder: string,
+  ): Promise<{ id: string; created: boolean }>;
+  createSigningKey(
+    passphrase: string,
+  ): Promise<{ text: string; key: SigningKeyInfo }>;
+  signingKeyInfo(publicKey: string): Promise<SigningKeyInfo | null>;
   projectFolder(api: ApiHandle, id: string): Promise<string | null>;
   prepareBundle(
     api: ApiHandle,
@@ -57,6 +66,13 @@ export interface RunningApi {
   accessToken: string;
   /** In-process, never over HTTP: only the main process adds folders (DT-08). */
   addProject(folder: string): Promise<{ id: string }>;
+  /** In-process, like addProject: «Neues Projekt» after the main process's folder dialog. */
+  createProject(folder: string): Promise<{ id: string; created: boolean }>;
+  /** In-process: the passphrase comes from the key window only, the file text goes to disk. */
+  createSigningKey(
+    passphrase: string,
+  ): Promise<{ text: string; key: SigningKeyInfo }>;
+  signingKeyInfo(publicKey: string): Promise<SigningKeyInfo | null>;
   projectFolder(id: string): Promise<string | null>;
   /** In-process only, for the signing dialog (DT-15): the page has no way to sign. */
   prepareBundle(
@@ -113,6 +129,9 @@ export async function startApi(options: {
     accessHeader: api.DESKTOP_ACCESS_HEADER,
     accessToken,
     addProject: (folder) => api.addProject(running, folder),
+    createProject: (folder) => api.createProject(running, folder),
+    createSigningKey: (passphrase) => api.createSigningKey(passphrase),
+    signingKeyInfo: (publicKey) => api.signingKeyInfo(publicKey),
     projectFolder: (id) => api.projectFolder(running, id),
     prepareBundle: (id, gate, signer) =>
       api.prepareBundle(running, id, gate, signer),

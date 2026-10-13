@@ -1,0 +1,146 @@
+<mt-page-header
+  [title]="'setup.title' | translate"
+  [subtitle]="'setup.subtitle' | translate"
+>
+  <mt-help-link section="setup" />
+</mt-page-header>
+
+@if (service.loading()) {
+<hlm-skeleton class="h-96 w-full" />
+} @else if (service.loadFailed()) {
+<p class="mt-note" role="alert" data-setup-load-failed>
+  {{ 'setup.loadFailed' | translate }}
+</p>
+} @else {
+<nav [attr.aria-label]="'setup.stepsLabel' | translate">
+  <ol class="mt-stepper">
+    @for (item of service.steps(); track item.id; let i = $index) { @let current
+    = item.id === service.current();
+    <li class="flex min-w-0">
+      <button
+        type="button"
+        class="mt-step"
+        data-setup-step
+        [attr.data-step-id]="item.id"
+        [attr.data-step-state]="item.state"
+        [class.mt-step-current]="current"
+        [class.mt-step-done]="item.state === 'done'"
+        [class.mt-step-error]="item.state === 'error'"
+        [class.mt-step-skipped]="item.state === 'skipped'"
+        [disabled]="!service.canVisit(item.id)"
+        [attr.aria-current]="current ? 'step' : null"
+        (click)="goTo(item.id)"
+      >
+        <span class="mt-step-number" aria-hidden="true">
+          @switch (item.state) { @case ('done') {
+          <ng-icon name="lucideCheck" size="14" />
+          } @case ('error') {
+          <ng-icon name="lucideCircleAlert" size="14" />
+          } @case ('skipped') {
+          <ng-icon name="lucideCircleMinus" size="14" />
+          } @default { {{ i + 1 }} } }
+        </span>
+        <span class="truncate" [class.mt-step-title-collapsed]="!current"
+          >{{ 'setup.steps.' + item.id + '.title' | translate }}</span
+        >
+        <span class="sr-only"
+          >{{ 'setup.stepNumber' | translate: { number: i + 1 } }}, {{
+          'setup.state.' + item.state | translate }}@if (item.required) {, {{
+          'setup.required' | translate }} }</span
+        >
+      </button>
+    </li>
+    }
+  </ol>
+</nav>
+
+@if (service.step(); as current) {
+<section
+  hlmCard
+  class="mt-4"
+  aria-labelledby="setup-step-title"
+  data-setup-card
+>
+  <div hlmCardHeader>
+    <p class="text-muted-foreground text-xs">
+      {{ 'setup.stepOf' | translate: { number: service.index() + 1, total:
+      service.steps().length } }} @if (!service.isSummary()) { · {{
+      (current.required ? 'setup.required' : 'setup.optional') | translate }} }
+    </p>
+    <h2 hlmCardTitle id="setup-step-title" #stepHeading tabindex="-1">
+      {{ 'setup.steps.' + current.id + '.title' | translate }}
+    </h2>
+    <p hlmCardDescription>
+      {{ 'setup.steps.' + current.id + '.intro' | translate }}
+    </p>
+  </div>
+  <div hlmCardContent>
+    @switch (current.id) { @case ('language') {
+    <mt-setup-language-step />
+    } @case ('signingKey') {
+    <mt-setup-key-step />
+    } @case ('project') {
+    <mt-setup-project-step />
+    } @case ('gate') {
+    <mt-setup-gate-step />
+    } @case ('summary') {
+    <mt-setup-summary-step (open)="goTo($event)" />
+    } }
+  </div>
+</section>
+
+@if (service.error(); as error) {
+<p class="text-destructive mt-4 text-sm" role="alert" data-setup-error>
+  {{ 'setup.errors.' + error | translate }}
+</p>
+}
+
+<div class="mt-wizard-footer">
+  <button
+    hlmBtn
+    variant="outline"
+    type="button"
+    data-setup-back
+    [disabled]="service.isFirst() || service.busy()"
+    (click)="service.back()"
+  >
+    <ng-icon name="lucideArrowLeft" size="16" aria-hidden="true" />
+    {{ 'setup.back' | translate }}
+  </button>
+  <span class="flex-1"></span>
+  @if (service.isSummary()) {
+  <button
+    hlmBtn
+    type="button"
+    data-setup-finish
+    [disabled]="service.busy()"
+    (click)="service.finish()"
+  >
+    <ng-icon name="lucideCheck" size="16" aria-hidden="true" />
+    {{ 'setup.finish' | translate }}
+  </button>
+  } @else { @if (service.canSkip()) {
+  <button
+    hlmBtn
+    variant="ghost"
+    type="button"
+    data-setup-skip
+    [disabled]="service.busy()"
+    (click)="service.skip()"
+  >
+    {{ 'setup.later' | translate }}
+  </button>
+  }
+  <button
+    hlmBtn
+    type="button"
+    data-setup-next
+    [disabled]="service.busy()"
+    (click)="next()"
+  >
+    {{ 'setup.next' | translate }}
+    <ng-icon name="lucideArrowRight" size="16" aria-hidden="true" />
+  </button>
+  }
+</div>
+} }

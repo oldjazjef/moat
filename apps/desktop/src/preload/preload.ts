@@ -8,7 +8,14 @@ const bridge: DesktopBridge = {
   platform: process.platform,
   project: {
     add: () => ipcRenderer.invoke(IPC.projectAdd),
+    create: () => ipcRenderer.invoke(IPC.projectCreate),
     reveal: (id: string) => ipcRenderer.invoke(IPC.projectReveal, String(id)),
+  },
+  key: {
+    status: () => ipcRenderer.invoke(IPC.keyStatus),
+    choose: () => ipcRenderer.invoke(IPC.keyChoose),
+    create: (locale: string) =>
+      ipcRenderer.invoke(IPC.keyCreate, String(locale)),
   },
   secret: {
     seal: (projectId: string, gate: string, name: string, locale: string) =>

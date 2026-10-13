@@ -8,6 +8,35 @@ export type ProjectAddResult =
   | { status: 'cancelled' }
   | { status: 'failed' };
 
+export type ProjectCreateResult =
+  /** `created: false`: the folder had a moat.yaml already, which was kept. */
+  | { status: 'added'; id: string; created: boolean }
+  | { status: 'cancelled' }
+  | { status: 'failed' };
+
+/** The public half of the signing key (never the file's path, never anything secret). */
+export interface SigningKeyInfo {
+  kid: string;
+  /** base64url: `php moat-gate.php install --signer=<publicKey>`. */
+  publicKey: string;
+  /** `MOAT-…`, what the gate prints as "Signer". */
+  fingerprint: string;
+}
+
+export type SigningKeyStatus =
+  | { status: 'ready'; key: SigningKeyInfo }
+  /** No key file chosen yet. */
+  | { status: 'none' }
+  /** The chosen file is gone or is not a key file. */
+  | { status: 'unreadable' };
+
+export type SigningKeyResult =
+  | { status: 'chosen' | 'created'; key: SigningKeyInfo }
+  | { status: 'cancelled' }
+  /** The chosen file is not a key file; the one before stays. */
+  | { status: 'unreadable' }
+  | { status: 'failed' };
+
 export type BundleSignRefusal =
   'config_missing' | 'config_invalid' | 'gate_unknown' | 'secrets_missing';
 
@@ -41,8 +70,24 @@ export interface DesktopBridge {
   readonly project: {
     /** Opens the folder dialog of the main process (DT-08: the page never names a path). */
     add(): Promise<ProjectAddResult>;
+    /**
+     * «Neues Projekt»: the main process's folder dialog, then a new moat.yaml in that folder
+     * (an existing one is kept), and the folder joins the list.
+     */
+    create(): Promise<ProjectCreateResult>;
     /** Shows a listed project's folder in the file manager. */
     reveal(id: string): Promise<void>;
+  };
+  readonly key: {
+    /** The signing key the desktop uses (DT-15), by its public half. */
+    status(): Promise<SigningKeyStatus>;
+    /** The main process's file dialog for an existing `.moatkey` file. */
+    choose(): Promise<SigningKeyResult>;
+    /**
+     * The main process's key window: the passphrase is typed there (twice), the file is saved
+     * where the person chooses. The page learns only the public key.
+     */
+    create(locale: string): Promise<SigningKeyResult>;
   };
   readonly secret: {
     /**

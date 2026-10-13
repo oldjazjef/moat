@@ -1,5 +1,9 @@
 export * from './errors';
-export { toBase64Url, fromBase64Url } from './encoding/base64url';
+export {
+  toBase64Url,
+  fromBase64Url,
+  fromBase64UrlLength,
+} from './encoding/base64url';
 export { toBase32 } from './encoding/base32';
 export { canonicalJson, canonicalJsonBytes } from './canonical/jcs';
 export {
@@ -71,6 +75,7 @@ export {
   type ConfigIssue,
 } from './config/yaml';
 export { compileConfig } from './config/compile';
+export { NEW_PROJECT_CONFIG } from './config/template';
 export { gateLockState, type GateLockState } from './config/lock';
 export {
   addEnvironment,
@@ -122,6 +127,12 @@ export {
   type SealPlan,
   type SealPlanErrorCode,
 } from './storage/seal-plan';
+export {
+  GatePlanError,
+  planGate,
+  type GatePlan,
+  type GatePlanErrorCode,
+} from './storage/gate-plan';
 export {
   readProject,
   CONFIG_FILE,

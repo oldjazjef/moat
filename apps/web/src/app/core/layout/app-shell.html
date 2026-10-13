@@ -23,6 +23,7 @@
     </div>
 
     <div hlmSidebarContent>
+      @if (!setupIncomplete()) {
       <nav
         hlmSidebarGroup
         data-main-nav
@@ -48,10 +49,26 @@
           </ul>
         </div>
       </nav>
+      }
     </div>
 
     <div hlmSidebarFooter>
       <ul hlmSidebarMenu>
+        <!-- FR-73: the setup wizard, again at any time. -->
+        <li hlmSidebarMenuItem>
+          @let setupActive = isActive(setupItem);
+          <a
+            hlmSidebarMenuButton
+            data-setup-nav
+            [routerLink]="setupItem.path"
+            [isActive]="setupActive"
+            [attr.aria-current]="setupActive ? 'page' : null"
+            [tooltip]="setupItem.labelKey | translate"
+          >
+            <ng-icon [name]="setupItem.icon" aria-hidden="true" />
+            <span>{{ setupItem.labelKey | translate }}</span>
+          </a>
+        </li>
         <!-- FR-70: "Hilfe" at the bottom of the sidebar. -->
         <li hlmSidebarMenuItem>
           @let helpActive = isActive(help);

@@ -251,7 +251,8 @@ describe('GatesPage', () => {
       const sign = vi.fn().mockResolvedValue(result);
       window.moatDesktop = {
         platform: 'linux',
-        project: { add: vi.fn(), reveal: vi.fn() },
+        project: { add: vi.fn(), create: vi.fn(), reveal: vi.fn() },
+        key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
         bundle: { sign },
         secret: { seal: vi.fn() },
       };
@@ -317,7 +318,8 @@ describe('GatesPage', () => {
       const seal = vi.fn().mockResolvedValue(result);
       window.moatDesktop = {
         platform: 'linux',
-        project: { add: vi.fn(), reveal: vi.fn() },
+        project: { add: vi.fn(), create: vi.fn(), reveal: vi.fn() },
+        key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
         bundle: { sign: vi.fn() },
         secret: { seal },
       };

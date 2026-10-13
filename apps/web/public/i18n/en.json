@@ -6,6 +6,7 @@
   "nav": {
     "label": "Main navigation",
     "projects": "Projects",
+    "setup": "Setup",
     "help": "Help",
     "toggleSidebar": "Show or hide the sidebar",
     "toggleTheme": "Light or dark",
@@ -343,6 +344,126 @@
       "originsPlaceholder": "https://www.example.ch"
     }
   },
+  "setup": {
+    "title": "Setup",
+    "subtitle": "Step by step to your first protected gate.",
+    "loadFailed": "The setup progress could not be loaded. Restart Moat.",
+    "stepsLabel": "Setup steps",
+    "stepNumber": "Step {{number}}",
+    "stepOf": "Step {{number}} of {{total}}",
+    "required": "Required",
+    "optional": "Optional",
+    "state": {
+      "open": "Open",
+      "done": "Done",
+      "skipped": "Skipped",
+      "error": "Error"
+    },
+    "back": "Back",
+    "next": "Next",
+    "later": "Later",
+    "finish": "Finish",
+    "errors": {
+      "step_required": "This step is required.",
+      "step_incomplete": "This step is not done yet.",
+      "setup_incomplete": "Required steps are still missing.",
+      "save_failed": "The progress could not be saved. Try again."
+    },
+    "steps": {
+      "language": {
+        "title": "Language",
+        "intro": "Which language should Moat speak?"
+      },
+      "signingKey": {
+        "title": "Signing key",
+        "intro": "You approve every change to your gates with your key. A gate accepts only what is signed with it."
+      },
+      "project": {
+        "title": "First project",
+        "intro": "A project is a folder with the configuration of a website. Create a new one or choose an existing one."
+      },
+      "gate": {
+        "title": "First gate",
+        "intro": "The gate runs on your hosting. Install it and enter it here. Before it is saved you compare its fingerprint."
+      },
+      "summary": {
+        "title": "Summary",
+        "intro": "This is set up. Anything missing you can catch up on at any time under “Setup”."
+      }
+    },
+    "language": {
+      "legend": "Language",
+      "german": "Deutsch",
+      "english": "English",
+      "later": "You can switch the language at any time at the top right."
+    },
+    "key": {
+      "cli": "Here in the browser Moat cannot create a key. Use Moat Desktop or the CLI: `moat keygen <file>.moatkey`.",
+      "fingerprint": "Fingerprint",
+      "publicKey": "Public key",
+      "readyHint": "Moat Desktop signs with this key. You give the public key to the gate when you install it.",
+      "unreadable": "The chosen key file can no longer be read or is not a key file. Create a new key or choose another file.",
+      "none": "No key chosen yet.",
+      "create": "Create a new key",
+      "choose": "Choose an existing key file",
+      "backup": "You type the passphrase only in Moat's own window, never on this page. Back up the key file in a second place: without it you cannot approve anything.",
+      "notices": {
+        "unreadable": "This file is not a key file.",
+        "failed": "That did not work. Try again.",
+        "required": "Create or choose a key, or click “Later”."
+      }
+    },
+    "project": {
+      "choose": "Continue with this project:",
+      "none": "No project in the list yet.",
+      "create": "Create a new project",
+      "add": "Add an existing folder",
+      "hint": "For a new project choose an empty folder. Moat writes the file moat.yaml into it.",
+      "notices": {
+        "failed": "The folder could not be used. Can it be read and written?",
+        "required": "Create a project or add a folder.",
+        "existing": "The folder had a moat.yaml already. It stays as it is."
+      }
+    },
+    "gate": {
+      "noProject": "First choose a project in the step “First project”.",
+      "existing": "Gates in this project:",
+      "install": "Upload `moat-gate.php` to your website's web space and run there:",
+      "noKey": "Without a signing key the public key is missing here. Catch up on the step “Signing key”.",
+      "enter": "The gate prints its gate ID and box key. Enter them here:",
+      "name": "Name of the gate",
+      "nameHint": "Lowercase letters, digits and hyphens, for example www.",
+      "gateId": "Gate ID",
+      "boxKey": "Box key",
+      "pasteHint": "You can also paste the whole line `moat gate add …` from the gate's output into either field.",
+      "check": "Check",
+      "compare": "Compare this fingerprint group by group with the line `Box key:` in the gate's output. The gate is saved only once everything matches.",
+      "matches": "It matches",
+      "differs": "It differs",
+      "saved": "Gate {{gate}} saved.",
+      "notices": {
+        "name_invalid": "The name does not fit: lowercase letters, digits and hyphens, starting with a letter.",
+        "gate_id_invalid": "The gate ID has 22 characters. Copy it exactly as the gate printed it.",
+        "box_key_invalid": "The box key is not complete. Copy it exactly as the gate printed it.",
+        "gate_exists": "This project has a gate with that name already. Choose another name.",
+        "fingerprint_mismatch": "The fingerprint changed. Click “Check” again.",
+        "not_writable": "The gate could not be saved in the project folder.",
+        "assign_failed": "The gate is saved but in no environment. Assign it in the project under “Gates”.",
+        "failed": "That did not work. Try again.",
+        "required": "Enter a gate, or click “Later”.",
+        "rejected": "Nothing was saved. Copy the gate ID and box key again from the output of exactly this gate.",
+        "noProject": "First choose a project."
+      }
+    },
+    "summary": {
+      "open": "Catch up",
+      "trust": "Trust mode",
+      "noGate": "No gate entered yet. Every gate fed from Moat Desktop is “Signed”.",
+      "hardening": "Hardening level",
+      "hardeningUnknown": "Not checked yet. Only the gate itself can tell the level, on your server.",
+      "hardeningCheck": "Run `php moat-gate.php check --url=https://<your-site>/<path>/moat-gate.php` there."
+    }
+  },
   "help": {
     "title": "Help",
     "subtitle": "Step by step from moat.yaml to a running gate",
@@ -398,9 +519,26 @@
       }
     },
     "links": {
-      "projects": "Projects"
+      "projects": "Projects",
+      "setup": "Setup"
     },
     "sections": {
+      "setup": {
+        "title": "Setup",
+        "purpose": "The setup wizard takes you through everything a gate needs on the first start. Moat saves your progress, you can continue at any time.",
+        "where": "Setup, at the bottom of the sidebar",
+        "steps": {
+          "language": "Under “Language”, choose how Moat speaks to you.",
+          "key": "Under “Signing key”, create your key file with “Create a new key”, or choose one you already have with “Choose an existing key file”. You type the passphrase only in Moat's own window.",
+          "project": "Under “First project”, create a project folder with “Create a new project”, or add an existing one with “Add an existing folder”.",
+          "gate": "Under “First gate”, install the gate with the command shown, enter the gate ID and box key and click “Check”. Compare the fingerprint with the gate's output and confirm with “It matches”.",
+          "summary": "The “Summary” shows what is set up, the trust mode and the hardening level. “Finish” opens your project."
+        },
+        "tips": {
+          "later": "You skip optional steps with “Later”. The summary keeps showing them.",
+          "again": "“Setup” in the sidebar opens the wizard again at any time."
+        }
+      },
       "project": {
         "title": "Projects",
         "purpose": "Each website is a project. Everything Moat knows about it lives in its project folder: the configuration, the gates, the sealed secrets and the signed bundles. No database, no server.",
@@ -409,6 +547,7 @@
           "cli": "Create a folder and write a moat.yaml in it. A recipe from the `recipes` folder is a good start.",
           "folder": "The Moat CLI adds the subfolders: `gates` for the gates, `secrets` for sealed secrets, `bundles` for signed bundles.",
           "add": "Under “Projects”, click “Add project” and choose the folder. The project opens right away.",
+          "create": "Or let Moat create the folder: “Setup” › “First project” › “Create a new project” writes a valid `moat.yaml` into it.",
           "check": "Every project has the parts “Overview”, “Gates” and “Routes”. The overview shows whether moat.yaml is valid, how many routes, upstreams, secrets and gates there are, and which trust mode applies."
         },
         "tips": {
@@ -425,6 +564,7 @@
           "upload": "Upload the file moat-gate.php to your website's web space.",
           "install": "On the server, run `php moat-gate.php install --signer=<public key>`. The gate creates a protected data folder and prints its gate ID, box key and fingerprints.",
           "add": "Add the gate to your project folder with the `moat gate add` line the gate printed.",
+          "addDesktop": "In Moat Desktop you enter the gate under “Setup” › “First gate” and compare the fingerprint there before it is saved.",
           "compare": "Compare the fingerprint the CLI prints group by group with the gate's.",
           "check": "Under “Gates” you see every gate you added, with gate ID and fingerprint."
         },
@@ -456,6 +596,7 @@
         "where": "Project › Overview › Trust mode and Gates",
         "steps": {
           "keygen": "Create a key file once with `moat keygen <file>.moatkey` and choose a good passphrase.",
+          "keyDesktop": "In Moat Desktop you create the key under “Setup” › “Signing key” with “Create a new key”.",
           "trust": "Give the gate the public key when you install it (--signer). You can change it only on the gate itself, with `php moat-gate.php trust`.",
           "badge": "Next to each gate you see its trust mode, with the sentence on what an attacker could do if Moat Cloud were hacked."
         },

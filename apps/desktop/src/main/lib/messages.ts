@@ -2,6 +2,7 @@
  * The few texts the main process shows itself (dialogs, menu), in the system's language: German
  * for any de-*, English otherwise. The window's texts live in apps/web's message files.
  */
+import type { KeyDialogTexts } from '../../shared/key-dialog';
 import type { SealDialogTexts } from '../../shared/seal-dialog';
 import type { SignDialogTexts } from '../../shared/sign-dialog';
 
@@ -18,6 +19,16 @@ export function pageLocale(locale: unknown, system: string): DesktopLocale {
 
 export interface DesktopMessages {
   readonly chooseProject: { readonly title: string; readonly button: string };
+  /** «Neues Projekt»: the folder for the new moat.yaml. */
+  readonly createProject: { readonly title: string; readonly button: string };
+  /** Where the new key file goes. */
+  readonly saveKey: {
+    readonly title: string;
+    readonly button: string;
+    readonly filter: string;
+    readonly defaultName: string;
+  };
+  readonly keyDialog: KeyDialogTexts;
   readonly startFailed: {
     readonly title: string;
     readonly detail: (reason: string) => string;
@@ -42,6 +53,37 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
     chooseProject: {
       title: 'Projekt hinzufügen',
       button: 'Diesen Ordner hinzufügen',
+    },
+    createProject: {
+      title: 'Neues Projekt',
+      button: 'Projekt in diesem Ordner anlegen',
+    },
+    saveKey: {
+      title: 'Schlüsseldatei speichern',
+      button: 'Hier speichern',
+      filter: 'Moat-Schlüsseldatei',
+      defaultName: 'moat-signing.moatkey',
+    },
+    keyDialog: {
+      title: 'Neuen Schlüssel erstellen',
+      intro:
+        'Mit diesem Schlüssel gibst du jede Änderung an deinen Gates frei. Die Schlüsseldatei ist mit deiner Passphrase verschlüsselt. Die Passphrase wird nirgends gespeichert.',
+      passphrase: 'Passphrase',
+      repeat: 'Passphrase wiederholen',
+      hint: 'Mindestens 12 Zeichen. Ein Satz aus mehreren Wörtern ist gut. Ohne Passphrase kann niemand mit der Datei signieren, auch du nicht.',
+      show: 'Passphrase anzeigen',
+      create: 'Erstellen und speichern…',
+      working: 'Der Schlüssel wird erstellt …',
+      cancel: 'Abbrechen',
+      notices: {
+        too_short: 'Die Passphrase ist kürzer als 12 Zeichen.',
+        too_long: 'Die Passphrase ist zu lang.',
+        mismatch: 'Die beiden Eingaben stimmen nicht überein.',
+        exists:
+          'Dort liegt schon eine Datei. Eine Schlüsseldatei wird nie überschrieben. Wähle einen anderen Namen.',
+        not_writable:
+          'Die Datei konnte dort nicht gespeichert werden. Wähle einen anderen Ordner.',
+      },
     },
     chooseKey: {
       title: 'Schlüsseldatei wählen',
@@ -134,6 +176,37 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
   },
   en: {
     chooseProject: { title: 'Add project', button: 'Add this folder' },
+    createProject: {
+      title: 'New project',
+      button: 'Create the project in this folder',
+    },
+    saveKey: {
+      title: 'Save key file',
+      button: 'Save here',
+      filter: 'Moat key file',
+      defaultName: 'moat-signing.moatkey',
+    },
+    keyDialog: {
+      title: 'Create a new key',
+      intro:
+        'You approve every change to your gates with this key. The key file is encrypted with your passphrase. The passphrase is not stored anywhere.',
+      passphrase: 'Passphrase',
+      repeat: 'Repeat passphrase',
+      hint: 'At least 12 characters. A sentence of several words works well. Without the passphrase nobody can sign with the file, not even you.',
+      show: 'Show passphrase',
+      create: 'Create and save…',
+      working: 'Creating the key …',
+      cancel: 'Cancel',
+      notices: {
+        too_short: 'The passphrase is shorter than 12 characters.',
+        too_long: 'The passphrase is too long.',
+        mismatch: 'The two entries do not match.',
+        exists:
+          'There is a file at that place already. A key file is never overwritten. Choose another name.',
+        not_writable:
+          'The file could not be saved there. Choose another folder.',
+      },
+    },
     chooseKey: {
       title: 'Choose key file',
       button: 'Use this key file',

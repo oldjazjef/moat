@@ -46,7 +46,7 @@ describe('HelpPage (FR-71)', () => {
     expect(sectionIds(el)).toEqual([...HELP_SECTION_IDS, 'faq']);
     const total = HELP_SECTION_IDS.length;
     expect(el.querySelector('#gate [data-help-step]')?.textContent).toContain(
-      `Schritt 2 von ${total}`,
+      `Schritt 3 von ${total}`,
     );
     expect(el.querySelectorAll('h1')).toHaveLength(1);
     expect(el.querySelector('#gate h2')?.textContent).toContain(
