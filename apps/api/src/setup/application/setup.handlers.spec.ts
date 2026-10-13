@@ -1,3 +1,4 @@
+import { toBase64Url } from '@moat/core';
 import { describe, expect, it } from 'vitest';
 import {
   InMemoryProjectFiles,
@@ -17,7 +18,17 @@ const NOW = '2026-10-13T08:00:00.000Z';
 function setup() {
   const registry = new InMemoryProjectRegistry();
   const files = new InMemoryProjectFiles({
-    '/sites/shop': { 'moat.yaml': 'version: 1\n', 'gates/www.json': '{}' },
+    '/sites/shop': {
+      'moat.yaml': 'version: 1\nupstreams: {}\nroutes: {}\n',
+      'gates/www.json': JSON.stringify({
+        moat: 'gate',
+        v: 1,
+        gateId: 'AAAAAAAAAAAAAAAAAAAAAA',
+        boxKey: toBase64Url(new Uint8Array(32).fill(5)),
+      }),
+      // Not a gate: never counted (§1.5).
+      'gates/junk.json': '{}',
+    },
   });
   const progress = new InMemorySetupProgress();
   return {
@@ -122,5 +133,14 @@ describe('setup wizard (FR-73)', () => {
       new CompleteSetupCommand('2026-10-14T08:00:00.000Z'),
     );
     expect(again.status === 'ok' && again.view.completedAt).toBe(NOW);
+  });
+
+  it('counts a desktop from before the wizard (projects, nothing stored) as set up', async () => {
+    const { get, registry, update } = setup();
+    registry.add('/sites/shop');
+    expect((await get.execute()).complete).toBe(true);
+    // Once anything is stored, only «Fertig» finishes it.
+    await update.execute(new UpdateSetupCommand({ currentStep: 'language' }));
+    expect((await get.execute()).complete).toBe(false);
   });
 });

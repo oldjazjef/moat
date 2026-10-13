@@ -155,10 +155,9 @@ export class SummaryStep {
       ? undefined
       : apiUrl(`/projects/${encodeURIComponent(id)}`);
   });
-  /** A pinned gate in the chosen project, or anywhere when none was chosen. */
+  /** A valid pinned gate in the chosen project; without a project, none is claimed (§1.5). */
   protected readonly hasGate = computed(() => {
-    if (this.service.project() === null)
-      return (this.service.view()?.facts.gates ?? 0) > 0;
+    if (this.service.project() === null) return false;
     const view = this.project.hasValue() ? this.project.value() : null;
     return (view?.project?.gates ?? []).some((gate) => gate.status === 'valid');
   });

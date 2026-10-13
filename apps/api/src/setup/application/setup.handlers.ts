@@ -7,10 +7,12 @@ import {
   Query,
   QueryHandler,
 } from '@nestjs/cqrs';
+import { readProject } from '@moat/core';
 import { ProjectFilesPort } from '../../project/ports/project-files.port';
 import { ProjectRegistryPort } from '../../project/ports/project-registry.port';
 import {
   canMarkDone,
+  EMPTY_PROGRESS,
   isRequired,
   missingRequired,
   STEP_DEFINITIONS,
@@ -73,24 +75,28 @@ export class CompleteSetupCommand extends Command<SetupResult> {
   }
 }
 
-/** Counts projects and pinned gates; a folder that cannot be read counts as nothing. */
-function readFacts(
+/**
+ * Counts projects and valid pinned gates (as readProject reads them: a damaged gate file is no
+ * gate, §1.5); a folder that cannot be read counts as nothing.
+ */
+async function readFacts(
   registry: ProjectRegistryPort,
   files: ProjectFilesPort,
-): SetupFacts {
+): Promise<SetupFacts> {
   const projects = registry.list();
   let gates = 0;
   for (const { folder } of projects) {
-    gates +=
-      files
-        .open(folder)
-        ?.list('gates')
-        .filter((name) => name.endsWith('.json')).length ?? 0;
+    const storage = files.open(folder);
+    if (storage === null) continue;
+    const state = await readProject(storage);
+    gates += state.gates.filter((gate) => gate.status === 'valid').length;
   }
   return { projects: projects.length, gates };
 }
 
 function view(progress: SetupProgress, facts: SetupFacts): SetupView {
+  // Nothing stored but projects listed: a desktop from before the wizard, already set up.
+  const upgraded = progress === EMPTY_PROGRESS && facts.projects > 0;
   return {
     steps: STEP_DEFINITIONS.map(({ id, required }) => ({
       id,
@@ -99,7 +105,7 @@ function view(progress: SetupProgress, facts: SetupFacts): SetupView {
     })),
     currentStep: progress.currentStep,
     completedAt: progress.completedAt,
-    complete: progress.completedAt !== null,
+    complete: progress.completedAt !== null || upgraded,
     missing: missingRequired(progress, facts),
     facts,
   };
@@ -114,12 +120,8 @@ abstract class SetupHandler {
     private readonly files: ProjectFilesPort,
   ) {}
 
-  protected facts(): SetupFacts {
+  protected facts(): Promise<SetupFacts> {
     return readFacts(this.registry, this.files);
-  }
-
-  protected view(progress: SetupProgress): SetupView {
-    return view(progress, this.facts());
   }
 }
 
@@ -129,7 +131,7 @@ export class GetSetupHandler
   implements IQueryHandler<GetSetupQuery>
 {
   async execute(): Promise<SetupView> {
-    return this.view(this.progress.read());
+    return view(this.progress.read(), await this.facts());
   }
 }
 
@@ -141,7 +143,7 @@ export class UpdateSetupHandler
   async execute(command: UpdateSetupCommand): Promise<SetupResult> {
     const current = this.progress.read();
     const states = command.update.states ?? {};
-    const facts = this.facts();
+    const facts = await this.facts();
     for (const [step, state] of Object.entries(states) as [
       SetupStepId,
       StepState,
@@ -168,7 +170,7 @@ export class CompleteSetupHandler
 {
   async execute(command: CompleteSetupCommand): Promise<SetupResult> {
     const current = this.progress.read();
-    const facts = this.facts();
+    const facts = await this.facts();
     const missing = missingRequired(current, facts);
     if (missing.length > 0)
       return { status: 'refused', code: 'setup_incomplete', missing };

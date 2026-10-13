@@ -58,7 +58,7 @@ export async function openPage(
   await harness.navigateByUrl(url);
   const http = TestBed.inject(HttpTestingController);
   // Answer until nothing asks any more (a tab renders only once the workspace has its project).
-  for (let round = 0; round < 5; round += 1) {
+  for (let round = 0; round < 10; round += 1) {
     harness.detectChanges();
     // Not whenStable() here: an open request keeps the app unstable until it is answered.
     await new Promise((resolve) => setTimeout(resolve));

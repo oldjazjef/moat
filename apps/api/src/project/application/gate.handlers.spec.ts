@@ -144,3 +144,23 @@ describe('«Neues Projekt» (FR-73)', () => {
     ).rejects.toThrow();
   });
 });
+
+describe('one gate, one pinned key (SEC-32)', () => {
+  it('refuses the same gate id under another name', async () => {
+    const { check, add, shop } = setup();
+    const checked = await check.execute(new CheckGateQuery(shop.id, GATE));
+    if (checked.status !== 'ready') throw new Error('not ready');
+    await add.execute(
+      new AddGateCommand(shop.id, GATE, checked.preview.boxKeyFingerprint),
+    );
+    const again = {
+      ...GATE,
+      name: 'other',
+      boxKey: toBase64Url(new Uint8Array(32).fill(3)),
+    };
+    expect(await check.execute(new CheckGateQuery(shop.id, again))).toEqual({
+      status: 'refused',
+      code: 'gate_id_exists',
+    });
+  });
+});

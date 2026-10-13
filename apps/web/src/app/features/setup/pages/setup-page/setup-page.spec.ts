@@ -370,4 +370,15 @@ describe('SetupPage (FR-73)', () => {
     );
     expect(text(el.querySelector('#setup-step-title'))).toBe('Erstes Projekt');
   });
+
+  it('never locks the app behind the wizard when the progress cannot be stored', async () => {
+    const { el, harness } = await open(view('summary'));
+    click(el, '[data-setup-finish]');
+    await settle(harness);
+    http()
+      .expectOne('/api/setup/complete')
+      .flush(null, { status: 500, statusText: 'Error' });
+    await settle(harness);
+    expect(TestBed.inject(Router).url).toBe('/app/projects');
+  });
 });

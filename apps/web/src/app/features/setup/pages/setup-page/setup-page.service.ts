@@ -173,7 +173,17 @@ export class SetupPageService {
       );
       return true;
     } catch (error) {
-      this.error.set(codeOf(error) ?? 'save_failed');
+      const code = codeOf(error);
+      if (code === null) {
+        // Not a refusal: the progress cannot be stored (full disk, read-only data folder).
+        // Never lock the app behind the wizard for that: finished for this session.
+        const view = this.view();
+        if (view) this.state.set({ ...view, complete: true });
+        this.error.set('save_failed');
+        await this.router.navigateByUrl('/app/projects');
+        return false;
+      }
+      this.error.set(code);
       const missing = missingOf(error);
       if (missing[0]) this.open(missing[0]);
       return false;

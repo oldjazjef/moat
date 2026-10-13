@@ -122,7 +122,8 @@ export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
     expect: LOCAL_ONLY,
   },
   {
-    // After the PATCH above: the required steps are done, the seeded projects are listed.
+    // Order matters: after the PATCH above the required steps are done (the seeded projects
+    // are listed), so the desktop gets 200.
     method: 'POST',
     path: '/api/setup/complete',
     expect: LOCAL_ONLY,

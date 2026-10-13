@@ -270,7 +270,8 @@ function registerIpc(): void {
               text.saveKey.defaultName,
             ),
             filters: [{ name: text.saveKey.filter, extensions: ['moatkey'] }],
-            properties: ['createDirectory', 'showOverwriteConfirmation'],
+            // No overwrite prompt: a key file is never replaced (`wx`), the window says so.
+            properties: ['createDirectory'],
           });
           return picked.canceled || picked.filePath === undefined
             ? null

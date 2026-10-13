@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { rmSync, writeFileSync } from 'node:fs';
 import type { SigningKeyInfo, SigningKeyResult } from '../../shared/bridge';
 import {
   type KeyDialogConfirm,
@@ -20,9 +20,10 @@ export function writeKeyFile(path: string, text: string): WriteOutcome {
     writeFileSync(path, text, { flag: 'wx', mode: 0o600 });
     return 'written';
   } catch (error) {
-    return (error as NodeJS.ErrnoException).code === 'EEXIST'
-      ? 'exists'
-      : 'failed';
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') return 'exists';
+    // `wx` created it, so it is ours: never leave half a key file behind (disk full, I/O error).
+    rmSync(path, { force: true });
+    return 'failed';
   }
 }
 

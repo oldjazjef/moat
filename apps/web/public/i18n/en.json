@@ -446,6 +446,7 @@
         "gate_id_invalid": "The gate ID has 22 characters. Copy it exactly as the gate printed it.",
         "box_key_invalid": "The box key is not complete. Copy it exactly as the gate printed it.",
         "gate_exists": "This project has a gate with that name already. Choose another name.",
+        "gate_id_exists": "This gate ID is entered in this project under another name already. A gate is entered only once.",
         "fingerprint_mismatch": "The fingerprint changed. Click “Check” again.",
         "not_writable": "The gate could not be saved in the project folder.",
         "assign_failed": "The gate is saved but in no environment. Assign it in the project under “Gates”.",

@@ -446,6 +446,7 @@
         "gate_id_invalid": "Die Gate-ID hat 22 Zeichen. Kopiere sie genau so, wie das Gate sie ausgegeben hat.",
         "box_key_invalid": "Der Box-Schlüssel ist nicht vollständig. Kopiere ihn genau so, wie das Gate ihn ausgegeben hat.",
         "gate_exists": "In diesem Projekt gibt es schon ein Gate mit diesem Namen. Wähle einen anderen Namen.",
+        "gate_id_exists": "Diese Gate-ID ist in diesem Projekt schon unter einem anderen Namen eingetragen. Ein Gate wird nur einmal eingetragen.",
         "fingerprint_mismatch": "Der Fingerprint hat sich geändert. Klicke noch einmal auf «Prüfen».",
         "not_writable": "Das Gate konnte nicht im Projektordner gespeichert werden.",
         "assign_failed": "Das Gate ist gespeichert, aber keiner Umgebung zugeordnet. Ordne es im Projekt unter «Gates» zu.",

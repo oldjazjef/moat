@@ -19,6 +19,8 @@ export type GateRefusal =
   | GatePlanErrorCode
   /** The project has a gate of that name already (409). */
   | 'gate_exists'
+  /** Another name pins that gate id already: one gate, one pinned key (409, SEC-32). */
+  | 'gate_id_exists'
   /** `fingerprint` is not the one of this box key: nothing written. */
   | 'fingerprint_mismatch'
   | 'not_writable';

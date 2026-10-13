@@ -47,6 +47,11 @@ async function plan(
   if (storage === null) return { status: 'not_found' };
   if (storage.read(planned.path) !== null)
     return { status: 'refused', code: 'gate_exists' };
+  for (const file of storage.list('gates')) {
+    if (!file.endsWith('.json')) continue;
+    if (pinnedGateId(storage.read(`gates/${file}`)) === planned.gateId)
+      return { status: 'refused', code: 'gate_id_exists' };
+  }
   return { status: 'ready', entry, plan: planned };
 }
 
@@ -98,5 +103,20 @@ export class AddGateHandler implements ICommandHandler<AddGateCommand> {
       return { status: 'refused', code: 'not_writable' };
     }
     return { status: 'saved' };
+  }
+}
+
+/** The gate id a gate file pins; null when it is not readable as one. */
+function pinnedGateId(text: string | null): string | null {
+  if (text === null) return null;
+  try {
+    const value = JSON.parse(text) as unknown;
+    const gateId =
+      typeof value === 'object' && value !== null
+        ? (value as Record<string, unknown>)['gateId']
+        : undefined;
+    return typeof gateId === 'string' ? gateId : null;
+  } catch {
+    return null;
   }
 }

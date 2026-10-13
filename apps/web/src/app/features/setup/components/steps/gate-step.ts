@@ -47,6 +47,7 @@ export const GATE_ERRORS = [
   'gate_id_invalid',
   'box_key_invalid',
   'gate_exists',
+  'gate_id_exists',
   'fingerprint_mismatch',
   'not_writable',
   'assign_failed',

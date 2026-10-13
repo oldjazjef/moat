@@ -20,7 +20,8 @@ import type { ProjectSummary, ProjectView } from './project.types';
 
 /** 409 for a name in use, 422 for everything else the core refused. */
 function gateRefusal(code: GateRefusal): never {
-  if (code === 'gate_exists') throw new ConflictException({ error: code });
+  if (code === 'gate_exists' || code === 'gate_id_exists')
+    throw new ConflictException({ error: code });
   throw new UnprocessableEntityException({ error: code });
 }
 
