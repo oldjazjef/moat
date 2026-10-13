@@ -30,7 +30,9 @@ final class KillSwitchCliTest extends TestCase
         file_put_contents($this->dir . '/' . GateFixture::GATE_FILE, Builder::build(\dirname(__DIR__, 2) . '/src', '0.0.0-test', 'test'));
         $this->signer = sodium_crypto_sign_keypair();
         [, $out] = $this->cli('install', '--signer=' . Base64Url::encode(sodium_crypto_sign_publickey($this->signer)));
-        self::assertSame(1, preg_match('/--gate-id=(\S+)/', $out, $match), $out);
+        if (preg_match('/--gate-id=(\S+)/', $out, $match) !== 1) {
+            self::fail('install printed no gate id: ' . $out);
+        }
         $this->gateId = $match[1];
     }
 
