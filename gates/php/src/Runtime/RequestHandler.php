@@ -224,7 +224,8 @@ final class RequestHandler
         [$body, $hasBody, $mediaType] = $payload;
 
         $headers = ['Accept' => implode(', ', $route->responseContentTypes)];
-        if ($hasBody) {
+        // payload() refuses a body without a media type.
+        if ($hasBody && $mediaType !== null) {
             $headers['Content-Type'] = $mediaType;
         }
         $pathAndQuery = $route->upstreamPath;
