@@ -25,6 +25,11 @@ final class GateFixture
     public readonly string $upstreamLog;
     public readonly string $gateLog;
     public readonly string $secret;
+    public readonly string $site;
+    public readonly int $port;
+    public readonly string $certFile;
+    public readonly string $keyFile;
+    public readonly string $policy;
 
     /** @param string $casesFile the raw text of conformance/http/gate.json */
     public function __construct(private readonly string $dir, string $casesFile)
@@ -32,6 +37,8 @@ final class GateFixture
         $this->upstreamLog = $dir . '/upstream.log';
         $this->gateLog = $dir . '/gate.log';
         [$cert, $key] = self::certificate($dir);
+        $this->certFile = $cert;
+        $this->keyFile = $key;
         touch($this->upstreamLog);
 
         $doc = self::decode($casesFile);
@@ -53,7 +60,7 @@ final class GateFixture
         $upstreamPort = self::waitForFile($portFile);
         $doc = self::decode(str_replace(['{port}', '{caFile}'], [$upstreamPort, $cert], $casesFile));
 
-        $site = $dir . '/site';
+        $site = $this->site = $dir . '/site';
         mkdir($site);
         file_put_contents($site . '/' . self::GATE_FILE, Builder::build(\dirname(__DIR__, 2) . '/src', '0.0.0-test', 'test'));
         $signer = sodium_crypto_sign_keypair();
@@ -62,7 +69,8 @@ final class GateFixture
             throw new \RuntimeException('install printed no gate id');
         }
         [, $gateId, $boxKey] = $match;
-        file_put_contents($dir . '/policy.json', self::encode($doc->policy ?? null));
+        $this->policy = self::encode($doc->policy ?? null);
+        file_put_contents($dir . '/policy.json', $this->policy);
         $this->cli($site, ['policy', $dir . '/policy.json']);
 
         $sealed = [];
@@ -72,7 +80,7 @@ final class GateFixture
         file_put_contents($dir . '/bundle.json', self::bundle($doc->config ?? null, $sealed, $gateId, $signer));
         $this->cli($site, ['accept', $dir . '/bundle.json']);
 
-        $port = self::freePort();
+        $port = $this->port = self::freePort();
         $this->spawn([PHP_BINARY, '-S', '127.0.0.1:' . $port, '-t', $site], $this->gateLog);
         self::waitForPort($port);
         $this->baseUrl = 'http://127.0.0.1:' . $port . '/' . self::GATE_FILE;
@@ -102,6 +110,25 @@ final class GateFixture
         return $log === false ? '' : $log;
     }
 
+    /**
+     * The gate's CLI with its exit status and output (stdout, then stderr).
+     *
+     * @param list<string> $args
+     *
+     * @return array{int, string}
+     */
+    public function run(array $args): array
+    {
+        $outFile = $this->dir . '/cli.out';
+        $process = proc_open([PHP_BINARY, $this->site . '/' . self::GATE_FILE, ...$args], [1 => ['file', $outFile, 'w'], 2 => ['file', $outFile, 'a']], $pipes);
+        if ($process === false) {
+            throw new \RuntimeException('cannot start the gate CLI');
+        }
+        $status = proc_close($process);
+
+        return [$status, (string) file_get_contents($outFile)];
+    }
+
     /** @param list<string> $args */
     private function cli(string $site, array $args): string
     {
@@ -122,7 +149,7 @@ final class GateFixture
     }
 
     /** @param list<string> $command */
-    private function spawn(array $command, string $log): void
+    public function spawn(array $command, string $log): void
     {
         $process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['file', $log, 'a'], 2 => ['file', $log, 'a']], $pipes);
         if ($process === false) {
@@ -230,7 +257,7 @@ final class GateFixture
         return [$dir . '/upstream-cert.txt', $dir . '/upstream-key.txt'];
     }
 
-    private static function waitForFile(string $file): string
+    public static function waitForFile(string $file): string
     {
         for ($i = 0; $i < 100; $i++) {
             $text = is_file($file) ? file_get_contents($file) : false;
@@ -276,7 +303,7 @@ final class GateFixture
         throw new \RuntimeException('the gate did not start');
     }
 
-    private static function remove(string $path): void
+    public static function remove(string $path): void
     {
         if (is_dir($path) && !is_link($path)) {
             $entries = scandir($path);

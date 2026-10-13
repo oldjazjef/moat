@@ -27,6 +27,7 @@ export interface HelpLink {
 export const HELP_SECTION_IDS = [
   'project',
   'gate',
+  'hardening',
   'trust',
   'secrets',
   'routes',
@@ -63,6 +64,12 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     steps: items('upload', 'install', 'add', 'compare', 'check'),
     tips: items('mismatch', 'php'),
     links: [PROJECTS],
+  },
+  {
+    id: 'hardening',
+    steps: items('run', 'outside', 'process', 'level', 'fix'),
+    tips: items('shared', 'again', 'stronger'),
+    links: [],
   },
   {
     id: 'trust',

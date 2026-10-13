@@ -21,10 +21,11 @@ Four components (ANFORDERUNGEN.md, header):
 > content-type rules, environments and locks, comment-preserving `moat.yaml` edits); `apps/cli`
 > (`moat keygen|validate|policy suggest|gate add|assign|disable|enable|env add|disable|enable|secret seal|build|version`);
 > `conformance/vectors/` and `conformance/http/`; and `gates/php` as a working gate: single-file
-> build, CLI (`install|trust|policy|accept|status`), bundle acceptance (steps 1–10), exact routing,
+> build, CLI (`install|trust|policy|accept|status|check`), bundle acceptance (steps 1–10), exact routing,
 > the cURL upstream client with SSRF guard, origin binding/CORS, rate limits, request quotas per
-> calendar day/month (FR-31: route `quota`, policy `limits.quota`, `quota_exceeded`) and the signed lock
-> of a gate or a whole environment (`moat env|gate disable`, `gate_disabled`)
+> calendar day/month (FR-31: route `quota`, policy `limits.quota`, `quota_exceeded`), the signed lock
+> of a gate or a whole environment (`moat env|gate disable`, `gate_disabled`) and the hardening
+> check (`check [--url]`, SEC-49/SEC-49a; `classifyHardening` in `libs/core/src/gate/`)
 > ([gates/php/README.md](gates/php/README.md)). **Moat Desktop, first surface:** Electron shell
 > with the API in-process (`apps/api`: the project list in `<MOAT_DATA_DIR>/projects.json`,
 > `GET /api/projects`, `GET|DELETE /api/projects/:id`, `POST /api/projects/:id/config/edits` — the closed list of moat.yaml edits: add/lock/unlock environments, lock/unlock and assign gates, add/update/enable/disable/remove routes and add/update/remove upstreams (`setRoute`, `setUpstream` & co. in `libs/core/src/config/edit.ts`), with a `base` hash against lost updates) and the Angular
@@ -164,6 +165,7 @@ libs/core/           # PURE TypeScript (@moat/core): no Nest/Angular/Prisma/netw
   src/package/       #   gate install packages: artifact + install files, never generated code
   src/storage/       #   StoragePort + readProject (DT-03); the fs adapter (FolderStorage) and DB
                      #   adapters live in apps/api/src/persistence
+  src/gate/          #   gate-side rules shared by every gate (hardening check, SEC-49)
   src/recipes/       #   recipes (FR-43) as data
 libs/ui/             # spartan helm components (GENERATED — vendored)
 gates/php/           # the PHP gate: src/, tests/, build/ (single-file build), composer.json
