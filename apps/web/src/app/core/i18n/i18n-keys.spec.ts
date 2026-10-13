@@ -10,6 +10,7 @@ import {
   CONFIG_ISSUE_CODES,
   EDIT_ERROR_CODES,
   QUOTA_PERIODS,
+  USAGE_FORMATS,
 } from '../api/project.types';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './locales';
 import {
@@ -41,6 +42,11 @@ const DYNAMIC_KEYS = [
   ...['ip', 'route'].map((per) => `routes.rate.${per}`),
   ...QUOTA_PERIODS.map((period) => `routes.quota.${period}`),
   ...QUOTA_PERIODS.map((period) => `routes.form.periods.${period}`),
+  ...QUOTA_PERIODS.flatMap((period) => [
+    `routes.budget.tokens.${period}`,
+    `routes.budget.cost.${period}`,
+  ]),
+  ...USAGE_FORMATS.map((format) => `routes.form.usageFormats.${format}`),
   ...PROJECT_TABS.map((tab) => `projects.tabs.${tab}`),
   ...SIGN_OUTCOMES.map((outcome) => `gates.signResult.${outcome}`),
   ...SEAL_OUTCOMES.map((outcome) => `gates.sealResult.${outcome}`),

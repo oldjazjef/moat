@@ -255,6 +255,80 @@ describe('route edits', () => {
     );
   });
 
+  it('FR-31: adds, changes and removes a budget, keeping the written amounts', () => {
+    const added = setRoute(
+      site,
+      'newsletter',
+      {
+        ...newsletter,
+        budget: {
+          usage: 'openai',
+          period: 'day',
+          reserve: 8000,
+          tokens: 200000,
+          cost: {
+            limit: '5.00',
+            inputPerMillion: '2.50',
+            outputPerMillion: '10.00',
+          },
+        },
+      },
+      'update',
+    );
+    expect(loadMoatYaml(added).routes['newsletter']?.budget).toEqual({
+      usage: 'openai',
+      period: 'day',
+      reserve: 8000,
+      tokens: 200000,
+      cost: {
+        limit: '5.00',
+        inputPerMillion: '2.50',
+        outputPerMillion: '10.00',
+      },
+    });
+    expect(added).toContain('# Sign-ups from the footer form.');
+    // "5" is the same amount as "5.00": the author's spelling stays.
+    const same = setRoute(
+      added,
+      'newsletter',
+      {
+        ...newsletter,
+        budget: {
+          usage: 'openai',
+          period: 'day',
+          reserve: 8000,
+          tokens: 200000,
+          cost: { limit: '5', inputPerMillion: '2.5', outputPerMillion: '10' },
+        },
+      },
+      'update',
+    );
+    expect(same).toBe(added);
+    const tokensOnly = setRoute(
+      added,
+      'newsletter',
+      {
+        ...newsletter,
+        budget: {
+          usage: 'anthropic',
+          period: 'month',
+          reserve: 8000,
+          tokens: 1000000,
+        },
+      },
+      'update',
+    );
+    expect(loadMoatYaml(tokensOnly).routes['newsletter']?.budget).toEqual({
+      usage: 'anthropic',
+      period: 'month',
+      reserve: 8000,
+      tokens: 1000000,
+    });
+    expect(
+      setRoute(tokensOnly, 'newsletter', newsletter, 'update'),
+    ).not.toContain('budget');
+  });
+
   it('removes optional keys that are left empty', () => {
     const text = setRoute(
       site,
@@ -388,6 +462,19 @@ describe('route edits', () => {
       'value_invalid',
       ['quota.requests'],
     ]);
+    expect(
+      attempt({
+        budget: {
+          usage: 'openai',
+          period: 'day',
+          reserve: 8000,
+          cost: { limit: '0', inputPerMillion: '1', outputPerMillion: '1' },
+        },
+      }),
+    ).toEqual(['value_invalid', ['budget.cost.limit']]);
+    expect(
+      attempt({ budget: { usage: 'openai', period: 'day', reserve: 8000 } }),
+    ).toEqual(['value_invalid', ['budget']]);
   });
 
   it('switches a route off and on, and removes it', () => {

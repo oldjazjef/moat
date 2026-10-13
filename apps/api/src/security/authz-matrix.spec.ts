@@ -194,6 +194,31 @@ describe('authorization matrix (local mode)', () => {
         route: 'contact',
         definition: { ...route, method: 'TRACE' },
       },
+      // SEC-20: where usage is read is a closed list, never a path the client sends.
+      {
+        base,
+        op: 'addRoute',
+        route: 'contact',
+        definition: {
+          ...route,
+          budget: {
+            usage: 'openai',
+            period: 'day',
+            reserve: 1,
+            tokens: 1,
+            path: '$.x',
+          },
+        },
+      },
+      {
+        base,
+        op: 'addRoute',
+        route: 'contact',
+        definition: {
+          ...route,
+          budget: { usage: 'custom', period: 'day', reserve: 1, tokens: 1 },
+        },
+      },
     ]) {
       expect((await call('POST', url, 'desktop', body)).status).toBe(400);
     }

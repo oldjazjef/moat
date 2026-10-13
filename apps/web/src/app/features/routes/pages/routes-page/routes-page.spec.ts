@@ -134,6 +134,72 @@ describe('RoutesPage', () => {
     ).toBe('true');
   });
 
+  it('FR-31: shows a route budget and sets tokens and cost from the form', async () => {
+    const withBudget = JSON.parse(JSON.stringify(PROJECT)) as ProjectView;
+    const config = withBudget.project?.config;
+    if (config?.status !== 'valid') throw new Error('fixture');
+    Object.assign(config.config.routes['newsletter'] ?? {}, {
+      budget: {
+        usage: 'openai',
+        period: 'day',
+        reserve: 4000,
+        tokens: 200000,
+      },
+    });
+    const { el, harness } = await openProjectTab(
+      'routes',
+      RoutesPage,
+      withBudget,
+    );
+    expect(text(el, '[data-budget-tokens]')).toBe(
+      'Budget 200000 Tokens pro Tag',
+    );
+    (await menuItem(harness, routeRow(el, 'newsletter'), 'edit')).click();
+    await settle(harness);
+    expect(
+      (el.querySelector('[data-route-budget]') as HTMLInputElement).checked,
+    ).toBe(true);
+    const usage = el.querySelector('#route-budget-usage') as HTMLSelectElement;
+    usage.value = 'anthropic';
+    usage.dispatchEvent(new Event('change'));
+    expect(
+      (el.querySelector('#route-budget-reserve') as HTMLInputElement).value,
+    ).toBe('4000');
+    type(el, '#route-budget-reserve', '8000');
+    type(el, '#route-budget-tokens', '');
+    type(el, '#route-budget-limit', '20.00');
+    type(el, '#route-budget-input', '3');
+    type(el, '#route-budget-output', '15');
+    submit(el);
+    const edit = expectEdit();
+    expect(edit.request.body).toMatchObject({
+      op: 'updateRoute',
+      definition: {
+        budget: {
+          usage: 'anthropic',
+          period: 'day',
+          cost: {
+            limit: '20.00',
+            inputPerMillion: '3',
+            outputPerMillion: '15',
+          },
+        },
+      },
+    });
+    expect(
+      (edit.request.body as { definition: { budget: object } }).definition
+        .budget,
+    ).not.toHaveProperty('tokens');
+    edit.flush(
+      { error: 'value_invalid', fields: ['budget.cost.limit'] },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    await settle(harness);
+    expect(
+      el.querySelector('#route-budget-limit')?.getAttribute('aria-invalid'),
+    ).toBe('true');
+  });
+
   it('does not send a route without a valid name and paths', async () => {
     const { el, harness } = await openProjectTab('routes', RoutesPage, PROJECT);
     (el.querySelector('[data-route-new]') as HTMLButtonElement).click();

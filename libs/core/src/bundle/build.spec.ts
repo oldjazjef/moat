@@ -197,6 +197,54 @@ describe('suggestPolicy (SEC-14)', () => {
     });
     expect(() => checkPolicy(compiled, policy)).not.toThrow();
   });
+
+  it("FR-31: holds the routes' token budgets on the gate as a host budget", () => {
+    const ai = (budget: string) =>
+      loadMoatYaml(`version: 1
+upstreams:
+  openai:
+    origin: "https://api.openai.com"
+    auth: { type: bearer, secret: openai-key }
+routes:
+  chat:
+    method: POST
+    path: "/chat"
+    upstream: openai
+    upstreamPath: "/v1/chat/completions"
+    budget: { usage: openai, period: month, reserve: 4000, tokens: 300000 }
+  summary:
+    method: POST
+    path: "/summary"
+    upstream: openai
+    upstreamPath: "/v1/responses"
+    ${budget}
+`);
+    const both = compileConfig(
+      ai(
+        'budget: { usage: openai, period: month, reserve: 8000, tokens: 200000 }',
+      ),
+      ['openai-key'],
+    );
+    const policy = suggestPolicy(both);
+    expect(policy.upstreams['api.openai.com']?.budget).toEqual({
+      usage: 'openai',
+      period: 'month',
+      reserve: 8000,
+      tokens: 500000,
+    });
+    expect(() => checkPolicy(both, policy)).not.toThrow();
+    // Routes without one token budget in one format and period: no host budget is suggested.
+    for (const other of [
+      'enabled: true',
+      'budget: { usage: openai, period: day, reserve: 100, tokens: 1000 }',
+      'budget: { usage: openai, period: month, reserve: 100, cost: { limit: "5", inputPerMillion: "1", outputPerMillion: "1" } }',
+    ]) {
+      const config = compileConfig(ai(other), ['openai-key']);
+      expect(
+        suggestPolicy(config).upstreams['api.openai.com']?.budget,
+      ).toBeUndefined();
+    }
+  });
 });
 
 describe('createKeyFile', () => {

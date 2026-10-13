@@ -2610,6 +2610,536 @@
       }
     },
     {
+      "name": "host budget in tokens (FR-31, SEC-14)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ],
+            "budget": {
+              "usage": "openai",
+              "period": "month",
+              "reserve": 4000,
+              "tokens": 5000000
+            }
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "host budget and a route budget in the same format",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "budget": {
+              "usage": "openai",
+              "period": "day",
+              "reserve": 4000,
+              "tokens": 100000
+            }
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ],
+            "budget": {
+              "usage": "openai",
+              "period": "month",
+              "reserve": 4000,
+              "tokens": 5000000
+            }
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "route budget in another format than the host budget",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "budget": {
+              "usage": "anthropic",
+              "period": "day",
+              "reserve": 4000,
+              "tokens": 100000
+            }
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ],
+            "budget": {
+              "usage": "openai",
+              "period": "month",
+              "reserve": 4000,
+              "tokens": 5000000
+            }
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_violation"
+      }
+    },
+    {
+      "name": "host budget, but a route there may answer text (T-07)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "text/plain"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ],
+            "budget": {
+              "usage": "openai",
+              "period": "month",
+              "reserve": 4000,
+              "tokens": 5000000
+            }
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_violation"
+      }
+    },
+    {
+      "name": "host budget in cost (prices come from the bundle: not allowed)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ],
+            "budget": {
+              "usage": "openai",
+              "period": "month",
+              "reserve": 4000,
+              "cost": {
+                "limit": "20",
+                "inputPerMillion": "1",
+                "outputPerMillion": "1"
+              }
+            }
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "host budget without reserve",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ],
+            "budget": {
+              "usage": "openai",
+              "period": "month",
+              "tokens": 5000000
+            }
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "host budget without tokens",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ],
+            "budget": {
+              "usage": "openai",
+              "period": "month",
+              "reserve": 4000
+            }
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
       "name": "testing block with loopback",
       "config": {
         "version": 1,

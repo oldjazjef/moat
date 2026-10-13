@@ -112,7 +112,19 @@
               {{ 'routes.quota.' + quota.period | translate: { requests:
               quota.requests } }}
             </span>
-            } @if (!row.route.rateLimit && !row.route.quota) {
+            } @if (row.route.budget; as budget) { @if (budget.tokens !==
+            undefined) {
+            <span class="block" data-budget-tokens>
+              {{ 'routes.budget.tokens.' + budget.period | translate: { tokens:
+              budget.tokens } }}
+            </span>
+            } @if (budget.cost; as cost) {
+            <span class="block" data-budget-cost>
+              {{ 'routes.budget.cost.' + budget.period | translate: { limit:
+              cost.limit } }}
+            </span>
+            } } @if (!row.route.rateLimit && !row.route.quota &&
+            !row.route.budget) {
             <span class="text-muted-foreground text-xs">
               {{ 'routes.rate.policyOnly' | translate }}
             </span>

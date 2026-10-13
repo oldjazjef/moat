@@ -22,6 +22,23 @@ import {
   type Window,
 } from './http/rate-limit';
 import { validateCompiledConfig } from './config/compiled';
+import {
+  addCharge,
+  budgetRefusal,
+  chargeOf,
+  parseAmount,
+  readUsage,
+  reservationOf,
+  answerCharge,
+  settle,
+  current,
+  type BudgetAnswer,
+  type Charge,
+  type Budget,
+  type Spent,
+  type Usage,
+  type UsageFormat,
+} from './http/budget';
 import { checkPolicy, parsePolicy } from './policy/policy';
 import { openKeyFile } from './crypto/keyfile';
 import {
@@ -103,6 +120,7 @@ describe('conformance vectors', () => {
       'http/content-type.json',
       'http/cors.json',
       'http/rate-limit.json',
+      'http/budget.json',
       'gate/hardening.json',
       '../http/gate.json',
       '../http/gate-locked.json',
@@ -386,6 +404,91 @@ describe('conformance vectors', () => {
     it.each(clients)('client: $name', ({ address, expect: want }) => {
       expect(clientKey(address)).toBe(want);
     });
+  });
+
+  describe('http/budget.json', () => {
+    const doc = load<{
+      amounts: { text: string; expect: number | null }[];
+      usage: {
+        name: string;
+        format: UsageFormat;
+        body: string;
+        expect: Usage | null;
+      }[];
+      charges: {
+        name: string;
+        usage: Usage;
+        cost: Budget['cost'] | null;
+        expect: { tokens: number; micros: number };
+      }[];
+      reservations: {
+        name: string;
+        reserve: number;
+        cost: Budget['cost'] | null;
+        expect: Charge;
+      }[];
+      sequences: {
+        name: string;
+        budget: Budget;
+        steps: (
+          | { now: number; request: string }
+          | { now: number; answer: string; result: BudgetAnswer }
+        )[];
+        expect: unknown[];
+      }[];
+    }>('http/budget.json');
+    it.each(doc.amounts)('amount "$text"', ({ text, expect: want }) => {
+      expect(parseAmount(text)).toBe(want);
+    });
+    it.each(doc.usage)('usage: $name', ({ format, body, expect: want }) => {
+      expect(readUsage(format, body)).toEqual(want);
+    });
+    it.each(doc.charges)('charge: $name', ({ usage, cost, expect: want }) => {
+      expect(chargeOf(usage, cost === null ? {} : { cost })).toEqual(want);
+    });
+    it.each(doc.reservations)(
+      'reservation: $name',
+      ({ reserve, cost, expect: want }) => {
+        expect(
+          reservationOf(cost === null ? { reserve } : { reserve, cost }),
+        ).toEqual(want);
+      },
+    );
+    it.each(doc.sequences)(
+      'sequence: $name',
+      ({ budget, steps, expect: want }) => {
+        let spent: Spent | null = null;
+        const open = new Map<string, number>();
+        const view = (now: number) => {
+          const live = current(spent, now);
+          return { tokens: live?.tokens ?? 0, micros: live?.micros ?? 0 };
+        };
+        const got = steps.map((step) => {
+          if ('request' in step) {
+            const refused = budgetRefusal(spent, budget, step.now);
+            if (refused === null) {
+              spent = addCharge(
+                spent,
+                budget.period,
+                reservationOf(budget),
+                step.now,
+              );
+              open.set(step.request, spent.resetAt);
+            }
+            return { refused, spent: view(step.now) };
+          }
+          spent = settle(
+            spent,
+            open.get(step.answer) ?? 0,
+            reservationOf(budget),
+            answerCharge(step.result, budget),
+            step.now,
+          );
+          return { spent: view(step.now) };
+        });
+        expect(got).toEqual(want);
+      },
+    );
   });
 
   describe('gate/hardening.json', () => {

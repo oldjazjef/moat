@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Moat\Gate\Policy;
 
+use Moat\Gate\Config\Budget;
 use Moat\Gate\Config\Method;
 
 final readonly class PolicyUpstream
@@ -17,5 +18,7 @@ final readonly class PolicyUpstream
         public array $pathPrefixes,
         public array $methods,
         public array $secrets,
+        /** FR-31, SEC-14: tokens per period for everything sent to this host (no cost); null = none. */
+        public ?Budget $budget = null,
     ) {}
 }

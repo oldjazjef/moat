@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { budgetSchema } from '../http/budget';
 import { MEDIA_TYPE } from '../http/content-type';
 import { normalisePath } from '../http/path';
 import { MoatRejection, reject } from '../errors';
@@ -43,6 +44,7 @@ export const LIMIT_SCOPES = ['ip', 'route'] as const;
 export const QUOTA_PERIODS = ['day', 'month'] as const;
 export type QuotaPeriod = (typeof QUOTA_PERIODS)[number];
 
+export const JSON_TYPE = 'application/json';
 const name = z.string().regex(NAME);
 const mediaType = z.string().regex(MEDIA_TYPE);
 const routePath = z.string().refine(isRoutePath);
@@ -113,6 +115,11 @@ export const compiledRouteSchema = z.strictObject({
    * bundles without a quota are unchanged; a gate that does not know the key refuses the bundle.
    */
   quota: quotaSchema.optional(),
+  /**
+   * FR-31 for AI APIs: tokens and/or cost per calendar day or month, read from the usage the
+   * answer reports (http/budget.ts). Compiled only when set. The route must answer JSON only.
+   */
+  budget: budgetSchema.optional(),
 });
 
 export const compiledConfigSchema = z.strictObject({
@@ -131,10 +138,13 @@ export type CompiledConfig = z.infer<typeof compiledConfigSchema>;
 export type CompiledRoute = z.infer<typeof compiledRouteSchema>;
 export type CompiledUpstream = z.infer<typeof compiledUpstreamSchema>;
 
+/** SEC-27: at most this many routes of a config have a budget. */
+export const MAX_ROUTE_BUDGETS = 256;
+
 /**
  * Validates a compiled config against the bundle's secret names. Throws `config_invalid`.
  * Besides the shape: every route's upstream exists, every referenced secret is in the bundle, and
- * no two routes share method and path.
+ * no two routes share method and path, budgets only on JSON routes and at most MAX_ROUTE_BUDGETS.
  */
 export function validateCompiledConfig(
   config: JsonValue,
@@ -148,10 +158,22 @@ export function validateCompiledConfig(
   for (const route of Object.values(result.routes)) {
     if (!Object.hasOwn(result.upstreams, route.upstream))
       reject('config_invalid');
+    // A budget is counted from the usage in a JSON answer; any other answer cannot be counted.
+    if (
+      route.budget !== undefined &&
+      !route.responseContentTypes.every((type) => type === JSON_TYPE)
+    )
+      reject('config_invalid');
     const key = `${route.method} ${route.path}`;
     if (seen.has(key)) reject('config_invalid');
     seen.add(key);
   }
+  // SEC-27: the gate's budget store holds every route budget next to the policy's host budgets.
+  if (
+    Object.values(result.routes).filter((route) => route.budget !== undefined)
+      .length > MAX_ROUTE_BUDGETS
+  )
+    reject('config_invalid');
   for (const upstream of Object.values(result.upstreams)) {
     if (upstream.auth !== null && !secretNames.includes(upstream.auth.secret))
       reject('config_invalid');

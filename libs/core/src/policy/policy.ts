@@ -8,9 +8,17 @@ import {
   MAX_TIMEOUT_MS,
   METHODS,
   NAME,
+  JSON_TYPE,
+  QUOTA_PERIODS,
   type CompiledConfig,
 } from '../config/compiled';
 import { reject } from '../errors';
+import {
+  MAX_BUDGET_TOKENS,
+  reserveSchema,
+  USAGE_FORMATS,
+  type UsageFormat,
+} from '../http/budget';
 import { normalisePath } from '../http/path';
 import { hasProtoKey, type JsonValue } from '../json/strict-json';
 
@@ -46,6 +54,19 @@ export const policySchema = z.strictObject({
       pathPrefixes: z.array(prefix).min(1).max(64),
       methods: z.array(z.enum(METHODS)).min(1),
       secrets: z.array(z.string().regex(NAME)).max(16),
+      /**
+       * FR-31, SEC-14, T-07: tokens per calendar day or month for everything sent to this host,
+       * counted from the answers' usage on every route, whatever the bundle says. Only tokens:
+       * prices come from the bundle, and a bundle could set them to 0.
+       */
+      budget: z
+        .strictObject({
+          usage: z.enum(USAGE_FORMATS),
+          period: z.enum(QUOTA_PERIODS),
+          reserve: reserveSchema,
+          tokens: z.int().min(1).max(MAX_BUDGET_TOKENS),
+        })
+        .optional(),
     }),
   ),
   maxBodyBytes: z.int().min(0).max(MAX_BODY_BYTES),
@@ -91,6 +112,26 @@ export function parsePolicy(value: JsonValue): Policy {
   return parsed.data;
 }
 
+/**
+ * The usage format the gate reads on this route's answers: the policy's for the host if it has a
+ * budget, else the route's own, else null (nothing is counted). checkPolicy() ensures they agree.
+ */
+export function usageFormatOf(
+  config: CompiledConfig,
+  policy: Policy,
+  routeName: string,
+): UsageFormat | null {
+  const route = config.routes[routeName];
+  const upstream =
+    route === undefined ? undefined : config.upstreams[route.upstream];
+  if (route === undefined || upstream === undefined) return null;
+  return (
+    policy.upstreams[hostKey(upstream.origin)]?.budget?.usage ??
+    route.budget?.usage ??
+    null
+  );
+}
+
 /** True when `path` equals the prefix or continues it at a segment boundary. */
 export function matchesPrefix(path: string, pathPrefix: string): boolean {
   if (pathPrefix === '/' || path === pathPrefix) return true;
@@ -126,6 +167,16 @@ export function checkPolicy(config: CompiledConfig, policy: Policy): void {
       reject('policy_violation');
     }
     if (route.maxBodyBytes > policy.maxBodyBytes) reject('policy_violation');
+    if (allowed.budget !== undefined) {
+      // Every answer from a host with a budget must be countable, in the policy's format.
+      if (!route.responseContentTypes.every((type) => type === JSON_TYPE))
+        reject('policy_violation');
+      if (
+        route.budget !== undefined &&
+        route.budget.usage !== allowed.budget.usage
+      )
+        reject('policy_violation');
+    }
   }
   if (counterCapacity(config, policy) > policy.limits.maxClients)
     reject('policy_violation');
@@ -156,6 +207,54 @@ export function counterCapacity(
   return count;
 }
 
+/**
+ * FR-31, SEC-14: for each host whose routes all have a token budget in the same format and
+ * period (and answer JSON only), a host budget of their sum — so the bundle's limits also hold
+ * on the gate when a later bundle lifts them.
+ */
+function hostBudgets(
+  config: CompiledConfig,
+): Map<string, NonNullable<Policy['upstreams'][string]['budget']>> {
+  const byHost = new Map<string, CompiledConfig['routes'][string][]>();
+  for (const route of Object.values(config.routes)) {
+    const upstream = config.upstreams[route.upstream];
+    if (upstream === undefined) continue;
+    const key = hostKey(upstream.origin);
+    byHost.set(key, [...(byHost.get(key) ?? []), route]);
+  }
+  const budgets = new Map<
+    string,
+    NonNullable<Policy['upstreams'][string]['budget']>
+  >();
+  for (const [key, routes] of byHost) {
+    const first = routes[0]?.budget;
+    if (first === undefined) continue;
+    let tokens = 0;
+    let reserve = 0;
+    const fits = routes.every((route) => {
+      const budget = route.budget;
+      if (
+        budget?.tokens === undefined ||
+        budget.usage !== first.usage ||
+        budget.period !== first.period ||
+        !route.responseContentTypes.every((type) => type === JSON_TYPE)
+      )
+        return false;
+      tokens += budget.tokens;
+      reserve = Math.max(reserve, budget.reserve);
+      return true;
+    });
+    if (fits && tokens <= MAX_BUDGET_TOKENS)
+      budgets.set(key, {
+        usage: first.usage,
+        period: first.period,
+        reserve,
+        tokens,
+      });
+  }
+  return budgets;
+}
+
 /** What `moat policy suggest` proposes: enough for a contact form, little for an abuser. */
 export const DEFAULT_LIMITS: Policy['limits'] = {
   perIp: { requests: 30, windowSeconds: 60 },
@@ -183,6 +282,8 @@ export function suggestPolicy(config: CompiledConfig): Policy {
       entry.pathPrefixes.push(route.upstreamPath);
     if (!entry.methods.includes(route.method)) entry.methods.push(route.method);
   }
+  for (const [key, budget] of hostBudgets(config))
+    if (upstreams[key] !== undefined) upstreams[key].budget = budget;
   const routes = Object.values(config.routes);
   const policy: Policy = {
     v: 1,

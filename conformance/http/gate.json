@@ -1,5 +1,5 @@
 {
-  "description": "Request-level cases against a running gate (SEC-41 to SEC-46, FR-18): the gate file under a web server, with this config and policy accepted, calls a fake HTTPS upstream on 127.0.0.1. The runner replaces {port} with the fake upstream's port and {caFile} with its certificate, seals `secrets` for the gate and signs the bundle. The fake upstream answers by path: /echo returns what it received as JSON {method, path, query, headers (lower-case names), body}, with every occurrence of the secret replaced by <SECRET>; /redirect answers 302; /html text/html; /big 100 000 bytes of JSON; /slow waits 2 s; /reflect returns the Authorization header as is; /set-cookie adds Set-Cookie and X-Upstream; /status/<code> answers that status. `expect.json` is a subset of the client's JSON answer (null = key absent), `expect.headers` of its headers (null = absent), `upstreamCalls` counts requests the fake upstream saw; a header expected as \"<any>\" must be present with any value. Cases run in order against one gate, so the rate-limit cases see the counts of the cases before them. The secret must never appear in an answer or in the gate's log.",
+  "description": "Request-level cases against a running gate (SEC-41 to SEC-46, FR-18): the gate file under a web server, with this config and policy accepted, calls a fake HTTPS upstream on 127.0.0.1. The runner replaces {port} with the fake upstream's port and {caFile} with its certificate, seals `secrets` for the gate and signs the bundle. The fake upstream answers by path: /echo returns what it received as JSON {method, path, query, headers (lower-case names), body}, with every occurrence of the secret replaced by <SECRET>; /redirect answers 302; /html text/html; /big 100 000 bytes of JSON; /slow waits 2 s; /reflect returns the Authorization header as is; /set-cookie adds Set-Cookie and X-Upstream; /status/<code> answers that status; /usage answers OpenAI-style JSON reporting 60 input and 40 output tokens; /no-usage answers JSON without usage. `expect.json` is a subset of the client's JSON answer (null = key absent), `expect.headers` of its headers (null = absent), `upstreamCalls` counts requests the fake upstream saw; a header expected as \"<any>\" must be present with any value. Cases run in order against one gate, so the rate-limit cases see the counts of the cases before them. The secret must never appear in an answer or in the gate's log.",
   "config": {
     "version": 1,
     "upstreams": {
@@ -264,6 +264,60 @@
           "requests": 1,
           "period": "day"
         }
+      },
+      "budget": {
+        "method": "GET",
+        "path": "/budget",
+        "upstream": "fake",
+        "upstreamPath": "/usage",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null,
+        "budget": {
+          "usage": "openai",
+          "period": "day",
+          "reserve": 50,
+          "tokens": 150
+        }
+      },
+      "budget-unreadable": {
+        "method": "GET",
+        "path": "/budget-unreadable",
+        "upstream": "fake",
+        "upstreamPath": "/no-usage",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null,
+        "budget": {
+          "usage": "openai",
+          "period": "day",
+          "reserve": 1000,
+          "tokens": 1000
+        }
+      },
+      "budget-stream": {
+        "method": "GET",
+        "path": "/budget-stream",
+        "upstream": "fake",
+        "upstreamPath": "/html",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null,
+        "budget": {
+          "usage": "openai",
+          "period": "day",
+          "reserve": 500,
+          "tokens": 500
+        }
       }
     }
   },
@@ -279,7 +333,9 @@
           "/slow",
           "/reflect",
           "/set-cookie",
-          "/status"
+          "/status",
+          "/usage",
+          "/no-usage"
         ],
         "methods": ["GET", "POST", "DELETE"],
         "secrets": ["api-token"]
@@ -1174,6 +1230,111 @@
       "expect": {
         "status": 429,
         "error": "quota_exceeded",
+        "headers": {
+          "retry-after": "<any>"
+        },
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "budget: below the day's tokens, the call passes and its usage (100 tokens) is counted (FR-31)",
+      "request": {
+        "method": "GET",
+        "path": "/budget",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "budget: still below (100 of 150), passes; this answer takes it to 200 (its usage beyond its reservation of 50)",
+      "request": {
+        "method": "GET",
+        "path": "/budget",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "budget: the day's tokens are used up, refused with Retry-After until midnight UTC, nothing forwarded (T-07)",
+      "request": {
+        "method": "GET",
+        "path": "/budget",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 429,
+        "error": "budget_exhausted",
+        "headers": {
+          "retry-after": "<any>"
+        },
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "budget: an answer without readable usage is not passed on (fail closed, SEC-46), and its reservation (1000 tokens) stays charged",
+      "request": {
+        "method": "GET",
+        "path": "/budget-unreadable",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 502,
+        "error": "upstream_usage_invalid",
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "budget: after an answer that could not be counted, its reservation used up the day (T-07)",
+      "request": {
+        "method": "GET",
+        "path": "/budget-unreadable",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 429,
+        "error": "budget_exhausted",
+        "headers": {
+          "retry-after": "<any>"
+        },
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "budget: the request reached the upstream, but its answer is not JSON (a stream): not passed on, the reservation stays charged",
+      "request": {
+        "method": "GET",
+        "path": "/budget-stream",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 502,
+        "error": "upstream_content_type",
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "budget: so a client asking for streams cannot spend beyond the budget (T-07)",
+      "request": {
+        "method": "GET",
+        "path": "/budget-stream",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 429,
+        "error": "budget_exhausted",
         "headers": {
           "retry-after": "<any>"
         },

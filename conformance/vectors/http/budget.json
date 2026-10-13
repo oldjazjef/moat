@@ -1,0 +1,1148 @@
+{
+  "description": "Budgets for AI APIs (FR-31, SEC-45, T-07). `amounts`: decimal text → micros (millionths) or null. `usage`: the usage an answer (`body`, its exact text) reports in each format → `{input, output}` tokens or null (the gate answers `upstream_usage_invalid`). `charges`: usage and an optional `cost` → `{tokens, micros}`, micros = ⌈(input × inputPerMillion + output × outputPerMillion) in micros / 10^6⌉. `reservations`: what one request reserves, `reserve` tokens priced as input at the higher of the two prices. `sequences`: steps against one budget, starting with nothing spent. `{now, request}`: refused (seconds until the period ends) when the spending — open reservations included — has reached `tokens` or the cost `limit`, else null and the reservation is added → `{refused, spent}`. `{now, answer, result}`: the answer to that earlier request; its reservation is replaced by the charge of `result` (`{input, output}` usage; `uncountable` = the reservation itself; `not_charged` = nothing), unless the period it was made in has ended → `{spent}`. `spent` is `{tokens, micros}` of the period holding `now` (0 once it ended); both are capped at 10^15 tokens and 10^17 micros.",
+  "amounts": [
+    {
+      "text": "0",
+      "expect": 0
+    },
+    {
+      "text": "20",
+      "expect": 20000000
+    },
+    {
+      "text": "20.5",
+      "expect": 20500000
+    },
+    {
+      "text": "2.50",
+      "expect": 2500000
+    },
+    {
+      "text": "0.000001",
+      "expect": 1
+    },
+    {
+      "text": "999999999.999999",
+      "expect": 999999999999999
+    },
+    {
+      "text": "1000000000",
+      "expect": null
+    },
+    {
+      "text": "1.0000001",
+      "expect": null
+    },
+    {
+      "text": "020",
+      "expect": null
+    },
+    {
+      "text": ".5",
+      "expect": null
+    },
+    {
+      "text": "5.",
+      "expect": null
+    },
+    {
+      "text": "-1",
+      "expect": null
+    },
+    {
+      "text": "1e3",
+      "expect": null
+    },
+    {
+      "text": " 1",
+      "expect": null
+    },
+    {
+      "text": "1,5",
+      "expect": null
+    },
+    {
+      "text": "",
+      "expect": null
+    }
+  ],
+  "usage": [
+    {
+      "name": "openai chat completions",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":120,\"completion_tokens\":30,\"total_tokens\":150}}",
+      "expect": {
+        "input": 120,
+        "output": 30
+      }
+    },
+    {
+      "name": "openai responses API",
+      "format": "openai",
+      "body": "{\"usage\":{\"input_tokens\":500,\"output_tokens\":1200,\"total_tokens\":1700,\"output_tokens_details\":{\"reasoning_tokens\":900}}}",
+      "expect": {
+        "input": 500,
+        "output": 1200
+      }
+    },
+    {
+      "name": "openai without usage",
+      "format": "openai",
+      "body": "{\"choices\":[]}",
+      "expect": null
+    },
+    {
+      "name": "openai usage null",
+      "format": "openai",
+      "body": "{\"usage\":null}",
+      "expect": null
+    },
+    {
+      "name": "openai responses API without output_tokens",
+      "format": "openai",
+      "body": "{\"usage\":{\"input_tokens\":5,\"prompt_tokens\":5,\"completion_tokens\":1}}",
+      "expect": null
+    },
+    {
+      "name": "openai negative count",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":-1,\"completion_tokens\":3}}",
+      "expect": null
+    },
+    {
+      "name": "openai fractional count",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":1.5,\"completion_tokens\":3}}",
+      "expect": null
+    },
+    {
+      "name": "openai count as a string",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":\"10\",\"completion_tokens\":3}}",
+      "expect": null
+    },
+    {
+      "name": "openai count above 10^9",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":1000000001,\"completion_tokens\":3}}",
+      "expect": null
+    },
+    {
+      "name": "openai count of exactly 10^9",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":1000000000,\"completion_tokens\":0}}",
+      "expect": {
+        "input": 1000000000,
+        "output": 0
+      }
+    },
+    {
+      "name": "anthropic messages",
+      "format": "anthropic",
+      "body": "{\"usage\":{\"input_tokens\":2095,\"output_tokens\":503}}",
+      "expect": {
+        "input": 2095,
+        "output": 503
+      }
+    },
+    {
+      "name": "anthropic with cache writes and reads",
+      "format": "anthropic",
+      "body": "{\"usage\":{\"input_tokens\":50,\"cache_creation_input_tokens\":1000,\"cache_read_input_tokens\":4000,\"output_tokens\":20}}",
+      "expect": {
+        "input": 5050,
+        "output": 20
+      }
+    },
+    {
+      "name": "anthropic optional cache field null counts as 0",
+      "format": "anthropic",
+      "body": "{\"usage\":{\"input_tokens\":50,\"cache_creation_input_tokens\":null,\"output_tokens\":20}}",
+      "expect": {
+        "input": 50,
+        "output": 20
+      }
+    },
+    {
+      "name": "anthropic output_tokens null",
+      "format": "anthropic",
+      "body": "{\"usage\":{\"input_tokens\":50,\"output_tokens\":null}}",
+      "expect": null
+    },
+    {
+      "name": "anthropic without output_tokens",
+      "format": "anthropic",
+      "body": "{\"usage\":{\"input_tokens\":50}}",
+      "expect": null
+    },
+    {
+      "name": "gemini",
+      "format": "gemini",
+      "body": "{\"usageMetadata\":{\"promptTokenCount\":40,\"candidatesTokenCount\":60,\"totalTokenCount\":100}}",
+      "expect": {
+        "input": 40,
+        "output": 60
+      }
+    },
+    {
+      "name": "gemini with thoughts and tool prompt",
+      "format": "gemini",
+      "body": "{\"usageMetadata\":{\"promptTokenCount\":40,\"toolUsePromptTokenCount\":10,\"candidatesTokenCount\":60,\"thoughtsTokenCount\":200}}",
+      "expect": {
+        "input": 50,
+        "output": 260
+      }
+    },
+    {
+      "name": "gemini without candidates",
+      "format": "gemini",
+      "body": "{\"usageMetadata\":{\"promptTokenCount\":40}}",
+      "expect": {
+        "input": 40,
+        "output": 0
+      }
+    },
+    {
+      "name": "gemini without promptTokenCount",
+      "format": "gemini",
+      "body": "{\"usageMetadata\":{\"candidatesTokenCount\":60}}",
+      "expect": null
+    },
+    {
+      "name": "gemini body with an openai usage",
+      "format": "gemini",
+      "body": "{\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1}}",
+      "expect": null
+    },
+    {
+      "name": "answer is an array",
+      "format": "openai",
+      "body": "[{\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1}}]",
+      "expect": null
+    },
+    {
+      "name": "answer is a string",
+      "format": "anthropic",
+      "body": "\"usage\"",
+      "expect": null
+    },
+    {
+      "name": "floats and negative numbers elsewhere in the answer",
+      "format": "openai",
+      "body": "{\"temperature\":0.7,\"logprobs\":[{\"logprob\":-0.25}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":4}}",
+      "expect": {
+        "input": 3,
+        "output": 4
+      }
+    },
+    {
+      "name": "count written as 100.0",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":100.0,\"completion_tokens\":1}}",
+      "expect": {
+        "input": 100,
+        "output": 1
+      }
+    },
+    {
+      "name": "count written as 1e2",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":1e2,\"completion_tokens\":1}}",
+      "expect": {
+        "input": 100,
+        "output": 1
+      }
+    },
+    {
+      "name": "count written as -0",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":-0,\"completion_tokens\":1}}",
+      "expect": {
+        "input": 0,
+        "output": 1
+      }
+    },
+    {
+      "name": "count overflowing to infinity",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":1e400,\"completion_tokens\":1}}",
+      "expect": null
+    },
+    {
+      "name": "count of 10^20",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":100000000000000000000,\"completion_tokens\":1}}",
+      "expect": null
+    },
+    {
+      "name": "duplicated key: the last one counts",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":1,\"prompt_tokens\":7,\"completion_tokens\":1}}",
+      "expect": {
+        "input": 7,
+        "output": 1
+      }
+    },
+    {
+      "name": "a key starting with NUL elsewhere in the answer",
+      "format": "openai",
+      "body": "{\"\\u0000a\":1,\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1}}",
+      "expect": {
+        "input": 1,
+        "output": 1
+      }
+    },
+    {
+      "name": "not JSON",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":1,",
+      "expect": null
+    },
+    {
+      "name": "empty answer",
+      "format": "openai",
+      "body": "",
+      "expect": null
+    },
+    {
+      "name": "trailing text after the JSON",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1}} x",
+      "expect": null
+    },
+    {
+      "name": "escaped surrogate pair",
+      "format": "openai",
+      "body": "{\"text\":\"\\ud83d\\ude00\",\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1}}",
+      "expect": {
+        "input": 1,
+        "output": 1
+      }
+    },
+    {
+      "name": "lone high surrogate",
+      "format": "openai",
+      "body": "{\"text\":\"\\ud83d\",\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1}}",
+      "expect": null
+    },
+    {
+      "name": "lone low surrogate",
+      "format": "openai",
+      "body": "{\"text\":\"\\ude00\",\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1}}",
+      "expect": null
+    },
+    {
+      "name": "escaped backslash before u",
+      "format": "openai",
+      "body": "{\"text\":\"\\\\ud83d\",\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1}}",
+      "expect": {
+        "input": 1,
+        "output": 1
+      }
+    },
+    {
+      "name": "brackets inside strings do not nest",
+      "format": "openai",
+      "body": "{\"text\":\"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\",\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1}}",
+      "expect": {
+        "input": 1,
+        "output": 1
+      }
+    },
+    {
+      "name": "usage at the deepest allowed level (64)",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1},\"x\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}",
+      "expect": {
+        "input": 1,
+        "output": 1
+      }
+    },
+    {
+      "name": "one level too deep",
+      "format": "openai",
+      "body": "{\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1},\"x\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}",
+      "expect": null
+    }
+  ],
+  "charges": [
+    {
+      "name": "tokens only",
+      "usage": {
+        "input": 120,
+        "output": 30
+      },
+      "cost": null,
+      "expect": {
+        "tokens": 150,
+        "micros": 0
+      }
+    },
+    {
+      "name": "rounded up to the next micro",
+      "usage": {
+        "input": 1,
+        "output": 0
+      },
+      "cost": {
+        "limit": "100",
+        "inputPerMillion": "2.50",
+        "outputPerMillion": "10.00"
+      },
+      "expect": {
+        "tokens": 1,
+        "micros": 3
+      }
+    },
+    {
+      "name": "exact",
+      "usage": {
+        "input": 1000000,
+        "output": 1000000
+      },
+      "cost": {
+        "limit": "100",
+        "inputPerMillion": "2.50",
+        "outputPerMillion": "10.00"
+      },
+      "expect": {
+        "tokens": 2000000,
+        "micros": 12500000
+      }
+    },
+    {
+      "name": "free model",
+      "usage": {
+        "input": 5000,
+        "output": 5000
+      },
+      "cost": {
+        "limit": "100",
+        "inputPerMillion": "0",
+        "outputPerMillion": "0"
+      },
+      "expect": {
+        "tokens": 10000,
+        "micros": 0
+      }
+    },
+    {
+      "name": "largest answer at the highest price",
+      "usage": {
+        "input": 1000000000,
+        "output": 1000000000
+      },
+      "cost": {
+        "limit": "100",
+        "inputPerMillion": "1000",
+        "outputPerMillion": "1000"
+      },
+      "expect": {
+        "tokens": 2000000000,
+        "micros": 2000000000000
+      }
+    },
+    {
+      "name": "sub-micro prices add up before rounding",
+      "usage": {
+        "input": 3,
+        "output": 3
+      },
+      "cost": {
+        "limit": "100",
+        "inputPerMillion": "0.1",
+        "outputPerMillion": "0.2"
+      },
+      "expect": {
+        "tokens": 6,
+        "micros": 1
+      }
+    }
+  ],
+  "reservations": [
+    {
+      "name": "tokens only",
+      "reserve": 4096,
+      "cost": null,
+      "expect": {
+        "tokens": 4096,
+        "micros": 0
+      }
+    },
+    {
+      "name": "output dearer",
+      "reserve": 1000,
+      "cost": {
+        "limit": "1",
+        "inputPerMillion": "2.50",
+        "outputPerMillion": "10.00"
+      },
+      "expect": {
+        "tokens": 1000,
+        "micros": 10000
+      }
+    },
+    {
+      "name": "input dearer",
+      "reserve": 3,
+      "cost": {
+        "limit": "1",
+        "inputPerMillion": "0.5",
+        "outputPerMillion": "0.1"
+      },
+      "expect": {
+        "tokens": 3,
+        "micros": 2
+      }
+    },
+    {
+      "name": "largest at the highest price",
+      "reserve": 1000000000,
+      "cost": {
+        "limit": "1",
+        "inputPerMillion": "1000",
+        "outputPerMillion": "1000"
+      },
+      "expect": {
+        "tokens": 1000000000,
+        "micros": 1000000000000
+      }
+    }
+  ],
+  "sequences": [
+    {
+      "name": "tokens: each request reserves, its answer replaces the reservation; refused once reached, until the day ends",
+      "budget": {
+        "usage": "openai",
+        "period": "day",
+        "reserve": 300,
+        "tokens": 1000
+      },
+      "steps": [
+        {
+          "now": 1791763210,
+          "request": "a"
+        },
+        {
+          "now": 1791763211,
+          "answer": "a",
+          "result": {
+            "input": 400,
+            "output": 100
+          }
+        },
+        {
+          "now": 1791763220,
+          "request": "b"
+        },
+        {
+          "now": 1791763221,
+          "answer": "b",
+          "result": {
+            "input": 400,
+            "output": 99
+          }
+        },
+        {
+          "now": 1791763230,
+          "request": "c"
+        },
+        {
+          "now": 1791763231,
+          "answer": "c",
+          "result": {
+            "input": 1,
+            "output": 0
+          }
+        },
+        {
+          "now": 1791763240,
+          "request": "d"
+        },
+        {
+          "now": 1791849599,
+          "request": "e"
+        },
+        {
+          "now": 1791849600,
+          "request": "f"
+        },
+        {
+          "now": 1791849601,
+          "answer": "f",
+          "result": {
+            "input": 1,
+            "output": 1
+          }
+        }
+      ],
+      "expect": [
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 300,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 500,
+            "micros": 0
+          }
+        },
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 800,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 999,
+            "micros": 0
+          }
+        },
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 1299,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 1000,
+            "micros": 0
+          }
+        },
+        {
+          "refused": 86360,
+          "spent": {
+            "tokens": 1000,
+            "micros": 0
+          }
+        },
+        {
+          "refused": 1,
+          "spent": {
+            "tokens": 1000,
+            "micros": 0
+          }
+        },
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 300,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 2,
+            "micros": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "requests in flight count with their reservation",
+      "budget": {
+        "usage": "openai",
+        "period": "day",
+        "reserve": 400,
+        "tokens": 1000
+      },
+      "steps": [
+        {
+          "now": 1791763200,
+          "request": "a"
+        },
+        {
+          "now": 1791763201,
+          "request": "b"
+        },
+        {
+          "now": 1791763202,
+          "request": "c"
+        },
+        {
+          "now": 1791763203,
+          "request": "d"
+        },
+        {
+          "now": 1791763204,
+          "answer": "a",
+          "result": {
+            "input": 100,
+            "output": 0
+          }
+        },
+        {
+          "now": 1791763205,
+          "answer": "b",
+          "result": "not_charged"
+        },
+        {
+          "now": 1791763206,
+          "request": "e"
+        },
+        {
+          "now": 1791763207,
+          "answer": "c",
+          "result": "uncountable"
+        },
+        {
+          "now": 1791763208,
+          "answer": "e",
+          "result": {
+            "input": 10,
+            "output": 0
+          }
+        },
+        {
+          "now": 1791763209,
+          "request": "f"
+        }
+      ],
+      "expect": [
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 400,
+            "micros": 0
+          }
+        },
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 800,
+            "micros": 0
+          }
+        },
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 1200,
+            "micros": 0
+          }
+        },
+        {
+          "refused": 86397,
+          "spent": {
+            "tokens": 1200,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 900,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 500,
+            "micros": 0
+          }
+        },
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 900,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 900,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 510,
+            "micros": 0
+          }
+        },
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 910,
+            "micros": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "an answer that cannot be counted keeps its reservation, an error releases it",
+      "budget": {
+        "usage": "anthropic",
+        "period": "month",
+        "reserve": 600,
+        "tokens": 1000
+      },
+      "steps": [
+        {
+          "now": 1791763200,
+          "request": "a"
+        },
+        {
+          "now": 1791763201,
+          "answer": "a",
+          "result": "uncountable"
+        },
+        {
+          "now": 1791763202,
+          "request": "b"
+        },
+        {
+          "now": 1791763203,
+          "answer": "b",
+          "result": "not_charged"
+        },
+        {
+          "now": 1791763204,
+          "request": "c"
+        },
+        {
+          "now": 1791763205,
+          "answer": "c",
+          "result": {
+            "input": 0,
+            "output": 0
+          }
+        },
+        {
+          "now": 1791763206,
+          "request": "d"
+        },
+        {
+          "now": 1791763207,
+          "answer": "d",
+          "result": "uncountable"
+        },
+        {
+          "now": 1791763208,
+          "request": "e"
+        }
+      ],
+      "expect": [
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 600,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 600,
+            "micros": 0
+          }
+        },
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 1200,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 600,
+            "micros": 0
+          }
+        },
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 1200,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 600,
+            "micros": 0
+          }
+        },
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 1200,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 1200,
+            "micros": 0
+          }
+        },
+        {
+          "refused": 1727992,
+          "spent": {
+            "tokens": 1200,
+            "micros": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "cost: the reservation is priced at the higher price; refused once the limit is reached",
+      "budget": {
+        "usage": "openai",
+        "period": "month",
+        "reserve": 500,
+        "cost": {
+          "limit": "0.01",
+          "inputPerMillion": "2.50",
+          "outputPerMillion": "10.00"
+        }
+      },
+      "steps": [
+        {
+          "now": 1791763200,
+          "request": "a"
+        },
+        {
+          "now": 1791763201,
+          "answer": "a",
+          "result": {
+            "input": 1000,
+            "output": 500
+          }
+        },
+        {
+          "now": 1791763202,
+          "request": "b"
+        },
+        {
+          "now": 1791763203,
+          "answer": "b",
+          "result": {
+            "input": 1000,
+            "output": 0
+          }
+        },
+        {
+          "now": 1791763204,
+          "request": "c"
+        },
+        {
+          "now": 1793491200,
+          "request": "d"
+        }
+      ],
+      "expect": [
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 500,
+            "micros": 5000
+          }
+        },
+        {
+          "spent": {
+            "tokens": 1500,
+            "micros": 7500
+          }
+        },
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 2000,
+            "micros": 12500
+          }
+        },
+        {
+          "spent": {
+            "tokens": 2500,
+            "micros": 10000
+          }
+        },
+        {
+          "refused": 1727996,
+          "spent": {
+            "tokens": 2500,
+            "micros": 10000
+          }
+        },
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 500,
+            "micros": 5000
+          }
+        }
+      ]
+    },
+    {
+      "name": "tokens and cost: whichever is reached first",
+      "budget": {
+        "usage": "gemini",
+        "period": "day",
+        "reserve": 100,
+        "tokens": 1000000,
+        "cost": {
+          "limit": "0.0005",
+          "inputPerMillion": "1",
+          "outputPerMillion": "1"
+        }
+      },
+      "steps": [
+        {
+          "now": 1791763200,
+          "request": "a"
+        },
+        {
+          "now": 1791763201,
+          "answer": "a",
+          "result": {
+            "input": 300,
+            "output": 200
+          }
+        },
+        {
+          "now": 1791763202,
+          "request": "b"
+        }
+      ],
+      "expect": [
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 100,
+            "micros": 100
+          }
+        },
+        {
+          "spent": {
+            "tokens": 500,
+            "micros": 500
+          }
+        },
+        {
+          "refused": 86398,
+          "spent": {
+            "tokens": 500,
+            "micros": 500
+          }
+        }
+      ]
+    },
+    {
+      "name": "an answer after its period ended leaves the new period alone",
+      "budget": {
+        "usage": "openai",
+        "period": "day",
+        "reserve": 100,
+        "tokens": 1000
+      },
+      "steps": [
+        {
+          "now": 1791849599,
+          "request": "a"
+        },
+        {
+          "now": 1791849605,
+          "answer": "a",
+          "result": {
+            "input": 50,
+            "output": 0
+          }
+        },
+        {
+          "now": 1791849606,
+          "request": "b"
+        },
+        {
+          "now": 1791849607,
+          "answer": "b",
+          "result": {
+            "input": 5,
+            "output": 5
+          }
+        }
+      ],
+      "expect": [
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 100,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 0,
+            "micros": 0
+          }
+        },
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 100,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 10,
+            "micros": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "an answer above its reservation is counted in full (the only overshoot)",
+      "budget": {
+        "usage": "anthropic",
+        "period": "day",
+        "reserve": 50,
+        "tokens": 100
+      },
+      "steps": [
+        {
+          "now": 1791763200,
+          "request": "a"
+        },
+        {
+          "now": 1791763201,
+          "answer": "a",
+          "result": {
+            "input": 90,
+            "output": 5000
+          }
+        },
+        {
+          "now": 1791763202,
+          "request": "b"
+        }
+      ],
+      "expect": [
+        {
+          "refused": null,
+          "spent": {
+            "tokens": 50,
+            "micros": 0
+          }
+        },
+        {
+          "spent": {
+            "tokens": 5090,
+            "micros": 0
+          }
+        },
+        {
+          "refused": 86398,
+          "spent": {
+            "tokens": 5090,
+            "micros": 0
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=../schema/moat.schema.json
+#
+# Recipe (FR-43): a chat box on your website → OpenAI, with a budget per day (FR-31).
+# The OpenAI key is never written here: seal it with `moat secret seal <gate> openai-key`.
+# `moat policy suggest` then proposes a policy whose host budget holds these tokens on the gate,
+# whatever a later bundle says.
+version: 1
+
+upstreams:
+  openai:
+    origin: 'https://api.openai.com'
+    auth:
+      type: bearer
+      secret: openai-key
+    timeout: '60s'
+
+routes:
+  chat:
+    method: POST
+    path: '/chat'
+    upstream: openai
+    upstreamPath: '/v1/chat/completions'
+    maxBodySize: '32KiB'
+    # A visitor chats a little, a script a lot (FR-30).
+    rateLimit:
+      requests: 20
+      window: '10m'
+    # What the whole route may use per day: the gate reads the usage of every answer and
+    # answers 429 budget_exhausted once tokens or cost are spent, until midnight UTC.
+    budget:
+      usage: openai
+      period: day
+      # Reserved per request before it is forwarded and charged in full when the answer cannot
+      # be counted (a stream, a timeout): set it to the max_tokens your website sends plus the prompt.
+      reserve: 4000
+      tokens: 500000
+      cost:
+        limit: '5.00'
+        # Example prices in USD per million tokens: use your model's current prices.
+        inputPerMillion: '2.50'
+        outputPerMillion: '10.00'
+    # When the chat runs on another site than the gate, list that site (FR-15):
+    # origins: ['https://www.example.ch']

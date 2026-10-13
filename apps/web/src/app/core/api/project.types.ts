@@ -27,6 +27,23 @@ export interface Quota {
   readonly period: (typeof QUOTA_PERIODS)[number];
 }
 
+/** FR-31: where an AI API reports the tokens an answer used (USAGE_FORMATS in libs/core). */
+export const USAGE_FORMATS = ['openai', 'anthropic', 'gemini'] as const;
+
+/** FR-31: tokens and/or cost per calendar day or month (UTC); amounts as decimal text. */
+export interface Budget {
+  readonly usage: (typeof USAGE_FORMATS)[number];
+  readonly period: (typeof QUOTA_PERIODS)[number];
+  /** Tokens reserved per request, charged in full when its answer cannot be counted. */
+  readonly reserve: number;
+  readonly tokens?: number;
+  readonly cost?: {
+    readonly limit: string;
+    readonly inputPerMillion: string;
+    readonly outputPerMillion: string;
+  };
+}
+
 export interface CompiledRoute {
   readonly method: string;
   readonly path: string;
@@ -40,6 +57,8 @@ export interface CompiledRoute {
   readonly rateLimit: RateLimit | null;
   /** FR-31: requests per calendar day or month (UTC) for the whole route; absent = none. */
   readonly quota?: Quota;
+  /** FR-31: a budget for an AI API; absent = none. */
+  readonly budget?: Budget;
 }
 
 export interface CompiledUpstream {
@@ -184,6 +203,7 @@ export interface RouteDefinition {
     readonly per?: 'ip' | 'route';
   };
   readonly quota?: Quota;
+  readonly budget?: Budget;
 }
 
 /** An upstream as moat.yaml writes it (UpstreamInput in libs/core/src/config/edit.ts). */

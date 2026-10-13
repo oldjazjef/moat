@@ -251,6 +251,62 @@
               "period"
             ],
             "additionalProperties": false
+          },
+          "budget": {
+            "type": "object",
+            "properties": {
+              "usage": {
+                "type": "string",
+                "enum": [
+                  "openai",
+                  "anthropic",
+                  "gemini"
+                ]
+              },
+              "period": {
+                "type": "string",
+                "enum": [
+                  "day",
+                  "month"
+                ]
+              },
+              "reserve": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000000000
+              },
+              "tokens": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000000000000
+              },
+              "cost": {
+                "type": "object",
+                "properties": {
+                  "limit": {
+                    "type": "string"
+                  },
+                  "inputPerMillion": {
+                    "type": "string"
+                  },
+                  "outputPerMillion": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "limit",
+                  "inputPerMillion",
+                  "outputPerMillion"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "usage",
+              "period",
+              "reserve"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [

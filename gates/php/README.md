@@ -73,21 +73,22 @@ environment, no redirects, TLS verification always on, timeouts and a response s
 client header, cookie or query parameter is forwarded; only the upstream's status, media type and
 body come back. Errors are `{"error":"<code>"}`:
 
-| Status | Code                                                                       |
-| ------ | -------------------------------------------------------------------------- |
-| 400    | `path_invalid`                                                             |
-| 403    | `origin_forbidden`, `preflight_rejected`                                   |
-| 404    | `not_found`                                                                |
-| 405    | `method_not_allowed` (with `Allow`)                                        |
-| 413    | `body_too_large`                                                           |
-| 415    | `unsupported_media_type`                                                   |
-| 429    | `rate_limited`, `quota_exceeded` (with `Retry-After`)                      |
-| 500    | `secret_unavailable`, `internal_error`                                     |
-| 502    | `upstream_forbidden`, `upstream_unreachable`, `upstream_redirect`,         |
-|        | `upstream_content_type`, `upstream_too_large`, `upstream_reflected_secret` |
-| 503    | `gate_not_configured`, `gate_disabled`, `route_disabled`,                  |
-|        | `rate_limit_unavailable`                                                   |
-| 504    | `upstream_timeout`                                                         |
+| Status | Code                                                                        |
+| ------ | --------------------------------------------------------------------------- |
+| 400    | `path_invalid`                                                              |
+| 403    | `origin_forbidden`, `preflight_rejected`                                    |
+| 404    | `not_found`                                                                 |
+| 405    | `method_not_allowed` (with `Allow`)                                         |
+| 413    | `body_too_large`                                                            |
+| 415    | `unsupported_media_type`                                                    |
+| 429    | `rate_limited`, `quota_exceeded`, `budget_exhausted` (with `Retry-After`)   |
+| 500    | `secret_unavailable`, `internal_error`                                      |
+| 502    | `upstream_forbidden`, `upstream_unreachable`, `upstream_redirect`,          |
+|        | `upstream_content_type`, `upstream_too_large`, `upstream_reflected_secret`, |
+|        | `upstream_usage_invalid`                                                    |
+| 503    | `gate_not_configured`, `gate_disabled`, `route_disabled`,                   |
+|        | `rate_limit_unavailable`                                                    |
+| 504    | `upstream_timeout`                                                          |
 
 The log gets these codes only, never a value.
 
@@ -153,6 +154,58 @@ limits of the bundle in force: a bundle that changes a route's name, rate limit 
 the route counters afresh, so counters of earlier bundles (a quota's lasts up to a month) cannot
 fill the store. The policy's counters keep running. The first request after updating from a gate
 without quotas starts the store afresh.
+
+## Budgets for AI APIs (FR-31)
+
+A budget caps what an AI API may use per calendar day or month (UTC), counted from the usage
+the API reports in its own answer:
+
+```yaml
+routes:
+  chat:
+    # …
+    budget:
+      usage: openai # where the answer reports its usage: openai, anthropic or gemini
+      period: day
+      reserve: 4000 # tokens one request may use at most (max_tokens plus the prompt)
+      tokens: 200000 # input + output tokens per day
+      cost: # optional, in the API's currency
+        limit: '5.00'
+        inputPerMillion: '2.50' # the provider's price per million input tokens
+        outputPerMillion: '10.00'
+```
+
+Before forwarding, the gate checks every budget of the request: once a period's tokens or cost
+have reached the limit, it answers `429 budget_exhausted` with `Retry-After` until the period
+ends, and nothing is forwarded. Otherwise it **reserves** `reserve` tokens (priced at the higher
+of the two prices) in every budget, so requests in flight count too. After a `2xx` answer it
+replaces the reservation by the usage the answer reports (`openai`:
+`usage.prompt_tokens`/`completion_tokens` or `input_tokens`/`output_tokens`; `anthropic`:
+`usage.input_tokens` plus cache writes and reads, `output_tokens`; `gemini`:
+`usageMetadata.promptTokenCount`, `candidatesTokenCount`, `thoughtsTokenCount`).
+
+When the request reached the API but its answer cannot be counted — a stream
+(`upstream_content_type`), a timeout, an answer too large, or one without readable usage
+(`502 upstream_usage_invalid`) — nothing is passed on and the **reservation stays charged**: the
+provider bills that request all the same. An error answer from the API (not `2xx`), or a request
+that never reached it, releases the reservation. A budget can therefore be overshot only by what an
+answer uses beyond its reservation. A route with a budget must accept `application/json` answers
+only, and a bundle may have at most 256 routes with a budget.
+
+The local policy can set a budget per upstream host that no bundle can lift (SEC-14, T-07), in
+tokens only (prices come from the bundle, which could set them to 0):
+
+```json
+"api.openai.com": { "pathPrefixes": ["/v1/chat/completions"], "methods": ["POST"], "secrets": ["openai-key"],
+                    "budget": { "usage": "openai", "period": "month", "reserve": 4000, "tokens": 5000000 } }
+```
+
+Every route to that host then counts against it, must answer JSON only, and a route's own budget
+must use the same `usage` (`policy_violation` otherwise). `moat policy suggest` proposes this
+budget as the sum of the routes' token budgets. The spending lives in `budget.php` (hashed names,
+at most 1024 entries, the spending of routes no longer in the bundle dropped); `status` prints
+each budget with what it has spent and when it resets. A damaged or full store refuses every
+request with a budget (`503 rate_limit_unavailable`); deleting `budget.php` resets the spending.
 
 ## Hardening check (SEC-49, SEC-49a)
 

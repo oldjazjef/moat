@@ -6,7 +6,10 @@
 import { createKeyFile, openKeyFile } from '../src/crypto/keyfile';
 import { sodium } from '../src/crypto/sodium';
 import { MoatRejection } from '../src/errors';
-import { validateCompiledConfig } from '../src/config/compiled';
+import {
+  MAX_ROUTE_BUDGETS,
+  validateCompiledConfig,
+} from '../src/config/compiled';
 import { normalisePath } from '../src/http/path';
 import { checkPolicy, parsePolicy } from '../src/policy/policy';
 import { isAllowedContentType } from '../src/http/content-type';
@@ -26,6 +29,23 @@ import {
   type HardeningFacts,
   type WebFacts,
 } from '../src/gate/hardening';
+import {
+  addCharge,
+  answerCharge,
+  budgetRefusal,
+  chargeOf,
+  current,
+  reservationOf,
+  settle,
+  type BudgetAnswer,
+  parseAmount,
+  readUsage,
+  MAX_USAGE_DEPTH,
+  type Budget,
+  type Spent,
+  type Usage,
+  type UsageFormat,
+} from '../src/http/budget';
 import { toBase64Url } from '../src/encoding/base64url';
 import { utf8 } from '../src/encoding/utf8';
 import type { JsonValue } from '../src/json/strict-json';
@@ -164,6 +184,19 @@ const route = (config: Record<string, Json>) =>
   (config['routes'] as Record<string, Record<string, Json>>)[
     'newsletter'
   ] as Record<string, Json>;
+
+/** `count` routes with a budget in place of the base route. */
+function budgetedRoutes(config: Record<string, Json>, count: number): void {
+  const base = route(config);
+  const routes: Record<string, Json> = {};
+  for (let i = 0; i < count; i++)
+    routes[`r${i}`] = {
+      ...base,
+      path: `/r${i}`,
+      budget: { usage: 'openai', period: 'day', reserve: 100, tokens: 1000 },
+    };
+  config['routes'] = routes;
+}
 
 function configVectors(): Json {
   const cases: [string, Mutation, string[]?][] = [
@@ -502,6 +535,213 @@ function configVectors(): Json {
       (c) => (route(c)['quota'] = { requests: 1000, period: 'day', per: 'ip' }),
     ],
     ['quota null', (c) => (route(c)['quota'] = null)],
+    [
+      'budget in tokens (FR-31)',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'openai',
+          period: 'month',
+          reserve: 4000,
+          tokens: 2000000,
+        }),
+    ],
+    [
+      'budget in cost',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'anthropic',
+          period: 'day',
+          reserve: 4000,
+          cost: {
+            limit: '5',
+            inputPerMillion: '3.00',
+            outputPerMillion: '15.00',
+          },
+        }),
+    ],
+    [
+      'budget in tokens and cost',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'gemini',
+          period: 'month',
+          reserve: 4000,
+          tokens: 1000000000000,
+          cost: {
+            limit: '999999999.999999',
+            inputPerMillion: '0.075',
+            outputPerMillion: '1000',
+          },
+        }),
+    ],
+    [
+      'budget without tokens or cost',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'openai',
+          period: 'month',
+          reserve: 4000,
+        }),
+    ],
+    [
+      'budget with an unknown usage format',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'mistral',
+          period: 'month',
+          reserve: 4000,
+          tokens: 1000,
+        }),
+    ],
+    [
+      'budget of 0 tokens',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'openai',
+          period: 'day',
+          reserve: 4000,
+          tokens: 0,
+        }),
+    ],
+    [
+      'budget tokens above 10^12',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'openai',
+          period: 'day',
+          reserve: 4000,
+          tokens: 1000000000001,
+        }),
+    ],
+    [
+      'budget cost limit of 0',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'openai',
+          period: 'day',
+          reserve: 4000,
+          cost: { limit: '0.00', inputPerMillion: '1', outputPerMillion: '1' },
+        }),
+    ],
+    [
+      'budget amount with 7 decimal places',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'openai',
+          period: 'day',
+          reserve: 4000,
+          cost: {
+            limit: '1.0000001',
+            inputPerMillion: '1',
+            outputPerMillion: '1',
+          },
+        }),
+    ],
+    [
+      'budget amount as a number',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'openai',
+          period: 'day',
+          reserve: 4000,
+          cost: { limit: 20, inputPerMillion: '1', outputPerMillion: '1' },
+        }),
+    ],
+    [
+      'budget amount with a sign or exponent',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'openai',
+          period: 'day',
+          reserve: 4000,
+          cost: { limit: '2e1', inputPerMillion: '-1', outputPerMillion: '1' },
+        }),
+    ],
+    [
+      'budget amount with a leading zero',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'openai',
+          period: 'day',
+          reserve: 4000,
+          cost: { limit: '020', inputPerMillion: '1', outputPerMillion: '1' },
+        }),
+    ],
+    [
+      'budget price above 1000 per million',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'openai',
+          period: 'day',
+          reserve: 4000,
+          cost: {
+            limit: '20',
+            inputPerMillion: '1000.000001',
+            outputPerMillion: '1',
+          },
+        }),
+    ],
+    [
+      'budget cost with an extra key',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'openai',
+          period: 'day',
+          reserve: 4000,
+          cost: {
+            limit: '20',
+            inputPerMillion: '1',
+            outputPerMillion: '1',
+            currency: 'USD',
+          },
+        }),
+    ],
+    [
+      'budget on a route that may answer text (not countable)',
+      (c) => {
+        route(c)['budget'] = {
+          usage: 'openai',
+          period: 'day',
+          reserve: 4000,
+          tokens: 1000,
+        };
+        route(c)['responseContentTypes'] = ['application/json', 'text/plain'];
+      },
+    ],
+    ['budget null', (c) => (route(c)['budget'] = null)],
+    [
+      'budget without reserve',
+      (c) =>
+        (route(c)['budget'] = { usage: 'openai', period: 'day', tokens: 1000 }),
+    ],
+    [
+      'budget reserve of 0',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'openai',
+          period: 'day',
+          reserve: 0,
+          tokens: 1000,
+        }),
+    ],
+    [
+      'budget reserve above 10^9',
+      (c) =>
+        (route(c)['budget'] = {
+          usage: 'openai',
+          period: 'day',
+          reserve: 1000000001,
+          tokens: 1000,
+        }),
+    ],
+    [
+      `${MAX_ROUTE_BUDGETS} routes with a budget`,
+      (c) => budgetedRoutes(c, MAX_ROUTE_BUDGETS),
+    ],
+    [
+      `${MAX_ROUTE_BUDGETS + 1} routes with a budget (SEC-27)`,
+      (c) => budgetedRoutes(c, MAX_ROUTE_BUDGETS + 1),
+    ],
   ];
   return {
     description:
@@ -977,6 +1217,90 @@ function policyVectors(): Json {
         }),
     ],
     [
+      'host budget in tokens (FR-31, SEC-14)',
+      (_c, p) =>
+        (allowed(p)['budget'] = {
+          usage: 'openai',
+          period: 'month',
+          reserve: 4000,
+          tokens: 5000000,
+        }),
+    ],
+    [
+      'host budget and a route budget in the same format',
+      (c, p) => {
+        allowed(p)['budget'] = {
+          usage: 'openai',
+          period: 'month',
+          reserve: 4000,
+          tokens: 5000000,
+        };
+        route(c)['budget'] = {
+          usage: 'openai',
+          period: 'day',
+          reserve: 4000,
+          tokens: 100000,
+        };
+      },
+    ],
+    [
+      'route budget in another format than the host budget',
+      (c, p) => {
+        allowed(p)['budget'] = {
+          usage: 'openai',
+          period: 'month',
+          reserve: 4000,
+          tokens: 5000000,
+        };
+        route(c)['budget'] = {
+          usage: 'anthropic',
+          period: 'day',
+          reserve: 4000,
+          tokens: 100000,
+        };
+      },
+    ],
+    [
+      'host budget, but a route there may answer text (T-07)',
+      (c, p) => {
+        allowed(p)['budget'] = {
+          usage: 'openai',
+          period: 'month',
+          reserve: 4000,
+          tokens: 5000000,
+        };
+        route(c)['responseContentTypes'] = ['text/plain'];
+      },
+    ],
+    [
+      'host budget in cost (prices come from the bundle: not allowed)',
+      (_c, p) =>
+        (allowed(p)['budget'] = {
+          usage: 'openai',
+          period: 'month',
+          reserve: 4000,
+          cost: { limit: '20', inputPerMillion: '1', outputPerMillion: '1' },
+        }),
+    ],
+    [
+      'host budget without reserve',
+      (_c, p) =>
+        (allowed(p)['budget'] = {
+          usage: 'openai',
+          period: 'month',
+          tokens: 5000000,
+        }),
+    ],
+    [
+      'host budget without tokens',
+      (_c, p) =>
+        (allowed(p)['budget'] = {
+          usage: 'openai',
+          period: 'month',
+          reserve: 4000,
+        }),
+    ],
+    [
       'testing block with loopback',
       (_c, p) => {
         p['testing'] = {
@@ -1246,12 +1570,493 @@ function hardeningVectors(): Json {
   };
 }
 
+/** One step of a budget sequence: a request asks to pass, or the answer to an earlier one arrives. */
+type BudgetOp =
+  | { now: number; request: string }
+  | { now: number; answer: string; result: BudgetAnswer };
+
+/** What a gate does with one budget over these steps (the reference for budget.json). */
+function runBudget(budget: Budget, steps: BudgetOp[]) {
+  let spent: Spent | null = null;
+  const open = new Map<string, number>();
+  const view = (now: number) => {
+    const live = current(spent, now);
+    return { tokens: live?.tokens ?? 0, micros: live?.micros ?? 0 };
+  };
+  return steps.map((step) => {
+    if ('request' in step) {
+      const refused = budgetRefusal(spent, budget, step.now);
+      if (refused === null) {
+        spent = addCharge(
+          spent,
+          budget.period,
+          reservationOf(budget),
+          step.now,
+        );
+        open.set(step.request, spent.resetAt);
+      }
+      return { refused, spent: view(step.now) };
+    }
+    const resetAt = open.get(step.answer);
+    if (resetAt === undefined) throw new Error(`no request ${step.answer}`);
+    open.delete(step.answer);
+    spent = settle(
+      spent,
+      resetAt,
+      reservationOf(budget),
+      answerCharge(step.result, budget),
+      step.now,
+    );
+    return { spent: view(step.now) };
+  });
+}
+
+function budgetVectors(): Json {
+  const amounts = [
+    '0',
+    '20',
+    '20.5',
+    '2.50',
+    '0.000001',
+    '999999999.999999',
+    '1000000000',
+    '1.0000001',
+    '020',
+    '.5',
+    '5.',
+    '-1',
+    '1e3',
+    ' 1',
+    '1,5',
+    '',
+  ].map((text) => ({ text, expect: parseAmount(text) }));
+  const usages: [string, UsageFormat, Json][] = [
+    [
+      'openai chat completions',
+      'openai',
+      {
+        usage: { prompt_tokens: 120, completion_tokens: 30, total_tokens: 150 },
+      },
+    ],
+    [
+      'openai responses API',
+      'openai',
+      {
+        usage: {
+          input_tokens: 500,
+          output_tokens: 1200,
+          total_tokens: 1700,
+          output_tokens_details: { reasoning_tokens: 900 },
+        },
+      },
+    ],
+    ['openai without usage', 'openai', { choices: [] }],
+    ['openai usage null', 'openai', { usage: null }],
+    [
+      'openai responses API without output_tokens',
+      'openai',
+      { usage: { input_tokens: 5, prompt_tokens: 5, completion_tokens: 1 } },
+    ],
+    [
+      'openai negative count',
+      'openai',
+      { usage: { prompt_tokens: -1, completion_tokens: 3 } },
+    ],
+    [
+      'openai fractional count',
+      'openai',
+      { usage: { prompt_tokens: 1.5, completion_tokens: 3 } },
+    ],
+    [
+      'openai count as a string',
+      'openai',
+      { usage: { prompt_tokens: '10', completion_tokens: 3 } },
+    ],
+    [
+      'openai count above 10^9',
+      'openai',
+      { usage: { prompt_tokens: 1000000001, completion_tokens: 3 } },
+    ],
+    [
+      'openai count of exactly 10^9',
+      'openai',
+      { usage: { prompt_tokens: 1000000000, completion_tokens: 0 } },
+    ],
+    [
+      'anthropic messages',
+      'anthropic',
+      { usage: { input_tokens: 2095, output_tokens: 503 } },
+    ],
+    [
+      'anthropic with cache writes and reads',
+      'anthropic',
+      {
+        usage: {
+          input_tokens: 50,
+          cache_creation_input_tokens: 1000,
+          cache_read_input_tokens: 4000,
+          output_tokens: 20,
+        },
+      },
+    ],
+    [
+      'anthropic optional cache field null counts as 0',
+      'anthropic',
+      {
+        usage: {
+          input_tokens: 50,
+          cache_creation_input_tokens: null,
+          output_tokens: 20,
+        },
+      },
+    ],
+    [
+      'anthropic output_tokens null',
+      'anthropic',
+      { usage: { input_tokens: 50, output_tokens: null } },
+    ],
+    [
+      'anthropic without output_tokens',
+      'anthropic',
+      { usage: { input_tokens: 50 } },
+    ],
+    [
+      'gemini',
+      'gemini',
+      {
+        usageMetadata: {
+          promptTokenCount: 40,
+          candidatesTokenCount: 60,
+          totalTokenCount: 100,
+        },
+      },
+    ],
+    [
+      'gemini with thoughts and tool prompt',
+      'gemini',
+      {
+        usageMetadata: {
+          promptTokenCount: 40,
+          toolUsePromptTokenCount: 10,
+          candidatesTokenCount: 60,
+          thoughtsTokenCount: 200,
+        },
+      },
+    ],
+    [
+      'gemini without candidates',
+      'gemini',
+      { usageMetadata: { promptTokenCount: 40 } },
+    ],
+    [
+      'gemini without promptTokenCount',
+      'gemini',
+      { usageMetadata: { candidatesTokenCount: 60 } },
+    ],
+    [
+      'gemini body with an openai usage',
+      'gemini',
+      { usage: { prompt_tokens: 1, completion_tokens: 1 } },
+    ],
+    [
+      'answer is an array',
+      'openai',
+      [{ usage: { prompt_tokens: 1, completion_tokens: 1 } }],
+    ],
+    ['answer is a string', 'anthropic', 'usage'],
+  ];
+  // `levels` containers in all: the answer object and arrays nested inside it.
+  const deep = (levels: number) =>
+    `{"usage":{"prompt_tokens":1,"completion_tokens":1},"x":${'['.repeat(levels - 1)}${']'.repeat(levels - 1)}}`;
+  // Raw answers: what JSON.parse and every gate's decoder must agree on.
+  const rawUsages: [string, UsageFormat, string][] = [
+    [
+      'floats and negative numbers elsewhere in the answer',
+      'openai',
+      '{"temperature":0.7,"logprobs":[{"logprob":-0.25}],"usage":{"prompt_tokens":3,"completion_tokens":4}}',
+    ],
+    [
+      'count written as 100.0',
+      'openai',
+      '{"usage":{"prompt_tokens":100.0,"completion_tokens":1}}',
+    ],
+    [
+      'count written as 1e2',
+      'openai',
+      '{"usage":{"prompt_tokens":1e2,"completion_tokens":1}}',
+    ],
+    [
+      'count written as -0',
+      'openai',
+      '{"usage":{"prompt_tokens":-0,"completion_tokens":1}}',
+    ],
+    [
+      'count overflowing to infinity',
+      'openai',
+      '{"usage":{"prompt_tokens":1e400,"completion_tokens":1}}',
+    ],
+    [
+      'count of 10^20',
+      'openai',
+      '{"usage":{"prompt_tokens":100000000000000000000,"completion_tokens":1}}',
+    ],
+    [
+      'duplicated key: the last one counts',
+      'openai',
+      '{"usage":{"prompt_tokens":1,"prompt_tokens":7,"completion_tokens":1}}',
+    ],
+    [
+      'a key starting with NUL elsewhere in the answer',
+      'openai',
+      '{"\\u0000a":1,"usage":{"prompt_tokens":1,"completion_tokens":1}}',
+    ],
+    ['not JSON', 'openai', '{"usage":{"prompt_tokens":1,'],
+    ['empty answer', 'openai', ''],
+    [
+      'trailing text after the JSON',
+      'openai',
+      '{"usage":{"prompt_tokens":1,"completion_tokens":1}} x',
+    ],
+    [
+      'escaped surrogate pair',
+      'openai',
+      '{"text":"\\ud83d\\ude00","usage":{"prompt_tokens":1,"completion_tokens":1}}',
+    ],
+    [
+      'lone high surrogate',
+      'openai',
+      '{"text":"\\ud83d","usage":{"prompt_tokens":1,"completion_tokens":1}}',
+    ],
+    [
+      'lone low surrogate',
+      'openai',
+      '{"text":"\\ude00","usage":{"prompt_tokens":1,"completion_tokens":1}}',
+    ],
+    [
+      'escaped backslash before u',
+      'openai',
+      '{"text":"\\\\ud83d","usage":{"prompt_tokens":1,"completion_tokens":1}}',
+    ],
+    [
+      'brackets inside strings do not nest',
+      'openai',
+      `{"text":"${'['.repeat(100)}","usage":{"prompt_tokens":1,"completion_tokens":1}}`,
+    ],
+    [
+      `usage at the deepest allowed level (${MAX_USAGE_DEPTH})`,
+      'openai',
+      deep(MAX_USAGE_DEPTH),
+    ],
+    ['one level too deep', 'openai', deep(MAX_USAGE_DEPTH + 1)],
+  ];
+  const cost = (inputPerMillion: string, outputPerMillion: string) => ({
+    limit: '100',
+    inputPerMillion,
+    outputPerMillion,
+  });
+  const charges: [string, Usage, Budget['cost']][] = [
+    ['tokens only', { input: 120, output: 30 }, undefined],
+    [
+      'rounded up to the next micro',
+      { input: 1, output: 0 },
+      cost('2.50', '10.00'),
+    ],
+    ['exact', { input: 1000000, output: 1000000 }, cost('2.50', '10.00')],
+    ['free model', { input: 5000, output: 5000 }, cost('0', '0')],
+    [
+      'largest answer at the highest price',
+      { input: 1000000000, output: 1000000000 },
+      cost('1000', '1000'),
+    ],
+    [
+      'sub-micro prices add up before rounding',
+      { input: 3, output: 3 },
+      cost('0.1', '0.2'),
+    ],
+  ];
+  const day = Date.UTC(2026, 9, 12) / 1000;
+  const req = (now: number, request: string): BudgetOp => ({ now, request });
+  const ans = (
+    now: number,
+    answer: string,
+    result: BudgetAnswer,
+  ): BudgetOp => ({
+    now,
+    answer,
+    result,
+  });
+  const u = (input: number, output: number): Usage => ({ input, output });
+  const sequences: [string, Budget, BudgetOp[]][] = [
+    [
+      'tokens: each request reserves, its answer replaces the reservation; refused once reached, until the day ends',
+      { usage: 'openai', period: 'day', reserve: 300, tokens: 1000 },
+      [
+        req(day + 10, 'a'),
+        ans(day + 11, 'a', u(400, 100)),
+        req(day + 20, 'b'),
+        ans(day + 21, 'b', u(400, 99)),
+        req(day + 30, 'c'),
+        ans(day + 31, 'c', u(1, 0)),
+        req(day + 40, 'd'),
+        req(day + 86_399, 'e'),
+        req(day + 86_400, 'f'),
+        ans(day + 86_401, 'f', u(1, 1)),
+      ],
+    ],
+    [
+      'requests in flight count with their reservation',
+      { usage: 'openai', period: 'day', reserve: 400, tokens: 1000 },
+      [
+        req(day, 'a'),
+        req(day + 1, 'b'),
+        req(day + 2, 'c'),
+        req(day + 3, 'd'),
+        ans(day + 4, 'a', u(100, 0)),
+        ans(day + 5, 'b', 'not_charged'),
+        req(day + 6, 'e'),
+        ans(day + 7, 'c', 'uncountable'),
+        ans(day + 8, 'e', u(10, 0)),
+        req(day + 9, 'f'),
+      ],
+    ],
+    [
+      'an answer that cannot be counted keeps its reservation, an error releases it',
+      { usage: 'anthropic', period: 'month', reserve: 600, tokens: 1000 },
+      [
+        req(day, 'a'),
+        ans(day + 1, 'a', 'uncountable'),
+        req(day + 2, 'b'),
+        ans(day + 3, 'b', 'not_charged'),
+        req(day + 4, 'c'),
+        ans(day + 5, 'c', u(0, 0)),
+        req(day + 6, 'd'),
+        ans(day + 7, 'd', 'uncountable'),
+        req(day + 8, 'e'),
+      ],
+    ],
+    [
+      'cost: the reservation is priced at the higher price; refused once the limit is reached',
+      {
+        usage: 'openai',
+        period: 'month',
+        reserve: 500,
+        cost: {
+          limit: '0.01',
+          inputPerMillion: '2.50',
+          outputPerMillion: '10.00',
+        },
+      },
+      [
+        req(day, 'a'),
+        ans(day + 1, 'a', u(1000, 500)),
+        req(day + 2, 'b'),
+        ans(day + 3, 'b', u(1000, 0)),
+        req(day + 4, 'c'),
+        req(Date.UTC(2026, 10, 1) / 1000, 'd'),
+      ],
+    ],
+    [
+      'tokens and cost: whichever is reached first',
+      {
+        usage: 'gemini',
+        period: 'day',
+        reserve: 100,
+        tokens: 1000000,
+        cost: { limit: '0.0005', inputPerMillion: '1', outputPerMillion: '1' },
+      },
+      [req(day, 'a'), ans(day + 1, 'a', u(300, 200)), req(day + 2, 'b')],
+    ],
+    [
+      'an answer after its period ended leaves the new period alone',
+      { usage: 'openai', period: 'day', reserve: 100, tokens: 1000 },
+      [
+        req(day + 86_399, 'a'),
+        ans(day + 86_405, 'a', u(50, 0)),
+        req(day + 86_406, 'b'),
+        ans(day + 86_407, 'b', u(5, 5)),
+      ],
+    ],
+    [
+      'an answer above its reservation is counted in full (the only overshoot)',
+      { usage: 'anthropic', period: 'day', reserve: 50, tokens: 100 },
+      [req(day, 'a'), ans(day + 1, 'a', u(90, 5000)), req(day + 2, 'b')],
+    ],
+  ];
+  const reservations: [string, Pick<Budget, 'reserve' | 'cost'>][] = [
+    ['tokens only', { reserve: 4096 }],
+    [
+      'output dearer',
+      {
+        reserve: 1000,
+        cost: {
+          limit: '1',
+          inputPerMillion: '2.50',
+          outputPerMillion: '10.00',
+        },
+      },
+    ],
+    [
+      'input dearer',
+      {
+        reserve: 3,
+        cost: { limit: '1', inputPerMillion: '0.5', outputPerMillion: '0.1' },
+      },
+    ],
+    [
+      'largest at the highest price',
+      {
+        reserve: 1000000000,
+        cost: { limit: '1', inputPerMillion: '1000', outputPerMillion: '1000' },
+      },
+    ],
+  ];
+  return {
+    description:
+      'Budgets for AI APIs (FR-31, SEC-45, T-07). `amounts`: decimal text → micros (millionths) or null. `usage`: the usage an answer (`body`, its exact text) reports in each format → `{input, output}` tokens or null (the gate answers `upstream_usage_invalid`). `charges`: usage and an optional `cost` → `{tokens, micros}`, micros = ⌈(input × inputPerMillion + output × outputPerMillion) in micros / 10^6⌉. `reservations`: what one request reserves, `reserve` tokens priced as input at the higher of the two prices. `sequences`: steps against one budget, starting with nothing spent. `{now, request}`: refused (seconds until the period ends) when the spending — open reservations included — has reached `tokens` or the cost `limit`, else null and the reservation is added → `{refused, spent}`. `{now, answer, result}`: the answer to that earlier request; its reservation is replaced by the charge of `result` (`{input, output}` usage; `uncountable` = the reservation itself; `not_charged` = nothing), unless the period it was made in has ended → `{spent}`. `spent` is `{tokens, micros}` of the period holding `now` (0 once it ended); both are capped at 10^15 tokens and 10^17 micros.',
+    amounts: amounts as unknown as Json,
+    usage: [
+      ...usages.map(
+        ([name, format, body]) =>
+          [name, format, JSON.stringify(body)] as [string, UsageFormat, string],
+      ),
+      ...rawUsages,
+    ].map(([name, format, body]) => ({
+      name,
+      format,
+      body,
+      expect: readUsage(format, body) as unknown as Json,
+    })),
+    charges: charges.map(([name, usage, budgetCost]) => ({
+      name,
+      usage: usage as unknown as Json,
+      cost: (budgetCost ?? null) as unknown as Json,
+      expect: chargeOf(
+        usage,
+        budgetCost === undefined ? {} : { cost: budgetCost },
+      ) as unknown as Json,
+    })),
+    reservations: reservations.map(([name, budget]) => ({
+      name,
+      reserve: budget.reserve,
+      cost: (budget.cost ?? null) as unknown as Json,
+      expect: reservationOf(budget) as unknown as Json,
+    })),
+    sequences: sequences.map(([name, budget, steps]) => ({
+      name,
+      budget: budget as unknown as Json,
+      steps: steps as unknown as Json,
+      expect: runBudget(budget, steps) as unknown as Json,
+    })),
+  };
+}
+
 export async function buildFormatVectors(): Promise<Record<string, Json>> {
   return {
     'http/path.json': pathVectors(),
     'http/content-type.json': contentTypeVectors(),
     'http/cors.json': corsVectors(),
     'http/rate-limit.json': rateLimitVectors(),
+    'http/budget.json': budgetVectors(),
     'config/config.json': configVectors(),
     'config/policy.json': policyVectors(),
     'crypto/keyfile.json': await keyFileVectors(),

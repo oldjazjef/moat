@@ -25,5 +25,7 @@ final readonly class Route
         public ?RouteLimit $rateLimit,
         /** FR-31: requests per calendar day or month for the whole route; null = none. */
         public ?Quota $quota = null,
+        /** FR-31 for AI APIs: tokens and/or cost per period, counted from the answers; null = none. */
+        public ?Budget $budget = null,
     ) {}
 }
