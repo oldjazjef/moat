@@ -69,8 +69,11 @@ enum UsageFormat: string
         if (!\is_array($request) || ($request !== [] && array_is_list($request)) || !\in_array($request['stream'] ?? null, [null, false], true)) {
             return null;
         }
+        if (!$this->clientTools($request['tools'] ?? null)) {
+            return null;
+        }
         if ($this === self::OpenAi) {
-            if (!self::single($request, 'n', $maxOutput)) {
+            if (!self::single($request, 'n', $maxOutput) || !self::single($request, 'best_of', $maxOutput)) {
                 return null;
             }
             $output = null;
@@ -88,12 +91,58 @@ enum UsageFormat: string
             $output = self::cap($request['max_tokens'] ?? null, $maxOutput);
         } else {
             $config = $request['generationConfig'] ?? null;
-            $output = \is_array($config) && self::single($config, 'candidateCount', $maxOutput)
+            // Google also reads snake_case (`candidate_count`): only the camelCase spelling counts.
+            $output = \is_array($config) && !self::snakeCase($request) && !self::snakeCase($config)
+                && self::single($config, 'candidateCount', $maxOutput)
                 ? self::cap($config['maxOutputTokens'] ?? null, $maxOutput)
                 : null;
         }
 
         return $output === null ? null : new Usage(\strlen($body), $output);
+    }
+
+    /**
+     * Only tools the client runs (null = none): `openai` entries of type `function`, `anthropic`
+     * entries without a type or of type `custom`, `gemini` entries holding nothing but
+     * `functionDeclarations`. A tool the provider runs (web search, code execution) is billed per
+     * call, which no usage reports.
+     */
+    private function clientTools(mixed $tools): bool
+    {
+        if ($tools === null) {
+            return true;
+        }
+        // Empty lists and objects are refused: decoded, `[]` and `{}` look the same.
+        if (!\is_array($tools) || $tools === [] || !array_is_list($tools)) {
+            return false;
+        }
+        foreach ($tools as $tool) {
+            if (!\is_array($tool) || $tool === [] || array_is_list($tool)) {
+                return false;
+            }
+            $ok = match ($this) {
+                self::OpenAi => ($tool['type'] ?? null) === 'function',
+                self::Anthropic => !\array_key_exists('type', $tool) || $tool['type'] === 'custom',
+                self::Gemini => array_keys($tool) === ['functionDeclarations'],
+            };
+            if (!$ok) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** @param array<mixed> $from */
+    private static function snakeCase(array $from): bool
+    {
+        foreach (array_keys($from) as $key) {
+            if (str_contains((string) $key, '_')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** An output cap: an integer from 1 to `$max` (`100.0` is 100), else null. */

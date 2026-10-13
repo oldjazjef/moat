@@ -1253,6 +1253,22 @@
       }
     },
     {
+      "name": "budget: a request with a tool the provider runs and bills per call is refused (T-07)",
+      "request": {
+        "method": "POST",
+        "path": "/budget",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"max_tokens\":50,\"tools\":[{\"type\":\"web_search\"}]}"
+      },
+      "expect": {
+        "status": 400,
+        "error": "request_unbounded",
+        "upstreamCalls": 0
+      }
+    },
+    {
       "name": "budget: a request without an output cap is refused (its cost is unbounded)",
       "request": {
         "method": "POST",

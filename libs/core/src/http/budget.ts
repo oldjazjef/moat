@@ -223,9 +223,13 @@ export function readUsage(format: UsageFormat, text: string): Usage | null {
  * an output cap from 1 to `maxOutput` (an integer, `100.0` counts as 100):
  *
  * - `openai`: `max_tokens`, `max_completion_tokens` or `max_output_tokens` (the highest counts;
- *   at least one present, every one present valid); `n` absent, null or 1.
+ *   at least one present, every one present valid); `n` and `best_of` absent, null or 1.
  * - `anthropic`: `max_tokens`.
- * - `gemini`: `generationConfig.maxOutputTokens`; `generationConfig.candidateCount` absent, null or 1.
+ * - `gemini`: `generationConfig.maxOutputTokens`; `generationConfig.candidateCount` absent, null or 1;
+ *   no key with `_` in the body or its `generationConfig` (Google also reads `candidate_count`).
+ *
+ * `tools`, when present and not null, is a list of tools the client runs itself (see
+ * clientTools()): a tool the provider runs is billed per call, which no usage reports.
  */
 export function requestEstimate(
   format: UsageFormat,
@@ -249,9 +253,10 @@ export function requestEstimate(
     const value = cap(from, key);
     return value === undefined || value === 1;
   };
+  if (!clientTools(format, body['tools'])) return null;
   let output: number | null;
   if (format === 'openai') {
-    if (!one(body, 'n')) return null;
+    if (!one(body, 'n') || !one(body, 'best_of')) return null;
     const caps = ['max_tokens', 'max_completion_tokens', 'max_output_tokens']
       .map((key) => cap(body, key))
       .filter((value) => value !== undefined);
@@ -263,14 +268,39 @@ export function requestEstimate(
     output = cap(body, 'max_tokens') ?? null;
   } else {
     const config = object(body['generationConfig']);
+    const snake = (from: Obj) =>
+      Object.keys(from).some((key) => key.includes('_'));
     output =
-      config === null || !one(config, 'candidateCount')
+      config === null ||
+      snake(body) ||
+      snake(config) ||
+      !one(config, 'candidateCount')
         ? null
         : (cap(config, 'maxOutputTokens') ?? null);
   }
   return output === null
     ? null
     : { input: new TextEncoder().encode(text).length, output };
+}
+
+/**
+ * Only tools the client runs (absent or null = none): `openai` entries of type `function`,
+ * `anthropic` entries without a type or of type `custom`, `gemini` entries holding nothing but
+ * `functionDeclarations`. Web search, code execution and the like are refused.
+ */
+function clientTools(format: UsageFormat, tools: unknown): boolean {
+  if (tools === undefined || tools === null) return true;
+  // Empty lists and objects are refused: PHP decodes `[]` and `{}` alike.
+  if (!Array.isArray(tools) || tools.length === 0) return false;
+  return tools.every((entry) => {
+    const tool = object(entry);
+    if (tool === null || Object.keys(tool).length === 0) return false;
+    if (format === 'openai') return tool['type'] === 'function';
+    if (format === 'anthropic')
+      return !Object.hasOwn(tool, 'type') || tool['type'] === 'custom';
+    const keys = Object.keys(tool);
+    return keys.length === 1 && keys[0] === 'functionDeclarations';
+  });
 }
 
 /** What one answer costs: its tokens, and its price in micros rounded up (0 without `cost`). */

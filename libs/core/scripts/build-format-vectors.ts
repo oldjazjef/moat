@@ -2097,6 +2097,119 @@ function budgetVectors(): Json {
       2048,
       { generationConfig: { maxOutputTokens: 10, candidateCount: 1 } },
     ],
+    [
+      'openai best_of 1',
+      'openai',
+      1000,
+      '{"prompt":"Hi","max_tokens":10,"best_of":1}',
+    ],
+    [
+      'openai best_of 5 (five completions billed)',
+      'openai',
+      1000,
+      { prompt: 'Hi', max_tokens: 10, best_of: 5 },
+    ],
+    [
+      'openai function tools',
+      'openai',
+      1000,
+      {
+        max_tokens: 10,
+        tools: [{ type: 'function', function: { name: 'weather' } }],
+      },
+    ],
+    ['openai tools null', 'openai', 1000, { max_tokens: 10, tools: null }],
+    [
+      'openai web search tool (billed per call)',
+      'openai',
+      1000,
+      { max_output_tokens: 10, tools: [{ type: 'web_search' }] },
+    ],
+    [
+      'openai tools not a list',
+      'openai',
+      1000,
+      { max_tokens: 10, tools: { type: 'function' } },
+    ],
+    [
+      'openai tool without a type',
+      'openai',
+      1000,
+      { max_tokens: 10, tools: [{ function: { name: 'x' } }] },
+    ],
+    [
+      'anthropic client tools',
+      'anthropic',
+      4096,
+      {
+        max_tokens: 10,
+        tools: [
+          { name: 'weather', input_schema: { type: 'object' } },
+          { type: 'custom', name: 'clock', input_schema: { type: 'object' } },
+        ],
+      },
+    ],
+    ['openai tools empty', 'openai', 1000, '{"max_tokens":10,"tools":[]}'],
+    [
+      'openai tools as an empty object',
+      'openai',
+      1000,
+      '{"max_tokens":10,"tools":{}}',
+    ],
+    [
+      'anthropic empty tool',
+      'anthropic',
+      4096,
+      '{"max_tokens":10,"tools":[{}]}',
+    ],
+    [
+      'anthropic tool as an empty list',
+      'anthropic',
+      4096,
+      '{"max_tokens":10,"tools":[[]]}',
+    ],
+    [
+      'anthropic web search tool (billed per call)',
+      'anthropic',
+      4096,
+      {
+        max_tokens: 10,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      },
+    ],
+    [
+      'gemini function declarations',
+      'gemini',
+      2048,
+      {
+        tools: [{ functionDeclarations: [{ name: 'weather' }] }],
+        generationConfig: { maxOutputTokens: 10 },
+      },
+    ],
+    [
+      'gemini google search tool (billed per call)',
+      'gemini',
+      2048,
+      {
+        tools: [{ googleSearch: {} }],
+        generationConfig: { maxOutputTokens: 10 },
+      },
+    ],
+    [
+      'gemini candidate_count in snake case',
+      'gemini',
+      2048,
+      { generationConfig: { maxOutputTokens: 10, candidate_count: 8 } },
+    ],
+    [
+      'gemini generation_config in snake case',
+      'gemini',
+      2048,
+      {
+        generationConfig: { maxOutputTokens: 10 },
+        generation_config: { max_output_tokens: 100000 },
+      },
+    ],
     ['body is a list', 'openai', 1000, [{ max_tokens: 10 }]],
     ['body is not JSON', 'openai', 1000, 'max_tokens=10'],
     ['empty body', 'anthropic', 1000, ''],
@@ -2109,7 +2222,7 @@ function budgetVectors(): Json {
   ];
   return {
     description:
-      'Budgets for AI APIs (FR-31, SEC-45, T-07). `amounts`: decimal text → micros (millionths) or null. `usage`: the usage an answer (`body`, its exact text) reports in each format → `{input, output}` tokens or null (the gate answers `upstream_usage_invalid`). `charges`: usage and an optional `cost` → `{tokens, micros}`, micros = ⌈(input × inputPerMillion + output × outputPerMillion) in micros / 10^6⌉. `requests`: a request body (exact text) in each format with the route `maxOutputTokens` → its estimate `{input: UTF-8 bytes of the body, output: its output cap}`, or null = refused with `request_unbounded` (a stream, more than one answer, no cap or one above `maxOutputTokens`). `sequences`: steps against one budget, starting with nothing spent. `{now, request, estimate}`: refused (seconds until the period ends) when the spending — open estimates included — has reached `tokens` or the cost `limit`, else null and the charge of `estimate` is added → `{refused, spent}`. `{now, answer, result}`: the answer to that earlier request; the charge of the estimate comes off (never below 0) and the charge of `result` goes on (`{input, output}` usage; `uncountable` = the estimate itself; `not_charged` = nothing); when the period of the request has ended, the charge of `result` is added to the period holding `now` → `{spent}`. `spent` is `{tokens, micros}` of the period holding `now` (0 once it ended); both are capped at 10^15 tokens and 10^17 micros.',
+      'Budgets for AI APIs (FR-31, SEC-45, T-07). `amounts`: decimal text → micros (millionths) or null. `usage`: the usage an answer (`body`, its exact text) reports in each format → `{input, output}` tokens or null (the gate answers `upstream_usage_invalid`). `charges`: usage and an optional `cost` → `{tokens, micros}`, micros = ⌈(input × inputPerMillion + output × outputPerMillion) in micros / 10^6⌉. `requests`: a request body (exact text) in each format with the route `maxOutputTokens` → its estimate `{input: UTF-8 bytes of the body, output: its output cap}`, or null = refused with `request_unbounded` (a stream, more than one answer (`n`, `best_of`, `candidateCount`), no cap or one above `maxOutputTokens`, a tool the provider runs and bills itself (only `tools` entries of type `function`, Anthropic tools without a type or of type `custom`, Gemini `functionDeclarations`), or for gemini a key with `_` in the body or its `generationConfig`). `sequences`: steps against one budget, starting with nothing spent. `{now, request, estimate}`: refused (seconds until the period ends) when the spending — open estimates included — has reached `tokens` or the cost `limit`, else null and the charge of `estimate` is added → `{refused, spent}`. `{now, answer, result}`: the answer to that earlier request; the charge of the estimate comes off (never below 0) and the charge of `result` goes on (`{input, output}` usage; `uncountable` = the estimate itself; `not_charged` = nothing); when the period of the request has ended, the charge of `result` is added to the period holding `now` → `{spent}`. `spent` is `{tokens, micros}` of the period holding `now` (0 once it ended); both are capped at 10^15 tokens and 10^17 micros.',
     amounts: amounts as unknown as Json,
     usage: [
       ...usages.map(

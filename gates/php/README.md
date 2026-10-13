@@ -181,8 +181,15 @@ and must set its output cap: `openai` `max_tokens`, `max_completion_tokens` or
 `max_output_tokens` (every one present is checked, the highest counts; `n` at most 1),
 `anthropic` `max_tokens`, `gemini` `generationConfig.maxOutputTokens` (`candidateCount` at most
 1). The cap must be a whole number from 1 to `maxOutputTokens` (the smallest of the request's
-budgets). Anything else is refused with `400 request_unbounded` and nothing is forwarded or
-charged.
+budgets). `n` and `best_of` must be absent or 1, Gemini requests may not use snake_case keys
+(`candidate_count`), and `tools` may only hold tools the client runs (OpenAI `function`,
+Anthropic tools without a type or `custom`, Gemini `functionDeclarations`): web search, code
+execution and other tools the provider runs are billed per call, which no usage reports.
+Anything else is refused with `400 request_unbounded` and nothing is forwarded or charged.
+
+What the gate cannot see in the body is not in the estimate: input the request only points to
+(`previous_response_id`, stored files, cached content) is charged once the answer reports it.
+Of a key that appears twice, the gate reads the last one, like most JSON parsers.
 
 The request's **estimate** is then its body size in bytes as input tokens (a token is never less
 than a byte) plus its cap as output tokens. Once a period's tokens or cost have reached the
