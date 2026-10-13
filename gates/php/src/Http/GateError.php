@@ -19,6 +19,8 @@ enum GateError: string
     case PreflightRejected = 'preflight_rejected';
     case RateLimited = 'rate_limited';
     case QuotaExceeded = 'quota_exceeded';
+    case BudgetExhausted = 'budget_exhausted';
+    case RequestUnbounded = 'request_unbounded';
     case RateLimitUnavailable = 'rate_limit_unavailable';
     case RouteDisabled = 'route_disabled';
     case GateDisabled = 'gate_disabled';
@@ -31,6 +33,7 @@ enum GateError: string
     case UpstreamContentType = 'upstream_content_type';
     case UpstreamTooLarge = 'upstream_too_large';
     case UpstreamReflectedSecret = 'upstream_reflected_secret';
+    case UpstreamUsageInvalid = 'upstream_usage_invalid';
     case Internal = 'internal_error';
 
     public function status(): int
@@ -38,16 +41,16 @@ enum GateError: string
         return match ($this) {
             self::NotFound => 404,
             self::MethodNotAllowed => 405,
-            self::PathInvalid => 400,
+            self::PathInvalid, self::RequestUnbounded => 400,
             self::BodyTooLarge => 413,
             self::UnsupportedMediaType => 415,
             self::OriginForbidden, self::PreflightRejected => 403,
-            self::RateLimited, self::QuotaExceeded => 429,
+            self::RateLimited, self::QuotaExceeded, self::BudgetExhausted => 429,
             self::RouteDisabled, self::GateDisabled, self::GateNotConfigured, self::RateLimitUnavailable => 503,
             self::SecretUnavailable, self::Internal => 500,
             self::UpstreamTimeout => 504,
             self::UpstreamForbidden, self::UpstreamUnreachable, self::UpstreamRedirect,
-            self::UpstreamContentType, self::UpstreamTooLarge, self::UpstreamReflectedSecret => 502,
+            self::UpstreamContentType, self::UpstreamTooLarge, self::UpstreamReflectedSecret, self::UpstreamUsageInvalid => 502,
         };
     }
 }

@@ -22,6 +22,8 @@ import {
   METHODS,
   NAME_PATTERN,
   QUOTA_PERIODS,
+  USAGE_FORMATS,
+  type Budget,
   type Quota,
   type RouteDefinition,
 } from '../../../../core/api/project.types';
@@ -44,6 +46,24 @@ export function windowText(seconds: number): string {
   if (seconds % 3_600 === 0) return `${seconds / 3_600}h`;
   if (seconds % 60 === 0) return `${seconds / 60}m`;
   return `${seconds}s`;
+}
+
+/** The form control of a budget field the core refused (`budget.cost.limit` → budgetLimit). */
+function budgetControl(field: string): string {
+  const last = field.split('.').at(-1) ?? '';
+  const controls: Record<string, string> = {
+    usage: 'budgetUsage',
+    period: 'budgetPeriod',
+    maxOutputTokens: 'budgetMaxOutput',
+    cost: 'budgetLimit',
+    limit: 'budgetLimit',
+    inputPerMillion: 'budgetInput',
+    outputPerMillion: 'budgetOutput',
+  };
+  // `budget` itself (neither tokens nor cost) and `budget.tokens`: the tokens field.
+  return Object.hasOwn(controls, last)
+    ? (controls[last] ?? '')
+    : 'budgetTokens';
 }
 
 /** The size a route gets without `maxBodySize` (DEFAULT_MAX_BODY_BYTES in the core). */
@@ -104,8 +124,23 @@ export class RouteForm implements OnInit {
     quotaOn: new FormControl(false, { nonNullable: true }),
     quotaRequests: new FormControl(1000, { nonNullable: true }),
     quotaPeriod: new FormControl<Quota['period']>('day', { nonNullable: true }),
+    budgetOn: new FormControl(false, { nonNullable: true }),
+    budgetUsage: new FormControl<Budget['usage']>('openai', {
+      nonNullable: true,
+    }),
+    budgetPeriod: new FormControl<Budget['period']>('month', {
+      nonNullable: true,
+    }),
+    budgetMaxOutput: new FormControl('4000', { nonNullable: true }),
+    /** Empty = no token limit (then a cost limit is needed). */
+    budgetTokens: new FormControl('', { nonNullable: true }),
+    /** All three empty = no cost limit. */
+    budgetLimit: new FormControl('', { nonNullable: true }),
+    budgetInput: new FormControl('', { nonNullable: true }),
+    budgetOutput: new FormControl('', { nonNullable: true }),
   });
   protected readonly periods = QUOTA_PERIODS;
+  protected readonly usageFormats = USAGE_FORMATS;
 
   /** Fields the core refused in the last save, as form control names. */
   protected readonly refused = computed(() => {
@@ -118,6 +153,7 @@ export class RouteForm implements OnInit {
         if (first === 'rateLimit') return second ?? 'requests';
         if (first === 'quota')
           return second === 'period' ? 'quotaPeriod' : 'quotaRequests';
+        if (first === 'budget') return budgetControl(field);
         return first ?? '';
       }),
     );
@@ -152,6 +188,15 @@ export class RouteForm implements OnInit {
       quotaOn: route.quota !== undefined,
       quotaRequests: route.quota?.requests ?? 1000,
       quotaPeriod: route.quota?.period ?? 'day',
+      budgetOn: route.budget !== undefined,
+      budgetUsage: route.budget?.usage ?? 'openai',
+      budgetPeriod: route.budget?.period ?? 'month',
+      budgetMaxOutput: String(route.budget?.maxOutputTokens ?? 4000),
+      budgetTokens:
+        route.budget?.tokens === undefined ? '' : String(route.budget.tokens),
+      budgetLimit: route.budget?.cost?.limit ?? '',
+      budgetInput: route.budget?.cost?.inputPerMillion ?? '',
+      budgetOutput: route.budget?.cost?.outputPerMillion ?? '',
     });
   }
 
@@ -195,6 +240,25 @@ export class RouteForm implements OnInit {
             },
           }
         : {}),
+      ...(value.budgetOn ? { budget: this.budget() } : {}),
+    };
+  }
+
+  private budget(): Budget {
+    const value = this.form.getRawValue();
+    const tokens = value.budgetTokens.trim();
+    const cost = {
+      limit: value.budgetLimit.trim(),
+      inputPerMillion: value.budgetInput.trim(),
+      outputPerMillion: value.budgetOutput.trim(),
+    };
+    const hasCost = Object.values(cost).some((amount) => amount !== '');
+    return {
+      usage: value.budgetUsage,
+      period: value.budgetPeriod,
+      maxOutputTokens: Number(value.budgetMaxOutput.trim()),
+      ...(tokens === '' ? {} : { tokens: Number(tokens) }),
+      ...(hasCost ? { cost } : {}),
     };
   }
 

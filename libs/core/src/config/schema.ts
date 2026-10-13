@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { budgetSchema } from '../http/budget';
 import { MEDIA_TYPE } from '../http/content-type';
 import {
   compiledRouteSchema,
@@ -85,6 +86,12 @@ export const routeSchema = z.strictObject({
     .optional(),
   /** FR-31, e.g. `{requests: 1000, period: day}`: per calendar day or month (UTC), for the whole route. */
   quota: quotaSchema.optional(),
+  /**
+   * FR-31 for AI APIs, e.g. `{usage: openai, period: month, tokens: 2000000, cost: {limit: "20.00",
+   * inputPerMillion: "2.50", outputPerMillion: "10.00"}}`. Needs `responseContentTypes:
+   * [application/json]` (the default).
+   */
+  budget: budgetSchema.optional(),
 });
 
 /** FR-01: dev, staging, production … A locked environment locks every gate in it. */

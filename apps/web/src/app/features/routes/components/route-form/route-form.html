@@ -267,6 +267,132 @@
       </p>
       }
     </fieldset>
+    <fieldset class="flex flex-col gap-3 md:col-span-2">
+      <label class="flex items-center gap-2 text-sm font-medium">
+        <input type="checkbox" formControlName="budgetOn" data-route-budget />
+        {{ 'routes.form.budget' | translate }}
+      </label>
+      @if (form.controls.budgetOn.value) {
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-budget-usage">
+            {{ 'routes.form.budgetUsage' | translate }}
+          </label>
+          <select
+            hlmInput
+            id="route-budget-usage"
+            formControlName="budgetUsage"
+            [attr.aria-invalid]="invalid('budgetUsage')"
+          >
+            @for (format of usageFormats; track format) {
+            <option [value]="format">
+              {{ 'routes.form.usageFormats.' + format | translate }}
+            </option>
+            }
+          </select>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-budget-period">
+            {{ 'routes.form.period' | translate }}
+          </label>
+          <select
+            hlmInput
+            id="route-budget-period"
+            formControlName="budgetPeriod"
+          >
+            @for (period of periods; track period) {
+            <option [value]="period">
+              {{ 'routes.form.periods.' + period | translate }}
+            </option>
+            }
+          </select>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-budget-max-output">
+            {{ 'routes.form.budgetMaxOutput' | translate }}
+          </label>
+          <input
+            hlmInput
+            id="route-budget-max-output"
+            class="w-36"
+            inputmode="numeric"
+            autocomplete="off"
+            formControlName="budgetMaxOutput"
+            [attr.aria-invalid]="invalid('budgetMaxOutput')"
+            [class.border-destructive]="invalid('budgetMaxOutput')"
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-budget-tokens">
+            {{ 'routes.form.budgetTokens' | translate }}
+          </label>
+          <input
+            hlmInput
+            id="route-budget-tokens"
+            class="w-36"
+            inputmode="numeric"
+            autocomplete="off"
+            formControlName="budgetTokens"
+            [attr.aria-invalid]="invalid('budgetTokens')"
+            [class.border-destructive]="invalid('budgetTokens')"
+          />
+        </div>
+      </div>
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-budget-limit">
+            {{ 'routes.form.budgetLimit' | translate }}
+          </label>
+          <input
+            hlmInput
+            id="route-budget-limit"
+            class="mt-code w-28"
+            inputmode="decimal"
+            placeholder="20.00"
+            autocomplete="off"
+            formControlName="budgetLimit"
+            [attr.aria-invalid]="invalid('budgetLimit')"
+            [class.border-destructive]="invalid('budgetLimit')"
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-budget-input">
+            {{ 'routes.form.budgetInput' | translate }}
+          </label>
+          <input
+            hlmInput
+            id="route-budget-input"
+            class="mt-code w-28"
+            inputmode="decimal"
+            placeholder="2.50"
+            autocomplete="off"
+            formControlName="budgetInput"
+            [attr.aria-invalid]="invalid('budgetInput')"
+            [class.border-destructive]="invalid('budgetInput')"
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-budget-output">
+            {{ 'routes.form.budgetOutput' | translate }}
+          </label>
+          <input
+            hlmInput
+            id="route-budget-output"
+            class="mt-code w-28"
+            inputmode="decimal"
+            placeholder="10.00"
+            autocomplete="off"
+            formControlName="budgetOutput"
+            [attr.aria-invalid]="invalid('budgetOutput')"
+            [class.border-destructive]="invalid('budgetOutput')"
+          />
+        </div>
+      </div>
+      <p class="text-muted-foreground text-xs">
+        {{ 'routes.form.budgetHint' | translate }}
+      </p>
+      }
+    </fieldset>
     @if (refused().size > 0) {
     <p class="text-destructive text-sm md:col-span-2" role="alert" data-refused>
       {{ 'routes.form.refused' | translate }}

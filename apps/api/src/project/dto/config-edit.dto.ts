@@ -14,8 +14,12 @@ import {
   ValidateNested,
 } from 'class-validator';
 import {
+  MAX_BUDGET_TOKENS,
+  MAX_USAGE_TOKENS,
   METHODS,
   QUOTA_PERIODS,
+  USAGE_FORMATS,
+  type UsageFormat,
   type QuotaPeriod,
   type RouteInput,
   type UpstreamAuthInput,
@@ -56,6 +60,48 @@ export class QuotaDto {
 
   @IsIn(QUOTA_PERIODS)
   period!: QuotaPeriod;
+}
+
+/** FR-31: decimal amounts as text ("5.00"); the core's schema checks their form and range. */
+export class CostDto {
+  @IsString()
+  @MaxLength(32)
+  limit!: string;
+
+  @IsString()
+  @MaxLength(32)
+  inputPerMillion!: string;
+
+  @IsString()
+  @MaxLength(32)
+  outputPerMillion!: string;
+}
+
+/** FR-31: tokens and/or cost per calendar day or month, for an AI API. */
+export class BudgetDto {
+  @IsIn(USAGE_FORMATS)
+  usage!: UsageFormat;
+
+  @IsIn(QUOTA_PERIODS)
+  period!: QuotaPeriod;
+
+  /** The highest output cap (`max_tokens` & co.) a request may ask for; others are refused. */
+  @IsInt()
+  @Min(1)
+  @Max(MAX_USAGE_TOKENS)
+  maxOutputTokens!: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(MAX_BUDGET_TOKENS)
+  tokens?: number;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => CostDto)
+  cost?: CostDto;
 }
 
 /**
@@ -101,6 +147,12 @@ export class RouteDto {
   @ValidateNested()
   @Type(() => QuotaDto)
   quota?: QuotaDto;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => BudgetDto)
+  budget?: BudgetDto;
 }
 
 export const AUTH_TYPES = ['bearer', 'header', 'query'] as const;
@@ -212,6 +264,25 @@ function routeInput(dto: RouteDto): RouteInput {
       ? {}
       : {
           quota: { requests: dto.quota.requests, period: dto.quota.period },
+        }),
+    ...(dto.budget === undefined ? {} : { budget: budgetInput(dto.budget) }),
+  };
+}
+
+function budgetInput(dto: BudgetDto): NonNullable<RouteInput['budget']> {
+  return {
+    usage: dto.usage,
+    period: dto.period,
+    maxOutputTokens: dto.maxOutputTokens,
+    ...(dto.tokens === undefined ? {} : { tokens: dto.tokens }),
+    ...(dto.cost === undefined
+      ? {}
+      : {
+          cost: {
+            limit: dto.cost.limit,
+            inputPerMillion: dto.cost.inputPerMillion,
+            outputPerMillion: dto.cost.outputPerMillion,
+          },
         }),
   };
 }

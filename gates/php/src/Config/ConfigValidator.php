@@ -22,6 +22,9 @@ final class ConfigValidator
     public const MAX_BODY_BYTES = 10 * 1024 * 1024;
     public const MAX_TIMEOUT_MS = 60_000;
     public const MAX_ORIGINS = 16;
+    public const JSON = 'application/json';
+    /** SEC-27: at most this many routes have a budget (MAX_ROUTE_BUDGETS in libs/core). */
+    public const MAX_ROUTE_BUDGETS = 256;
     private const HEADER_NAME = '/^[A-Za-z0-9-]{1,64}$/D';
     private const QUERY_PARAM = '/^[A-Za-z0-9_.-]{1,64}$/D';
     /** Headers the gate sets itself; an auth header may not replace them. */
@@ -62,6 +65,10 @@ final class ConfigValidator
             }
             $seen[$key] = true;
             $routes[$name] = $route;
+        }
+        // SEC-27: the budget store holds every route budget next to the policy's host budgets.
+        if (\count(array_filter($routes, static fn(Route $route): bool => $route->budget !== null)) > self::MAX_ROUTE_BUDGETS) {
+            self::fail();
         }
 
         return new CompiledConfig($upstreams, $routes, $enabled);
@@ -167,6 +174,7 @@ final class ConfigValidator
             'origins',
             'rateLimit',
             ...($value->has('quota') ? ['quota'] : []),
+            ...($value->has('budget') ? ['budget'] : []),
         )) {
             self::fail();
         }
@@ -187,6 +195,13 @@ final class ConfigValidator
             self::fail();
         }
 
+        $responseTypes = self::mediaTypes($value->get('responseContentTypes'));
+        $budget = $value->has('budget') ? self::budget($value->get('budget'), RejectionCode::ConfigInvalid, true) : null;
+        // A budget is counted from the usage in a JSON answer; any other answer cannot be counted.
+        if ($budget !== null && array_diff($responseTypes, [self::JSON]) !== []) {
+            self::fail();
+        }
+
         return new Route(
             $name,
             $method,
@@ -195,12 +210,61 @@ final class ConfigValidator
             $upstreamPath,
             $maxBodyBytes,
             self::mediaTypes($value->get('contentTypes')),
-            self::mediaTypes($value->get('responseContentTypes')),
+            $responseTypes,
             $enabled,
             self::origins($value->get('origins')),
             $value->get('rateLimit') === null ? null : self::routeLimit($value->get('rateLimit')),
             $value->has('quota') ? self::quota($value->get('quota'), RejectionCode::ConfigInvalid) : null,
+            $budget,
         );
+    }
+
+    /**
+     * A budget (FR-31) as budgetSchema in libs/core: `usage`, `period`, `reserve`, and `tokens`
+     * and/or a `cost` (`limit`, `inputPerMillion`, `outputPerMillion` as decimal text) — or, in the
+     * local policy (`$withCost` false), exactly `usage`, `period`, `reserve` and `tokens`. Else a
+     * Rejection with `$code`.
+     */
+    public static function budget(mixed $value, RejectionCode $code, bool $withCost): Budget
+    {
+        if (!$value instanceof JsonObject) {
+            throw new Rejection($code);
+        }
+        $keys = $withCost
+            ? ['usage', 'period', 'maxOutputTokens', ...($value->has('tokens') ? ['tokens'] : []), ...($value->has('cost') ? ['cost'] : [])]
+            : ['usage', 'period', 'maxOutputTokens', 'tokens'];
+        $maxOutputTokens = $value->get('maxOutputTokens');
+        $usage = \is_string($value->get('usage')) ? UsageFormat::tryFrom($value->get('usage')) : null;
+        $period = \is_string($value->get('period')) ? QuotaPeriod::tryFrom($value->get('period')) : null;
+        $tokens = $value->has('tokens') ? $value->get('tokens') : null;
+        if (
+            !$value->hasExactKeys(...$keys) || $usage === null || $period === null
+            || !\is_int($maxOutputTokens) || !self::intIn($maxOutputTokens, 1, UsageFormat::MAX_TOKENS)
+            || ($value->has('tokens') && !self::intIn($tokens, 1, Budget::MAX_TOKENS))
+            || (!$value->has('tokens') && !$value->has('cost'))
+        ) {
+            throw new Rejection($code);
+        }
+        $cost = null;
+        if ($value->has('cost')) {
+            $entry = $value->get('cost');
+            if (!$entry instanceof JsonObject || !$entry->hasExactKeys('limit', 'inputPerMillion', 'outputPerMillion')) {
+                throw new Rejection($code);
+            }
+            $limit = Budget::amount($entry->get('limit'));
+            $input = Budget::amount($entry->get('inputPerMillion'));
+            $output = Budget::amount($entry->get('outputPerMillion'));
+            if (
+                $limit === null || $limit < 1 || $limit > Budget::MAX_AMOUNT_MICROS
+                || $input === null || $input > Budget::MAX_PRICE_MICROS
+                || $output === null || $output > Budget::MAX_PRICE_MICROS
+            ) {
+                throw new Rejection($code);
+            }
+            $cost = new Cost($limit, $input, $output);
+        }
+
+        return new Budget($usage, $period, $maxOutputTokens, \is_int($tokens) ? $tokens : null, $cost);
     }
 
     /** @return list<string> */

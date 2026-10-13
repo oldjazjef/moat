@@ -235,6 +235,16 @@
       "day": "{{requests}} per day in total",
       "month": "{{requests}} per month in total"
     },
+    "budget": {
+      "tokens": {
+        "day": "Budget {{tokens}} tokens per day",
+        "month": "Budget {{tokens}} tokens per month"
+      },
+      "cost": {
+        "day": "Budget {{limit}} per day",
+        "month": "Budget {{limit}} per month"
+      }
+    },
     "maxBody": "max. {{value}} {{unit}} per request",
     "duration": "{{value}} {{unit}}",
     "disabled": "Switched off",
@@ -311,6 +321,19 @@
         "month": "per month"
       },
       "quotaHint": "Counts all requests to this route together, whoever sends them. The day starts at midnight UTC, the month on the 1st. Once the quota is used up, the gate answers 429 with quota_exceeded until then.",
+      "budget": "Budget for an AI API",
+      "budgetUsage": "Provider",
+      "usageFormats": {
+        "openai": "OpenAI",
+        "anthropic": "Anthropic",
+        "gemini": "Google Gemini"
+      },
+      "budgetMaxOutput": "Output tokens per request at most",
+      "budgetTokens": "Tokens at most",
+      "budgetLimit": "Cost at most",
+      "budgetInput": "Price per 1M input tokens",
+      "budgetOutput": "Price per 1M output tokens",
+      "budgetHint": "Every request to the route must bound its cost: no stream, max_tokens (maxOutputTokens for Gemini) up to the value above, and no tools the provider runs itself (web search, code execution). The gate refuses others with 400 and request_unbounded. Before forwarding it books the request's most possible usage (its size in bytes plus max_tokens) and afterwards replaces it with the usage the answer reports; when the answer cannot be counted, the most possible usage stays booked. Set tokens, cost or both; amounts in the provider's currency, e.g. 20.00, prices as the provider lists them per million tokens. Once the budget is reached, the gate answers 429 with budget_exhausted until the day or month ends (UTC).",
       "refused": "Moat did not save the route: the marked fields hold values the gate would refuse.",
       "save": "Save",
       "cancel": "Cancel",
@@ -474,13 +497,14 @@
       },
       "limits": {
         "title": "Limits",
-        "purpose": "Rate limits protect your API from scripts; quotas cap how much a route uses per day or month in total. The gate counts by itself.",
+        "purpose": "Rate limits protect your API from scripts; quotas cap how much a route uses per day or month in total, and budgets how many tokens or how much money an AI API may cost. The gate counts by itself.",
         "where": "Project › Routes › Limits",
         "steps": {
           "route": "Give a route a rate limit, for example 5 requests per 10 minutes per visitor.",
           "quota": "Give a route a cap on all requests together with “Quota per day or month”, for example 1000 per day. Then nobody can burn your AI budget, not even from many addresses.",
-          "policy": "The gate's local policy sets limits that always apply, whatever a bundle says. It can also set a quota for the whole gate (`limits.quota`) that no bundle can lift. `moat policy suggest` proposes a matching policy.",
-          "answer": "When a limit is reached, the gate answers 429 and says when to try again: `rate_limited` for a rate limit, `quota_exceeded` for a quota."
+          "budget": "For an AI API such as OpenAI, Anthropic or Gemini, “Budget for an AI API” sets a limit in tokens, in cost or both, per day or month. Your website must then send each request with `max_tokens` up to “Output tokens per request at most” and without a stream, with only its own functions as tools (no web search or code execution at the provider, which is billed per call), otherwise the gate answers `request_unbounded`. It books the most possible usage before and what the answer used afterwards.",
+          "policy": "The gate's local policy sets limits that always apply, whatever a bundle says. It can also set a quota for the whole gate (`limits.quota`) and a token budget per upstream host (`budget` under `upstreams`) that no bundle can lift. `moat policy suggest` proposes a matching policy.",
+          "answer": "When a limit is reached, the gate answers 429 and says when to try again: `rate_limited` for a rate limit, `quota_exceeded` for a quota, `budget_exhausted` for a budget."
         },
         "tips": {
           "proxy": "If your website runs behind a proxy like Cloudflare, the gate sees only the proxy's address. Set the limits more generously then."

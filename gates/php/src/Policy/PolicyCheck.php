@@ -82,6 +82,13 @@ final class PolicyCheck
             if (!$within) {
                 self::violation();
             }
+            // Every answer from a host with a budget must be countable, in the policy's format.
+            if ($allowed->budget !== null && (
+                array_diff($route->responseContentTypes, [ConfigValidator::JSON]) !== []
+                || ($route->budget !== null && $route->budget->usage !== $allowed->budget->usage)
+            )) {
+                self::violation();
+            }
         }
         if (self::counterCapacity($config, $policy) > $policy->limits->maxClients) {
             self::violation();
@@ -130,7 +137,7 @@ final class PolicyCheck
 
     private static function upstream(mixed $entry): PolicyUpstream
     {
-        if (!$entry instanceof JsonObject || !$entry->hasExactKeys('pathPrefixes', 'methods', 'secrets')) {
+        if (!$entry instanceof JsonObject || !$entry->hasExactKeys('pathPrefixes', 'methods', 'secrets', ...($entry->has('budget') ? ['budget'] : []))) {
             self::invalid();
         }
         $prefixes = $entry->get('pathPrefixes');
@@ -163,7 +170,9 @@ final class PolicyCheck
             $secrets[] = $name;
         }
 
-        return new PolicyUpstream($pathPrefixes, $allowed, $secrets);
+        $budget = $entry->has('budget') ? ConfigValidator::budget($entry->get('budget'), RejectionCode::PolicyInvalid, false) : null;
+
+        return new PolicyUpstream($pathPrefixes, $allowed, $secrets, $budget);
     }
 
     private static function isPrefix(string $value): bool

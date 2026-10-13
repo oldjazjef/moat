@@ -1,7 +1,8 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { suggestPolicy } from '../policy/policy';
 import { compileConfig } from './compile';
 import { ConfigError, loadMoatYaml, type ConfigIssue } from './yaml';
 
@@ -103,14 +104,41 @@ describe('loadMoatYaml', () => {
   );
 
   it('loads every recipe in recipes/ (FR-43)', () => {
-    const text = readFileSync(
-      path.join(ROOT, 'recipes/hubspot-newsletter.moat.yaml'),
-      'utf8',
-    );
+    const recipe = (name: string) =>
+      readFileSync(path.join(ROOT, 'recipes', name), 'utf8');
     expect(
-      compileConfig(loadMoatYaml(text), ['hubspot-token']).routes['newsletter']
-        ?.maxBodyBytes,
+      readdirSync(path.join(ROOT, 'recipes')).filter(
+        (name) =>
+          !['hubspot-newsletter.moat.yaml', 'openai-chat.moat.yaml'].includes(
+            name,
+          ),
+      ),
+    ).toEqual([]);
+    expect(
+      compileConfig(loadMoatYaml(recipe('hubspot-newsletter.moat.yaml')), [
+        'hubspot-token',
+      ]).routes['newsletter']?.maxBodyBytes,
     ).toBe(4096);
+    const chat = compileConfig(loadMoatYaml(recipe('openai-chat.moat.yaml')), [
+      'openai-key',
+    ]);
+    expect(chat.routes['chat']?.budget).toEqual({
+      usage: 'openai',
+      period: 'day',
+      maxOutputTokens: 4000,
+      tokens: 500000,
+      cost: {
+        limit: '5.00',
+        inputPerMillion: '2.50',
+        outputPerMillion: '10.00',
+      },
+    });
+    expect(suggestPolicy(chat).upstreams['api.openai.com']?.budget).toEqual({
+      usage: 'openai',
+      period: 'day',
+      maxOutputTokens: 4000,
+      tokens: 500000,
+    });
   });
 
   it('SEC-24: rejects anchors and aliases', () => {

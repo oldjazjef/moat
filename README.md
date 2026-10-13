@@ -27,9 +27,9 @@ The gate's own local policy always wins over anything it receives.
 
 > **Status (October 2026):** early development. Working today: Moat Core, the `moat` CLI, the PHP
 > gate (signed bundles, exact routing, SSRF guard, CORS, rate limits, request quotas per day or
-> month, locking a gate or a whole environment) and Moat Desktop (project list, a view of each project, and editing environments,
+> month, token and cost budgets for AI APIs, locking a gate or a whole environment) and Moat Desktop (project list, a view of each project, and editing environments,
 > locks, routes and upstreams, sealing secrets, signing bundles). Not built yet: Moat Cloud,
-> token and cost budgets for AI APIs, the setup wizard. The full target is in
+> the setup wizard. The full target is in
 > [ANFORDERUNGEN.md](ANFORDERUNGEN.md) (German).
 
 ## How it fits together
@@ -164,13 +164,18 @@ deleted there. Without a real keychain the option is not shown at all.
 - method and exact path;
 - the upstream address it forwards to;
 - the websites allowed to call it;
-- its rate limit, quota and maximum body size;
+- its rate limit, quota, budget and maximum body size;
 - for each upstream, which sealed secret it sends (by name).
 
 **New route** opens a form with the route's fields: name, method, path on the gate, upstream,
 path at the upstream, maximum size, allowed websites (one per line), an optional rate limit and
 an optional quota (requests per day or month for the whole route; the gate answers
-`429 quota_exceeded` once it is used up and counts again from midnight UTC or the 1st).
+`429 quota_exceeded` once it is used up and counts again from midnight UTC or the 1st) and an
+optional **budget for an AI API** (OpenAI, Anthropic or Gemini: tokens, cost or both per day or
+month, counted from the usage each answer reports; requests must set `max_tokens` and not stream;
+`429 budget_exhausted` once it is spent). See
+[gates/php/README.md](gates/php/README.md#budgets-for-ai-apis-fr-31) for how the gate counts and the
+token budget the local policy can hold per host.
 **Edit** opens the same form for an existing route, **Switch off** disables a route without
 deleting it, and **Delete** asks once more before it removes the route. Values are checked by the
 same schema as every `moat.yaml`: a value the gate would refuse (a path with `..`, an `http://`

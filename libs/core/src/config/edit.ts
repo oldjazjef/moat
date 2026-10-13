@@ -12,6 +12,7 @@ import {
 import { MoatRejection } from '../errors';
 import { compileConfig } from './compile';
 import { LIMIT_SCOPES, METHODS, NAME, type QuotaPeriod } from './compiled';
+import { parseAmount, type UsageFormat } from '../http/budget';
 import type { MoatConfig } from './schema';
 import { parseDuration, parseSize } from './units';
 import { ConfigError, loadMoatYaml } from './yaml';
@@ -215,6 +216,23 @@ export interface RouteInput {
     readonly requests: number;
     readonly period: QuotaPeriod;
   };
+  /**
+   * FR-31: tokens and/or cost per calendar day or month (UTC), counted from the usage the AI API
+   * reports. Absent = the key is removed; so is an absent `tokens` or `cost` inside it.
+   */
+  readonly budget?: {
+    readonly usage: UsageFormat;
+    readonly period: QuotaPeriod;
+    /** The highest output cap (`max_tokens` & co.) a request may ask for; others are refused. */
+    readonly maxOutputTokens: number;
+    readonly tokens?: number;
+    /** Decimal amounts as text ("5.00"), as the schema wants them. */
+    readonly cost?: {
+      readonly limit: string;
+      readonly inputPerMillion: string;
+      readonly outputPerMillion: string;
+    };
+  };
 }
 
 /** Same value as written, so the author's spelling ("10m" vs "600s") is kept. */
@@ -225,6 +243,11 @@ const sameDuration: Same = (written, value) =>
   typeof value === 'string' &&
   parseDuration(written) !== null &&
   parseDuration(written) === parseDuration(value);
+const sameAmount: Same = (written, value) =>
+  typeof written === 'string' &&
+  typeof value === 'string' &&
+  parseAmount(written) !== null &&
+  parseAmount(written) === parseAmount(value);
 const sameSize: Same = (written, value) =>
   typeof written === 'string' &&
   typeof value === 'string' &&
@@ -405,6 +428,49 @@ export function setRoute(
       setIn(doc, at('quota'), emptyMap());
     setScalar(doc, at('quota', 'requests'), quota.requests, false);
     setScalar(doc, at('quota', 'period'), quota.period, false);
+  }
+  const budget = input.budget;
+  if (budget === undefined) deleteIn(doc, at('budget'));
+  else {
+    if (!isMap(doc.getIn(at('budget'), true)))
+      setIn(doc, at('budget'), emptyMap());
+    setScalar(doc, at('budget', 'usage'), budget.usage, false);
+    setScalar(doc, at('budget', 'period'), budget.period, false);
+    setScalar(
+      doc,
+      at('budget', 'maxOutputTokens'),
+      budget.maxOutputTokens,
+      false,
+    );
+    if (budget.tokens === undefined) deleteIn(doc, at('budget', 'tokens'));
+    else setScalar(doc, at('budget', 'tokens'), budget.tokens, false);
+    const cost = budget.cost;
+    if (cost === undefined) deleteIn(doc, at('budget', 'cost'));
+    else {
+      if (!isMap(doc.getIn(at('budget', 'cost'), true)))
+        setIn(doc, at('budget', 'cost'), emptyMap());
+      setScalar(
+        doc,
+        at('budget', 'cost', 'limit'),
+        cost.limit,
+        true,
+        sameAmount,
+      );
+      setScalar(
+        doc,
+        at('budget', 'cost', 'inputPerMillion'),
+        cost.inputPerMillion,
+        true,
+        sameAmount,
+      );
+      setScalar(
+        doc,
+        at('budget', 'cost', 'outputPerMillion'),
+        cost.outputPerMillion,
+        true,
+        sameAmount,
+      );
+    }
   }
   if (input.origins === undefined || input.origins.length === 0)
     deleteIn(doc, at('origins'));

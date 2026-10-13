@@ -62,6 +62,10 @@ for (;;) {
             ['method' => $method, 'path' => $path, 'query' => $hide($query), 'headers' => array_map($hide, $headers), 'body' => $body],
             JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES,
         );
+    } elseif ($path === '/usage') {
+        $answer = '{"id":"chatcmpl-1","usage":{"prompt_tokens":60,"completion_tokens":40,"total_tokens":100}}';
+    } elseif ($path === '/no-usage') {
+        $answer = '{"id":"chatcmpl-2"}';
     } elseif ($path === '/redirect') {
         $status = 302;
         $extra[] = 'Location: https://upstream.test/echo';

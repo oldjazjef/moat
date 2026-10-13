@@ -6,6 +6,7 @@ namespace Moat\Gate\Cli;
 
 use Moat\Gate\Bundle\BundleVerifier;
 use Moat\Gate\Bundle\PinnedSigner;
+use Moat\Gate\Config\Budget;
 use Moat\Gate\Config\Limit;
 use Moat\Gate\Crypto\KeyAlgorithm;
 use Moat\Gate\Crypto\KeyId;
@@ -20,6 +21,7 @@ use Moat\Gate\Hardening\WebFacts;
 use Moat\Gate\Json\StrictJson;
 use Moat\Gate\Policy\PolicyCheck;
 use Moat\Gate\Rejection;
+use Moat\Gate\Runtime\BudgetStore;
 use Moat\Gate\Runtime\Gate;
 use Moat\Gate\Runtime\Identity;
 use Moat\Gate\Runtime\NotConfigured;
@@ -147,15 +149,52 @@ final class Cli
             if ($limits->quota !== null) {
                 self::out('Quota:      ' . $limits->quota->requests . ' requests per ' . $limits->quota->period->value . ' (UTC) for the whole gate');
             }
+            foreach ($gate->policy->upstreams as $hostKey => $upstream) {
+                if ($upstream->budget !== null) {
+                    self::out('Budget:     ' . $hostKey . ' (policy): ' . self::budgetText($gate, BudgetStore::hostName($hostKey, $upstream->budget), $upstream->budget));
+                }
+            }
         }
         try {
             $active = $gate->active(time());
             self::out('Bundle:     version ' . $active->version . ', ' . \count($active->config->routes) . ' route(s)' . ($active->config->enabled ? '' : ', LOCKED (every request is refused with gate_disabled)'));
+            foreach ($active->config->routes as $name => $route) {
+                if ($route->budget !== null) {
+                    self::out('Budget:     route ' . $name . ': ' . self::budgetText($gate, BudgetStore::routeName($name, $route->budget), $route->budget));
+                }
+            }
         } catch (NotConfigured) {
             self::out('Bundle:     none active (missing, or no longer valid for the current trust and policy)');
         }
 
         return 0;
+    }
+
+    /** What a budget (FR-31) has spent in its current period, e.g. `1200 of 100000 tokens, 0.42 of 20.00 per day (UTC)`. */
+    private static function budgetText(Gate $gate, string $name, Budget $budget): string
+    {
+        try {
+            $spent = BudgetStore::spent($gate->data, $name, time());
+        } catch (\RuntimeException) {
+            return 'store damaged — every request with a budget is refused';
+        }
+        $parts = [];
+        if ($budget->tokens !== null) {
+            $parts[] = ($spent[0] ?? 0) . ' of ' . $budget->tokens . ' tokens';
+        }
+        if ($budget->cost !== null) {
+            $parts[] = self::microsText($spent[1] ?? 0) . ' of ' . self::microsText($budget->cost->limitMicros);
+        }
+
+        return implode(', ', $parts) . ' per ' . $budget->period->value . ' (UTC)' . ($spent === null ? '' : ', resets ' . gmdate('Y-m-d H:i', $spent[2]) . ' UTC');
+    }
+
+    /** Micros as a decimal amount with at least two places: 420000 → "0.42". */
+    private static function microsText(int $micros): string
+    {
+        $fraction = rtrim(str_pad((string) ($micros % Budget::MICROS), 6, '0', STR_PAD_LEFT), '0');
+
+        return intdiv($micros, Budget::MICROS) . '.' . str_pad($fraction, 2, '0');
     }
 
     /**
