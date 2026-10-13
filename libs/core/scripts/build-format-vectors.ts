@@ -29,6 +29,7 @@ import {
   type HardeningFacts,
   type WebFacts,
 } from '../src/gate/hardening';
+import { killSwitchOf, type KillFile } from '../src/gate/kill-switch';
 import {
   addCharge,
   answerCharge,
@@ -1183,6 +1184,23 @@ function policyVectors(): Json {
         }),
     ],
     [
+      'maximum config age of 30 days (SEC-15, T-23)',
+      (_c, p) => (p['maxConfigAgeSeconds'] = 30 * 86_400),
+    ],
+    [
+      'maximum config age below one hour',
+      (_c, p) => (p['maxConfigAgeSeconds'] = 3_599),
+    ],
+    [
+      'maximum config age above ten years',
+      (_c, p) => (p['maxConfigAgeSeconds'] = 315_360_001),
+    ],
+    ['maximum config age null', (_c, p) => (p['maxConfigAgeSeconds'] = null)],
+    [
+      'maximum config age as a duration text',
+      (_c, p) => (p['maxConfigAgeSeconds'] = '30d'),
+    ],
+    [
       'policy quota of 0 requests',
       (_c, p) =>
         ((p['limits'] as Record<string, Json>)['quota'] = {
@@ -2264,6 +2282,60 @@ function budgetVectors(): Json {
   };
 }
 
+function killSwitchVectors(): Json {
+  const present = (content: string): KillFile => ({ kind: 'present', content });
+  const cases: [string, KillFile][] = [
+    ['no kill file: nothing is off', { kind: 'absent' }],
+    ['the whole gate', present('gate\n')],
+    ['one route', present('route newsletter\n')],
+    [
+      'several routes, sorted and once each',
+      present('route status\nroute newsletter\nroute status\n'),
+    ],
+    ['gate and a route', present('route newsletter\ngate\n')],
+    ['an empty kill file (marker only): nothing is off', present('')],
+    [
+      'comments, blank lines and CRLF are ignored',
+      present('# switched off by Eme\r\n\r\n  route newsletter \r\n'),
+    ],
+    ['no newline at the end', present('route newsletter')],
+    [
+      'a route that is not in the bundle is listed and switches nothing else off',
+      present('route no-such-route\n'),
+    ],
+    [
+      'an unknown line switches the whole gate off',
+      present('route newsletter\nstop everything\n'),
+    ],
+    [
+      'an upper-case route name is unknown: whole gate off',
+      present('route Newsletter\n'),
+    ],
+    ['two spaces after route: whole gate off', present('route  newsletter\n')],
+    ['route without a name: whole gate off', present('route\n')],
+    ['GATE in capitals: whole gate off', present('GATE\n')],
+    [
+      'a route name longer than 63 characters: whole gate off',
+      present(`route a${'b'.repeat(63)}\n`),
+    ],
+    [
+      'a file without the data-file marker (an empty file uploaded by hand): whole gate off',
+      { kind: 'damaged' },
+    ],
+  ];
+  return {
+    description:
+      'The local kill switch (SEC-15, FR-33, T-23): the data file `kill` (`kill.php` on H1, after the data-file marker), written by `php moat-gate.php kill|revive` or by hand. `file`: `absent`, `damaged` (exists but has no marker, or cannot be read) or `{content}` = the text after the marker. `expect`: `gate` true = every request gets `gate_disabled`; `routes` = route names that get `route_disabled` (sorted, once each). One entry per line: `gate` or `route <name>` (name as in moat.yaml); blank lines and `#` comments are ignored, spaces, tabs and `\r` around a line too. Any other line switches the whole gate off, as does a damaged file: the switch fails closed.',
+    cases: cases.map(([name, file]) => ({
+      name,
+      file: (file.kind === 'present'
+        ? { content: file.content }
+        : file.kind) as unknown as Json,
+      expect: killSwitchOf(file) as unknown as Json,
+    })),
+  };
+}
+
 export async function buildFormatVectors(): Promise<Record<string, Json>> {
   return {
     'http/path.json': pathVectors(),
@@ -2275,5 +2347,6 @@ export async function buildFormatVectors(): Promise<Record<string, Json>> {
     'config/policy.json': policyVectors(),
     'crypto/keyfile.json': await keyFileVectors(),
     'gate/hardening.json': hardeningVectors(),
+    'gate/kill-switch.json': killSwitchVectors(),
   };
 }

@@ -24,6 +24,7 @@ use Moat\Gate\Rejection;
 use Moat\Gate\Runtime\BudgetStore;
 use Moat\Gate\Runtime\Gate;
 use Moat\Gate\Runtime\Identity;
+use Moat\Gate\Runtime\KillSwitch;
 use Moat\Gate\Runtime\NotConfigured;
 use Moat\Gate\Runtime\Trust;
 use Moat\Gate\Storage\DataDir;
@@ -38,11 +39,13 @@ use Moat\Gate\Storage\Files;
  *   php moat-gate.php policy <policy.json>
  *   php moat-gate.php accept <bundle.json>
  *   php moat-gate.php status
+ *   php moat-gate.php kill [--route=<name>]
+ *   php moat-gate.php revive [--route=<name>]
  *   php moat-gate.php check [--url=https://<site>/<path>/moat-gate.php]
  */
 final class Cli
 {
-    private const USAGE = "usage: php moat-gate.php install|trust|policy|accept|status|check (see the gate README)\n";
+    private const USAGE = "usage: php moat-gate.php install|trust|policy|accept|status|check|kill|revive (see the gate README)\n";
 
     /** @param list<string> $argv */
     public static function main(string $gateDir, array $argv): int
@@ -57,6 +60,8 @@ final class Cli
                 'accept' => self::accept($gateDir, $args),
                 'status' => self::status($gateDir),
                 'check' => self::check($gateDir, $args, $options),
+                'kill' => self::kill($gateDir, $args, $options, true),
+                'revive' => self::kill($gateDir, $args, $options, false),
                 default => self::usage(self::USAGE),
             };
         } catch (Rejection $rejection) {
@@ -69,6 +74,10 @@ final class Cli
             return 1;
         } catch (UsageError $error) {
             return self::usage($error->getMessage() . "\n");
+        } catch (\RuntimeException $error) {
+            fwrite(STDERR, 'failed: ' . $error->getMessage() . "\n");
+
+            return 1;
         }
     }
 
@@ -138,6 +147,71 @@ final class Cli
         return 0;
     }
 
+    /**
+     * The local kill switch (SEC-15): `kill` switches the whole gate or one route off, `revive`
+     * on again (without --route: everything). Works on the data folder alone, so it also works
+     * when the gate's other data files are missing or invalid.
+     *
+     * @param list<string>          $args
+     * @param array<string, string> $options
+     */
+    private static function kill(string $gateDir, array $args, array $options, bool $kill): int
+    {
+        $data = DataDir::locate($gateDir) ?? throw new NotConfigured();
+        $route = $options['route'] ?? null;
+        unset($options['route']);
+        // `revive chat` or `kill --route chat` must not quietly mean "everything".
+        if ($args !== [] || $options !== [] || ($route !== null && !KillSwitch::validRouteName($route))) {
+            throw new UsageError('usage: php moat-gate.php ' . ($kill ? 'kill' : 'revive') . ' [--route=<name>]');
+        }
+        // Its own lock: the request lock can be busy under exactly the load the switch is for.
+        $switch = $data->locked(static function () use ($data, $route, $kill): KillSwitch {
+            $switch = KillSwitch::read($data);
+            if ($kill) {
+                $switch = $route === null ? $switch->killGate() : $switch->killRoute($route);
+            } elseif ($route === null) {
+                $switch = KillSwitch::parse('');
+            } else {
+                $switch = $switch->reviveRoute($route);
+            }
+            if ($switch->isOff()) {
+                $data->remove(KillSwitch::FILE);
+            } else {
+                $data->write(KillSwitch::FILE, $switch->text());
+            }
+
+            return $switch;
+        }, KillSwitch::LOCK);
+        self::out(self::killText($switch));
+        $owner = $data->owner(KillSwitch::FILE);
+        if ($owner !== null && $owner !== $data->owner(Gate::IDENTITY)) {
+            self::out('WARNING: kill.php belongs to another user than the gate\'s other data files. If the web server cannot read it, the whole gate stays off; run the command as the site\'s user.');
+        }
+        if ($kill && $route !== null) {
+            try {
+                if (!isset(Gate::open($gateDir)->active(time())->config->routes[$route])) {
+                    self::out('Note: the active bundle has no route "' . $route . '"; it is switched off as soon as one has it.');
+                }
+            } catch (\Throwable) {
+                // No usable active bundle to compare with: the switch is written all the same.
+            }
+        }
+
+        return 0;
+    }
+
+    private static function killText(KillSwitch $switch): string
+    {
+        if ($switch->gate) {
+            return 'Kill switch: the whole gate is OFF (every request gets gate_disabled). php moat-gate.php revive switches it on again.';
+        }
+        if ($switch->routes !== []) {
+            return 'Kill switch: route(s) OFF: ' . implode(', ', $switch->routes) . ' (route_disabled).';
+        }
+
+        return 'Kill switch: nothing switched off.';
+    }
+
     private static function status(string $gateDir): int
     {
         $gate = Gate::open($gateDir);
@@ -155,9 +229,15 @@ final class Cli
                 }
             }
         }
+        $routeNames = null;
         try {
             $active = $gate->active(time());
-            self::out('Bundle:     version ' . $active->version . ', ' . \count($active->config->routes) . ' route(s)' . ($active->config->enabled ? '' : ', LOCKED (every request is refused with gate_disabled)'));
+            $routeNames = array_keys($active->config->routes);
+            self::out('Bundle:     version ' . $active->version . ', ' . \count($active->config->routes) . ' route(s), signed ' . gmdate('Y-m-d H:i', $active->issuedAt) . ' UTC' . ($active->config->enabled ? '' : ', LOCKED (every request is refused with gate_disabled)'));
+            $maxAge = $active->policy->maxConfigAgeSeconds;
+            if ($maxAge !== null && time() - $active->issuedAt > $maxAge) {
+                self::out('WARNING:    the active config is older than the policy allows (' . intdiv(time() - $active->issuedAt, 86_400) . ' days). A lock may not have arrived: use php moat-gate.php kill if needed (T-23).');
+            }
             foreach ($active->config->routes as $name => $route) {
                 if ($route->budget !== null) {
                     self::out('Budget:     route ' . $name . ': ' . self::budgetText($gate, BudgetStore::routeName($name, $route->budget), $route->budget));
@@ -165,6 +245,12 @@ final class Cli
             }
         } catch (NotConfigured) {
             self::out('Bundle:     none active (missing, or no longer valid for the current trust and policy)');
+        }
+        $switch = KillSwitch::read($gate->data);
+        self::out(self::killText($switch));
+        foreach ($routeNames === null ? [] : array_diff($switch->routes, $routeNames) as $missing) {
+            // A route kill holds by name: a bundle that renames the route is not stopped (T-23).
+            self::out('WARNING:    the killed route "' . $missing . '" is not in the active bundle. If the config is not to be trusted, kill the whole gate: php moat-gate.php kill');
         }
 
         return 0;

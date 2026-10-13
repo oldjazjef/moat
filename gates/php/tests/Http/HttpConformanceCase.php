@@ -51,6 +51,9 @@ abstract class HttpConformanceCase extends TestCase
         $gate = self::$gate ?? throw new \LogicException('no gate');
         $request = Vectors::map($case['request']);
         $expect = Vectors::map($case['expect']);
+        if (\array_key_exists('killFile', $case)) {
+            $gate->setKillFile($case['killFile'] === null ? null : Vectors::map($case['killFile']));
+        }
         $before = $gate->upstreamCalls();
 
         [$status, $headers, $body] = self::send($gate->baseUrl, $request);

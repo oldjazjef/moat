@@ -1,0 +1,174 @@
+{
+  "description": "The local kill switch (SEC-15, FR-33, T-23): the data file `kill` (`kill.php` on H1, after the data-file marker), written by `php moat-gate.php kill|revive` or by hand. `file`: `absent`, `damaged` (exists but has no marker, or cannot be read) or `{content}` = the text after the marker. `expect`: `gate` true = every request gets `gate_disabled`; `routes` = route names that get `route_disabled` (sorted, once each). One entry per line: `gate` or `route <name>` (name as in moat.yaml); blank lines and `#` comments are ignored, spaces, tabs and `\r` around a line too. Any other line switches the whole gate off, as does a damaged file: the switch fails closed.",
+  "cases": [
+    {
+      "name": "no kill file: nothing is off",
+      "file": "absent",
+      "expect": {
+        "gate": false,
+        "routes": []
+      }
+    },
+    {
+      "name": "the whole gate",
+      "file": {
+        "content": "gate\n"
+      },
+      "expect": {
+        "gate": true,
+        "routes": []
+      }
+    },
+    {
+      "name": "one route",
+      "file": {
+        "content": "route newsletter\n"
+      },
+      "expect": {
+        "gate": false,
+        "routes": [
+          "newsletter"
+        ]
+      }
+    },
+    {
+      "name": "several routes, sorted and once each",
+      "file": {
+        "content": "route status\nroute newsletter\nroute status\n"
+      },
+      "expect": {
+        "gate": false,
+        "routes": [
+          "newsletter",
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "gate and a route",
+      "file": {
+        "content": "route newsletter\ngate\n"
+      },
+      "expect": {
+        "gate": true,
+        "routes": [
+          "newsletter"
+        ]
+      }
+    },
+    {
+      "name": "an empty kill file (marker only): nothing is off",
+      "file": {
+        "content": ""
+      },
+      "expect": {
+        "gate": false,
+        "routes": []
+      }
+    },
+    {
+      "name": "comments, blank lines and CRLF are ignored",
+      "file": {
+        "content": "# switched off by Eme\r\n\r\n  route newsletter \r\n"
+      },
+      "expect": {
+        "gate": false,
+        "routes": [
+          "newsletter"
+        ]
+      }
+    },
+    {
+      "name": "no newline at the end",
+      "file": {
+        "content": "route newsletter"
+      },
+      "expect": {
+        "gate": false,
+        "routes": [
+          "newsletter"
+        ]
+      }
+    },
+    {
+      "name": "a route that is not in the bundle is listed and switches nothing else off",
+      "file": {
+        "content": "route no-such-route\n"
+      },
+      "expect": {
+        "gate": false,
+        "routes": [
+          "no-such-route"
+        ]
+      }
+    },
+    {
+      "name": "an unknown line switches the whole gate off",
+      "file": {
+        "content": "route newsletter\nstop everything\n"
+      },
+      "expect": {
+        "gate": true,
+        "routes": []
+      }
+    },
+    {
+      "name": "an upper-case route name is unknown: whole gate off",
+      "file": {
+        "content": "route Newsletter\n"
+      },
+      "expect": {
+        "gate": true,
+        "routes": []
+      }
+    },
+    {
+      "name": "two spaces after route: whole gate off",
+      "file": {
+        "content": "route  newsletter\n"
+      },
+      "expect": {
+        "gate": true,
+        "routes": []
+      }
+    },
+    {
+      "name": "route without a name: whole gate off",
+      "file": {
+        "content": "route\n"
+      },
+      "expect": {
+        "gate": true,
+        "routes": []
+      }
+    },
+    {
+      "name": "GATE in capitals: whole gate off",
+      "file": {
+        "content": "GATE\n"
+      },
+      "expect": {
+        "gate": true,
+        "routes": []
+      }
+    },
+    {
+      "name": "a route name longer than 63 characters: whole gate off",
+      "file": {
+        "content": "route abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n"
+      },
+      "expect": {
+        "gate": true,
+        "routes": []
+      }
+    },
+    {
+      "name": "a file without the data-file marker (an empty file uploaded by hand): whole gate off",
+      "file": "damaged",
+      "expect": {
+        "gate": true,
+        "routes": []
+      }
+    }
+  ]
+}

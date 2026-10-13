@@ -24,5 +24,7 @@ final readonly class Policy
         public bool $testing,
         public array $testResolve,
         public ?string $testCaFile,
+        /** SEC-15, T-23: `status` warns when the active bundle is older (seconds); null = no warning. */
+        public ?int $maxConfigAgeSeconds = null,
     ) {}
 }

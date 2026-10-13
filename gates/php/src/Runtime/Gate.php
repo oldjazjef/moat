@@ -134,7 +134,7 @@ final readonly class Gate
             }
         }
 
-        return new ActiveBundle($bundle->version, $config, $bundle->secrets, $policy);
+        return new ActiveBundle($bundle->version, $config, $bundle->secrets, $policy, $bundle->issuedAt);
     }
 
     /** Opens one secret for one upstream call; the caller wipes it (SEC-35). */

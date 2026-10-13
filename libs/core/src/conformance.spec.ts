@@ -48,6 +48,7 @@ import {
   WEB_FACTS_STALE_SECONDS,
   type HardeningFacts,
 } from './gate/hardening';
+import { killSwitchOf, type KillFile } from './gate/kill-switch';
 
 /**
  * The shared vectors in conformance/vectors/crypto/ (docs/CRYPTO.md §11) — the same files the PHP
@@ -121,8 +122,10 @@ describe('conformance vectors', () => {
       'http/rate-limit.json',
       'http/budget.json',
       'gate/hardening.json',
+      'gate/kill-switch.json',
       '../http/gate.json',
       '../http/gate-locked.json',
+      '../http/gate-kill-switch.json',
     ]) {
       for (const list of lists(load<unknown>(file))) {
         const names = list.flatMap((item) =>
@@ -511,6 +514,23 @@ describe('conformance vectors', () => {
     });
     it.each(doc.cases)('$name', ({ facts, expect: want }) => {
       expect(classifyHardening(facts)).toEqual(want);
+    });
+  });
+
+  describe('gate/kill-switch.json', () => {
+    const { cases } = load<{
+      cases: {
+        name: string;
+        file: 'absent' | 'damaged' | { content: string };
+        expect: unknown;
+      }[];
+    }>('gate/kill-switch.json');
+    it.each(cases)('$name', ({ file, expect: want }) => {
+      const kill: KillFile =
+        typeof file === 'string'
+          ? { kind: file }
+          : { kind: 'present', content: file.content };
+      expect(killSwitchOf(kill)).toEqual(want);
     });
   });
 

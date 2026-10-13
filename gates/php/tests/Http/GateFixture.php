@@ -8,6 +8,7 @@ use Moat\Gate\Build\Builder;
 use Moat\Gate\Crypto\KeyAlgorithm;
 use Moat\Gate\Crypto\KeyId;
 use Moat\Gate\Encoding\Base64Url;
+use Moat\Gate\Storage\DataDir;
 
 /**
  * A real gate for the HTTP conformance cases: the built single file in a temp web root under
@@ -94,6 +95,27 @@ final class GateFixture
         }
         $this->processes = [];
         self::remove($this->dir);
+    }
+
+    /**
+     * Sets the kill switch file (conformance/http/gate-kill-switch.json): null removes it,
+     * `content` writes a data file with that text, `raw` exactly these bytes without the marker.
+     *
+     * @param array<string, mixed>|null $file
+     */
+    public function setKillFile(?array $file): void
+    {
+        $data = DataDir::locate($this->site) ?? throw new \RuntimeException('no data folder');
+        $path = $data->path . '/kill.php';
+        if ($file === null) {
+            $data->remove('kill');
+        } elseif (isset($file['content']) && \is_string($file['content'])) {
+            $data->write('kill', $file['content']);
+        } elseif (isset($file['raw']) && \is_string($file['raw'])) {
+            file_put_contents($path, $file['raw']);
+        } else {
+            throw new \RuntimeException('killFile: content, raw or null');
+        }
     }
 
     public function upstreamCalls(): int
@@ -186,14 +208,14 @@ final class GateFixture
      * @param array<string, array<string, int|string>> $sealed
      * @param non-empty-string                         $signer an Ed25519 key pair
      */
-    public static function bundle(mixed $config, array $sealed, string $gateId, string $signer, int $version = 1): string
+    public static function bundle(mixed $config, array $sealed, string $gateId, string $signer, int $version = 1, ?int $issuedAt = null): string
     {
         $payload = self::encode([
             'type' => 'moat.bundle',
             'v' => 1,
             'gateId' => $gateId,
             'version' => $version,
-            'issuedAt' => time(),
+            'issuedAt' => $issuedAt ?? time(),
             'expiresAt' => null,
             'config' => $config,
             'secrets' => (object) $sealed,

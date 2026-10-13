@@ -21,14 +21,16 @@ Four components (ANFORDERUNGEN.md, header):
 > content-type rules, environments and locks, comment-preserving `moat.yaml` edits); `apps/cli`
 > (`moat keygen|validate|policy suggest|gate add|assign|disable|enable|env add|disable|enable|secret seal|build|version`);
 > `conformance/vectors/` and `conformance/http/`; and `gates/php` as a working gate: single-file
-> build, CLI (`install|trust|policy|accept|status|check`), bundle acceptance (steps 1–10), exact routing,
+> build, CLI (`install|trust|policy|accept|status|check|kill|revive`), bundle acceptance (steps 1–10), exact routing,
 > the cURL upstream client with SSRF guard, origin binding/CORS, rate limits, request quotas per
 > calendar day/month (FR-31: route `quota`, policy `limits.quota`, `quota_exceeded`), token and cost
 > budgets for AI APIs (FR-31: route `budget`, policy `upstreams.<host>.budget`, usage read from the
 > answer in a closed list of formats, bounded requests only (`request_unbounded`: no stream, a
 > `max_tokens` up to `maxOutputTokens`), the estimate charged up front, `budget_exhausted`,
 > `upstream_usage_invalid`), the signed lock
-> of a gate or a whole environment (`moat env|gate disable`, `gate_disabled`) and the hardening
+> of a gate or a whole environment (`moat env|gate disable`, `gate_disabled`), the local kill switch
+> (SEC-15: `php moat-gate.php kill|revive [--route=]`, the data file `kill`, `killSwitchOf` in
+> `libs/core/src/gate/`; policy `maxConfigAgeSeconds` → `status` warns, T-23) and the hardening
 > check (`check [--url]`, SEC-49/SEC-49a; `classifyHardening` in `libs/core/src/gate/`)
 > ([gates/php/README.md](gates/php/README.md)). **Moat Desktop, first surface:** Electron shell
 > with the API in-process (`apps/api`: the project list in `<MOAT_DATA_DIR>/projects.json`,
@@ -36,7 +38,7 @@ Four components (ANFORDERUNGEN.md, header):
 > UI (`apps/web`: Projekte → workspace with Übersicht incl. Umgebungen, Gates with lock state, Routen;
 > Hilfe), and signing a gate's next bundle («Bundle signieren» → the main-process dialog of DT-15,
 > `BundleSigningService` + `planBundle` in core) and sealing secrets («Versiegeln» → the seal
-> window, `SecretSealingService` + `planSeal`; the value is typed only there). Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, setup wizard (FR-73), lazy pull, setup mode, trust mode 2, the local file kill switch (SEC-15). Everything else below is
+> window, `SecretSealingService` + `planSeal`; the value is typed only there). Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, setup wizard (FR-73), lazy pull, setup mode, trust mode 2. Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
 

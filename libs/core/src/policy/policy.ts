@@ -42,6 +42,10 @@ const prefix = z.string().refine((value) => {
   }
 });
 
+/** Bounds of `maxConfigAgeSeconds`: one hour to ten years. */
+export const MIN_CONFIG_AGE = 3_600;
+export const MAX_CONFIG_AGE = 10 * 365 * 86_400;
+
 export const policySchema = z.strictObject({
   v: z.literal(1),
   /**
@@ -86,6 +90,16 @@ export const policySchema = z.strictObject({
     maxClients: z.int().min(100).max(MAX_TRACKED_CLIENTS),
     quota: quotaSchema.optional(),
   }),
+  /**
+   * SEC-15, T-23: `php moat-gate.php status` warns when the active bundle was issued longer ago
+   * than this (seconds, at least an hour): a lock that never arrives shows up as a config that
+   * stops changing. Only a warning; the local kill switch is what switches things off.
+   */
+  maxConfigAgeSeconds: z
+    .int()
+    .min(MIN_CONFIG_AGE)
+    .max(MAX_CONFIG_AGE)
+    .optional(),
   /**
    * Local test setups only (the conformance runner, a demo): send these `host[:port]`s to a fixed
    * IP — loopback included — and trust an extra CA file. Never set by a bundle; the hardening

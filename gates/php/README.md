@@ -48,7 +48,9 @@ php moat-gate.php policy <policy.json>     # install the local policy (moat poli
                                            # rate limits that always apply (SEC-14)
 php moat-gate.php accept <bundle.json>     # verify (steps 1–10) and activate a bundle
 php moat-gate.php trust --signer=<pk>[,…] [--threshold=n]   # replace the pinned signers
-php moat-gate.php status                   # fingerprints, policy, active bundle
+php moat-gate.php status                   # fingerprints, policy, active bundle, kill switch
+php moat-gate.php kill [--route=<name>]    # switch the gate or one route off at once (below)
+php moat-gate.php revive [--route=<name>]  # and on again (without --route: everything)
 php moat-gate.php check [--url=https://…/moat-gate.php]   # the hardening check (below)
 ```
 
@@ -101,6 +103,41 @@ or path, with 503 `gate_disabled`: no route matching, no CORS answer, nothing fo
 unknown paths get the same answer, so a locked gate reveals no route. `status` and `accept` print
 `LOCKED`. Unlocking is a new bundle with a higher version (`moat gate enable`, `moat build`,
 `accept`). Cases: [`conformance/http/gate-locked.json`](../../conformance/http/gate-locked.json).
+
+## Kill switch (SEC-15, FR-33, T-23)
+
+The kill switch turns the whole gate or single routes off on the server itself, at once, without
+the Cloud and without a new bundle, so it works even when a bundle that locks the gate never
+arrives (T-23). It is the data file `kill.php` in the data folder, read on every request:
+
+```bash
+php moat-gate.php kill --route=chat     # this route answers 503 route_disabled, the others work
+php moat-gate.php kill                  # every request: 503 gate_disabled, like a locked gate
+php moat-gate.php revive --route=chat   # this route on again (a killed gate stays off)
+php moat-gate.php revive                # everything on again (deletes kill.php)
+```
+
+The file holds one entry per line, `gate` or `route <name>`; blank lines and `#` comments are
+ignored. A killed gate answers like a locked one (every method and path, preflights included,
+nothing forwarded, no route revealed). The switch fails closed: a line the gate does not know, a
+file without the data-file marker or one it cannot read turns the **whole gate** off. So without
+a command line, uploading an empty `kill.php` into the data folder over FTP turns the gate off,
+and deleting it turns it on again. `kill` and `revive` work on the data folder alone, also when
+the policy or bundle is missing; a route name the active bundle does not have is noted and kept.
+`status` prints what is switched off.
+
+A route kill holds by the route's **name**. That covers a route that misbehaves or is abused, but
+not a config you no longer trust: a new bundle could serve the same thing under another name
+(`status` warns when a killed name is not in the active bundle). Against a hostile config, kill
+the whole gate. Run `kill` as the site's own user: a `kill.php` the web server cannot read turns
+the whole gate off (fail closed), and `kill` warns when the file's owner differs from the other
+data files.
+
+The local policy can set `"maxConfigAgeSeconds"` (one hour to ten years). `status` then warns when
+the active bundle was signed longer ago: a lock that never arrives shows up as a config that stops
+changing. It is only a warning; switching off is the kill switch's job. Cases:
+[`conformance/http/gate-kill-switch.json`](../../conformance/http/gate-kill-switch.json),
+[`conformance/vectors/gate/kill-switch.json`](../../conformance/vectors/gate/kill-switch.json).
 
 ## Origins and CORS (FR-15)
 
