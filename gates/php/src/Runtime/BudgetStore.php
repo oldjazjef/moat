@@ -6,6 +6,7 @@ namespace Moat\Gate\Runtime;
 
 use Moat\Gate\Config\Budget;
 use Moat\Gate\Config\Route;
+use Moat\Gate\Config\Usage;
 use Moat\Gate\Storage\DataDir;
 
 /**
@@ -27,8 +28,8 @@ final class BudgetStore
 
     /**
      * Before forwarding (budgetRefusal() and addCharge() in libs/core): refused with the seconds
-     * until the last exhausted budget's period ends, or every budget gets the request's
-     * reservation. Returns the end of each budget's period, which settle() needs.
+     * until the last exhausted budget's period ends, or every budget gets the charge of the
+     * request's estimate. Returns the end of each budget's period, which settle() needs.
      *
      * @param list<array{string, Budget}> $budgets
      * @param list<string> $routeBudgets the names of every route budget in the bundle in force
@@ -37,9 +38,9 @@ final class BudgetStore
      *
      * @throws \RuntimeException when the store is damaged, full or cannot be written
      */
-    public static function reserve(DataDir $data, array $budgets, int $now, array $routeBudgets): array
+    public static function reserve(DataDir $data, array $budgets, Usage $estimate, int $now, array $routeBudgets): array
     {
-        return $data->locked(static function () use ($data, $budgets, $now, $routeBudgets): array {
+        return $data->locked(static function () use ($data, $budgets, $estimate, $now, $routeBudgets): array {
             $spent = self::live($data, $now, $routeBudgets);
             $retryAfter = null;
             foreach ($budgets as [$name, $budget]) {
@@ -54,7 +55,7 @@ final class BudgetStore
             $resetAts = [];
             foreach ($budgets as [$name, $budget]) {
                 $id = self::id($name);
-                [$tokens, $micros] = $budget->reservation();
+                [$tokens, $micros] = $budget->charge($estimate);
                 $entry = $spent[$id] ?? [$budget->period->end($now), 0, 0, str_starts_with($name, 'route ')];
                 $spent[$id] = [$entry[0], self::add($entry[1], $tokens, Budget::MAX_SPENT_TOKENS), self::add($entry[2], $micros, Budget::MAX_SPENT_MICROS), $entry[3]];
                 $resetAts[] = $entry[0];
@@ -66,31 +67,34 @@ final class BudgetStore
     }
 
     /**
-     * After the answer (settle() in libs/core): each budget's reservation is replaced by what the
-     * answer costs it — unless the period the reservation was made in has ended.
+     * After the answer (settle() in libs/core): in each budget the charge of the estimate comes off
+     * (never below 0) and what the answer costs goes on. When the period of the estimate has
+     * ended, the answer's cost is added to the current period instead.
      *
      * @param list<array{string, Budget}> $budgets
      * @param list<int> $resetAts what reserve() returned
      * @param list<array{int, int}> $charges per budget: tokens and micros the answer costs
      *
-     * @throws \RuntimeException when the store is damaged or cannot be written
+     * @throws \RuntimeException when the store is damaged, full or cannot be written
      */
-    public static function settle(DataDir $data, array $budgets, array $resetAts, array $charges, int $now): void
+    public static function settle(DataDir $data, array $budgets, array $resetAts, Usage $estimate, array $charges, int $now): void
     {
-        $data->locked(static function () use ($data, $budgets, $resetAts, $charges, $now): void {
+        $data->locked(static function () use ($data, $budgets, $resetAts, $estimate, $charges, $now): void {
             $spent = self::load($data->read(self::FILE), $now);
             foreach ($budgets as $i => [$name, $budget]) {
                 $id = self::id($name);
+                [$tokens, $micros] = $charges[$i] ?? [0, 0];
                 $entry = $spent[$id] ?? null;
                 if ($entry === null || $entry[0] !== ($resetAts[$i] ?? null)) {
+                    $entry ??= [$budget->period->end($now), 0, 0, str_starts_with($name, 'route ')];
+                    $spent[$id] = [$entry[0], self::add($entry[1], $tokens, Budget::MAX_SPENT_TOKENS), self::add($entry[2], $micros, Budget::MAX_SPENT_MICROS), $entry[3]];
                     continue;
                 }
-                [$reservedTokens, $reservedMicros] = $budget->reservation();
-                [$tokens, $micros] = $charges[$i] ?? [0, 0];
+                [$estimatedTokens, $estimatedMicros] = $budget->charge($estimate);
                 $spent[$id] = [
                     $entry[0],
-                    self::add(max(0, $entry[1] - $reservedTokens), $tokens, Budget::MAX_SPENT_TOKENS),
-                    self::add(max(0, $entry[2] - $reservedMicros), $micros, Budget::MAX_SPENT_MICROS),
+                    self::add(max(0, $entry[1] - $estimatedTokens), $tokens, Budget::MAX_SPENT_TOKENS),
+                    self::add(max(0, $entry[2] - $estimatedMicros), $micros, Budget::MAX_SPENT_MICROS),
                     $entry[3],
                 ];
             }

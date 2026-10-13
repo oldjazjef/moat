@@ -308,18 +308,18 @@
           </select>
         </div>
         <div class="flex flex-col gap-1.5">
-          <label hlmLabel for="route-budget-reserve">
-            {{ 'routes.form.budgetReserve' | translate }}
+          <label hlmLabel for="route-budget-max-output">
+            {{ 'routes.form.budgetMaxOutput' | translate }}
           </label>
           <input
             hlmInput
-            id="route-budget-reserve"
+            id="route-budget-max-output"
             class="w-36"
             inputmode="numeric"
             autocomplete="off"
-            formControlName="budgetReserve"
-            [attr.aria-invalid]="invalid('budgetReserve')"
-            [class.border-destructive]="invalid('budgetReserve')"
+            formControlName="budgetMaxOutput"
+            [attr.aria-invalid]="invalid('budgetMaxOutput')"
+            [class.border-destructive]="invalid('budgetMaxOutput')"
           />
         </div>
         <div class="flex flex-col gap-1.5">

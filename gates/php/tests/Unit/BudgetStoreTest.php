@@ -28,16 +28,18 @@ final class BudgetStoreTest extends TestCase
     }
 
     /**
-     * One request through the store: reserve, then settle with what the answer used.
+     * One request through the store: its estimate (100 tokens) added, then replaced by what the
+     * answer used.
      *
      * @param list<array{string, Budget}> $budgets
      * @param list<string> $routeBudgets
      */
     private function pass(array $budgets, Usage $usage, int $now, array $routeBudgets): ?int
     {
-        [$refused, $resetAts] = BudgetStore::reserve($this->data, $budgets, $now, $routeBudgets);
+        $estimate = new Usage(50, 50);
+        [$refused, $resetAts] = BudgetStore::reserve($this->data, $budgets, $estimate, $now, $routeBudgets);
         if ($refused === null) {
-            BudgetStore::settle($this->data, $budgets, $resetAts, array_map(static fn(array $entry): array => $entry[1]->charge($usage), $budgets), $now);
+            BudgetStore::settle($this->data, $budgets, $resetAts, $estimate, array_map(static fn(array $entry): array => $entry[1]->charge($usage), $budgets), $now);
         }
 
         return $refused;
@@ -55,17 +57,17 @@ final class BudgetStoreTest extends TestCase
         self::assertSame([101, 0, 1_793_491_200], BudgetStore::spent($this->data, 'route chat month', self::NOW + 86_400));
     }
 
-    public function testT07ParallelRequestsCountWithTheirReservation(): void
+    public function testT07ParallelRequestsCountWithTheirEstimate(): void
     {
-        // With 1 token left, only one request may be in flight: the next sees its reservation.
+        // With 1 token left, only one request may be in flight: the next sees its estimate.
         $budget = new Budget(UsageFormat::OpenAi, QuotaPeriod::Day, 4096, 10_000, null);
         $budgets = [['route chat day', $budget]];
         self::assertNull($this->pass($budgets, new Usage(9_000, 999), self::NOW, ['route chat day']));
-        [$first] = BudgetStore::reserve($this->data, $budgets, self::NOW + 1, ['route chat day']);
-        [$second] = BudgetStore::reserve($this->data, $budgets, self::NOW + 2, ['route chat day']);
+        [$first] = BudgetStore::reserve($this->data, $budgets, new Usage(200, 4096), self::NOW + 1, ['route chat day']);
+        [$second] = BudgetStore::reserve($this->data, $budgets, new Usage(200, 4096), self::NOW + 2, ['route chat day']);
         self::assertNull($first);
         self::assertSame(86_398, $second);
-        self::assertSame(9_999 + 4_096, BudgetStore::spent($this->data, 'route chat day', self::NOW + 2)[0] ?? null);
+        self::assertSame(9_999 + 4_296, BudgetStore::spent($this->data, 'route chat day', self::NOW + 2)[0] ?? null);
     }
 
     public function testFr31TheLongestRefusalWins(): void
@@ -74,7 +76,7 @@ final class BudgetStoreTest extends TestCase
         $month = new Budget(UsageFormat::OpenAi, QuotaPeriod::Month, 1, null, new Cost(1, 1_000_000, 1_000_000));
         $budgets = [['host h day', $day], ['route chat month', $month]];
         $this->pass($budgets, new Usage(10, 0), self::NOW, ['route chat month']);
-        self::assertSame(1_793_491_200 - self::NOW, BudgetStore::reserve($this->data, $budgets, self::NOW, ['route chat month'])[0]);
+        self::assertSame(1_793_491_200 - self::NOW, BudgetStore::reserve($this->data, $budgets, new Usage(1, 1), self::NOW, ['route chat month'])[0]);
     }
 
     public function testSec27RouteBudgetsOfEarlierBundlesCannotFillTheStore(): void
@@ -100,7 +102,7 @@ final class BudgetStoreTest extends TestCase
             $budgets[] = ['host h' . $i . ' month', $budget];
         }
         try {
-            BudgetStore::reserve($this->data, $budgets, self::NOW, []);
+            BudgetStore::reserve($this->data, $budgets, new Usage(1, 1), self::NOW, []);
             self::fail('a store beyond MAX_ENTRIES must be refused');
         } catch (\RuntimeException $e) {
             self::assertSame('budget store full', $e->getMessage());
@@ -123,7 +125,7 @@ final class BudgetStoreTest extends TestCase
         $budget = new Budget(UsageFormat::OpenAi, QuotaPeriod::Day, 1, 10, null);
         $this->data->write(BudgetStore::FILE, "moat-budget-v1\n" . str_repeat('0', 32) . " 9999999999 -5 0 r\n");
         try {
-            BudgetStore::reserve($this->data, [['route chat day', $budget]], self::NOW, ['route chat day']);
+            BudgetStore::reserve($this->data, [['route chat day', $budget]], new Usage(1, 1), self::NOW, ['route chat day']);
             self::fail('a damaged store must refuse');
         } catch (\RuntimeException $e) {
             self::assertSame('budget store damaged', $e->getMessage());

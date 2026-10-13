@@ -223,8 +223,8 @@ export interface RouteInput {
   readonly budget?: {
     readonly usage: UsageFormat;
     readonly period: QuotaPeriod;
-    /** Tokens reserved per request, charged in full when its answer cannot be counted. */
-    readonly reserve: number;
+    /** The highest output cap (`max_tokens` & co.) a request may ask for; others are refused. */
+    readonly maxOutputTokens: number;
     readonly tokens?: number;
     /** Decimal amounts as text ("5.00"), as the schema wants them. */
     readonly cost?: {
@@ -436,7 +436,12 @@ export function setRoute(
       setIn(doc, at('budget'), emptyMap());
     setScalar(doc, at('budget', 'usage'), budget.usage, false);
     setScalar(doc, at('budget', 'period'), budget.period, false);
-    setScalar(doc, at('budget', 'reserve'), budget.reserve, false);
+    setScalar(
+      doc,
+      at('budget', 'maxOutputTokens'),
+      budget.maxOutputTokens,
+      false,
+    );
     if (budget.tokens === undefined) deleteIn(doc, at('budget', 'tokens'));
     else setScalar(doc, at('budget', 'tokens'), budget.tokens, false);
     const cost = budget.cost;

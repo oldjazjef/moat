@@ -30,9 +30,9 @@ routes:
     budget:
       usage: openai
       period: day
-      # Reserved per request before it is forwarded and charged in full when the answer cannot
-      # be counted (a stream, a timeout): set it to the max_tokens your website sends plus the prompt.
-      reserve: 4000
+      # Requests must send max_tokens (or max_completion_tokens) up to this and no stream;
+      # the gate refuses others (400 request_unbounded), so each request's cost is known.
+      maxOutputTokens: 4000
       tokens: 500000
       cost:
         limit: '5.00'

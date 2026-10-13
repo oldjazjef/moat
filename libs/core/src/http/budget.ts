@@ -3,14 +3,20 @@ import { periodEnd } from './rate-limit';
 
 /**
  * Budgets for AI APIs (FR-31, SEC-45, T-07): tokens and cost per calendar day or month (UTC),
- * counted from the usage the upstream reports in its answer. Before a request is forwarded, its
- * `reserve` is added to every budget it counts against (refused once a limit is reached, the
- * reservations of requests in flight included); after the answer, the reservation is replaced by
- * the answer's usage — or kept when the answer cannot be counted, since the provider bills it all
- * the same. So a budget can be overshot only by what answers use beyond their reservation.
+ * counted from the usage the upstream reports in its answer.
  *
- * Where an answer reports its usage is a closed list of formats (SEC-20: config is data, never a
- * path or an expression). Every gate reads them alike (conformance/vectors/http/budget.json).
+ * A request within a budget must say how much it can cost: no stream, one answer, and an output
+ * cap (`max_tokens` & co.) of at most `maxOutputTokens` — otherwise the gate refuses it
+ * (`request_unbounded`). Its estimate is then known before forwarding: its body's bytes as input
+ * (a token is at least one byte) plus that cap as output. The estimate is added to every budget
+ * the request counts against (refused once a limit is reached, the estimates of requests in flight
+ * included); after the answer it is replaced by the usage the answer reports — or kept when the
+ * answer cannot be counted (a timeout, too large, no usage), since the provider bills it all the
+ * same. Input the body only points to (an image URL, a file id, an earlier response) is not in
+ * the estimate.
+ *
+ * Where requests and answers say this is a closed list of formats (SEC-20: config is data, never
+ * a path or an expression). Every gate reads them alike (conformance/vectors/http/budget.json).
  */
 
 export const USAGE_FORMATS = ['openai', 'anthropic', 'gemini'] as const;
@@ -49,18 +55,14 @@ export const costSchema = z.strictObject({
   outputPerMillion: amount(MAX_PRICE_MICROS),
 });
 
-/**
- * Tokens reserved for each request before it is forwarded, and charged in full when its answer
- * cannot be counted (a stream, a timeout, an answer too large or without usage): what one request
- * may use at most, e.g. the `max_tokens` the website sends.
- */
-export const reserveSchema = z.int().min(1).max(MAX_USAGE_TOKENS);
+/** The highest output cap (`max_tokens` & co.) a request within the budget may ask for. */
+export const maxOutputSchema = z.int().min(1).max(MAX_USAGE_TOKENS);
 
 export const budgetSchema = z
   .strictObject({
     usage: z.enum(USAGE_FORMATS),
     period: z.enum(['day', 'month']),
-    reserve: reserveSchema,
+    maxOutputTokens: maxOutputSchema,
     tokens: z.int().min(1).max(MAX_BUDGET_TOKENS).optional(),
     cost: costSchema.optional(),
   })
@@ -133,6 +135,23 @@ function decodable(text: string): boolean {
   return !high;
 }
 
+type Obj = Record<string, unknown>;
+
+const object = (value: unknown): Obj | null =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Obj)
+    : null;
+
+/** The JSON object `text` holds (see decodable()), or null. */
+function parseObject(text: string): Obj | null {
+  if (!decodable(text)) return null;
+  try {
+    return object(JSON.parse(text));
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The usage an answer reports, from its body text, or null when it does not say (fail closed:
  * the gate answers `upstream_usage_invalid`). `text` is the body decoded as strict UTF-8 (a gate
@@ -150,19 +169,7 @@ function decodable(text: string): boolean {
  *   `candidatesTokenCount` + `thoughtsTokenCount` as output (absent = 0).
  */
 export function readUsage(format: UsageFormat, text: string): Usage | null {
-  if (!decodable(text)) return null;
-  let body: unknown;
-  try {
-    body = JSON.parse(text);
-  } catch {
-    return null;
-  }
-  type Obj = Record<string, unknown>;
-  const object = (value: unknown): Obj | null =>
-    typeof value === 'object' && value !== null && !Array.isArray(value)
-      ? (value as Obj)
-      : null;
-  const root = object(body);
+  const root = parseObject(text);
   if (root === null) return null;
   const count = (from: Obj, key: string, optional = false): number | null => {
     // An optional field may be absent or null (some providers send null for "none").
@@ -209,6 +216,63 @@ export function readUsage(format: UsageFormat, text: string): Usage | null {
   return input === null || output === null ? null : { input, output };
 }
 
+/**
+ * What a request may cost at most, from its body text: `{input: its UTF-8 bytes, output: the cap
+ * it asks for}`, or null when it may not be forwarded within a budget (`request_unbounded`). The
+ * body must be a JSON object (same rules as readUsage()) with `stream` absent, null or false and
+ * an output cap from 1 to `maxOutput` (an integer, `100.0` counts as 100):
+ *
+ * - `openai`: `max_tokens`, `max_completion_tokens` or `max_output_tokens` (the highest counts;
+ *   at least one present, every one present valid); `n` absent, null or 1.
+ * - `anthropic`: `max_tokens`.
+ * - `gemini`: `generationConfig.maxOutputTokens`; `generationConfig.candidateCount` absent, null or 1.
+ */
+export function requestEstimate(
+  format: UsageFormat,
+  text: string,
+  maxOutput: number,
+): Usage | null {
+  const body = parseObject(text);
+  if (body === null) return null;
+  if (![undefined, null, false].includes(body['stream'] as never)) return null;
+  const cap = (from: Obj, key: string): number | null | undefined => {
+    if (!Object.hasOwn(from, key) || from[key] === null) return undefined;
+    const value = from[key];
+    return typeof value === 'number' &&
+      Number.isInteger(value) &&
+      value >= 1 &&
+      value <= maxOutput
+      ? value + 0
+      : null;
+  };
+  const one = (from: Obj, key: string) => {
+    const value = cap(from, key);
+    return value === undefined || value === 1;
+  };
+  let output: number | null;
+  if (format === 'openai') {
+    if (!one(body, 'n')) return null;
+    const caps = ['max_tokens', 'max_completion_tokens', 'max_output_tokens']
+      .map((key) => cap(body, key))
+      .filter((value) => value !== undefined);
+    output =
+      caps.length === 0 || caps.includes(null)
+        ? null
+        : Math.max(...(caps as number[]));
+  } else if (format === 'anthropic') {
+    output = cap(body, 'max_tokens') ?? null;
+  } else {
+    const config = object(body['generationConfig']);
+    output =
+      config === null || !one(config, 'candidateCount')
+        ? null
+        : (cap(config, 'maxOutputTokens') ?? null);
+  }
+  return output === null
+    ? null
+    : { input: new TextEncoder().encode(text).length, output };
+}
+
 /** What one answer costs: its tokens, and its price in micros rounded up (0 without `cost`). */
 export function chargeOf(usage: Usage, budget: Pick<Budget, 'cost'>): Charge {
   if (budget.cost === undefined)
@@ -225,38 +289,19 @@ export function chargeOf(usage: Usage, budget: Pick<Budget, 'cost'>): Charge {
 }
 
 /**
- * What is reserved for one request before forwarding: `reserve` tokens, priced at the higher of
- * the two prices (as if every token were the dearer kind).
- */
-export function reservationOf(
-  budget: Pick<Budget, 'reserve' | 'cost'>,
-): Charge {
-  if (budget.cost === undefined) return { tokens: budget.reserve, micros: 0 };
-  const input = parseAmount(budget.cost.inputPerMillion) ?? 0;
-  const output = parseAmount(budget.cost.outputPerMillion) ?? 0;
-  const higher =
-    input > output ? budget.cost.inputPerMillion : budget.cost.outputPerMillion;
-  return chargeOf(
-    { input: budget.reserve, output: 0 },
-    {
-      cost: { ...budget.cost, inputPerMillion: higher },
-    },
-  );
-}
-
-/**
  * How a forwarded request ends, for its budgets: the usage its answer reports; `uncountable` when
- * the request reached the upstream but its usage cannot be read (the reservation stays charged);
+ * the request reached the upstream but its usage cannot be read (its estimate stays charged);
  * `not_charged` when the upstream answered with an error or was never reached (released).
  */
 export type BudgetAnswer = Usage | 'uncountable' | 'not_charged';
 
-/** What an answer finally costs a budget. */
+/** What an answer finally costs a budget, given the request's estimate. */
 export function answerCharge(
   answer: BudgetAnswer,
-  budget: Pick<Budget, 'reserve' | 'cost'>,
+  estimate: Usage,
+  budget: Pick<Budget, 'cost'>,
 ): Charge {
-  if (answer === 'uncountable') return reservationOf(budget);
+  if (answer === 'uncountable') return chargeOf(estimate, budget);
   if (answer === 'not_charged') return { tokens: 0, micros: 0 };
   return chargeOf(answer, budget);
 }
@@ -268,7 +313,7 @@ export function current(spent: Spent | null, now: number): Spent | null {
 
 /**
  * Before forwarding: refused (seconds until the period ends) once the period's tokens or cost
- * — reservations of requests in flight included — have reached a limit, otherwise null.
+ * — the estimates of requests in flight included — have reached a limit, otherwise null.
  */
 export function budgetRefusal(
   spent: Spent | null,
@@ -304,32 +349,34 @@ export function addCharge(
 }
 
 /**
- * After the answer: the reservation made in the period ending `resetAt` is replaced by what the
- * answer costs. A period that has ended since is left alone (its spending no longer counts).
+ * After the answer: the estimate added in the period ending `resetAt` is replaced by what the
+ * answer costs. When that period has ended since, the answer's cost is added to the current one.
  */
 export function settle(
   spent: Spent | null,
+  period: Budget['period'],
   resetAt: number,
-  reserved: Charge,
+  estimated: Charge,
   charge: Charge,
   now: number,
 ): Spent | null {
   const live = current(spent, now);
-  if (live === null || live.resetAt !== resetAt) return live;
-  // The reservation comes off (never below 0), then the charge goes on (capped).
+  // The period of the estimate has ended: the answer counts in the period that holds `now`.
+  if (live?.resetAt !== resetAt) return addCharge(spent, period, charge, now);
+  // The estimate comes off (never below 0), then the charge goes on (capped).
   const replace = (value: number, minus: number, plus: number, max: number) =>
     Math.min(max, Math.max(0, value - minus) + plus);
   return {
     resetAt,
     tokens: replace(
       live.tokens,
-      reserved.tokens,
+      estimated.tokens,
       charge.tokens,
       MAX_SPENT_TOKENS,
     ),
     micros: replace(
       live.micros,
-      reserved.micros,
+      estimated.micros,
       charge.micros,
       MAX_SPENT_MICROS,
     ),

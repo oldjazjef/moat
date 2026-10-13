@@ -34,8 +34,8 @@ export const USAGE_FORMATS = ['openai', 'anthropic', 'gemini'] as const;
 export interface Budget {
   readonly usage: (typeof USAGE_FORMATS)[number];
   readonly period: (typeof QUOTA_PERIODS)[number];
-  /** Tokens reserved per request, charged in full when its answer cannot be counted. */
-  readonly reserve: number;
+  /** The highest output cap (`max_tokens` & co.) a request may ask for; others are refused. */
+  readonly maxOutputTokens: number;
   readonly tokens?: number;
   readonly cost?: {
     readonly limit: string;

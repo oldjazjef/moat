@@ -125,7 +125,7 @@ describe('loadMoatYaml', () => {
     expect(chat.routes['chat']?.budget).toEqual({
       usage: 'openai',
       period: 'day',
-      reserve: 4000,
+      maxOutputTokens: 4000,
       tokens: 500000,
       cost: {
         limit: '5.00',
@@ -136,7 +136,7 @@ describe('loadMoatYaml', () => {
     expect(suggestPolicy(chat).upstreams['api.openai.com']?.budget).toEqual({
       usage: 'openai',
       period: 'day',
-      reserve: 4000,
+      maxOutputTokens: 4000,
       tokens: 500000,
     });
   });

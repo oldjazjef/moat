@@ -211,7 +211,7 @@ routes:
     path: "/chat"
     upstream: openai
     upstreamPath: "/v1/chat/completions"
-    budget: { usage: openai, period: month, reserve: 4000, tokens: 300000 }
+    budget: { usage: openai, period: month, maxOutputTokens: 4000, tokens: 300000 }
   summary:
     method: POST
     path: "/summary"
@@ -221,7 +221,7 @@ routes:
 `);
     const both = compileConfig(
       ai(
-        'budget: { usage: openai, period: month, reserve: 8000, tokens: 200000 }',
+        'budget: { usage: openai, period: month, maxOutputTokens: 8000, tokens: 200000 }',
       ),
       ['openai-key'],
     );
@@ -229,15 +229,15 @@ routes:
     expect(policy.upstreams['api.openai.com']?.budget).toEqual({
       usage: 'openai',
       period: 'month',
-      reserve: 8000,
+      maxOutputTokens: 8000,
       tokens: 500000,
     });
     expect(() => checkPolicy(both, policy)).not.toThrow();
     // Routes without one token budget in one format and period: no host budget is suggested.
     for (const other of [
       'enabled: true',
-      'budget: { usage: openai, period: day, reserve: 100, tokens: 1000 }',
-      'budget: { usage: openai, period: month, reserve: 100, cost: { limit: "5", inputPerMillion: "1", outputPerMillion: "1" } }',
+      'budget: { usage: openai, period: day, maxOutputTokens: 100, tokens: 1000 }',
+      'budget: { usage: openai, period: month, maxOutputTokens: 100, cost: { limit: "5", inputPerMillion: "1", outputPerMillion: "1" } }',
     ]) {
       const config = compileConfig(ai(other), ['openai-key']);
       expect(

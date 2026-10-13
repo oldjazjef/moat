@@ -46,9 +46,9 @@ final class BudgetVectorsTest extends TestCase
     }
 
     /** @return iterable<string, array{array<string, mixed>}> */
-    public static function reservations(): iterable
+    public static function requests(): iterable
     {
-        return Vectors::cases(self::FILE, 'reservations');
+        return Vectors::cases(self::FILE, 'requests');
     }
 
     /** @return iterable<string, array{array<string, mixed>}> */
@@ -76,16 +76,16 @@ final class BudgetVectorsTest extends TestCase
     #[DataProvider('charges')]
     public function testCharge(array $case): void
     {
-        [$tokens, $micros] = self::budget(1, $case['cost'])->charge(self::usageOf($case['usage']));
+        [$tokens, $micros] = self::budget($case['cost'])->charge(self::usageOf($case['usage']));
         self::assertSame($case['expect'], ['tokens' => $tokens, 'micros' => $micros]);
     }
 
     /** @param array<string, mixed> $case */
-    #[DataProvider('reservations')]
-    public function testReservation(array $case): void
+    #[DataProvider('requests')]
+    public function testRequest(array $case): void
     {
-        [$tokens, $micros] = self::budget(Vectors::int($case['reserve']), $case['cost'])->reservation();
-        self::assertSame($case['expect'], ['tokens' => $tokens, 'micros' => $micros]);
+        $estimate = UsageFormat::from(Vectors::string($case['format']))->estimate(Vectors::string($case['body']), Vectors::int($case['maxOutput']));
+        self::assertSame($case['expect'], $estimate === null ? null : ['input' => $estimate->input, 'output' => $estimate->output]);
     }
 
     /** @param array<string, mixed> $case */
@@ -104,17 +104,19 @@ final class BudgetVectorsTest extends TestCase
             $step = Vectors::map($step);
             $now = Vectors::int($step['now']);
             if (isset($step['request'])) {
-                [$refused, $resetAts] = BudgetStore::reserve($data, $budgets, $now, [$name]);
-                $open[Vectors::string($step['request'])] = $resetAts;
+                $estimate = self::usageOf($step['estimate']);
+                [$refused, $resetAts] = BudgetStore::reserve($data, $budgets, $estimate, $now, [$name]);
+                $open[Vectors::string($step['request'])] = [$resetAts, $estimate];
                 $result = ['refused' => $refused];
             } else {
+                [$resetAts, $estimate] = $open[Vectors::string($step['answer'])] ?? throw new \RuntimeException('no request');
                 $answer = $step['result'];
                 $charge = match (true) {
-                    $answer === 'uncountable' => $budget->reservation(),
+                    $answer === 'uncountable' => $budget->charge($estimate),
                     $answer === 'not_charged' => [0, 0],
                     default => $budget->charge(self::usageOf($answer)),
                 };
-                BudgetStore::settle($data, $budgets, $open[Vectors::string($step['answer'])] ?? [], [$charge], $now);
+                BudgetStore::settle($data, $budgets, $resetAts, $estimate, [$charge], $now);
                 $result = [];
             }
             $spent = BudgetStore::spent($data, $name, $now);
@@ -123,11 +125,11 @@ final class BudgetVectorsTest extends TestCase
         self::assertSame($case['expect'], $results);
     }
 
-    private static function budget(int $reserve, mixed $cost): Budget
+    private static function budget(mixed $cost): Budget
     {
         return self::parse($cost === null
-            ? ['usage' => 'openai', 'period' => 'day', 'reserve' => $reserve, 'tokens' => 1]
-            : ['usage' => 'openai', 'period' => 'day', 'reserve' => $reserve, 'cost' => $cost]);
+            ? ['usage' => 'openai', 'period' => 'day', 'maxOutputTokens' => 1, 'tokens' => 1]
+            : ['usage' => 'openai', 'period' => 'day', 'maxOutputTokens' => 1, 'cost' => $cost]);
     }
 
     private static function parse(mixed $value): Budget

@@ -54,7 +54,7 @@ function budgetControl(field: string): string {
   const controls: Record<string, string> = {
     usage: 'budgetUsage',
     period: 'budgetPeriod',
-    reserve: 'budgetReserve',
+    maxOutputTokens: 'budgetMaxOutput',
     cost: 'budgetLimit',
     limit: 'budgetLimit',
     inputPerMillion: 'budgetInput',
@@ -131,7 +131,7 @@ export class RouteForm implements OnInit {
     budgetPeriod: new FormControl<Budget['period']>('month', {
       nonNullable: true,
     }),
-    budgetReserve: new FormControl('4000', { nonNullable: true }),
+    budgetMaxOutput: new FormControl('4000', { nonNullable: true }),
     /** Empty = no token limit (then a cost limit is needed). */
     budgetTokens: new FormControl('', { nonNullable: true }),
     /** All three empty = no cost limit. */
@@ -191,7 +191,7 @@ export class RouteForm implements OnInit {
       budgetOn: route.budget !== undefined,
       budgetUsage: route.budget?.usage ?? 'openai',
       budgetPeriod: route.budget?.period ?? 'month',
-      budgetReserve: String(route.budget?.reserve ?? 4000),
+      budgetMaxOutput: String(route.budget?.maxOutputTokens ?? 4000),
       budgetTokens:
         route.budget?.tokens === undefined ? '' : String(route.budget.tokens),
       budgetLimit: route.budget?.cost?.limit ?? '',
@@ -256,7 +256,7 @@ export class RouteForm implements OnInit {
     return {
       usage: value.budgetUsage,
       period: value.budgetPeriod,
-      reserve: Number(value.budgetReserve.trim()),
+      maxOutputTokens: Number(value.budgetMaxOutput.trim()),
       ...(tokens === '' ? {} : { tokens: Number(tokens) }),
       ...(hasCost ? { cost } : {}),
     };

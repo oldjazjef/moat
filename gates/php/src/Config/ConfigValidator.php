@@ -231,15 +231,15 @@ final class ConfigValidator
             throw new Rejection($code);
         }
         $keys = $withCost
-            ? ['usage', 'period', 'reserve', ...($value->has('tokens') ? ['tokens'] : []), ...($value->has('cost') ? ['cost'] : [])]
-            : ['usage', 'period', 'reserve', 'tokens'];
-        $reserve = $value->get('reserve');
+            ? ['usage', 'period', 'maxOutputTokens', ...($value->has('tokens') ? ['tokens'] : []), ...($value->has('cost') ? ['cost'] : [])]
+            : ['usage', 'period', 'maxOutputTokens', 'tokens'];
+        $maxOutputTokens = $value->get('maxOutputTokens');
         $usage = \is_string($value->get('usage')) ? UsageFormat::tryFrom($value->get('usage')) : null;
         $period = \is_string($value->get('period')) ? QuotaPeriod::tryFrom($value->get('period')) : null;
         $tokens = $value->has('tokens') ? $value->get('tokens') : null;
         if (
             !$value->hasExactKeys(...$keys) || $usage === null || $period === null
-            || !\is_int($reserve) || !self::intIn($reserve, 1, UsageFormat::MAX_TOKENS)
+            || !\is_int($maxOutputTokens) || !self::intIn($maxOutputTokens, 1, UsageFormat::MAX_TOKENS)
             || ($value->has('tokens') && !self::intIn($tokens, 1, Budget::MAX_TOKENS))
             || (!$value->has('tokens') && !$value->has('cost'))
         ) {
@@ -264,7 +264,7 @@ final class ConfigValidator
             $cost = new Cost($limit, $input, $output);
         }
 
-        return new Budget($usage, $period, $reserve, \is_int($tokens) ? $tokens : null, $cost);
+        return new Budget($usage, $period, $maxOutputTokens, \is_int($tokens) ? $tokens : null, $cost);
     }
 
     /** @return list<string> */

@@ -35,8 +35,8 @@ use Moat\Gate\Upstream\UpstreamRequest;
 final class RequestHandler
 {
     private const PREFLIGHT_VARY = 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers';
-    /** Failures after the request reached the upstream: billed by the provider, but not countable. */
-    private const SENT_UNCOUNTED = [GateError::UpstreamTimeout, GateError::UpstreamTooLarge, GateError::UpstreamContentType, GateError::UpstreamReflectedSecret];
+    /** Failures before the request could leave the gate: the provider bills nothing. */
+    private const NOT_SENT = [GateError::SecretUnavailable, GateError::UpstreamForbidden];
 
     public static function handle(Request $request, ActiveBundle $bundle, Gate $gate, int $now): Response
     {
@@ -78,10 +78,11 @@ final class RequestHandler
         }
         try {
             self::limit($request, $route, $bundle, $gate, $now);
+            $payload = self::payload($request, $route, $bundle);
             $budgets = self::budgets($route, $bundle);
             $response = $budgets === []
-                ? self::forward($request, $route, $bundle, $gate)
-                : self::forwardWithin($budgets, $request, $route, $bundle, $gate, $now);
+                ? self::forward($payload, $route, $bundle, $gate)
+                : self::forwardWithin($budgets, $payload, $route, $bundle, $gate, $now);
 
             return new Response($response->status, $response->headers + $cors, $response->body);
         } catch (Failure $failure) {
@@ -142,52 +143,55 @@ final class RequestHandler
     }
 
     /**
-     * FR-31, T-07: forwards within the budgets. Before forwarding, every budget gets the
-     * request's reservation — or the request is refused with 429 `budget_exhausted` and
-     * Retry-After once a period has spent its tokens or cost, reservations in flight included.
-     * After the answer the reservation is replaced by the usage a 2xx answer reports; it is kept
-     * when the request reached the upstream but its answer cannot be counted (a stream, a timeout,
-     * too large, no usage — the provider bills it all the same), and released when the upstream
-     * answered with an error or was never reached. A 2xx answer without readable usage is not
-     * passed on (`upstream_usage_invalid`, SEC-46).
+     * FR-31, T-07: forwards within the budgets. The request must bound its cost (no stream, one
+     * answer, an output cap of at most `maxOutputTokens`), else 400 `request_unbounded`; its
+     * estimate (body bytes as input plus that cap) is then added to every budget — or the request
+     * is refused with 429 `budget_exhausted` and Retry-After once a period has spent its tokens or
+     * cost, the estimates of requests in flight included. After the answer the estimate is
+     * replaced by the usage a 2xx answer reports. It stays charged whenever the request may have
+     * reached the provider but its answer cannot be counted (a timeout, too large, not JSON, no
+     * usage, a broken connection), and is released for an error answer or a request that never
+     * left. A 2xx answer without readable usage is not passed on (`upstream_usage_invalid`, SEC-46).
      *
      * @param non-empty-list<array{string, Budget}> $budgets
+     * @param array{string, bool, ?string} $payload
      */
-    private static function forwardWithin(array $budgets, Request $request, Route $route, ActiveBundle $bundle, Gate $gate, int $now): Response
+    private static function forwardWithin(array $budgets, array $payload, Route $route, ActiveBundle $bundle, Gate $gate, int $now): Response
     {
+        $maxOutput = min(array_map(static fn(array $entry): int => $entry[1]->maxOutputTokens, $budgets));
+        $estimate = $budgets[0][1]->usage->estimate($payload[0], $maxOutput) ?? throw new Failure(GateError::RequestUnbounded);
         try {
-            [$retryAfter, $resetAts] = BudgetStore::reserve($gate->data, $budgets, $now, BudgetStore::routeBudgets($bundle->config->routes));
+            [$retryAfter, $resetAts] = BudgetStore::reserve($gate->data, $budgets, $estimate, $now, BudgetStore::routeBudgets($bundle->config->routes));
         } catch (\Exception) {
             throw new Failure(GateError::RateLimitUnavailable);
         }
         if ($retryAfter !== null) {
             throw new Failure(GateError::BudgetExhausted, ['Retry-After' => (string) max(1, $retryAfter)]);
         }
-        $settle = static function (?Usage $usage, bool $keep) use ($budgets, $resetAts, $gate, $now): void {
-            $charges = array_map(
-                static fn(array $entry): array => $keep ? $entry[1]->reservation() : ($usage === null ? [0, 0] : $entry[1]->charge($usage)),
-                $budgets,
-            );
+        $settle = static function (?Usage $usage) use ($budgets, $resetAts, $estimate, $gate, $now): void {
+            $charges = array_map(static fn(array $entry): array => $usage === null ? [0, 0] : $entry[1]->charge($usage), $budgets);
             try {
-                BudgetStore::settle($gate->data, $budgets, $resetAts, $charges, $now);
+                BudgetStore::settle($gate->data, $budgets, $resetAts, $estimate, $charges, $now);
             } catch (\Exception) {
                 throw new Failure(GateError::RateLimitUnavailable);
             }
         };
         try {
-            $response = self::forward($request, $route, $bundle, $gate);
+            $response = self::forward($payload, $route, $bundle, $gate);
         } catch (Failure $failure) {
-            $settle(null, \in_array($failure->error, self::SENT_UNCOUNTED, true));
+            // Not sent: nothing to pay. Anything else may have reached the provider and been
+            // billed: the estimate stays charged.
+            $settle(\in_array($failure->error, self::NOT_SENT, true) ? null : $estimate);
 
             throw $failure;
         }
         if ($response->status < 200 || $response->status >= 300) {
-            $settle(null, false);
+            $settle(null);
 
             return $response;
         }
         $usage = $budgets[0][1]->usage->read($response->body);
-        $settle($usage, $usage === null);
+        $settle($usage ?? $estimate);
         if ($usage === null) {
             throw new Failure(GateError::UpstreamUsageInvalid);
         }
@@ -195,16 +199,29 @@ final class RequestHandler
         return $response;
     }
 
-    private static function forward(Request $request, Route $route, ActiveBundle $bundle, Gate $gate): Response
+    /**
+     * The request's body (FR-18): within the size limits, and of an allowed media type when there
+     * is one.
+     *
+     * @return array{string, bool, ?string} body, whether it is sent, its media type
+     */
+    private static function payload(Request $request, Route $route, ActiveBundle $bundle): array
     {
-        $upstream = $bundle->config->upstreamOf($route);
-        $maxBody = min($route->maxBodyBytes, $bundle->policy->maxBodyBytes);
-        $body = $request->body($maxBody);
+        $body = $request->body(min($route->maxBodyBytes, $bundle->policy->maxBodyBytes));
         $hasBody = $body !== '' || \in_array($route->method, [Method::Post, Method::Put, Method::Patch], true);
         $mediaType = $request->contentType === null ? null : ContentType::mediaTypeOf($request->contentType);
         if ($hasBody && ($mediaType === null || !\in_array($mediaType, $route->contentTypes, true))) {
             throw new Failure(GateError::UnsupportedMediaType);
         }
+
+        return [$body, $hasBody, $mediaType];
+    }
+
+    /** @param array{string, bool, ?string} $payload */
+    private static function forward(array $payload, Route $route, ActiveBundle $bundle, Gate $gate): Response
+    {
+        $upstream = $bundle->config->upstreamOf($route);
+        [$body, $hasBody, $mediaType] = $payload;
 
         $headers = ['Accept' => implode(', ', $route->responseContentTypes)];
         if ($hasBody) {

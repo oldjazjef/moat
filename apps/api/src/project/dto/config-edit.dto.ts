@@ -85,11 +85,11 @@ export class BudgetDto {
   @IsIn(QUOTA_PERIODS)
   period!: QuotaPeriod;
 
-  /** Tokens reserved per request, charged in full when its answer cannot be counted. */
+  /** The highest output cap (`max_tokens` & co.) a request may ask for; others are refused. */
   @IsInt()
   @Min(1)
   @Max(MAX_USAGE_TOKENS)
-  reserve!: number;
+  maxOutputTokens!: number;
 
   @IsOptional()
   @IsInt()
@@ -273,7 +273,7 @@ function budgetInput(dto: BudgetDto): NonNullable<RouteInput['budget']> {
   return {
     usage: dto.usage,
     period: dto.period,
-    reserve: dto.reserve,
+    maxOutputTokens: dto.maxOutputTokens,
     ...(dto.tokens === undefined ? {} : { tokens: dto.tokens }),
     ...(dto.cost === undefined
       ? {}

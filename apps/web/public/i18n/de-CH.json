@@ -328,12 +328,12 @@
         "anthropic": "Anthropic",
         "gemini": "Google Gemini"
       },
-      "budgetReserve": "Reserviert pro Anfrage (Tokens)",
+      "budgetMaxOutput": "Höchstens Output-Tokens pro Anfrage",
       "budgetTokens": "Tokens höchstens",
       "budgetLimit": "Kosten höchstens",
       "budgetInput": "Preis pro 1 Mio. Input-Tokens",
       "budgetOutput": "Preis pro 1 Mio. Output-Tokens",
-      "budgetHint": "Das Gate reserviert für jede Anfrage die angegebenen Tokens, bevor es sie weiterleitet, und ersetzt die Reservierung durch den Verbrauch, den die Antwort meldet. Lässt sich eine Antwort nicht zählen (Stream, Timeout, zu gross), bleibt die Reservierung verbucht; setze sie deshalb auf das, was eine Anfrage höchstens braucht (z. B. max_tokens plus Prompt). Setze Tokens, Kosten oder beides; Beträge in der Währung des Anbieters, z. B. 20.00, Preise so, wie der Anbieter sie pro Million Tokens angibt. Ist das Budget erreicht, antwortet das Gate bis zum Ende des Tages oder Monats (UTC) mit 429 und budget_exhausted. Die Route darf nur JSON-Antworten annehmen.",
+      "budgetHint": "Jede Anfrage an die Route muss ihre Kosten begrenzen: ohne Stream, mit max_tokens (bei Gemini maxOutputTokens) bis zum Wert oben. Andere lehnt das Gate mit 400 und request_unbounded ab. Vor dem Weiterleiten verbucht es den Höchstverbrauch der Anfrage (ihre Grösse in Bytes plus max_tokens) und ersetzt ihn danach durch den Verbrauch, den die Antwort meldet; lässt sich die Antwort nicht zählen, bleibt der Höchstverbrauch verbucht. Setze Tokens, Kosten oder beides; Beträge in der Währung des Anbieters, z. B. 20.00, Preise so, wie der Anbieter sie pro Million Tokens angibt. Ist das Budget erreicht, antwortet das Gate bis zum Ende des Tages oder Monats (UTC) mit 429 und budget_exhausted.",
       "refused": "Moat hat die Route nicht gespeichert: Die markierten Felder enthalten Werte, die das Gate ablehnen würde.",
       "save": "Speichern",
       "cancel": "Abbrechen",
@@ -502,7 +502,7 @@
         "steps": {
           "route": "Gib einer Route ein Rate-Limit, zum Beispiel 5 Anfragen pro 10 Minuten je Besucher.",
           "quota": "Gib einer Route mit «Quote pro Tag oder Monat» eine Obergrenze für alle Anfragen zusammen, zum Beispiel 1000 pro Tag. So kann niemand dein KI-Budget verbrennen, auch nicht mit vielen Adressen.",
-          "budget": "Für eine KI-API wie OpenAI, Anthropic oder Gemini setzt du mit «Budget für eine KI-API» eine Obergrenze in Tokens, in Kosten oder beides, pro Tag oder Monat. Das Gate reserviert vor jeder Anfrage «Reserviert pro Anfrage (Tokens)» und verbucht danach, was die Antwort verbraucht hat. Antworten ohne lesbaren Verbrauch gibt es nicht weiter (`upstream_usage_invalid`), ihre Reservierung bleibt verbucht.",
+          "budget": "Für eine KI-API wie OpenAI, Anthropic oder Gemini setzt du mit «Budget für eine KI-API» eine Obergrenze in Tokens, in Kosten oder beides, pro Tag oder Monat. Deine Website muss dann jede Anfrage mit `max_tokens` bis «Höchstens Output-Tokens pro Anfrage» und ohne Stream schicken, sonst antwortet das Gate mit `request_unbounded`. Es verbucht vorher den Höchstverbrauch und danach, was die Antwort verbraucht hat.",
           "policy": "Die lokale Policy des Gates setzt Grenzen, die immer gelten, egal was ein Bundle sagt. Sie kann auch eine Quote für das ganze Gate setzen (`limits.quota`) und ein Token-Budget pro Upstream-Host (`budget` unter `upstreams`), die kein Bundle aufheben kann. `moat policy suggest` schlägt eine passende Policy vor.",
           "answer": "Ist ein Limit erreicht, antwortet das Gate mit 429 und sagt, wann es wieder geht: `rate_limited` beim Rate-Limit, `quota_exceeded` bei der Quote, `budget_exhausted` beim Budget."
         },

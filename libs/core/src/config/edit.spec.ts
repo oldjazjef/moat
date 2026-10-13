@@ -264,7 +264,7 @@ describe('route edits', () => {
         budget: {
           usage: 'openai',
           period: 'day',
-          reserve: 8000,
+          maxOutputTokens: 8000,
           tokens: 200000,
           cost: {
             limit: '5.00',
@@ -278,7 +278,7 @@ describe('route edits', () => {
     expect(loadMoatYaml(added).routes['newsletter']?.budget).toEqual({
       usage: 'openai',
       period: 'day',
-      reserve: 8000,
+      maxOutputTokens: 8000,
       tokens: 200000,
       cost: {
         limit: '5.00',
@@ -296,7 +296,7 @@ describe('route edits', () => {
         budget: {
           usage: 'openai',
           period: 'day',
-          reserve: 8000,
+          maxOutputTokens: 8000,
           tokens: 200000,
           cost: { limit: '5', inputPerMillion: '2.5', outputPerMillion: '10' },
         },
@@ -312,7 +312,7 @@ describe('route edits', () => {
         budget: {
           usage: 'anthropic',
           period: 'month',
-          reserve: 8000,
+          maxOutputTokens: 8000,
           tokens: 1000000,
         },
       },
@@ -321,7 +321,7 @@ describe('route edits', () => {
     expect(loadMoatYaml(tokensOnly).routes['newsletter']?.budget).toEqual({
       usage: 'anthropic',
       period: 'month',
-      reserve: 8000,
+      maxOutputTokens: 8000,
       tokens: 1000000,
     });
     expect(
@@ -467,13 +467,15 @@ describe('route edits', () => {
         budget: {
           usage: 'openai',
           period: 'day',
-          reserve: 8000,
+          maxOutputTokens: 8000,
           cost: { limit: '0', inputPerMillion: '1', outputPerMillion: '1' },
         },
       }),
     ).toEqual(['value_invalid', ['budget.cost.limit']]);
     expect(
-      attempt({ budget: { usage: 'openai', period: 'day', reserve: 8000 } }),
+      attempt({
+        budget: { usage: 'openai', period: 'day', maxOutputTokens: 8000 },
+      }),
     ).toEqual(['value_invalid', ['budget']]);
   });
 

@@ -28,12 +28,11 @@ import {
   chargeOf,
   parseAmount,
   readUsage,
-  reservationOf,
+  requestEstimate,
   answerCharge,
   settle,
   current,
   type BudgetAnswer,
-  type Charge,
   type Budget,
   type Spent,
   type Usage,
@@ -421,17 +420,18 @@ describe('conformance vectors', () => {
         cost: Budget['cost'] | null;
         expect: { tokens: number; micros: number };
       }[];
-      reservations: {
+      requests: {
         name: string;
-        reserve: number;
-        cost: Budget['cost'] | null;
-        expect: Charge;
+        format: UsageFormat;
+        maxOutput: number;
+        body: string;
+        expect: Usage | null;
       }[];
       sequences: {
         name: string;
         budget: Budget;
         steps: (
-          | { now: number; request: string }
+          | { now: number; request: string; estimate: Usage }
           | { now: number; answer: string; result: BudgetAnswer }
         )[];
         expect: unknown[];
@@ -446,19 +446,17 @@ describe('conformance vectors', () => {
     it.each(doc.charges)('charge: $name', ({ usage, cost, expect: want }) => {
       expect(chargeOf(usage, cost === null ? {} : { cost })).toEqual(want);
     });
-    it.each(doc.reservations)(
-      'reservation: $name',
-      ({ reserve, cost, expect: want }) => {
-        expect(
-          reservationOf(cost === null ? { reserve } : { reserve, cost }),
-        ).toEqual(want);
+    it.each(doc.requests)(
+      'request: $name',
+      ({ format, maxOutput, body, expect: want }) => {
+        expect(requestEstimate(format, body, maxOutput)).toEqual(want);
       },
     );
     it.each(doc.sequences)(
       'sequence: $name',
       ({ budget, steps, expect: want }) => {
         let spent: Spent | null = null;
-        const open = new Map<string, number>();
+        const open = new Map<string, { resetAt: number; estimate: Usage }>();
         const view = (now: number) => {
           const live = current(spent, now);
           return { tokens: live?.tokens ?? 0, micros: live?.micros ?? 0 };
@@ -470,18 +468,24 @@ describe('conformance vectors', () => {
               spent = addCharge(
                 spent,
                 budget.period,
-                reservationOf(budget),
+                chargeOf(step.estimate, budget),
                 step.now,
               );
-              open.set(step.request, spent.resetAt);
+              open.set(step.request, {
+                resetAt: spent.resetAt,
+                estimate: step.estimate,
+              });
             }
             return { refused, spent: view(step.now) };
           }
+          const request = open.get(step.answer);
+          if (request === undefined) throw new Error(step.answer);
           spent = settle(
             spent,
-            open.get(step.answer) ?? 0,
-            reservationOf(budget),
-            answerCharge(step.result, budget),
+            budget.period,
+            request.resetAt,
+            chargeOf(request.estimate, budget),
+            answerCharge(step.result, request.estimate, budget),
             step.now,
           );
           return { spent: view(step.now) };

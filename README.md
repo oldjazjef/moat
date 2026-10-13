@@ -172,7 +172,8 @@ path at the upstream, maximum size, allowed websites (one per line), an optional
 an optional quota (requests per day or month for the whole route; the gate answers
 `429 quota_exceeded` once it is used up and counts again from midnight UTC or the 1st) and an
 optional **budget for an AI API** (OpenAI, Anthropic or Gemini: tokens, cost or both per day or
-month, counted from the usage each answer reports; `429 budget_exhausted` once it is spent). See
+month, counted from the usage each answer reports; requests must set `max_tokens` and not stream;
+`429 budget_exhausted` once it is spent). See
 [gates/php/README.md](gates/php/README.md#budgets-for-ai-apis-fr-31) for how the gate counts and the
 token budget the local policy can hold per host.
 **Edit** opens the same form for an existing route, **Switch off** disables a route without

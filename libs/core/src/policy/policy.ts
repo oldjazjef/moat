@@ -15,7 +15,7 @@ import {
 import { reject } from '../errors';
 import {
   MAX_BUDGET_TOKENS,
-  reserveSchema,
+  maxOutputSchema,
   USAGE_FORMATS,
   type UsageFormat,
 } from '../http/budget';
@@ -63,7 +63,7 @@ export const policySchema = z.strictObject({
         .strictObject({
           usage: z.enum(USAGE_FORMATS),
           period: z.enum(QUOTA_PERIODS),
-          reserve: reserveSchema,
+          maxOutputTokens: maxOutputSchema,
           tokens: z.int().min(1).max(MAX_BUDGET_TOKENS),
         })
         .optional(),
@@ -230,7 +230,7 @@ function hostBudgets(
     const first = routes[0]?.budget;
     if (first === undefined) continue;
     let tokens = 0;
-    let reserve = 0;
+    let maxOutputTokens = 0;
     const fits = routes.every((route) => {
       const budget = route.budget;
       if (
@@ -241,14 +241,14 @@ function hostBudgets(
       )
         return false;
       tokens += budget.tokens;
-      reserve = Math.max(reserve, budget.reserve);
+      maxOutputTokens = Math.max(maxOutputTokens, budget.maxOutputTokens);
       return true;
     });
     if (fits && tokens <= MAX_BUDGET_TOKENS)
       budgets.set(key, {
         usage: first.usage,
         period: first.period,
-        reserve,
+        maxOutputTokens,
         tokens,
       });
   }

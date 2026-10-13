@@ -20,6 +20,7 @@ enum GateError: string
     case RateLimited = 'rate_limited';
     case QuotaExceeded = 'quota_exceeded';
     case BudgetExhausted = 'budget_exhausted';
+    case RequestUnbounded = 'request_unbounded';
     case RateLimitUnavailable = 'rate_limit_unavailable';
     case RouteDisabled = 'route_disabled';
     case GateDisabled = 'gate_disabled';
@@ -40,7 +41,7 @@ enum GateError: string
         return match ($this) {
             self::NotFound => 404,
             self::MethodNotAllowed => 405,
-            self::PathInvalid => 400,
+            self::PathInvalid, self::RequestUnbounded => 400,
             self::BodyTooLarge => 413,
             self::UnsupportedMediaType => 415,
             self::OriginForbidden, self::PreflightRejected => 403,

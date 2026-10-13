@@ -35,7 +35,7 @@ import {
   budgetRefusal,
   chargeOf,
   current,
-  reservationOf,
+  requestEstimate,
   settle,
   type BudgetAnswer,
   parseAmount,
@@ -193,7 +193,12 @@ function budgetedRoutes(config: Record<string, Json>, count: number): void {
     routes[`r${i}`] = {
       ...base,
       path: `/r${i}`,
-      budget: { usage: 'openai', period: 'day', reserve: 100, tokens: 1000 },
+      budget: {
+        usage: 'openai',
+        period: 'day',
+        maxOutputTokens: 100,
+        tokens: 1000,
+      },
     };
   config['routes'] = routes;
 }
@@ -541,7 +546,7 @@ function configVectors(): Json {
         (route(c)['budget'] = {
           usage: 'openai',
           period: 'month',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           tokens: 2000000,
         }),
     ],
@@ -551,7 +556,7 @@ function configVectors(): Json {
         (route(c)['budget'] = {
           usage: 'anthropic',
           period: 'day',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           cost: {
             limit: '5',
             inputPerMillion: '3.00',
@@ -565,7 +570,7 @@ function configVectors(): Json {
         (route(c)['budget'] = {
           usage: 'gemini',
           period: 'month',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           tokens: 1000000000000,
           cost: {
             limit: '999999999.999999',
@@ -580,7 +585,7 @@ function configVectors(): Json {
         (route(c)['budget'] = {
           usage: 'openai',
           period: 'month',
-          reserve: 4000,
+          maxOutputTokens: 4000,
         }),
     ],
     [
@@ -589,7 +594,7 @@ function configVectors(): Json {
         (route(c)['budget'] = {
           usage: 'mistral',
           period: 'month',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           tokens: 1000,
         }),
     ],
@@ -599,7 +604,7 @@ function configVectors(): Json {
         (route(c)['budget'] = {
           usage: 'openai',
           period: 'day',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           tokens: 0,
         }),
     ],
@@ -609,7 +614,7 @@ function configVectors(): Json {
         (route(c)['budget'] = {
           usage: 'openai',
           period: 'day',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           tokens: 1000000000001,
         }),
     ],
@@ -619,7 +624,7 @@ function configVectors(): Json {
         (route(c)['budget'] = {
           usage: 'openai',
           period: 'day',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           cost: { limit: '0.00', inputPerMillion: '1', outputPerMillion: '1' },
         }),
     ],
@@ -629,7 +634,7 @@ function configVectors(): Json {
         (route(c)['budget'] = {
           usage: 'openai',
           period: 'day',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           cost: {
             limit: '1.0000001',
             inputPerMillion: '1',
@@ -643,7 +648,7 @@ function configVectors(): Json {
         (route(c)['budget'] = {
           usage: 'openai',
           period: 'day',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           cost: { limit: 20, inputPerMillion: '1', outputPerMillion: '1' },
         }),
     ],
@@ -653,7 +658,7 @@ function configVectors(): Json {
         (route(c)['budget'] = {
           usage: 'openai',
           period: 'day',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           cost: { limit: '2e1', inputPerMillion: '-1', outputPerMillion: '1' },
         }),
     ],
@@ -663,7 +668,7 @@ function configVectors(): Json {
         (route(c)['budget'] = {
           usage: 'openai',
           period: 'day',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           cost: { limit: '020', inputPerMillion: '1', outputPerMillion: '1' },
         }),
     ],
@@ -673,7 +678,7 @@ function configVectors(): Json {
         (route(c)['budget'] = {
           usage: 'openai',
           period: 'day',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           cost: {
             limit: '20',
             inputPerMillion: '1000.000001',
@@ -687,7 +692,7 @@ function configVectors(): Json {
         (route(c)['budget'] = {
           usage: 'openai',
           period: 'day',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           cost: {
             limit: '20',
             inputPerMillion: '1',
@@ -702,7 +707,7 @@ function configVectors(): Json {
         route(c)['budget'] = {
           usage: 'openai',
           period: 'day',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           tokens: 1000,
         };
         route(c)['responseContentTypes'] = ['application/json', 'text/plain'];
@@ -710,27 +715,27 @@ function configVectors(): Json {
     ],
     ['budget null', (c) => (route(c)['budget'] = null)],
     [
-      'budget without reserve',
+      'budget without maxOutputTokens',
       (c) =>
         (route(c)['budget'] = { usage: 'openai', period: 'day', tokens: 1000 }),
     ],
     [
-      'budget reserve of 0',
+      'budget maxOutputTokens of 0',
       (c) =>
         (route(c)['budget'] = {
           usage: 'openai',
           period: 'day',
-          reserve: 0,
+          maxOutputTokens: 0,
           tokens: 1000,
         }),
     ],
     [
-      'budget reserve above 10^9',
+      'budget maxOutputTokens above 10^9',
       (c) =>
         (route(c)['budget'] = {
           usage: 'openai',
           period: 'day',
-          reserve: 1000000001,
+          maxOutputTokens: 1000000001,
           tokens: 1000,
         }),
     ],
@@ -1222,7 +1227,7 @@ function policyVectors(): Json {
         (allowed(p)['budget'] = {
           usage: 'openai',
           period: 'month',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           tokens: 5000000,
         }),
     ],
@@ -1232,13 +1237,13 @@ function policyVectors(): Json {
         allowed(p)['budget'] = {
           usage: 'openai',
           period: 'month',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           tokens: 5000000,
         };
         route(c)['budget'] = {
           usage: 'openai',
           period: 'day',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           tokens: 100000,
         };
       },
@@ -1249,13 +1254,13 @@ function policyVectors(): Json {
         allowed(p)['budget'] = {
           usage: 'openai',
           period: 'month',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           tokens: 5000000,
         };
         route(c)['budget'] = {
           usage: 'anthropic',
           period: 'day',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           tokens: 100000,
         };
       },
@@ -1266,7 +1271,7 @@ function policyVectors(): Json {
         allowed(p)['budget'] = {
           usage: 'openai',
           period: 'month',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           tokens: 5000000,
         };
         route(c)['responseContentTypes'] = ['text/plain'];
@@ -1278,12 +1283,12 @@ function policyVectors(): Json {
         (allowed(p)['budget'] = {
           usage: 'openai',
           period: 'month',
-          reserve: 4000,
+          maxOutputTokens: 4000,
           cost: { limit: '20', inputPerMillion: '1', outputPerMillion: '1' },
         }),
     ],
     [
-      'host budget without reserve',
+      'host budget without maxOutputTokens',
       (_c, p) =>
         (allowed(p)['budget'] = {
           usage: 'openai',
@@ -1297,7 +1302,7 @@ function policyVectors(): Json {
         (allowed(p)['budget'] = {
           usage: 'openai',
           period: 'month',
-          reserve: 4000,
+          maxOutputTokens: 4000,
         }),
     ],
     [
@@ -1572,13 +1577,13 @@ function hardeningVectors(): Json {
 
 /** One step of a budget sequence: a request asks to pass, or the answer to an earlier one arrives. */
 type BudgetOp =
-  | { now: number; request: string }
+  | { now: number; request: string; estimate: Usage }
   | { now: number; answer: string; result: BudgetAnswer };
 
 /** What a gate does with one budget over these steps (the reference for budget.json). */
 function runBudget(budget: Budget, steps: BudgetOp[]) {
   let spent: Spent | null = null;
-  const open = new Map<string, number>();
+  const open = new Map<string, { resetAt: number; estimate: Usage }>();
   const view = (now: number) => {
     const live = current(spent, now);
     return { tokens: live?.tokens ?? 0, micros: live?.micros ?? 0 };
@@ -1590,21 +1595,25 @@ function runBudget(budget: Budget, steps: BudgetOp[]) {
         spent = addCharge(
           spent,
           budget.period,
-          reservationOf(budget),
+          chargeOf(step.estimate, budget),
           step.now,
         );
-        open.set(step.request, spent.resetAt);
+        open.set(step.request, {
+          resetAt: spent.resetAt,
+          estimate: step.estimate,
+        });
       }
       return { refused, spent: view(step.now) };
     }
-    const resetAt = open.get(step.answer);
-    if (resetAt === undefined) throw new Error(`no request ${step.answer}`);
+    const request = open.get(step.answer);
+    if (request === undefined) throw new Error(`no request ${step.answer}`);
     open.delete(step.answer);
     spent = settle(
       spent,
-      resetAt,
-      reservationOf(budget),
-      answerCharge(step.result, budget),
+      budget.period,
+      request.resetAt,
+      chargeOf(request.estimate, budget),
+      answerCharge(step.result, request.estimate, budget),
       step.now,
     );
     return { spent: view(step.now) };
@@ -1875,7 +1884,11 @@ function budgetVectors(): Json {
     ],
   ];
   const day = Date.UTC(2026, 9, 12) / 1000;
-  const req = (now: number, request: string): BudgetOp => ({ now, request });
+  const req = (now: number, request: string, estimate = 300): BudgetOp => ({
+    now,
+    request,
+    estimate: { input: 100, output: estimate - 100 },
+  });
   const ans = (
     now: number,
     answer: string,
@@ -1888,8 +1901,8 @@ function budgetVectors(): Json {
   const u = (input: number, output: number): Usage => ({ input, output });
   const sequences: [string, Budget, BudgetOp[]][] = [
     [
-      'tokens: each request reserves, its answer replaces the reservation; refused once reached, until the day ends',
-      { usage: 'openai', period: 'day', reserve: 300, tokens: 1000 },
+      'tokens: each request adds its estimate, its answer replaces it; refused once reached, until the day ends',
+      { usage: 'openai', period: 'day', maxOutputTokens: 200, tokens: 1000 },
       [
         req(day + 10, 'a'),
         ans(day + 11, 'a', u(400, 100)),
@@ -1904,42 +1917,47 @@ function budgetVectors(): Json {
       ],
     ],
     [
-      'requests in flight count with their reservation',
-      { usage: 'openai', period: 'day', reserve: 400, tokens: 1000 },
+      'requests in flight count with their estimate',
+      { usage: 'openai', period: 'day', maxOutputTokens: 300, tokens: 1000 },
       [
-        req(day, 'a'),
-        req(day + 1, 'b'),
-        req(day + 2, 'c'),
-        req(day + 3, 'd'),
+        req(day, 'a', 400),
+        req(day + 1, 'b', 400),
+        req(day + 2, 'c', 400),
+        req(day + 3, 'd', 400),
         ans(day + 4, 'a', u(100, 0)),
         ans(day + 5, 'b', 'not_charged'),
-        req(day + 6, 'e'),
+        req(day + 6, 'e', 150),
         ans(day + 7, 'c', 'uncountable'),
         ans(day + 8, 'e', u(10, 0)),
-        req(day + 9, 'f'),
+        req(day + 9, 'f', 400),
       ],
     ],
     [
-      'an answer that cannot be counted keeps its reservation, an error releases it',
-      { usage: 'anthropic', period: 'month', reserve: 600, tokens: 1000 },
+      'an answer that cannot be counted keeps its estimate, an error releases it',
+      {
+        usage: 'anthropic',
+        period: 'month',
+        maxOutputTokens: 500,
+        tokens: 1000,
+      },
       [
-        req(day, 'a'),
+        req(day, 'a', 600),
         ans(day + 1, 'a', 'uncountable'),
-        req(day + 2, 'b'),
+        req(day + 2, 'b', 600),
         ans(day + 3, 'b', 'not_charged'),
-        req(day + 4, 'c'),
+        req(day + 4, 'c', 600),
         ans(day + 5, 'c', u(0, 0)),
-        req(day + 6, 'd'),
+        req(day + 6, 'd', 600),
         ans(day + 7, 'd', 'uncountable'),
-        req(day + 8, 'e'),
+        req(day + 8, 'e', 600),
       ],
     ],
     [
-      'cost: the reservation is priced at the higher price; refused once the limit is reached',
+      'cost: the estimate is priced like usage; refused once the limit is reached',
       {
         usage: 'openai',
         period: 'month',
-        reserve: 500,
+        maxOutputTokens: 400,
         cost: {
           limit: '0.01',
           inputPerMillion: '2.50',
@@ -1947,12 +1965,12 @@ function budgetVectors(): Json {
         },
       },
       [
-        req(day, 'a'),
+        req(day, 'a', 500),
         ans(day + 1, 'a', u(1000, 500)),
-        req(day + 2, 'b'),
+        req(day + 2, 'b', 500),
         ans(day + 3, 'b', u(1000, 0)),
-        req(day + 4, 'c'),
-        req(Date.UTC(2026, 10, 1) / 1000, 'd'),
+        req(day + 4, 'c', 500),
+        req(Date.UTC(2026, 10, 1) / 1000, 'd', 500),
       ],
     ],
     [
@@ -1960,59 +1978,138 @@ function budgetVectors(): Json {
       {
         usage: 'gemini',
         period: 'day',
-        reserve: 100,
+        maxOutputTokens: 100,
         tokens: 1000000,
         cost: { limit: '0.0005', inputPerMillion: '1', outputPerMillion: '1' },
       },
-      [req(day, 'a'), ans(day + 1, 'a', u(300, 200)), req(day + 2, 'b')],
+      [
+        req(day, 'a', 150),
+        ans(day + 1, 'a', u(300, 200)),
+        req(day + 2, 'b', 150),
+      ],
     ],
     [
-      'an answer after its period ended leaves the new period alone',
-      { usage: 'openai', period: 'day', reserve: 100, tokens: 1000 },
+      'an answer after its period ended counts in the new period',
+      { usage: 'openai', period: 'day', maxOutputTokens: 100, tokens: 1000 },
       [
-        req(day + 86_399, 'a'),
+        req(day + 86_399, 'a', 150),
         ans(day + 86_405, 'a', u(50, 0)),
-        req(day + 86_406, 'b'),
+        req(day + 86_406, 'b', 150),
         ans(day + 86_407, 'b', u(5, 5)),
       ],
     ],
     [
-      'an answer above its reservation is counted in full (the only overshoot)',
-      { usage: 'anthropic', period: 'day', reserve: 50, tokens: 100 },
-      [req(day, 'a'), ans(day + 1, 'a', u(90, 5000)), req(day + 2, 'b')],
+      'an answer above its estimate is counted in full',
+      { usage: 'anthropic', period: 'day', maxOutputTokens: 100, tokens: 100 },
+      [req(day, 'a', 150), ans(day + 1, 'a', u(90, 5000)), req(day + 2, 'b')],
     ],
   ];
-  const reservations: [string, Pick<Budget, 'reserve' | 'cost'>][] = [
-    ['tokens only', { reserve: 4096 }],
+  const requests: [string, UsageFormat, number, Json | string][] = [
     [
-      'output dearer',
+      'openai chat with max_tokens',
+      'openai',
+      1000,
       {
-        reserve: 1000,
-        cost: {
-          limit: '1',
-          inputPerMillion: '2.50',
-          outputPerMillion: '10.00',
-        },
+        model: 'gpt',
+        messages: [{ role: 'user', content: 'Hallo' }],
+        max_tokens: 500,
       },
     ],
     [
-      'input dearer',
-      {
-        reserve: 3,
-        cost: { limit: '1', inputPerMillion: '0.5', outputPerMillion: '0.1' },
-      },
+      'openai with max_completion_tokens',
+      'openai',
+      1000,
+      { messages: [], max_completion_tokens: 1000 },
     ],
     [
-      'largest at the highest price',
+      'openai responses API with max_output_tokens',
+      'openai',
+      1000,
+      { input: 'Hi', max_output_tokens: 64 },
+    ],
+    [
+      'openai: the highest of several caps counts',
+      'openai',
+      1000,
+      { max_tokens: 10, max_completion_tokens: 900 },
+    ],
+    ['openai cap written as 100.0', 'openai', 1000, '{"max_tokens":100.0}'],
+    ['openai without a cap', 'openai', 1000, { messages: [] }],
+    ['openai cap null and no other', 'openai', 1000, { max_tokens: null }],
+    ['openai cap above the limit', 'openai', 1000, { max_tokens: 1001 }],
+    [
+      'openai one cap valid, another above the limit',
+      'openai',
+      1000,
+      { max_tokens: 10, max_completion_tokens: 5000 },
+    ],
+    ['openai cap 0', 'openai', 1000, { max_tokens: 0 }],
+    ['openai cap as a string', 'openai', 1000, { max_tokens: '100' }],
+    ['openai stream true', 'openai', 1000, { max_tokens: 10, stream: true }],
+    ['openai stream false', 'openai', 1000, { max_tokens: 10, stream: false }],
+    [
+      'openai stream as a string',
+      'openai',
+      1000,
+      { max_tokens: 10, stream: 'true' },
+    ],
+    ['openai n of 1', 'openai', 1000, { max_tokens: 10, n: 1 }],
+    ['openai n of 4 (four answers)', 'openai', 1000, { max_tokens: 10, n: 4 }],
+    [
+      'anthropic messages',
+      'anthropic',
+      4096,
       {
-        reserve: 1000000000,
-        cost: { limit: '1', inputPerMillion: '1000', outputPerMillion: '1000' },
+        model: 'claude',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: 'Grüezi' }],
       },
+    ],
+    ['anthropic without max_tokens', 'anthropic', 4096, { messages: [] }],
+    [
+      'anthropic with max_completion_tokens only',
+      'anthropic',
+      4096,
+      { max_completion_tokens: 10 },
+    ],
+    [
+      'anthropic stream true',
+      'anthropic',
+      4096,
+      { max_tokens: 10, stream: true },
+    ],
+    [
+      'gemini',
+      'gemini',
+      2048,
+      { contents: [], generationConfig: { maxOutputTokens: 2048 } },
+    ],
+    ['gemini without generationConfig', 'gemini', 2048, { contents: [] }],
+    [
+      'gemini candidateCount 2',
+      'gemini',
+      2048,
+      { generationConfig: { maxOutputTokens: 10, candidateCount: 2 } },
+    ],
+    [
+      'gemini candidateCount 1',
+      'gemini',
+      2048,
+      { generationConfig: { maxOutputTokens: 10, candidateCount: 1 } },
+    ],
+    ['body is a list', 'openai', 1000, [{ max_tokens: 10 }]],
+    ['body is not JSON', 'openai', 1000, 'max_tokens=10'],
+    ['empty body', 'anthropic', 1000, ''],
+    [
+      'input counted in UTF-8 bytes',
+      'anthropic',
+      1000,
+      '{"max_tokens":5,"messages":[{"role":"user","content":"ÄÖÜ €"}]}',
     ],
   ];
   return {
     description:
-      'Budgets for AI APIs (FR-31, SEC-45, T-07). `amounts`: decimal text → micros (millionths) or null. `usage`: the usage an answer (`body`, its exact text) reports in each format → `{input, output}` tokens or null (the gate answers `upstream_usage_invalid`). `charges`: usage and an optional `cost` → `{tokens, micros}`, micros = ⌈(input × inputPerMillion + output × outputPerMillion) in micros / 10^6⌉. `reservations`: what one request reserves, `reserve` tokens priced as input at the higher of the two prices. `sequences`: steps against one budget, starting with nothing spent. `{now, request}`: refused (seconds until the period ends) when the spending — open reservations included — has reached `tokens` or the cost `limit`, else null and the reservation is added → `{refused, spent}`. `{now, answer, result}`: the answer to that earlier request; its reservation is replaced by the charge of `result` (`{input, output}` usage; `uncountable` = the reservation itself; `not_charged` = nothing), unless the period it was made in has ended → `{spent}`. `spent` is `{tokens, micros}` of the period holding `now` (0 once it ended); both are capped at 10^15 tokens and 10^17 micros.',
+      'Budgets for AI APIs (FR-31, SEC-45, T-07). `amounts`: decimal text → micros (millionths) or null. `usage`: the usage an answer (`body`, its exact text) reports in each format → `{input, output}` tokens or null (the gate answers `upstream_usage_invalid`). `charges`: usage and an optional `cost` → `{tokens, micros}`, micros = ⌈(input × inputPerMillion + output × outputPerMillion) in micros / 10^6⌉. `requests`: a request body (exact text) in each format with the route `maxOutputTokens` → its estimate `{input: UTF-8 bytes of the body, output: its output cap}`, or null = refused with `request_unbounded` (a stream, more than one answer, no cap or one above `maxOutputTokens`). `sequences`: steps against one budget, starting with nothing spent. `{now, request, estimate}`: refused (seconds until the period ends) when the spending — open estimates included — has reached `tokens` or the cost `limit`, else null and the charge of `estimate` is added → `{refused, spent}`. `{now, answer, result}`: the answer to that earlier request; the charge of the estimate comes off (never below 0) and the charge of `result` goes on (`{input, output}` usage; `uncountable` = the estimate itself; `not_charged` = nothing); when the period of the request has ended, the charge of `result` is added to the period holding `now` → `{spent}`. `spent` is `{tokens, micros}` of the period holding `now` (0 once it ended); both are capped at 10^15 tokens and 10^17 micros.',
     amounts: amounts as unknown as Json,
     usage: [
       ...usages.map(
@@ -2035,12 +2132,16 @@ function budgetVectors(): Json {
         budgetCost === undefined ? {} : { cost: budgetCost },
       ) as unknown as Json,
     })),
-    reservations: reservations.map(([name, budget]) => ({
-      name,
-      reserve: budget.reserve,
-      cost: (budget.cost ?? null) as unknown as Json,
-      expect: reservationOf(budget) as unknown as Json,
-    })),
+    requests: requests.map(([name, format, maxOutput, body]) => {
+      const text = typeof body === 'string' ? body : JSON.stringify(body);
+      return {
+        name,
+        format,
+        maxOutput,
+        body: text,
+        expect: requestEstimate(format, text, maxOutput) as unknown as Json,
+      };
+    }),
     sequences: sequences.map(([name, budget, steps]) => ({
       name,
       budget: budget as unknown as Json,

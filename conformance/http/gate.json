@@ -266,11 +266,11 @@
         }
       },
       "budget": {
-        "method": "GET",
+        "method": "POST",
         "path": "/budget",
         "upstream": "fake",
         "upstreamPath": "/usage",
-        "maxBodyBytes": 0,
+        "maxBodyBytes": 1024,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
         "enabled": true,
@@ -279,16 +279,16 @@
         "budget": {
           "usage": "openai",
           "period": "day",
-          "reserve": 50,
+          "maxOutputTokens": 50,
           "tokens": 150
         }
       },
       "budget-unreadable": {
-        "method": "GET",
+        "method": "POST",
         "path": "/budget-unreadable",
         "upstream": "fake",
         "upstreamPath": "/no-usage",
-        "maxBodyBytes": 0,
+        "maxBodyBytes": 1024,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
         "enabled": true,
@@ -297,16 +297,16 @@
         "budget": {
           "usage": "openai",
           "period": "day",
-          "reserve": 1000,
+          "maxOutputTokens": 1000,
           "tokens": 1000
         }
       },
       "budget-stream": {
-        "method": "GET",
+        "method": "POST",
         "path": "/budget-stream",
         "upstream": "fake",
         "upstreamPath": "/html",
-        "maxBodyBytes": 0,
+        "maxBodyBytes": 1024,
         "contentTypes": ["application/json"],
         "responseContentTypes": ["application/json"],
         "enabled": true,
@@ -315,7 +315,7 @@
         "budget": {
           "usage": "openai",
           "period": "day",
-          "reserve": 500,
+          "maxOutputTokens": 500,
           "tokens": 500
         }
       }
@@ -1237,12 +1237,62 @@
       }
     },
     {
-      "name": "budget: below the day's tokens, the call passes and its usage (100 tokens) is counted (FR-31)",
+      "name": "budget: a request asking for a stream is refused before anything is reserved or forwarded (T-07)",
       "request": {
-        "method": "GET",
+        "method": "POST",
         "path": "/budget",
-        "headers": {},
-        "body": ""
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"max_tokens\":50,\"stream\":true}"
+      },
+      "expect": {
+        "status": 400,
+        "error": "request_unbounded",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "budget: a request without an output cap is refused (its cost is unbounded)",
+      "request": {
+        "method": "POST",
+        "path": "/budget",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"messages\":[]}"
+      },
+      "expect": {
+        "status": 400,
+        "error": "request_unbounded",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "budget: a request whose cap is above the route's maxOutputTokens is refused",
+      "request": {
+        "method": "POST",
+        "path": "/budget",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"max_tokens\":51}"
+      },
+      "expect": {
+        "status": 400,
+        "error": "request_unbounded",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "budget: below the day's tokens, the call passes; its estimate (16 body bytes + 50) is replaced by its usage of 100 tokens (FR-31)",
+      "request": {
+        "method": "POST",
+        "path": "/budget",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"max_tokens\":50}"
       },
       "expect": {
         "status": 200,
@@ -1250,12 +1300,14 @@
       }
     },
     {
-      "name": "budget: still below (100 of 150), passes; this answer takes it to 200 (its usage beyond its reservation of 50)",
+      "name": "budget: still below (100 of 150), passes; this answer takes it to 200 (usage beyond the estimate is counted in full)",
       "request": {
-        "method": "GET",
+        "method": "POST",
         "path": "/budget",
-        "headers": {},
-        "body": ""
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"max_tokens\":50}"
       },
       "expect": {
         "status": 200,
@@ -1265,10 +1317,12 @@
     {
       "name": "budget: the day's tokens are used up, refused with Retry-After until midnight UTC, nothing forwarded (T-07)",
       "request": {
-        "method": "GET",
+        "method": "POST",
         "path": "/budget",
-        "headers": {},
-        "body": ""
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"max_tokens\":50}"
       },
       "expect": {
         "status": 429,
@@ -1280,12 +1334,14 @@
       }
     },
     {
-      "name": "budget: an answer without readable usage is not passed on (fail closed, SEC-46), and its reservation (1000 tokens) stays charged",
+      "name": "budget: an answer without readable usage is not passed on (fail closed, SEC-46), and its estimate (18 + 1000 tokens) stays charged",
       "request": {
-        "method": "GET",
+        "method": "POST",
         "path": "/budget-unreadable",
-        "headers": {},
-        "body": ""
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"max_tokens\":1000}"
       },
       "expect": {
         "status": 502,
@@ -1294,12 +1350,14 @@
       }
     },
     {
-      "name": "budget: after an answer that could not be counted, its reservation used up the day (T-07)",
+      "name": "budget: after an answer that could not be counted, its estimate used up the day (T-07)",
       "request": {
-        "method": "GET",
+        "method": "POST",
         "path": "/budget-unreadable",
-        "headers": {},
-        "body": ""
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"max_tokens\":1000}"
       },
       "expect": {
         "status": 429,
@@ -1311,12 +1369,14 @@
       }
     },
     {
-      "name": "budget: the request reached the upstream, but its answer is not JSON (a stream): not passed on, the reservation stays charged",
+      "name": "budget: the request reached the upstream, but its answer is not JSON: not passed on, the estimate stays charged",
       "request": {
-        "method": "GET",
+        "method": "POST",
         "path": "/budget-stream",
-        "headers": {},
-        "body": ""
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"max_tokens\":500}"
       },
       "expect": {
         "status": 502,
@@ -1325,12 +1385,14 @@
       }
     },
     {
-      "name": "budget: so a client asking for streams cannot spend beyond the budget (T-07)",
+      "name": "budget: so an answer that cannot be counted never spends beyond the estimate (T-07)",
       "request": {
-        "method": "GET",
+        "method": "POST",
         "path": "/budget-stream",
-        "headers": {},
-        "body": ""
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"max_tokens\":500}"
       },
       "expect": {
         "status": 429,

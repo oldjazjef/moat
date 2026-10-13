@@ -25,7 +25,9 @@ Four components (ANFORDERUNGEN.md, header):
 > the cURL upstream client with SSRF guard, origin binding/CORS, rate limits, request quotas per
 > calendar day/month (FR-31: route `quota`, policy `limits.quota`, `quota_exceeded`), token and cost
 > budgets for AI APIs (FR-31: route `budget`, policy `upstreams.<host>.budget`, usage read from the
-> answer in a closed list of formats, `budget_exhausted`, `upstream_usage_invalid`), the signed lock
+> answer in a closed list of formats, bounded requests only (`request_unbounded`: no stream, a
+> `max_tokens` up to `maxOutputTokens`), the estimate charged up front, `budget_exhausted`,
+> `upstream_usage_invalid`), the signed lock
 > of a gate or a whole environment (`moat env|gate disable`, `gate_disabled`) and the hardening
 > check (`check [--url]`, SEC-49/SEC-49a; `classifyHardening` in `libs/core/src/gate/`)
 > ([gates/php/README.md](gates/php/README.md)). **Moat Desktop, first surface:** Electron shell

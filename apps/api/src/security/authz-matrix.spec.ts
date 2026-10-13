@@ -204,7 +204,7 @@ describe('authorization matrix (local mode)', () => {
           budget: {
             usage: 'openai',
             period: 'day',
-            reserve: 1,
+            maxOutputTokens: 1,
             tokens: 1,
             path: '$.x',
           },
@@ -216,7 +216,12 @@ describe('authorization matrix (local mode)', () => {
         route: 'contact',
         definition: {
           ...route,
-          budget: { usage: 'custom', period: 'day', reserve: 1, tokens: 1 },
+          budget: {
+            usage: 'custom',
+            period: 'day',
+            maxOutputTokens: 1,
+            tokens: 1,
+          },
         },
       },
     ]) {

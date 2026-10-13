@@ -22,8 +22,8 @@ final readonly class Budget
     public function __construct(
         public UsageFormat $usage,
         public QuotaPeriod $period,
-        /** Tokens reserved per request before forwarding, charged in full when its answer cannot be counted. */
-        public int $reserve,
+        /** The highest output cap (`max_tokens` & co.) a request within the budget may ask for. */
+        public int $maxOutputTokens,
         public ?int $tokens,
         public ?Cost $cost,
     ) {}
@@ -52,22 +52,6 @@ final readonly class Budget
         $total = $usage->input * $this->cost->inputMicrosPerMillion + $usage->output * $this->cost->outputMicrosPerMillion;
 
         return [$usage->input + $usage->output, intdiv($total + self::MICROS - 1, self::MICROS)];
-    }
-
-    /**
-     * What one request reserves before it is forwarded (reservationOf()): `reserve` tokens priced
-     * at the higher of the two prices.
-     *
-     * @return array{int, int}
-     */
-    public function reservation(): array
-    {
-        if ($this->cost === null) {
-            return [$this->reserve, 0];
-        }
-        $price = max($this->cost->inputMicrosPerMillion, $this->cost->outputMicrosPerMillion);
-
-        return [$this->reserve, intdiv($this->reserve * $price + self::MICROS - 1, self::MICROS)];
     }
 
     /** True once the period's spending has reached the token or the cost limit. */

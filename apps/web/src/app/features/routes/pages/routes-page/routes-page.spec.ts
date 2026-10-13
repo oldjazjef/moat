@@ -142,7 +142,7 @@ describe('RoutesPage', () => {
       budget: {
         usage: 'openai',
         period: 'day',
-        reserve: 4000,
+        maxOutputTokens: 4000,
         tokens: 200000,
       },
     });
@@ -163,9 +163,9 @@ describe('RoutesPage', () => {
     usage.value = 'anthropic';
     usage.dispatchEvent(new Event('change'));
     expect(
-      (el.querySelector('#route-budget-reserve') as HTMLInputElement).value,
+      (el.querySelector('#route-budget-max-output') as HTMLInputElement).value,
     ).toBe('4000');
-    type(el, '#route-budget-reserve', '8000');
+    type(el, '#route-budget-max-output', '8000');
     type(el, '#route-budget-tokens', '');
     type(el, '#route-budget-limit', '20.00');
     type(el, '#route-budget-input', '3');

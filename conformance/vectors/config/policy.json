@@ -2658,7 +2658,7 @@
             "budget": {
               "usage": "openai",
               "period": "month",
-              "reserve": 4000,
+              "maxOutputTokens": 4000,
               "tokens": 5000000
             }
           }
@@ -2715,7 +2715,7 @@
             "budget": {
               "usage": "openai",
               "period": "day",
-              "reserve": 4000,
+              "maxOutputTokens": 4000,
               "tokens": 100000
             }
           }
@@ -2737,7 +2737,7 @@
             "budget": {
               "usage": "openai",
               "period": "month",
-              "reserve": 4000,
+              "maxOutputTokens": 4000,
               "tokens": 5000000
             }
           }
@@ -2794,7 +2794,7 @@
             "budget": {
               "usage": "anthropic",
               "period": "day",
-              "reserve": 4000,
+              "maxOutputTokens": 4000,
               "tokens": 100000
             }
           }
@@ -2816,7 +2816,7 @@
             "budget": {
               "usage": "openai",
               "period": "month",
-              "reserve": 4000,
+              "maxOutputTokens": 4000,
               "tokens": 5000000
             }
           }
@@ -2890,7 +2890,7 @@
             "budget": {
               "usage": "openai",
               "period": "month",
-              "reserve": 4000,
+              "maxOutputTokens": 4000,
               "tokens": 5000000
             }
           }
@@ -2964,7 +2964,7 @@
             "budget": {
               "usage": "openai",
               "period": "month",
-              "reserve": 4000,
+              "maxOutputTokens": 4000,
               "cost": {
                 "limit": "20",
                 "inputPerMillion": "1",
@@ -2994,7 +2994,7 @@
       }
     },
     {
-      "name": "host budget without reserve",
+      "name": "host budget without maxOutputTokens",
       "config": {
         "version": 1,
         "upstreams": {
@@ -3115,7 +3115,7 @@
             "budget": {
               "usage": "openai",
               "period": "month",
-              "reserve": 4000
+              "maxOutputTokens": 4000
             }
           }
         },
