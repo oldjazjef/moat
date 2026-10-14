@@ -1,4 +1,9 @@
-import type { ProjectState, RouteInput, UpstreamInput } from '@moat/core';
+import type {
+  ProjectState,
+  RecipeId,
+  RouteInput,
+  UpstreamInput,
+} from '@moat/core';
 
 /**
  * A project Moat Desktop knows: an id of its own and the folder the project lives in (DT-03,
@@ -67,6 +72,7 @@ export const CONFIG_EDIT_OPS = [
   'addUpstream',
   'updateUpstream',
   'removeUpstream',
+  'applyRecipe',
 ] as const;
 export type ConfigEditOp = (typeof CONFIG_EDIT_OPS)[number];
 
@@ -95,7 +101,13 @@ export type ConfigEdit =
       readonly upstream: string;
       readonly upstreamDefinition: UpstreamInput;
     }
-  | { readonly op: 'removeUpstream'; readonly upstream: string };
+  | { readonly op: 'removeUpstream'; readonly upstream: string }
+  /** FR-43: a recipe's upstream and route, added; never changes what is there. */
+  | {
+      readonly op: 'applyRecipe';
+      readonly recipe: RecipeId;
+      readonly origins?: readonly string[];
+    };
 
 /** Why an edit was refused (422), as `{ error: <code> }`; the UI shows `edit.errors.<code>`. */
 export type ConfigEditRefusal =

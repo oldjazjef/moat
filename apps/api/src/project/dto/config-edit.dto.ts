@@ -18,6 +18,8 @@ import {
   MAX_USAGE_TOKENS,
   METHODS,
   QUOTA_PERIODS,
+  RECIPE_IDS,
+  type RecipeId,
   USAGE_FORMATS,
   type UsageFormat,
   type QuotaPeriod,
@@ -238,6 +240,18 @@ export class ConfigEditDto {
   @ValidateNested()
   @Type(() => UpstreamDto)
   upstreamDefinition?: UpstreamDto;
+
+  @IsOptional()
+  @IsIn(RECIPE_IDS)
+  recipe?: RecipeId;
+
+  /** applyRecipe: where the website runs (FR-15); the core's schema checks each origin. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @MaxLength(MAX_VALUE, { each: true })
+  origins?: string[];
 }
 
 /** Plain data for the core: no class instances, no keys the DTO does not name. */
@@ -317,11 +331,19 @@ function upstreamInput(dto: UpstreamDto): UpstreamInput | null {
  */
 export function toConfigEdit(dto: ConfigEditDto): ConfigEdit | null {
   const { op, environment, gate, route, definition } = dto;
-  const { upstream, upstreamDefinition } = dto;
+  const { upstream, upstreamDefinition, recipe, origins } = dto;
   const only = (...given: readonly unknown[]) =>
-    [environment, gate, route, definition, upstream, upstreamDefinition].filter(
-      (value) => value !== undefined,
-    ).length === given.length && given.every((value) => value !== undefined);
+    [
+      environment,
+      gate,
+      route,
+      definition,
+      upstream,
+      upstreamDefinition,
+      recipe,
+      origins,
+    ].filter((value) => value !== undefined).length === given.length &&
+    given.every((value) => value !== undefined);
   switch (op) {
     case 'addEnvironment':
     case 'lockEnvironment':
@@ -364,5 +386,11 @@ export function toConfigEdit(dto: ConfigEditDto): ConfigEdit | null {
     }
     case 'removeUpstream':
       return upstream !== undefined && only(upstream) ? { op, upstream } : null;
+    case 'applyRecipe':
+      if (recipe === undefined) return null;
+      if (origins === undefined) return only(recipe) ? { op, recipe } : null;
+      return only(recipe, origins)
+        ? { op, recipe, origins: [...origins] }
+        : null;
   }
 }

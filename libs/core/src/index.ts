@@ -194,3 +194,12 @@ export {
   type Usage,
   type Spent,
 } from './http/budget';
+export {
+  applyRecipe,
+  isRecipeId,
+  RECIPE_IDS,
+  RECIPES,
+  RecipeParams,
+  type Recipe,
+  type RecipeId,
+} from './recipes/recipes';

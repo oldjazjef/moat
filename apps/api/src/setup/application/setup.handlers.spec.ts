@@ -1,4 +1,4 @@
-import { toBase64Url } from '@moat/core';
+import { applyRecipe, toBase64Url } from '@moat/core';
 import { describe, expect, it } from 'vitest';
 import {
   InMemoryProjectFiles,
@@ -19,7 +19,10 @@ function setup() {
   const registry = new InMemoryProjectRegistry();
   const files = new InMemoryProjectFiles({
     '/sites/shop': {
-      'moat.yaml': 'version: 1\nupstreams: {}\nroutes: {}\n',
+      'moat.yaml': applyRecipe(
+        'version: 1\nupstreams: {}\nroutes: {}\n',
+        'hubspot-newsletter',
+      ),
       'gates/www.json': JSON.stringify({
         moat: 'gate',
         v: 1,
@@ -53,10 +56,11 @@ describe('setup wizard (FR-73)', () => {
       ['signingKey', false, 'open'],
       ['project', true, 'open'],
       ['gate', false, 'open'],
+      ['recipe', false, 'open'],
       ['summary', false, 'open'],
     ]);
     expect(view.missing).toEqual(['language', 'project']);
-    expect(view.facts).toEqual({ projects: 0, gates: 0 });
+    expect(view.facts).toEqual({ projects: 0, gates: 0, routes: 0 });
   });
 
   it('stores states and the current step', async () => {
@@ -90,9 +94,9 @@ describe('setup wizard (FR-73)', () => {
     ).toEqual({ status: 'refused', code: 'step_required' });
   });
 
-  it('marks project and gate done only when they exist', async () => {
+  it('marks project, gate and recipe done only when they exist', async () => {
     const { update, registry } = setup();
-    for (const step of ['project', 'gate'] as const) {
+    for (const step of ['project', 'gate', 'recipe'] as const) {
       expect(
         await update.execute(
           new UpdateSetupCommand({ states: { [step]: 'done' } }),
@@ -101,11 +105,14 @@ describe('setup wizard (FR-73)', () => {
     }
     registry.add('/sites/shop');
     const result = await update.execute(
-      new UpdateSetupCommand({ states: { project: 'done', gate: 'done' } }),
+      new UpdateSetupCommand({
+        states: { project: 'done', gate: 'done', recipe: 'done' },
+      }),
     );
     expect(result.status === 'ok' && result.view.facts).toEqual({
       projects: 1,
       gates: 1,
+      routes: 1,
     });
   });
 

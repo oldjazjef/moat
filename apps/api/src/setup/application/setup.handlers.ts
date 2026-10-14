@@ -76,7 +76,7 @@ export class CompleteSetupCommand extends Command<SetupResult> {
 }
 
 /**
- * Counts projects and valid pinned gates (as readProject reads them: a damaged gate file is no
+ * Counts projects, routes of valid configs and valid pinned gates (as readProject reads them: a damaged gate file is no
  * gate, §1.5); a folder that cannot be read counts as nothing.
  */
 async function readFacts(
@@ -85,13 +85,16 @@ async function readFacts(
 ): Promise<SetupFacts> {
   const projects = registry.list();
   let gates = 0;
+  let routes = 0;
   for (const { folder } of projects) {
     const storage = files.open(folder);
     if (storage === null) continue;
     const state = await readProject(storage);
     gates += state.gates.filter((gate) => gate.status === 'valid').length;
+    if (state.config.status === 'valid')
+      routes += Object.keys(state.config.config.routes).length;
   }
-  return { projects: projects.length, gates };
+  return { projects: projects.length, gates, routes };
 }
 
 function view(progress: SetupProgress, facts: SetupFacts): SetupView {

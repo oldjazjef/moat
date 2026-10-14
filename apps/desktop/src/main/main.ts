@@ -101,7 +101,11 @@ void app.whenReady().then(start);
 async function start(): Promise<void> {
   const userData = app.getPath('userData');
   try {
-    api = await startApi({ appDir, dataDir: userData });
+    api = await startApi({
+      appDir,
+      dataDir: userData,
+      packaged: app.isPackaged,
+    });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     console.error('[desktop] start failed', error);

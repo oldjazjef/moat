@@ -1,6 +1,7 @@
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import {
   addEnvironment,
+  applyRecipe,
   assignGate,
   CONFIG_FILE,
   ConfigEditError,
@@ -64,6 +65,12 @@ function apply(text: string, edit: ConfigEdit): string {
       );
     case 'removeUpstream':
       return removeUpstream(text, edit.upstream);
+    case 'applyRecipe':
+      return applyRecipe(
+        text,
+        edit.recipe,
+        edit.origins === undefined ? {} : { origins: [...edit.origins] },
+      );
   }
 }
 

@@ -111,9 +111,10 @@ export interface RunningApi {
 export async function startApi(options: {
   appDir: string;
   dataDir: string;
+  packaged: boolean;
 }): Promise<RunningApi> {
   delete process.env['MOAT_PROJECT_DIR'];
-  Object.assign(process.env, desktopApiEnv(options.dataDir));
+  Object.assign(process.env, desktopApiEnv(options.dataDir, options.packaged));
 
   // Loaded only now: its ConfigModule validates process.env at load time.
   const api = require(join(options.appDir, 'api', 'main.js')) as ApiBundle;

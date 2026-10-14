@@ -43,6 +43,13 @@ export class Env {
   // POSIX `/…` or Windows `C:\…`: a relative path would depend on the working directory.
   @Matches(/^(\/|[A-Za-z]:[\\/])/)
   MOAT_DATA_DIR!: string;
+
+  /**
+   * `true` lets «Testen» (FR-73) reach a gate on this computer over plain HTTP (`php -S`). Moat
+   * Desktop sets it only when it runs unpackaged (development); never in a shipped build (T-59).
+   */
+  @IsIn(['true', 'false'])
+  MOAT_GATE_TEST_LOOPBACK: 'true' | 'false' = 'false';
 }
 
 /** Throws on the first misconfiguration; never echoes values (one of them could be a path). */
