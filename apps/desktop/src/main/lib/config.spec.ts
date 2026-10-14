@@ -41,6 +41,7 @@ describe('desktop config', () => {
       deployed: {},
       sftpTargets: {},
       gitTargets: {},
+      ftpsTargets: {},
     });
     if (process.platform !== 'win32')
       expect(statSync(join(dir, CONFIG_FILE)).mode & 0o077).toBe(0);
@@ -121,6 +122,32 @@ describe('desktop config', () => {
     expect(readConfig(dir).gitTargets).toEqual({
       [`${id}/www`]: '/home/me/site-deploy',
     });
+  });
+
+  it('keeps an FTPS target only in the shape the FTPS window writes (DT-05, T-69)', () => {
+    const id = 'EET8NETuKZO4J4p9vrWNKg';
+    const target = {
+      host: 'ftp.example.ch',
+      port: 21,
+      username: 'eme@example.ch',
+      remoteDir: 'moat-uploads',
+      mode: 'explicit',
+      certificate: `SHA256${':AB'.repeat(32)}`,
+      secret: 'c2VhbGVk',
+    };
+    writeFileSync(
+      join(dir, CONFIG_FILE),
+      JSON.stringify({
+        ftpsTargets: {
+          [`${id}/www`]: target,
+          [`${id}/a`]: { ...target, mode: 'plain' },
+          [`${id}/b`]: { ...target, certificate: 'SHA256:xx' },
+          [`${id}/c`]: { ...target, remoteDir: '../www' },
+          '../x': target,
+        },
+      }),
+    );
+    expect(readConfig(dir).ftpsTargets).toEqual({ [`${id}/www`]: target });
   });
 
   it('drops remembered passphrases under a name that is not a key id', () => {

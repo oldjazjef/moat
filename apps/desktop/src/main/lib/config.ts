@@ -7,6 +7,8 @@ import {
   type SftpTarget,
   isRemoteDir,
 } from './sftp';
+import type { FtpsTarget } from './ftps';
+import { FTPS_FINGERPRINT } from './ftps-client';
 
 /** `<userData>/config.json`: what the desktop remembers between starts. */
 export const CONFIG_FILE = 'config.json';
@@ -42,6 +44,11 @@ export interface DesktopConfig {
    * process's folder dialog; the page never learns it.
    */
   readonly gitTargets: Readonly<Record<string, string>>;
+  /**
+   * The FTPS target per `<projectId>/<gate>` (DT-05, T-69): host, user, folder, mode, the pinned
+   * certificate, and the password only as keychain ciphertext (DT-04).
+   */
+  readonly ftpsTargets: Readonly<Record<string, FtpsTarget>>;
 }
 
 export interface DeployedPackage {
@@ -56,6 +63,7 @@ export const EMPTY_CONFIG: DesktopConfig = {
   deployed: {},
   sftpTargets: {},
   gitTargets: {},
+  ftpsTargets: {},
 };
 
 const DEPLOYED_KEY = /^[A-Za-z0-9_-]{22}\/[a-z][a-z0-9-]{0,62}$/;
@@ -110,6 +118,14 @@ export function readConfig(userData: string): DesktopConfig {
         if (DEPLOYED_KEY.test(key) && dir !== null) gitTargets[key] = dir;
       }
     }
+    const ftpsTargets: Record<string, FtpsTarget> = {};
+    const ftps = value['ftpsTargets'];
+    if (isRecord(ftps)) {
+      for (const [key, entry] of Object.entries(ftps)) {
+        const target = DEPLOYED_KEY.test(key) ? ftpsTargetOf(entry) : null;
+        if (target !== null) ftpsTargets[key] = target;
+      }
+    }
     return {
       projectDir: absolute(value['projectDir']),
       keyFile: absolute(value['keyFile']),
@@ -117,6 +133,7 @@ export function readConfig(userData: string): DesktopConfig {
       deployed,
       sftpTargets,
       gitTargets,
+      ftpsTargets,
     };
   } catch {
     return EMPTY_CONFIG;
@@ -175,6 +192,40 @@ function sftpTargetOf(value: unknown): SftpTarget | null {
     auth,
     keyFile: keyFile === null ? null : absolute(keyFile),
     hostKey: hostKey as string | null,
+    secret: secret as string | null,
+  };
+}
+
+/** A stored FTPS target as the FTPS window writes it; anything else is dropped. */
+function ftpsTargetOf(value: unknown): FtpsTarget | null {
+  if (!isRecord(value)) return null;
+  const { host, port, username, remoteDir, mode, certificate, secret } = value;
+  if (
+    typeof host !== 'string' ||
+    !SFTP_HOST.test(host) ||
+    typeof port !== 'number' ||
+    !Number.isInteger(port) ||
+    port < 1 ||
+    port > 65535 ||
+    typeof username !== 'string' ||
+    !SFTP_USER.test(username) ||
+    typeof remoteDir !== 'string' ||
+    !(remoteDir === '.' || (remoteDir !== '' && isRemoteDir(remoteDir))) ||
+    (mode !== 'explicit' && mode !== 'implicit') ||
+    !(
+      certificate === null ||
+      (typeof certificate === 'string' && FTPS_FINGERPRINT.test(certificate))
+    ) ||
+    !(secret === null || (typeof secret === 'string' && secret !== ''))
+  )
+    return null;
+  return {
+    host,
+    port,
+    username,
+    remoteDir,
+    mode,
+    certificate: certificate as string | null,
     secret: secret as string | null,
   };
 }

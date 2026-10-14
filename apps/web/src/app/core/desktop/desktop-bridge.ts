@@ -67,9 +67,9 @@ export type SecretSealResult =
 
 /**
  * Where a deploy package goes (DT-05): a ZIP file, a new folder inside a chosen one, or a new
- * folder on a server over SFTP, or a new folder committed and pushed in a Git working copy.
+ * folder on a server over SFTP or FTPS, or a new folder committed and pushed in a Git working copy.
  */
-export type DeployTarget = 'zip' | 'folder' | 'sftp' | 'git';
+export type DeployTarget = 'zip' | 'folder' | 'sftp' | 'ftps' | 'git';
 
 /**
  * `key_missing`: no signing key chosen (or it cannot be read); `bundle_missing`: nothing signed

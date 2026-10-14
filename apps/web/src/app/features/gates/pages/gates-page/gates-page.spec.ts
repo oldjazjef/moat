@@ -477,6 +477,29 @@ describe('GatesPage', () => {
       );
     });
 
+    it('FTPS: asks the shell by ids and target only and says where the package is on the server', async () => {
+      const deploy = desktop({
+        status: 'exported',
+        target: 'ftps',
+        version: 5,
+      });
+      const { el, harness } = await openProjectTab(
+        'gates',
+        GatesPage,
+        withGate({ ...site(), latestBundle: 5 }),
+      );
+      const button = el.querySelector(
+        '[data-deploy-ftps]',
+      ) as HTMLButtonElement;
+      expect(button.textContent?.trim()).toBe('Per FTPS hochladen');
+      button.click();
+      await settle(harness);
+      expect(deploy).toHaveBeenCalledWith(PROJECT.id, 'site', 'ftps', 'de-CH');
+      expect(text(el, '[data-deploy-outcome]')).toBe(
+        'Das Paket mit Version 5 liegt auf dem Server im neuen Ordner moat-site-v5, verschlüsselt per FTPS hochgeladen. Aktiviere es dort wie in LIESMICH.txt beschrieben.',
+      );
+    });
+
     it('Git: says pushed, committed only, or why the folder does not fit', async () => {
       const deploy = desktop({ status: 'exported', target: 'git', version: 5 });
       const { el, harness } = await openProjectTab(

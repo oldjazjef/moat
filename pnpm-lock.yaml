@@ -66,6 +66,9 @@ importers:
       '@spartan-ng/brain':
         specifier: 1.5.0
         version: 1.5.0(5a05915da3a1ee79a4e2ba8e8720cc0e)
+      basic-ftp:
+        specifier: 6.2.2
+        version: 6.2.2
       class-transformer:
         specifier: ^0.5.1
         version: 0.5.1
@@ -3666,6 +3669,10 @@ packages:
   basic-auth@2.0.1:
     resolution: {integrity: sha512-NF+epuEdnUYVlGuhaxbbq+dvJttwLnGY+YixlXlME5KpQ5W3CnXA5cVTneY3SPbPDRkcjMbifrwmFYcClgOZeg==}
     engines: {node: '>= 0.8'}
+
+  basic-ftp@6.2.2:
+    resolution: {integrity: sha512-LIkJcf/F6bTTfvE3k2YcTxrJsLKKVXiEpHZYkQP6JoqTb7khng7c13ckRTDQbqRh5IkehVH3F00sSlAa2F6DwA==}
+    engines: {node: '>=10.0.0'}
 
   bcrypt-pbkdf@1.0.2:
     resolution: {integrity: sha512-qeFIXtP4MSoi6NLqO12WfqARWWuCKi2Rn/9hJLEmtB5yTNr9DqFWkJRCf2qShWzPeAMRnOgCrq0sg/KLv5ES9w==}
@@ -10889,6 +10896,8 @@ snapshots:
   basic-auth@2.0.1:
     dependencies:
       safe-buffer: 5.1.2
+
+  basic-ftp@6.2.2: {}
 
   bcrypt-pbkdf@1.0.2:
     dependencies:

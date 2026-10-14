@@ -216,10 +216,12 @@
     "deployZip": "Als ZIP speichern",
     "deployFolder": "In Ordner ablegen",
     "deploySftp": "Per SFTP hochladen",
+    "deployFtps": "Per FTPS hochladen",
     "deployGit": "Per Git ausliefern",
     "deployResult": {
       "exported_zip": "Das Paket mit Version {{version}} ist als ZIP gespeichert. Die Anleitung darin heisst `LIESMICH.txt`.",
       "exported_folder": "Das Paket mit Version {{version}} liegt im neuen Ordner `moat-{{gate}}-v{{version}}`. Die Anleitung darin heisst `LIESMICH.txt`.",
+      "exported_ftps": "Das Paket mit Version {{version}} liegt auf dem Server im neuen Ordner `moat-{{gate}}-v{{version}}`, verschlüsselt per FTPS hochgeladen. Aktiviere es dort wie in `LIESMICH.txt` beschrieben.",
       "exported_sftp": "Das Paket mit Version {{version}} liegt auf dem Server im neuen Ordner `moat-{{gate}}-v{{version}}`. Aktiviere es dort wie in `LIESMICH.txt` beschrieben.",
       "exported_git": "Das Paket mit Version {{version}} ist als neuer Ordner `moat-{{gate}}-v{{version}}` committet und gepusht. Aktiviere es auf dem Server wie in `LIESMICH.txt` beschrieben, sobald es dort angekommen ist.",
       "committed": "Das Paket mit Version {{version}} ist committet, aber der Push hat nicht geklappt. Pushe den Commit selbst, zum Beispiel mit `git push`.",
@@ -834,6 +836,7 @@
           "sign": "Klicke unter «Gates» beim Gate auf «Bundle signieren». Ein eigenes Fenster von Moat Desktop zeigt, was sich gegenüber dem letzten Bundle ändert. Wähle beim ersten Mal deine Schlüsseldatei (`.moatkey`), gib die Passphrase ein und bestätige. Das Bundle liegt danach unter `bundles`.",
           "package": "Unter «Gates» speicherst du mit «Als ZIP speichern» oder «In Ordner ablegen» ein Deploy-Paket: das zuletzt signierte Bundle unverändert, die passende `policy.json` und eine Anleitung (`LIESMICH.txt`) mit den Befehlen und der Prüfsumme. Wohin, wählst du im Dialog von Moat Desktop. Moat packt nur ein Bundle ein, das mit deiner Schlüsseldatei für dieses Gate signiert ist.",
           "sftp": "Unter «Gates» lädt «Per SFTP hochladen» dasselbe Paket als neuen Ordner auf deinen Server. Server, Benutzer, Ordner und Passwort oder SSH-Schlüssel gibst du im Fenster von Moat Desktop ein, nie in der App-Seite. Beim ersten Mal zeigt es den Host-Key des Servers: Vergleiche ihn mit dem, den dein Hoster nennt. Erst danach sendet Moat Benutzer, Passwort und Dateien. Zeigt der Server später einen anderen Schlüssel, bricht Moat ab. Moat überschreibt auf dem Server nichts und führt dort keinen Befehl aus: `accept` startest du selbst.",
+          "ftps": "Bietet dein Hoster kein SFTP, aber FTPS, lädt «Per FTPS hochladen» unter «Gates» dasselbe Paket als neuen Ordner hoch, immer über TLS: explizit mit `AUTH TLS` (meist Port 21) oder implizit (meist Port 990). Server, Benutzer, Ordner und Passwort gibst du im Fenster von Moat Desktop ein, nie in der App-Seite. Bestätigt keine bekannte Zertifizierungsstelle das Zertifikat des Servers, etwa weil es selbst signiert ist, zeigt Moat beim ersten Mal seinen SHA-256-Fingerprint: Vergleiche ihn mit dem, den dein Hoster nennt. Erst danach sendet Moat Benutzer, Passwort und Dateien. Zeigt der Server später ein anderes Zertifikat, bricht Moat ab. Moat überschreibt auf dem Server nichts: `accept` startest du selbst.",
           "git": "Liefert dein Hoster aus einem Git-Repository aus, legt «Per Git ausliefern» unter «Gates» das Paket als neuen Ordner in deine lokale Arbeitskopie, committet nur diesen Ordner und pusht ihn auf den Upstream des ausgecheckten Branches. Den Ordner wählst du beim ersten Mal, danach bestätigst du jedes Mal Branch und Remote. Moat nutzt dein installiertes Git mit deinen Zugangsdaten, führt aber keine Hooks des Repositorys aus und liefert nicht in ein Repository aus, dessen eigene Config Programme startet. Hat der Branch Commits, die noch nicht gepusht sind, pushst du sie zuerst selbst: Moat schickt nur das Paket. Klappt der Push nicht, bleibt der Commit, und du pushst ihn selbst.",
           "build": "Im CLI baust du das Bundle mit `moat build <gate> --key <datei>.moatkey`. Es liegt danach unter `bundles`.",
           "deploy": "Lade die Bundle-Datei auf den Server.",
@@ -844,6 +847,7 @@
           "policy": "Passt ein Bundle nicht zur lokalen Policy, lehnt das Gate es ab. Die Policy änderst du nur am Gate selbst.",
           "pull": "Ohne Upload aufs Gate: Steht in der lokalen Policy ein `pull`-Block mit einer HTTPS-Adresse, holt das Gate das Bundle dort selbst ab, höchstens einmal pro Intervall, und prüft es wie bei `accept`. Du lädst das signierte Bundle dann nur an diese Adresse hoch. Mit `php moat-gate.php pull` holt es sofort, `php moat-gate.php status` zeigt den letzten Versuch.",
           "keychain": "Auf Wunsch merkt sich Moat Desktop die Passphrase im Schlüsselbund deines Betriebssystems. Nimmst du das Häkchen beim nächsten Signieren weg, wird sie dort gelöscht. Ohne echten Schlüsselbund bietet Moat Desktop das gar nicht an.",
+          "ftpsPlain": "Unverschlüsseltes FTP nutzt Moat Desktop nie: Bietet der Server kein TLS an, bricht es ab, bevor es Benutzer oder Passwort sendet. Auch die Datenverbindungen sind verschlüsselt und gehen nur an den Server, mit dem Moat verbunden ist. Das Passwort merkt es sich wie bei SFTP nur im Schlüsselbund.",
           "sftpKeychain": "Das Passwort oder die Passphrase des Schlüssels merkt sich Moat Desktop nur im Schlüsselbund deines Betriebssystems und nur, wenn du das willst. Ohne echten Schlüsselbund fragt es jedes Mal."
         }
       },

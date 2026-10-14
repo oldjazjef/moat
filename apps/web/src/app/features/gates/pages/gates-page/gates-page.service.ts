@@ -49,6 +49,7 @@ export const DEPLOY_OUTCOMES = [
   'exported_zip',
   'exported_folder',
   'exported_sftp',
+  'exported_ftps',
   'exported_git',
   'committed',
   'key_missing',
@@ -206,7 +207,7 @@ export class GatesPageService {
     return { gate };
   }
 
-  /** The latest bundle as a ZIP, into a folder, over SFTP or Git; where: the desktop's dialogs. */
+  /** The latest bundle as a ZIP, into a folder, over SFTP, FTPS or Git; where: the desktop's dialogs. */
   async deploy(gate: ValidGate, target: DeployTarget): Promise<void> {
     if (this.bridge === null || this.deploying() !== null) return;
     this.deploying.set(gate.name);

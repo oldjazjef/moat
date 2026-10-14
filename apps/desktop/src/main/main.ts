@@ -51,6 +51,9 @@ import { KeyCreationSession, writeKeyFile } from './lib/key-creation';
 import { gitRunner, runGitDeploy } from './lib/git-deploy';
 import { readPrivateKey, SftpSession } from './lib/sftp';
 import { uploadPackage } from './lib/sftp-client';
+import { FtpsSession } from './lib/ftps';
+import { uploadPackage as uploadFtpsPackage } from './lib/ftps-client';
+import { registerFtpsDialogIpc, showFtpsDialog } from './ftps-window';
 import { registerSftpDialogIpc, showSftpDialog } from './sftp-window';
 import { gateTestConfirmation } from './lib/test-confirmation';
 import { PassphraseVault, readKeyFile, SigningSession } from './lib/signing';
@@ -430,6 +433,7 @@ function registerIpc(): void {
   );
   registerSealDialogIpc();
   registerSftpDialogIpc();
+  registerFtpsDialogIpc();
   // DT-05: the page asks for a gate's deploy package; where it goes is chosen in the main
   // process's own dialog, and the page learns only the outcome, never the path.
   ipcMain.handle(
@@ -551,6 +555,32 @@ async function deployGate(
     if (result.status === 'exported') remember();
     return result;
   }
+  if (target === 'ftps') {
+    const result = await showFtpsDialog({
+      parent,
+      appDir,
+      title: text.ftpsDialog.title,
+      session: new FtpsSession({
+        texts: text.ftpsDialog,
+        pkg,
+        files,
+        keychain: deployKeychain(),
+        stored: () => readConfig(userData).ftpsTargets[key] ?? null,
+        save: (stored) =>
+          updateConfig(userData, {
+            ftpsTargets: { ...readConfig(userData).ftpsTargets, [key]: stored },
+          }),
+        forget: () => {
+          const { [key]: _dropped, ...rest } = readConfig(userData).ftpsTargets;
+          updateConfig(userData, { ftpsTargets: rest });
+        },
+        upload: (connection, pinned, remoteDir, packageFiles) =>
+          uploadFtpsPackage(connection, pinned, remoteDir, packageFiles),
+      }),
+    });
+    if (result.status === 'exported') remember();
+    return result;
+  }
   if (target === 'git') {
     const git = text.deploy.git;
     const fill = (template: string, values: Record<string, string>) =>
@@ -664,6 +694,21 @@ const keychain = {
   encryptString: (text: string) => safeStorage.encryptString(text),
   decryptString: (sealed: Buffer) => safeStorage.decryptString(sealed),
 };
+
+/** A deploy target's password in the keychain (DT-04), base64 ciphertext; null when it no longer opens. */
+function deployKeychain() {
+  return {
+    available: keychain.isEncryptionAvailable(),
+    seal: (secret: string) => keychain.encryptString(secret).toString('base64'),
+    open: (sealed: string) => {
+      try {
+        return keychain.decryptString(Buffer.from(sealed, 'base64'));
+      } catch {
+        return null;
+      }
+    },
+  };
+}
 
 async function signBundle(
   parent: BrowserWindow,
