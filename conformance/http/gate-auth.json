@@ -1,0 +1,345 @@
+{
+  "description": "Upstream authentication beyond a plain secret (FR-20): HTTP Basic with a fixed user name and the secret as password, and OAuth2 client credentials (RFC 6749 §4.4), where the gate fetches an access token from `tokenUrl` with the client id and the secret (client_secret_basic, form-encoded), caches it until shortly before it expires and sends it as a bearer token. Run like gate.json, against the same fake upstream. In addition: /token answers {access_token: \"TEST-ONLY-access-token-<n>\", token_type: \"Bearer\", expires_in: 3600} with a new <n> on every call, only to `Authorization: Basic base64(moat-client:<secret>)` and a body `grant_type=client_credentials` (optionally `&scope=…`), otherwise 401; /token-fail answers 401; /token-bad answers 200 with JSON that has no access token. /echo shows such an access token as <TOKEN> and a Basic credential `user:<secret>` as `Basic user:<SECRET>`. `upstreamCalls` counts the token requests too. A token request that fails gives 502 upstream_auth_failed and sends nothing to the API; an API answer 401 drops the cached token, so the next request fetches a new one. An answer that contains the credential the gate sent (the Basic value, the access token) is refused like one that contains the secret (SEC-34).",
+  "config": {
+    "version": 1,
+    "upstreams": {
+      "fake-basic": {
+        "origin": "https://upstream.test:{port}",
+        "auth": {
+          "type": "basic",
+          "username": "moat-user",
+          "secret": "api-token"
+        },
+        "timeoutMs": 5000
+      },
+      "fake-oauth": {
+        "origin": "https://upstream.test:{port}",
+        "auth": {
+          "type": "oauth2",
+          "tokenUrl": "https://upstream.test:{port}/token",
+          "clientId": "moat-client",
+          "scope": "read write",
+          "secret": "api-token"
+        },
+        "timeoutMs": 5000
+      },
+      "fake-oauth-fail": {
+        "origin": "https://upstream.test:{port}",
+        "auth": {
+          "type": "oauth2",
+          "tokenUrl": "https://upstream.test:{port}/token-fail",
+          "clientId": "moat-client",
+          "secret": "api-token"
+        },
+        "timeoutMs": 5000
+      },
+      "fake-oauth-bad": {
+        "origin": "https://upstream.test:{port}",
+        "auth": {
+          "type": "oauth2",
+          "tokenUrl": "https://upstream.test:{port}/token-bad",
+          "clientId": "moat-client",
+          "secret": "api-token"
+        },
+        "timeoutMs": 5000
+      }
+    },
+    "routes": {
+      "basic": {
+        "method": "GET",
+        "path": "/basic",
+        "upstream": "fake-basic",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
+      },
+      "basic-reflect": {
+        "method": "GET",
+        "path": "/basic-reflect",
+        "upstream": "fake-basic",
+        "upstreamPath": "/reflect",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
+      },
+      "oauth": {
+        "method": "GET",
+        "path": "/oauth",
+        "upstream": "fake-oauth",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
+      },
+      "oauth-401": {
+        "method": "GET",
+        "path": "/oauth-401",
+        "upstream": "fake-oauth",
+        "upstreamPath": "/status/401",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
+      },
+      "oauth-reflect": {
+        "method": "GET",
+        "path": "/oauth-reflect",
+        "upstream": "fake-oauth",
+        "upstreamPath": "/reflect",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
+      },
+      "oauth-fail": {
+        "method": "GET",
+        "path": "/oauth-fail",
+        "upstream": "fake-oauth-fail",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
+      },
+      "oauth-bad": {
+        "method": "GET",
+        "path": "/oauth-bad",
+        "upstream": "fake-oauth-bad",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
+      }
+    }
+  },
+  "policy": {
+    "v": 1,
+    "upstreams": {
+      "upstream.test:{port}": {
+        "pathPrefixes": [
+          "/echo",
+          "/reflect",
+          "/status",
+          "/token",
+          "/token-fail",
+          "/token-bad"
+        ],
+        "methods": ["GET", "POST"],
+        "secrets": ["api-token"]
+      }
+    },
+    "maxBodyBytes": 1024,
+    "maxResponseBytes": 65536,
+    "maxTimeoutMs": 5000,
+    "limits": {
+      "perIp": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "total": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "maxClients": 5000
+    },
+    "testing": {
+      "resolve": {
+        "upstream.test:{port}": "127.0.0.1"
+      },
+      "caFile": "{caFile}"
+    }
+  },
+  "secrets": {
+    "api-token": "TEST-ONLY-planted-secret-7f3a9c"
+  },
+  "cases": [
+    {
+      "name": "basic: the user name and the secret as password",
+      "request": {
+        "method": "GET",
+        "path": "/basic",
+        "headers": {
+          "Authorization": "Basic Y2xpZW50OnN1cHBsaWVk"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "json": {
+          "method": "GET",
+          "path": "/echo",
+          "query": "",
+          "headers": {
+            "authorization": "Basic moat-user:<SECRET>"
+          },
+          "body": ""
+        }
+      }
+    },
+    {
+      "name": "basic: an answer with the credential sent is refused",
+      "request": {
+        "method": "GET",
+        "path": "/basic-reflect",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 502,
+        "error": "upstream_reflected_secret",
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "oauth2: the first request fetches a token, then calls the API with it",
+      "request": {
+        "method": "GET",
+        "path": "/oauth",
+        "headers": {
+          "Authorization": "Bearer client-supplied"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 2,
+        "json": {
+          "method": "GET",
+          "path": "/echo",
+          "query": "",
+          "headers": {
+            "authorization": "Bearer <TOKEN>"
+          },
+          "body": ""
+        }
+      }
+    },
+    {
+      "name": "oauth2: the next request uses the cached token",
+      "request": {
+        "method": "GET",
+        "path": "/oauth",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "json": {
+          "path": "/echo",
+          "headers": {
+            "authorization": "Bearer <TOKEN>"
+          }
+        }
+      }
+    },
+    {
+      "name": "oauth2: an answer with the access token is refused",
+      "request": {
+        "method": "GET",
+        "path": "/oauth-reflect",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 502,
+        "error": "upstream_reflected_secret",
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "oauth2: the API's 401 is passed on and drops the token",
+      "request": {
+        "method": "GET",
+        "path": "/oauth-401",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 401,
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "oauth2: after a 401 the next request fetches a new token",
+      "request": {
+        "method": "GET",
+        "path": "/oauth",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 2,
+        "json": {
+          "path": "/echo",
+          "headers": {
+            "authorization": "Bearer <TOKEN>"
+          }
+        }
+      }
+    },
+    {
+      "name": "oauth2: a refused token request sends nothing to the API",
+      "request": {
+        "method": "GET",
+        "path": "/oauth-fail",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 502,
+        "error": "upstream_auth_failed",
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "oauth2: a token answer without a token is refused",
+      "request": {
+        "method": "GET",
+        "path": "/oauth-bad",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 502,
+        "error": "upstream_auth_failed",
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "oauth2: a failed token request is not cached",
+      "request": {
+        "method": "GET",
+        "path": "/oauth-fail",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 502,
+        "error": "upstream_auth_failed",
+        "upstreamCalls": 1
+      }
+    }
+  ]
+}

@@ -124,7 +124,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       'seal',
       'check',
     ),
-    tips: items('never', 'rotate'),
+    tips: items('never', 'rotate', 'oauth'),
     links: [PROJECTS],
   },
   {

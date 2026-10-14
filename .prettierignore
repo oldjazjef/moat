@@ -14,3 +14,5 @@
 .angular
 # Vendored spartan.ng "helm" source, overwritten by its migrate-* generators.
 /libs/ui
+# Agent worktrees: full copies of the repo.
+/.claude/worktrees

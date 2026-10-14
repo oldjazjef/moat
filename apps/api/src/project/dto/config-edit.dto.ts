@@ -157,7 +157,13 @@ export class RouteDto {
   budget?: BudgetDto;
 }
 
-export const AUTH_TYPES = ['bearer', 'header', 'query'] as const;
+export const AUTH_TYPES = [
+  'bearer',
+  'header',
+  'query',
+  'basic',
+  'oauth2',
+] as const;
 
 /** `secret` names a sealed secret; the value never travels here (SEC-31). */
 export class UpstreamAuthDto {
@@ -179,6 +185,30 @@ export class UpstreamAuthDto {
   @IsString()
   @MaxLength(256)
   param?: string;
+
+  /** The user name, for `type: basic` (FR-20). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  username?: string;
+
+  /** The token endpoint, for `type: oauth2` (FR-20). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_VALUE)
+  tokenUrl?: string;
+
+  /** The client id, for `type: oauth2`. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  clientId?: string;
+
+  /** The scope, for `type: oauth2`; absent = none. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_VALUE)
+  scope?: string;
 }
 
 /** An upstream as the desktop's form sends it; the core's schema decides the values. */
@@ -303,16 +333,44 @@ function budgetInput(dto: BudgetDto): NonNullable<RouteInput['budget']> {
 
 /** The auth the DTO describes, or null when it has a key its type does not take or lacks one. */
 function authInput(dto: UpstreamAuthDto): UpstreamAuthInput | null {
-  const { type, secret, name, param } = dto;
-  if (type === 'bearer')
-    return name === undefined && param === undefined ? { type, secret } : null;
-  if (type === 'header')
-    return name !== undefined && param === undefined
-      ? { type, name, secret }
-      : null;
-  return param !== undefined && name === undefined
-    ? { type, param, secret }
-    : null;
+  const { type, secret, name, param, username, tokenUrl, clientId, scope } =
+    dto;
+  // Exactly the fields of the type, nothing else.
+  const given = { name, param, username, tokenUrl, clientId, scope };
+  const exactly = (...keys: (keyof typeof given)[]) =>
+    Object.entries(given).every(
+      ([key, value]) =>
+        (value !== undefined) === keys.includes(key as keyof typeof given) ||
+        (key === 'scope' && type === 'oauth2' && value === undefined),
+    );
+  switch (type) {
+    case 'bearer':
+      return exactly() ? { type, secret } : null;
+    case 'header':
+      return name !== undefined && exactly('name')
+        ? { type, name, secret }
+        : null;
+    case 'query':
+      return param !== undefined && exactly('param')
+        ? { type, param, secret }
+        : null;
+    case 'basic':
+      return username !== undefined && exactly('username')
+        ? { type, username, secret }
+        : null;
+    case 'oauth2':
+      return tokenUrl !== undefined &&
+        clientId !== undefined &&
+        exactly('tokenUrl', 'clientId', 'scope')
+        ? {
+            type,
+            tokenUrl,
+            clientId,
+            ...(scope === undefined ? {} : { scope }),
+            secret,
+          }
+        : null;
+  }
 }
 
 function upstreamInput(dto: UpstreamDto): UpstreamInput | null {

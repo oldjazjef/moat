@@ -146,6 +146,91 @@
         [class.border-destructive]="invalid('param')"
       />
     </div>
+    } @else if (form.controls.auth.value === 'basic') {
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="upstream-username">
+        {{ 'routes.upstreamForm.username' | translate }}
+      </label>
+      <input
+        hlmInput
+        id="upstream-username"
+        class="mt-code"
+        autocomplete="off"
+        spellcheck="false"
+        formControlName="username"
+        [placeholder]="'routes.upstreamForm.usernamePlaceholder' | translate"
+        [attr.aria-invalid]="invalid('username')"
+        [class.border-destructive]="invalid('username')"
+      />
+    </div>
+    } @else if (form.controls.auth.value === 'oauth2') {
+    <div></div>
+    <div class="flex flex-col gap-1.5 md:col-span-2">
+      <label hlmLabel for="upstream-tokenUrl">
+        {{ 'routes.upstreamForm.tokenUrl' | translate }}
+      </label>
+      <input
+        hlmInput
+        id="upstream-tokenUrl"
+        class="mt-code"
+        autocomplete="off"
+        spellcheck="false"
+        formControlName="tokenUrl"
+        [placeholder]="'routes.upstreamForm.tokenUrlPlaceholder' | translate"
+        [attr.aria-invalid]="invalid('tokenUrl')"
+        [class.border-destructive]="invalid('tokenUrl')"
+        aria-describedby="upstream-tokenUrl-hint"
+      />
+      <p
+        id="upstream-tokenUrl-hint"
+        class="text-xs"
+        [class.text-destructive]="invalid('tokenUrl')"
+        [class.text-muted-foreground]="!invalid('tokenUrl')"
+      >
+        {{ 'routes.upstreamForm.tokenUrlHint' | translate }}
+      </p>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="upstream-clientId">
+        {{ 'routes.upstreamForm.clientId' | translate }}
+      </label>
+      <input
+        hlmInput
+        id="upstream-clientId"
+        class="mt-code"
+        autocomplete="off"
+        spellcheck="false"
+        formControlName="clientId"
+        [placeholder]="'routes.upstreamForm.clientIdPlaceholder' | translate"
+        [attr.aria-invalid]="invalid('clientId')"
+        [class.border-destructive]="invalid('clientId')"
+      />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="upstream-scope">
+        {{ 'routes.upstreamForm.scope' | translate }}
+      </label>
+      <input
+        hlmInput
+        id="upstream-scope"
+        class="mt-code"
+        autocomplete="off"
+        spellcheck="false"
+        formControlName="scope"
+        [placeholder]="'routes.upstreamForm.scopePlaceholder' | translate"
+        [attr.aria-invalid]="invalid('scope')"
+        [class.border-destructive]="invalid('scope')"
+        aria-describedby="upstream-scope-hint"
+      />
+      <p
+        id="upstream-scope-hint"
+        class="text-xs"
+        [class.text-destructive]="invalid('scope')"
+        [class.text-muted-foreground]="!invalid('scope')"
+      >
+        {{ 'routes.upstreamForm.scopeHint' | translate }}
+      </p>
+    </div>
     } @else {
     <div></div>
     } @if (form.controls.auth.value !== 'none') {

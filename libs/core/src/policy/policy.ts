@@ -10,6 +10,7 @@ import {
   NAME,
   JSON_TYPE,
   QUOTA_PERIODS,
+  splitTokenUrl,
   type CompiledConfig,
 } from '../config/compiled';
 import { reject } from '../errors';
@@ -208,6 +209,21 @@ export function checkPolicy(config: CompiledConfig, policy: Policy): void {
         !allowed.secrets.includes(upstream.auth.secret)
       )
         reject('policy_violation');
+      // FR-20: the token request is a POST with the secret to the token endpoint, which the
+      // policy must allow like any other call.
+      if (upstream.auth.type === 'oauth2') {
+        const token = splitTokenUrl(upstream.auth.tokenUrl);
+        const host = policy.upstreams[hostKey(token.origin)];
+        if (
+          host === undefined ||
+          !host.secrets.includes(upstream.auth.secret) ||
+          !host.methods.includes('POST') ||
+          !host.pathPrefixes.some((pathPrefix) =>
+            matchesPrefix(token.path, pathPrefix),
+          )
+        )
+          reject('policy_violation');
+      }
     }
   }
   for (const route of Object.values(config.routes)) {
@@ -337,6 +353,19 @@ export function suggestPolicy(config: CompiledConfig): Policy {
     });
     if (upstream.auth !== null && !entry.secrets.includes(upstream.auth.secret))
       entry.secrets.push(upstream.auth.secret);
+    if (upstream.auth?.type === 'oauth2') {
+      const token = splitTokenUrl(upstream.auth.tokenUrl);
+      const host = (upstreams[hostKey(token.origin)] ??= {
+        pathPrefixes: [],
+        methods: [],
+        secrets: [],
+      });
+      if (!host.secrets.includes(upstream.auth.secret))
+        host.secrets.push(upstream.auth.secret);
+      if (!host.pathPrefixes.includes(token.path))
+        host.pathPrefixes.push(token.path);
+      if (!host.methods.includes('POST')) host.methods.push('POST');
+    }
     if (!entry.pathPrefixes.includes(route.upstreamPath))
       entry.pathPrefixes.push(route.upstreamPath);
     if (!entry.methods.includes(route.method)) entry.methods.push(route.method);

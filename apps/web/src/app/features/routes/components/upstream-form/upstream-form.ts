@@ -37,12 +37,22 @@ export function timeoutText(ms: number): string {
   return ms % 1000 === 0 ? `${ms / 1000}s` : `${ms}ms`;
 }
 
+/** Auth fields with a control of the same name. */
+const AUTH_FIELDS = [
+  'param',
+  'secret',
+  'username',
+  'tokenUrl',
+  'clientId',
+  'scope',
+];
+
 /** The control that shows the core's field: `auth.name` → `header`, `auth.param` → `param`. */
 function controlOf(field: string): string {
   const [first, second] = field.split('.');
   if (first !== 'auth') return first === 'timeout' ? 'timeout' : 'origin';
   if (second === 'name') return 'header';
-  return second === 'param' || second === 'secret' ? second : 'auth';
+  return second !== undefined && AUTH_FIELDS.includes(second) ? second : 'auth';
 }
 
 /**
@@ -84,6 +94,10 @@ export class UpstreamForm implements OnInit {
     auth: new FormControl<AuthChoice>('bearer', { nonNullable: true }),
     header: new FormControl('', { nonNullable: true }),
     param: new FormControl('', { nonNullable: true }),
+    username: new FormControl('', { nonNullable: true }),
+    tokenUrl: new FormControl('', { nonNullable: true }),
+    clientId: new FormControl('', { nonNullable: true }),
+    scope: new FormControl('', { nonNullable: true }),
     secret: new FormControl('', {
       nonNullable: true,
       validators: [Validators.pattern(NAME_PATTERN)],
@@ -111,6 +125,10 @@ export class UpstreamForm implements OnInit {
       auth: auth?.type ?? 'none',
       header: auth?.type === 'header' ? auth.name : '',
       param: auth?.type === 'query' ? auth.param : '',
+      username: auth?.type === 'basic' ? auth.username : '',
+      tokenUrl: auth?.type === 'oauth2' ? auth.tokenUrl : '',
+      clientId: auth?.type === 'oauth2' ? auth.clientId : '',
+      scope: auth?.type === 'oauth2' ? (auth.scope ?? '') : '',
       secret: auth?.secret ?? '',
       timeout:
         upstream.timeoutMs === DEFAULT_TIMEOUT_MS
@@ -128,20 +146,25 @@ export class UpstreamForm implements OnInit {
     );
   }
 
-  /** The secret, header and parameter are required only for the auth type that uses them. */
+  /** The secret and the fields of the chosen auth type are required; the scope is not. */
   private missing(): boolean {
-    const { auth, secret, header, param } = this.form.getRawValue();
-    const empty = (control: 'secret' | 'header' | 'param', value: string) => {
-      const blank = value.trim() === '';
+    const value = this.form.getRawValue();
+    type Required =
+      'secret' | 'header' | 'param' | 'username' | 'tokenUrl' | 'clientId';
+    const empty = (control: Required) => {
+      const blank = value[control].trim() === '';
       this.form.controls[control].setErrors(
         blank ? { required: true } : this.form.controls[control].errors,
       );
       return blank;
     };
-    if (auth === 'none') return false;
-    const noSecret = empty('secret', secret);
-    if (auth === 'header') return empty('header', header) || noSecret;
-    if (auth === 'query') return empty('param', param) || noSecret;
+    if (value.auth === 'none') return false;
+    const noSecret = empty('secret');
+    if (value.auth === 'header') return empty('header') || noSecret;
+    if (value.auth === 'query') return empty('param') || noSecret;
+    if (value.auth === 'basic') return empty('username') || noSecret;
+    if (value.auth === 'oauth2')
+      return [empty('tokenUrl'), empty('clientId'), noSecret].includes(true);
     return noSecret;
   }
 
@@ -149,6 +172,7 @@ export class UpstreamForm implements OnInit {
     const value = this.form.getRawValue();
     const secret = value.secret.trim();
     const timeout = value.timeout.trim();
+    const scope = value.scope.trim();
     const auth: UpstreamDefinition['auth'] =
       value.auth === 'bearer'
         ? { type: 'bearer', secret }
@@ -156,7 +180,17 @@ export class UpstreamForm implements OnInit {
           ? { type: 'header', name: value.header.trim(), secret }
           : value.auth === 'query'
             ? { type: 'query', param: value.param.trim(), secret }
-            : undefined;
+            : value.auth === 'basic'
+              ? { type: 'basic', username: value.username.trim(), secret }
+              : value.auth === 'oauth2'
+                ? {
+                    type: 'oauth2',
+                    tokenUrl: value.tokenUrl.trim(),
+                    clientId: value.clientId.trim(),
+                    ...(scope === '' ? {} : { scope }),
+                    secret,
+                  }
+                : undefined;
     return {
       origin: value.origin.trim(),
       ...(auth === undefined ? {} : { auth }),

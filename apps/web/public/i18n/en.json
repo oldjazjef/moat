@@ -288,7 +288,9 @@
       "bearer": "Bearer token from secret “{{secret}}”",
       "header": "Header {{name}} from secret “{{secret}}”",
       "query": "Parameter {{param}} from secret “{{secret}}”",
-      "none": "None"
+      "none": "None",
+      "basic": "Basic as {{username}} with secret “{{secret}}”",
+      "oauth2": "OAuth2 as {{clientId}} with secret “{{secret}}”"
     },
     "new": "New route",
     "newUpstream": "New upstream",
@@ -311,12 +313,24 @@
         "none": "None",
         "bearer": "Bearer token",
         "header": "Custom header",
-        "query": "Query parameter"
+        "query": "Query parameter",
+        "basic": "User and password (Basic)",
+        "oauth2": "OAuth2 client credentials"
       },
       "header": "Header",
       "headerPlaceholder": "X-Api-Key",
       "param": "Parameter",
       "paramPlaceholder": "api_key",
+      "username": "User name",
+      "usernamePlaceholder": "api-user",
+      "tokenUrl": "Token address",
+      "tokenUrlPlaceholder": "https://auth.example.com/oauth/token",
+      "tokenUrlHint": "The gate fetches an access token there with the client ID and the secret and keeps it until it almost expires. The gate’s policy must allow POST to this address and the secret for its host.",
+      "clientId": "Client ID",
+      "clientIdPlaceholder": "moat-gate",
+      "scope": "Scope",
+      "scopePlaceholder": "crm.read crm.write",
+      "scopeHint": "Empty means: ask for no scope.",
       "secret": "Secret name",
       "secretPlaceholder": "hubspot-token",
       "secretHint": "Only the name, never the key itself. Then seal the key in the terminal for each gate: `moat secret seal <gate> <name>`.",
@@ -773,7 +787,8 @@
         },
         "tips": {
           "never": "Moat never shows secrets, not even in Moat Desktop. It knows only their names and versions.",
-          "rotate": "A new key? Click “Seal again” (in the CLI: `--secret-version` with a higher number) and sign a new bundle."
+          "rotate": "A new key? Click “Seal again” (in the CLI: `--secret-version` with a higher number) and sign a new bundle.",
+          "oauth": "If the API wants a user and password, choose “User and password (Basic)” under “Authentication”: the secret is then the password. With “OAuth2 client credentials” the secret is the client secret; the gate uses it to fetch an access token at the “Token address” and sends the API only that token. The gate’s policy must allow POST to the token address."
         }
       },
       "routes": {
@@ -937,6 +952,7 @@
     },
     "preflight": "The gate answers the preflight itself. The browser may then send the request.",
     "forwarded": "Through the route {{route}}, the gate would forward the request like this:",
+    "tokenCall": "If the gate has no valid access token stored, it fetches one first (OAuth2). The secret is then base64-encoded in the Basic credentials; the gate sends the API only the token (<TOKEN>).",
     "secret": "The gate replaces {{placeholder}} with the sealed secret “{{secret}}”. The console does not know its value.",
     "countersTitle": "The gate counts",
     "counters": {

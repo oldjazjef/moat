@@ -21,6 +21,12 @@ export function toBase64Url(bytes: Uint8Array): string {
   return out;
 }
 
+/** Standard base64 with padding (RFC 4648 §4), e.g. for HTTP Basic (RFC 7617). */
+export function toBase64(bytes: Uint8Array): string {
+  const url = toBase64Url(bytes).replaceAll('-', '+').replaceAll('_', '/');
+  return url + '='.repeat((4 - (url.length % 4)) % 4);
+}
+
 /**
  * Strict decoder: rejects padding, `+`, `/`, whitespace, an impossible length and non-zero
  * trailing bits — so every byte string has exactly one accepted encoding.

@@ -288,7 +288,9 @@
       "bearer": "Bearer-Token aus Secret «{{secret}}»",
       "header": "Header {{name}} aus Secret «{{secret}}»",
       "query": "Parameter {{param}} aus Secret «{{secret}}»",
-      "none": "Keine"
+      "none": "Keine",
+      "basic": "Basic als {{username}} mit Secret «{{secret}}»",
+      "oauth2": "OAuth2 als {{clientId}} mit Secret «{{secret}}»"
     },
     "new": "Neue Route",
     "newUpstream": "Neuer Upstream",
@@ -311,12 +313,24 @@
         "none": "Keine",
         "bearer": "Bearer-Token",
         "header": "Eigener Header",
-        "query": "Query-Parameter"
+        "query": "Query-Parameter",
+        "basic": "Benutzer und Passwort (Basic)",
+        "oauth2": "OAuth2 Client Credentials"
       },
       "header": "Header",
       "headerPlaceholder": "X-Api-Key",
       "param": "Parameter",
       "paramPlaceholder": "api_key",
+      "username": "Benutzername",
+      "usernamePlaceholder": "api-user",
+      "tokenUrl": "Token-Adresse",
+      "tokenUrlPlaceholder": "https://auth.example.com/oauth/token",
+      "tokenUrlHint": "Dort holt das Gate mit Client-ID und Secret ein Zugriffstoken und behält es, bis es fast abläuft. Die Policy des Gates muss POST auf diese Adresse und das Secret für ihren Host erlauben.",
+      "clientId": "Client-ID",
+      "clientIdPlaceholder": "moat-gate",
+      "scope": "Scope",
+      "scopePlaceholder": "crm.read crm.write",
+      "scopeHint": "Leer heisst: kein Scope anfragen.",
       "secret": "Name des Secrets",
       "secretPlaceholder": "hubspot-token",
       "secretHint": "Nur der Name, nie der Schlüssel selbst. Den Schlüssel versiegelst du danach im Terminal für jedes Gate: `moat secret seal <gate> <name>`.",
@@ -773,7 +787,8 @@
         },
         "tips": {
           "never": "Moat zeigt Secrets nie an, auch nicht in Moat Desktop. Es kennt nur ihre Namen und Versionen.",
-          "rotate": "Ein neuer Schlüssel? Klicke auf «Neu versiegeln» (im CLI: `--secret-version` mit einer höheren Nummer) und signiere ein neues Bundle."
+          "rotate": "Ein neuer Schlüssel? Klicke auf «Neu versiegeln» (im CLI: `--secret-version` mit einer höheren Nummer) und signiere ein neues Bundle.",
+          "oauth": "Verlangt die API Benutzer und Passwort, wähle bei «Anmeldung» «Benutzer und Passwort (Basic)»: Das Secret ist dann das Passwort. Bei «OAuth2 Client Credentials» ist das Secret das Client-Secret; das Gate holt damit an der «Token-Adresse» ein Zugriffstoken und schickt der API nur dieses. Die Policy des Gates muss POST auf die Token-Adresse erlauben."
         }
       },
       "routes": {
@@ -937,6 +952,7 @@
     },
     "preflight": "Das Gate beantwortet den Preflight selbst. Der Browser darf die Anfrage danach senden.",
     "forwarded": "Das Gate würde die Anfrage über die Route {{route}} so weiterleiten:",
+    "tokenCall": "Hat das Gate kein gültiges Zugriffstoken gespeichert, holt es zuerst eins (OAuth2). Das Secret steckt dabei Base64-kodiert in der Basic-Anmeldung; der API schickt das Gate nur das Token (<TOKEN>).",
     "secret": "{{placeholder}} ersetzt das Gate durch das versiegelte Secret «{{secret}}». Die Konsole kennt den Wert nicht.",
     "countersTitle": "Dabei zählt das Gate",
     "counters": {

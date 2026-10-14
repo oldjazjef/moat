@@ -88,12 +88,27 @@ body come back. Errors are `{"error":"<code>"}`:
 | 500    | `secret_unavailable`, `internal_error`                                      |
 | 502    | `upstream_forbidden`, `upstream_unreachable`, `upstream_redirect`,          |
 |        | `upstream_content_type`, `upstream_too_large`, `upstream_reflected_secret`, |
-|        | `upstream_usage_invalid`                                                    |
+|        | `upstream_usage_invalid`, `upstream_auth_failed`                            |
 | 503    | `gate_not_configured`, `gate_disabled`, `route_disabled`,                   |
 |        | `rate_limit_unavailable`                                                    |
 | 504    | `upstream_timeout`                                                          |
 
 The log gets these codes only, never a value.
+
+### Upstream sign-in (FR-20)
+
+An upstream's `auth` adds its secret as a bearer token, a header of its own, a query parameter,
+HTTP Basic (`type: basic`, `username`, the secret as password) or OAuth2 client credentials
+(`type: oauth2`, `tokenUrl`, `clientId`, optional `scope`). For OAuth2 the gate first POSTs to
+`tokenUrl` through the same pinned client, with `client_secret_basic` (RFC 6749 §2.3.1) and
+`grant_type=client_credentials`, and sends the API only the access token. The token is kept in
+the data file `tokens` until 30 s before it expires (at most an hour, 5 minutes when the answer
+says nothing), for this bundle version and these settings only; a 401 from the API drops it. The
+file holds access tokens, never the secret, next to `identity`, whose key opens every secret, so
+it gets no extra encryption. A token request that fails answers `upstream_auth_failed` (502) and
+sends nothing to the API. The policy must allow POST to the token path on its host, with the
+secret bound to that host and to the API's host (SEC-35). An answer that contains the Basic
+value or the access token is refused like one with the secret (`upstream_reflected_secret`).
 
 ### Body fields (FR-13, T-65)
 

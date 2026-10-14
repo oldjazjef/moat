@@ -591,6 +591,74 @@ routes:
     });
   });
 
+  it('writes Basic and OAuth2 (FR-20), quoting values that may look like numbers', () => {
+    const basic = setUpstream(
+      site,
+      'hubspot',
+      { ...hubspot, auth: { type: 'basic', username: '1234', secret: 'key' } },
+      'update',
+    );
+    expect(basic).toContain("username: '1234'");
+    expect(loadMoatYaml(basic).upstreams['hubspot']?.auth).toEqual({
+      type: 'basic',
+      username: '1234',
+      secret: 'key',
+    });
+    const oauth = {
+      type: 'oauth2',
+      tokenUrl: 'https://auth.example.com/oauth/token',
+      clientId: '42',
+      scope: 'crm.read crm.write',
+      secret: 'key',
+    } as const;
+    const withScope = setUpstream(
+      basic,
+      'hubspot',
+      { ...hubspot, auth: oauth },
+      'update',
+    );
+    expect(withScope).not.toContain('username');
+    expect(loadMoatYaml(withScope).upstreams['hubspot']?.auth).toEqual(oauth);
+    const { scope: _scope, ...noScope } = oauth;
+    const without = setUpstream(
+      withScope,
+      'hubspot',
+      { ...hubspot, auth: noScope },
+      'update',
+    );
+    expect(without).not.toContain('scope');
+    expect(loadMoatYaml(without).upstreams['hubspot']?.auth).toEqual(noScope);
+  });
+
+  it('refuses an OAuth2 token URL over plain HTTP', () => {
+    const fail = (run: () => string) => {
+      try {
+        run();
+      } catch (error) {
+        if (error instanceof ConfigEditError) return [error.code, error.fields];
+      }
+      return ['none'];
+    };
+    expect(
+      fail(() =>
+        setUpstream(
+          site,
+          'hubspot',
+          {
+            ...hubspot,
+            auth: {
+              type: 'oauth2',
+              tokenUrl: 'http://auth.example.com/token',
+              clientId: 'moat',
+              secret: 'key',
+            },
+          },
+          'update',
+        ),
+      ),
+    ).toEqual(['value_invalid', ['auth.tokenUrl']]);
+  });
+
   it('keeps the timeout as written when it means the same', () => {
     const text = setUpstream(
       site,

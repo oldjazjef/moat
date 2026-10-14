@@ -1918,6 +1918,476 @@
       }
     },
     {
+      "name": "oauth2: the token endpoint is allowed with POST and the secret (FR-20, SEC-35)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "oauth2",
+              "tokenUrl": "https://auth.example.com/oauth/token",
+              "clientId": "client-1",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          },
+          "auth.example.com": {
+            "pathPrefixes": [
+              "/oauth/token"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "oauth2: the token host is not in the policy",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "oauth2",
+              "tokenUrl": "https://auth.example.com/oauth/token",
+              "clientId": "client-1",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_violation"
+      }
+    },
+    {
+      "name": "oauth2: the token host without the secret (SEC-35)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "oauth2",
+              "tokenUrl": "https://auth.example.com/oauth/token",
+              "clientId": "client-1",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          },
+          "auth.example.com": {
+            "pathPrefixes": [
+              "/oauth/token"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": []
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_violation"
+      }
+    },
+    {
+      "name": "oauth2: the token host without POST",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "oauth2",
+              "tokenUrl": "https://auth.example.com/oauth/token",
+              "clientId": "client-1",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          },
+          "auth.example.com": {
+            "pathPrefixes": [
+              "/oauth/token"
+            ],
+            "methods": [
+              "GET"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_violation"
+      }
+    },
+    {
+      "name": "oauth2: the token path outside every prefix",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "oauth2",
+              "tokenUrl": "https://auth.example.com/oauth/token",
+              "clientId": "client-1",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          },
+          "auth.example.com": {
+            "pathPrefixes": [
+              "/oauth/tokens"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_violation"
+      }
+    },
+    {
+      "name": "oauth2: the API host must allow the secret too (SEC-35)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "oauth2",
+              "tokenUrl": "https://auth.example.com/oauth/token",
+              "clientId": "client-1",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": []
+          },
+          "auth.example.com": {
+            "pathPrefixes": [
+              "/oauth/token"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_violation"
+      }
+    },
+    {
       "name": "policy without a secrets list",
       "config": {
         "version": 1,

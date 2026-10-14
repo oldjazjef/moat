@@ -90,6 +90,18 @@ export interface CompiledUpstream {
         readonly secret: string;
       }
     | {
+        readonly type: 'basic';
+        readonly username: string;
+        readonly secret: string;
+      }
+    | {
+        readonly type: 'oauth2';
+        readonly tokenUrl: string;
+        readonly clientId: string;
+        readonly scope?: string;
+        readonly secret: string;
+      }
+    | {
         readonly type: 'query';
         readonly param: string;
         readonly secret: string;
@@ -273,4 +285,10 @@ export const CONFIG_ISSUE_CODES = [
 ] as const;
 
 /** `CompiledUpstream.auth.type`, each `routes.auth.<type>`. */
-export const AUTH_TYPES = ['bearer', 'header', 'query'] as const;
+export const AUTH_TYPES = [
+  'bearer',
+  'header',
+  'query',
+  'basic',
+  'oauth2',
+] as const;

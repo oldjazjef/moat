@@ -27,6 +27,11 @@ final class ConfigValidator
     public const MAX_ROUTE_BUDGETS = 256;
     private const HEADER_NAME = '/^[A-Za-z0-9-]{1,64}$/D';
     private const QUERY_PARAM = '/^[A-Za-z0-9_.-]{1,64}$/D';
+    /** FR-20: a Basic user name or OAuth2 client id — visible ASCII without ":". */
+    private const CREDENTIAL_ID = '/^[\x21-\x39\x3B-\x7E]{1,128}$/D';
+    /** RFC 6749 §3.3: scope tokens separated by single spaces. */
+    private const OAUTH_SCOPE = '/^[\x21\x23-\x5B\x5D-\x7E]{1,128}(?: [\x21\x23-\x5B\x5D-\x7E]{1,128}){0,15}$/D';
+    private const MAX_TOKEN_URL = 512;
     /** Headers the gate sets itself; an auth header may not replace them. */
     private const RESERVED_HEADERS = [
         'host', 'content-type', 'content-length', 'transfer-encoding', 'connection', 'te', 'upgrade',
@@ -152,12 +157,40 @@ final class ConfigValidator
             AuthType::Query => $value->hasExactKeys('type', 'param', 'secret')
                 && \is_string($name = $value->get('param'))
                 && preg_match(self::QUERY_PARAM, $name) === 1,
+            AuthType::Basic => $value->hasExactKeys('type', 'username', 'secret')
+                && \is_string($name = $value->get('username'))
+                && preg_match(self::CREDENTIAL_ID, $name) === 1,
+            AuthType::OAuth2 => ($value->has('scope') ? $value->hasExactKeys('type', 'tokenUrl', 'clientId', 'scope', 'secret') : $value->hasExactKeys('type', 'tokenUrl', 'clientId', 'secret'))
+                && \is_string($name = $value->get('clientId'))
+                && preg_match(self::CREDENTIAL_ID, $name) === 1,
         };
         if (!$valid || !\is_string($secret) || preg_match(self::NAME, $secret) !== 1 || !\is_string($name)) {
             self::fail();
         }
 
-        return new Auth($type, $name, $secret);
+        return new Auth($type, $name, $secret, $type === AuthType::OAuth2 ? self::tokenEndpoint($value) : null);
+    }
+
+    /** FR-20: `tokenUrl` (an HTTPS origin and a path of plain segments) and the optional scope. */
+    private static function tokenEndpoint(JsonObject $value): TokenEndpoint
+    {
+        $url = $value->get('tokenUrl');
+        $scope = $value->has('scope') ? $value->get('scope') : null;
+        if (
+            !\is_string($url) || \strlen($url) > self::MAX_TOKEN_URL
+            || preg_match('#^(https://[^/]+)((?:/[A-Za-z0-9._~-]+)+)$#D', $url, $match) !== 1
+            || !self::isOrigin($match[1])
+            || ($value->has('scope') && (!\is_string($scope) || preg_match(self::OAUTH_SCOPE, $scope) !== 1))
+        ) {
+            self::fail();
+        }
+        foreach (\array_slice(explode('/', $match[2]), 1) as $segment) {
+            if ($segment === '.' || $segment === '..') {
+                self::fail();
+            }
+        }
+
+        return new TokenEndpoint($match[1], $match[2], \is_string($scope) ? $scope : null);
     }
 
     private static function route(string $name, mixed $value): Route

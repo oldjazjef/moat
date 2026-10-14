@@ -9,6 +9,7 @@ export default [
     ignores: [
       '**/dist',
       'private/**',
+      '.claude/worktrees/**',
       'gates/php/vendor/**',
       '**/out-tsc',
       '**/vitest.config.*.timestamp*',

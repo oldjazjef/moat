@@ -85,6 +85,13 @@ export type DryRunResult =
         readonly body: string;
         readonly timeoutMs: number;
         readonly secret: string | null;
+        /** FR-20, OAuth2: the token request sent first when no token is cached. */
+        readonly tokenCall?: {
+          readonly method: string;
+          readonly url: string;
+          readonly headers: readonly (readonly [string, string])[];
+          readonly body: string;
+        };
       };
       readonly headers: Readonly<Record<string, string>>;
       readonly counters: readonly DryRunCounter[];

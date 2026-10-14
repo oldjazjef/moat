@@ -1,7 +1,13 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { MoatRejection } from '../errors';
-import { fromBase64Url, fromBase64UrlLength, toBase64Url } from './base64url';
+import {
+  fromBase64Url,
+  fromBase64UrlLength,
+  toBase64,
+  toBase64Url,
+} from './base64url';
+import { utf8 } from './utf8';
 import { toBase32 } from './base32';
 
 describe('base64url', () => {
@@ -54,5 +60,15 @@ describe('base32', () => {
     ];
     for (const [text, encoded] of cases)
       expect(toBase32(new TextEncoder().encode(text))).toBe(encoded);
+  });
+});
+
+describe('toBase64', () => {
+  it('pads like RFC 4648 §4 and uses + and /', () => {
+    expect(toBase64(new Uint8Array([]))).toBe('');
+    expect(toBase64(utf8('f'))).toBe('Zg==');
+    expect(toBase64(utf8('fo'))).toBe('Zm8=');
+    expect(toBase64(utf8('foo'))).toBe('Zm9v');
+    expect(toBase64(new Uint8Array([0xfb, 0xff]))).toBe('+/8=');
   });
 });

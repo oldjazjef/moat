@@ -543,7 +543,20 @@ export function setRouteEnabled(
 export type UpstreamAuthInput =
   | { readonly type: 'bearer'; readonly secret: string }
   | { readonly type: 'header'; readonly name: string; readonly secret: string }
-  | { readonly type: 'query'; readonly param: string; readonly secret: string };
+  | { readonly type: 'query'; readonly param: string; readonly secret: string }
+  | {
+      readonly type: 'basic';
+      readonly username: string;
+      readonly secret: string;
+    }
+  | {
+      readonly type: 'oauth2';
+      readonly tokenUrl: string;
+      readonly clientId: string;
+      /** Absent = the key is removed. */
+      readonly scope?: string;
+      readonly secret: string;
+    };
 
 /** An upstream as Moat Desktop edits it. */
 export interface UpstreamInput {
@@ -560,7 +573,18 @@ const AUTH_KEYS = {
   bearer: ['secret'],
   header: ['name', 'secret'],
   query: ['param', 'secret'],
+  basic: ['username', 'secret'],
+  oauth2: ['tokenUrl', 'clientId', 'scope', 'secret'],
 } as const;
+/** Keys written only when set. */
+const OPTIONAL_AUTH_KEYS: readonly string[] = ['scope'];
+/** Free text that may look like a number or boolean, and URLs: always quoted. */
+const QUOTED_AUTH_KEYS: readonly string[] = [
+  'tokenUrl',
+  'clientId',
+  'username',
+  'scope',
+];
 
 /**
  * Adds the upstream `upstream` (`create`) or changes an existing one. As setRoute, only changed
@@ -594,13 +618,18 @@ export function setUpstream(
     if (written !== auth.type || !isMap(doc.getIn(at('auth'), true)))
       setIn(doc, at('auth'), emptyMap());
     setScalar(doc, at('auth', 'type'), auth.type, false);
-    for (const key of AUTH_KEYS[auth.type])
-      setScalar(
-        doc,
-        at('auth', key),
-        (auth as Record<string, string>)[key] ?? '',
-        false,
-      );
+    for (const key of AUTH_KEYS[auth.type]) {
+      const value = (auth as Record<string, string | undefined>)[key];
+      if (value === undefined && OPTIONAL_AUTH_KEYS.includes(key))
+        deleteIn(doc, at('auth', key));
+      else
+        setScalar(
+          doc,
+          at('auth', key),
+          value ?? '',
+          QUOTED_AUTH_KEYS.includes(key),
+        );
+    }
   }
   if (input.timeout === undefined) deleteIn(doc, at('timeout'));
   else setScalar(doc, at('timeout'), input.timeout, true, sameDuration);

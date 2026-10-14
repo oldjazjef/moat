@@ -425,7 +425,8 @@ function configVectors(): Json {
     ],
     [
       'unknown auth type',
-      (c) => (upstream(c)['auth'] = { type: 'basic', secret: 'hubspot-token' }),
+      (c) =>
+        (upstream(c)['auth'] = { type: 'digest', secret: 'hubspot-token' }),
     ],
     [
       'bearer auth with an extra key',
@@ -434,6 +435,191 @@ function configVectors(): Json {
           type: 'bearer',
           secret: 'hubspot-token',
           value: 'x',
+        }),
+    ],
+    [
+      'basic auth (FR-20)',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'basic',
+          username: 'moat-user',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'basic auth user name with ":"',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'basic',
+          username: 'a:b',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'basic auth user name with a space',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'basic',
+          username: 'a b',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'basic auth with an empty user name',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'basic',
+          username: '',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'basic auth without a user name',
+      (c) => (upstream(c)['auth'] = { type: 'basic', secret: 'hubspot-token' }),
+    ],
+    [
+      'oauth2 client credentials (FR-20)',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'client-1',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'oauth2 with a scope',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'client-1',
+          scope: 'crm.read crm.write',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'oauth2 scope with a double space',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'client-1',
+          scope: 'a  b',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'oauth2 scope with a quote',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'client-1',
+          scope: 'a"b',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'oauth2 scope null',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'client-1',
+          scope: null,
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'oauth2 token URL over plain HTTP',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'http://auth.example.com/token',
+          clientId: 'client-1',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'oauth2 token URL without a path',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com',
+          clientId: 'client-1',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'oauth2 token URL with a query',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/token?x=1',
+          clientId: 'client-1',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'oauth2 token URL with a dot segment',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/a/../token',
+          clientId: 'client-1',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'oauth2 token URL with user info',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://u@auth.example.com/token',
+          clientId: 'client-1',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'oauth2 token URL on an IPv4 literal',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://10.0.0.1/token',
+          clientId: 'client-1',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'oauth2 client id with ":"',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'a:b',
+          secret: 'hubspot-token',
+        }),
+    ],
+    [
+      'oauth2 with an extra key',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'client-1',
+          secret: 'hubspot-token',
+          grant: 'password',
+        }),
+    ],
+    [
+      'oauth2 secret missing from the bundle',
+      (c) =>
+        (upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'client-1',
+          secret: 'other',
         }),
     ],
     ['timeout 0', (c) => (upstream(c)['timeoutMs'] = 0)],
@@ -1337,6 +1523,99 @@ function policyVectors(): Json {
       'an upstream without auth needs no secret binding',
       (c, p) => {
         upstream(c)['auth'] = null;
+        allowed(p)['secrets'] = [];
+      },
+    ],
+    [
+      'oauth2: the token endpoint is allowed with POST and the secret (FR-20, SEC-35)',
+      (c, p) => {
+        upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'client-1',
+          secret: 'hubspot-token',
+        };
+        (p['upstreams'] as Record<string, Json>)['auth.example.com'] = {
+          pathPrefixes: ['/oauth/token'],
+          methods: ['POST'],
+          secrets: ['hubspot-token'],
+        };
+      },
+    ],
+    [
+      'oauth2: the token host is not in the policy',
+      (c, p) => {
+        upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'client-1',
+          secret: 'hubspot-token',
+        };
+        void p;
+      },
+    ],
+    [
+      'oauth2: the token host without the secret (SEC-35)',
+      (c, p) => {
+        upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'client-1',
+          secret: 'hubspot-token',
+        };
+        (p['upstreams'] as Record<string, Json>)['auth.example.com'] = {
+          pathPrefixes: ['/oauth/token'],
+          methods: ['POST'],
+          secrets: [],
+        };
+      },
+    ],
+    [
+      'oauth2: the token host without POST',
+      (c, p) => {
+        upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'client-1',
+          secret: 'hubspot-token',
+        };
+        (p['upstreams'] as Record<string, Json>)['auth.example.com'] = {
+          pathPrefixes: ['/oauth/token'],
+          methods: ['GET'],
+          secrets: ['hubspot-token'],
+        };
+      },
+    ],
+    [
+      'oauth2: the token path outside every prefix',
+      (c, p) => {
+        upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'client-1',
+          secret: 'hubspot-token',
+        };
+        (p['upstreams'] as Record<string, Json>)['auth.example.com'] = {
+          pathPrefixes: ['/oauth/tokens'],
+          methods: ['POST'],
+          secrets: ['hubspot-token'],
+        };
+      },
+    ],
+    [
+      'oauth2: the API host must allow the secret too (SEC-35)',
+      (c, p) => {
+        upstream(c)['auth'] = {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'client-1',
+          secret: 'hubspot-token',
+        };
+        (p['upstreams'] as Record<string, Json>)['auth.example.com'] = {
+          pathPrefixes: ['/oauth/token'],
+          methods: ['POST'],
+          secrets: ['hubspot-token'],
+        };
         allowed(p)['secrets'] = [];
       },
     ],

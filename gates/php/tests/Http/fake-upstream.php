@@ -15,6 +15,7 @@ if (count($args) !== 6) {
 // Failed handshakes and broken connections are expected: ignore their warnings.
 set_error_handler(static fn(): bool => true);
 
+$tokens = 0;
 $context = stream_context_create(['ssl' => ['local_cert' => $cert, 'local_pk' => $key]]);
 $server = stream_socket_server('tls://127.0.0.1:0', $errno, $error, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN, $context);
 if ($server === false) {
@@ -56,12 +57,41 @@ for (;;) {
     $status = 200;
     $type = 'application/json';
     $extra = [];
-    $hide = static fn(string $text): string => str_replace([$secret, rawurlencode($secret)], '<SECRET>', $text);
+    $hide = static function (string $text) use ($secret): string {
+        // A Basic credential `user:<secret>` (FR-20) and an access token from /token are shown as
+        // placeholders, like the secret itself.
+        if (preg_match('/^Basic ([A-Za-z0-9+\/=]+)$/D', $text, $basic) === 1) {
+            $decoded = base64_decode($basic[1], true);
+            if (is_string($decoded) && str_contains($decoded, $secret)) {
+                $text = 'Basic ' . $decoded;
+            }
+        }
+        $text = (string) preg_replace('/TEST-ONLY-access-token-[0-9]+/', '<TOKEN>', $text);
+
+        return str_replace([$secret, rawurlencode($secret)], '<SECRET>', $text);
+    };
     if ($path === '/echo') {
         $answer = json_encode(
             ['method' => $method, 'path' => $path, 'query' => $hide($query), 'headers' => array_map($hide, $headers), 'body' => $body],
             JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES,
         );
+    } elseif ($path === '/token') {
+        // OAuth2 client credentials (FR-20): client_secret_basic with the form-encoded id and secret.
+        $wanted = 'Basic ' . base64_encode('moat-client:' . urlencode($secret));
+        $grant = $method === 'POST' && ($headers['content-type'] ?? '') === 'application/x-www-form-urlencoded'
+            && in_array($body, ['grant_type=client_credentials', 'grant_type=client_credentials&scope=read%20write'], true);
+        if (hash_equals($wanted, $headers['authorization'] ?? '') && $grant) {
+            ++$tokens;
+            $answer = '{"access_token":"TEST-ONLY-access-token-' . $tokens . '","token_type":"Bearer","expires_in":3600}';
+        } else {
+            $status = 401;
+            $answer = '{"error":"invalid_client"}';
+        }
+    } elseif ($path === '/token-fail') {
+        $status = 401;
+        $answer = '{"error":"invalid_client"}';
+    } elseif ($path === '/token-bad') {
+        $answer = '{"token_type":"Bearer","expires_in":3600}';
     } elseif ($path === '/usage') {
         $answer = '{"id":"chatcmpl-1","usage":{"prompt_tokens":60,"completion_tokens":40,"total_tokens":100}}';
     } elseif ($path === '/bundles/gate.json') {

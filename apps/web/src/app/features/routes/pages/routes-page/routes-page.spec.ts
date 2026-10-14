@@ -364,6 +364,50 @@ describe('RoutesPage', () => {
     expect(el.querySelector('[data-upstream-form]')).toBeNull();
   });
 
+  it('adds an OAuth2 upstream: token address and client ID required, the scope not (FR-20)', async () => {
+    const { el, harness } = await openProjectTab('routes', RoutesPage, PROJECT);
+    (el.querySelector('[data-upstream-new]') as HTMLButtonElement).click();
+    await settle(harness);
+    type(el, '#upstream-name', 'crm');
+    type(el, '#upstream-origin', 'https://api.example.com');
+    choose(el, '#upstream-auth', 'oauth2');
+    await settle(harness);
+    type(el, '#upstream-secret', 'crm-key');
+    submitUpstream(el);
+    await settle(harness);
+    TestBed.inject(HttpTestingController).expectNone(
+      `/api/projects/${PROJECT.id}/config/edits`,
+    );
+    for (const id of ['#upstream-tokenUrl', '#upstream-clientId'])
+      expect(el.querySelector(id)?.getAttribute('aria-invalid'), id).toBe(
+        'true',
+      );
+    expect(el.querySelector('#upstream-scope')).not.toBeNull();
+    expect(
+      el.querySelector('#upstream-scope')?.getAttribute('aria-invalid'),
+    ).not.toBe('true');
+    type(el, '#upstream-tokenUrl', 'https://auth.example.com/oauth/token');
+    type(el, '#upstream-clientId', 'moat-gate');
+    submitUpstream(el);
+    const edit = expectEdit();
+    expect(edit.request.body).toMatchObject({
+      op: 'addUpstream',
+      upstream: 'crm',
+      upstreamDefinition: {
+        origin: 'https://api.example.com',
+        auth: {
+          type: 'oauth2',
+          tokenUrl: 'https://auth.example.com/oauth/token',
+          clientId: 'moat-gate',
+          secret: 'crm-key',
+        },
+      },
+    });
+    expect('scope' in edit.request.body.upstreamDefinition.auth).toBe(false);
+    edit.flush(PROJECT);
+    await settle(harness);
+  });
+
   it('opens an upstream with its values and marks the field the core refused', async () => {
     const { el, harness } = await openProjectTab('routes', RoutesPage, PROJECT);
     (await menuItem(harness, upstreamRow(el, 'hubspot'), 'edit')).click();

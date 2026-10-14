@@ -118,6 +118,18 @@ final class PolicyCheck
                 if ($allowed === null || !\in_array($upstream->auth->secret, $allowed->secrets, true)) {
                     self::violation();
                 }
+                // FR-20: the token request is a POST with the secret, allowed like any other call.
+                $token = $upstream->auth->token;
+                if ($token !== null) {
+                    $host = $policy->upstreams[$token->hostKey()] ?? null;
+                    $within = false;
+                    foreach ($host === null ? [] : $host->pathPrefixes as $prefix) {
+                        $within = $within || self::matchesPrefix($token->path, $prefix);
+                    }
+                    if ($host === null || !$within || !\in_array($upstream->auth->secret, $host->secrets, true) || !\in_array(Method::Post, $host->methods, true)) {
+                        self::violation();
+                    }
+                }
             }
         }
         foreach ($config->routes as $route) {

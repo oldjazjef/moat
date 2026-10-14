@@ -96,6 +96,7 @@ describe('dryRun predicts the gate (conformance/http/, FR-42)', () => {
 
   it('covers every case file', () => {
     expect(files.sort()).toEqual([
+      'gate-auth.json',
       'gate-kill-switch.json',
       'gate-locked.json',
       'gate-pull.json',
@@ -142,7 +143,10 @@ describe('dryRun predicts the gate (conformance/http/, FR-42)', () => {
           } else if (wanted.upstreamCalls === 0) {
             expect(ONLY_THE_GATE).toContain(wanted.error);
           } else {
-            expect(wanted.upstreamCalls).toBe(1);
+            // OAuth2 (FR-20): the token request too, unless the gate has a token cached.
+            expect(
+              result.call.tokenCall === undefined ? [1] : [1, 2],
+            ).toContain(wanted.upstreamCalls);
             const sent = wanted.json;
             if (sent?.method !== undefined && sent.path !== undefined) {
               const url = new URL(
@@ -158,12 +162,22 @@ describe('dryRun predicts the gate (conformance/http/, FR-42)', () => {
                 ).toBe(sent.query);
               if (sent.body !== undefined)
                 expect(result.call.body).toBe(sent.body);
-              const headers = lower(Object.fromEntries(result.call.headers));
+              const headers = lower(
+                Object.fromEntries(
+                  result.call.headers.map(([name, value]) => [
+                    name,
+                    // The fake upstream shows a Basic credential decoded (gate-auth.json).
+                    value.startsWith('Basic ')
+                      ? `Basic ${atob(value.slice(6))}`
+                      : value,
+                  ]),
+                ),
+              );
               for (const [name, value] of Object.entries(sent.headers ?? {}))
                 expect(headers[name] ?? null, name).toBe(value);
             }
           }
-          if (result.kind !== 'forwarded' || wanted.upstreamCalls === 1) {
+          if (result.kind !== 'forwarded' || wanted.upstreamCalls >= 1) {
             const answered = lower(result.headers);
             for (const [name, value] of Object.entries(wanted.headers ?? {})) {
               if (!OWN_HEADERS.includes(name)) continue;

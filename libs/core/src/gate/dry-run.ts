@@ -2,7 +2,10 @@ import {
   hostKey,
   type CompiledConfig,
   type CompiledRoute,
+  type CompiledUpstream,
 } from '../config/compiled';
+import { toBase64 } from '../encoding/base64url';
+import { utf8 } from '../encoding/utf8';
 import { MoatRejection } from '../errors';
 import { validateBody } from '../http/body';
 import { requestEstimate, type Budget, type Usage } from '../http/budget';
@@ -41,6 +44,8 @@ export type DryRunError = keyof typeof DRY_RUN_ERRORS;
 
 /** Stands for a secret's value wherever the gate would put it; the dry run never has one. */
 export const SECRET_PLACEHOLDER = '<SECRET>';
+/** Stands for the OAuth2 access token the gate fetches (FR-20); only the gate has one. */
+export const ACCESS_TOKEN_PLACEHOLDER = '<TOKEN>';
 /** The gate's own User-Agent on every upstream call. */
 export const GATE_USER_AGENT = 'moat-gate';
 /** The longest body the console sends to the API (it stays below the API's own request limit). */
@@ -87,6 +92,19 @@ export interface DryRunUpstreamCall {
   readonly timeoutMs: number;
   /** The secret the gate opens for this call, or null. */
   readonly secret: string | null;
+  /**
+   * FR-20, OAuth2: the token request the gate sends first when it has no valid access token
+   * cached — whether it has one, only the gate knows. Absent for every other auth.
+   */
+  readonly tokenCall?: DryRunTokenCall;
+}
+
+/** The OAuth2 token request (RFC 6749 §4.4) with the secret as SECRET_PLACEHOLDER. */
+export interface DryRunTokenCall {
+  readonly method: 'POST';
+  readonly url: string;
+  readonly headers: readonly (readonly [string, string])[];
+  readonly body: string;
 }
 
 export type DryRunResult =
@@ -261,6 +279,7 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
   ];
   if (hasBody && mediaType !== null) headers.push(['Content-Type', mediaType]);
   let url = upstream.origin + route.upstreamPath;
+  let tokenCall: DryRunTokenCall | undefined;
   const auth = upstream.auth;
   if (auth !== null) {
     if (!context.secrets.includes(auth.secret)) refuse('secret_unavailable');
@@ -268,7 +287,17 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
       headers.push(['Authorization', `Bearer ${SECRET_PLACEHOLDER}`]);
     else if (auth.type === 'header')
       headers.push([auth.name, SECRET_PLACEHOLDER]);
-    else url += `?${encodeURIComponent(auth.param)}=${SECRET_PLACEHOLDER}`;
+    else if (auth.type === 'query')
+      url += `?${encodeURIComponent(auth.param)}=${SECRET_PLACEHOLDER}`;
+    else if (auth.type === 'basic')
+      headers.push([
+        'Authorization',
+        `Basic ${basic(auth.username, SECRET_PLACEHOLDER)}`,
+      ]);
+    else {
+      headers.push(['Authorization', `Bearer ${ACCESS_TOKEN_PLACEHOLDER}`]);
+      tokenCall = tokenRequest(auth);
+    }
   }
   return {
     kind: 'forwarded',
@@ -280,11 +309,47 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
       body,
       timeoutMs: Math.min(upstream.timeoutMs, policy.maxTimeoutMs),
       secret: auth?.secret ?? null,
+      ...(tokenCall === undefined ? {} : { tokenCall }),
     },
     headers: cors,
     counters: countersOf(policy, route),
     budgets,
     estimate,
+  };
+}
+
+/** `base64(user ":" password)` of HTTP Basic (RFC 7617). */
+function basic(user: string, password: string): string {
+  return toBase64(utf8(`${user}:${password}`));
+}
+
+/**
+ * The token request as the gate sends it (FR-20): client_secret_basic with the form-encoded
+ * client id and secret (RFC 6749 §2.3.1), the grant and the scope as a form.
+ */
+function tokenRequest(
+  auth: Extract<CompiledUpstream['auth'], { type: 'oauth2' }>,
+): DryRunTokenCall {
+  const form = (value: string) =>
+    encodeURIComponent(value).replace(
+      /[!'()*]/g,
+      (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+    );
+  return {
+    method: 'POST',
+    url: auth.tokenUrl,
+    headers: [
+      ['User-Agent', GATE_USER_AGENT],
+      ['Accept', 'application/json'],
+      ['Content-Type', 'application/x-www-form-urlencoded'],
+      [
+        'Authorization',
+        `Basic ${basic(form(auth.clientId), SECRET_PLACEHOLDER)}`,
+      ],
+    ],
+    body:
+      'grant_type=client_credentials' +
+      (auth.scope === undefined ? '' : `&scope=${form(auth.scope)}`),
   };
 }
 

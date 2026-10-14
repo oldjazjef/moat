@@ -38,7 +38,7 @@ final class RequestHandler
 {
     private const PREFLIGHT_VARY = 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers';
     /** Failures before the request could leave the gate: the provider bills nothing. */
-    private const NOT_SENT = [GateError::SecretUnavailable, GateError::UpstreamForbidden];
+    private const NOT_SENT = [GateError::SecretUnavailable, GateError::UpstreamForbidden, GateError::UpstreamAuthFailed];
 
     public static function handle(Request $request, ActiveBundle $bundle, Gate $gate, int $now): Response
     {
@@ -84,7 +84,7 @@ final class RequestHandler
             $payload = self::payload($request, $route, $bundle);
             $budgets = self::budgets($route, $bundle);
             $response = $budgets === []
-                ? self::forward($payload, $route, $bundle, $gate)
+                ? self::forward($payload, $route, $bundle, $gate, $now)
                 : self::forwardWithin($budgets, $payload, $route, $bundle, $gate, $now);
 
             return new Response($response->status, $response->headers + $cors, $response->body);
@@ -180,7 +180,7 @@ final class RequestHandler
             }
         };
         try {
-            $response = self::forward($payload, $route, $bundle, $gate);
+            $response = self::forward($payload, $route, $bundle, $gate, $now);
         } catch (Failure $failure) {
             // Not sent: nothing to pay. Anything else may have reached the provider and been
             // billed: the estimate stays charged.
@@ -229,7 +229,7 @@ final class RequestHandler
     }
 
     /** @param array{string, bool, ?string} $payload */
-    private static function forward(array $payload, Route $route, ActiveBundle $bundle, Gate $gate): Response
+    private static function forward(array $payload, Route $route, ActiveBundle $bundle, Gate $gate, int $now): Response
     {
         $upstream = $bundle->config->upstreamOf($route);
         [$body, $hasBody, $mediaType] = $payload;
@@ -241,6 +241,10 @@ final class RequestHandler
         }
         $pathAndQuery = $route->upstreamPath;
         $secret = '';
+        // What the upstream gets from the secret (a Basic value, an access token): also never
+        // given back to the client (SEC-34).
+        $credential = '';
+        $tokenKey = null;
         try {
             if ($upstream->auth !== null) {
                 try {
@@ -252,8 +256,15 @@ final class RequestHandler
                     $headers['Authorization'] = 'Bearer ' . $secret;
                 } elseif ($upstream->auth->type === AuthType::Header) {
                     $headers[$upstream->auth->name] = $secret;
-                } else {
+                } elseif ($upstream->auth->type === AuthType::Query) {
                     $pathAndQuery .= '?' . rawurlencode($upstream->auth->name) . '=' . rawurlencode($secret);
+                } elseif ($upstream->auth->type === AuthType::Basic) {
+                    $credential = base64_encode($upstream->auth->name . ':' . $secret);
+                    $headers['Authorization'] = 'Basic ' . $credential;
+                } else {
+                    $tokenKey = OAuthToken::key($route->upstream, $upstream->auth, $bundle->version);
+                    $credential = OAuthToken::get($gate->data, $tokenKey, $upstream->auth, $secret, $bundle, $now);
+                    $headers['Authorization'] = 'Bearer ' . $credential;
                 }
             }
             $response = UpstreamClient::send(new UpstreamRequest(
@@ -268,11 +279,16 @@ final class RequestHandler
                 $route->responseContentTypes,
             ), $bundle->policy);
             // SEC-34: an upstream that echoes the credential does not get it to the client.
-            if (SecretEcho::found($response->body, $secret)) {
+            if (SecretEcho::found($response->body, $secret) || SecretEcho::found($response->body, $credential)) {
                 throw new Failure(GateError::UpstreamReflectedSecret);
+            }
+            // FR-20: a token the API no longer takes is not used again.
+            if ($tokenKey !== null && $response->status === 401) {
+                OAuthToken::drop($gate->data, $tokenKey);
             }
         } finally {
             sodium_memzero($secret);
+            sodium_memzero($credential);
             foreach ($headers as $name => $value) {
                 sodium_memzero($headers[$name]);
             }

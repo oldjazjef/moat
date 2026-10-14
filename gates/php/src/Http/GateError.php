@@ -35,6 +35,8 @@ enum GateError: string
     case UpstreamTooLarge = 'upstream_too_large';
     case UpstreamReflectedSecret = 'upstream_reflected_secret';
     case UpstreamUsageInvalid = 'upstream_usage_invalid';
+    /** FR-20: the OAuth2 token endpoint gave no usable access token. */
+    case UpstreamAuthFailed = 'upstream_auth_failed';
     case Internal = 'internal_error';
 
     public function status(): int
@@ -51,7 +53,8 @@ enum GateError: string
             self::SecretUnavailable, self::Internal => 500,
             self::UpstreamTimeout => 504,
             self::UpstreamForbidden, self::UpstreamUnreachable, self::UpstreamRedirect,
-            self::UpstreamContentType, self::UpstreamTooLarge, self::UpstreamReflectedSecret, self::UpstreamUsageInvalid => 502,
+            self::UpstreamContentType, self::UpstreamTooLarge, self::UpstreamReflectedSecret, self::UpstreamUsageInvalid,
+            self::UpstreamAuthFailed => 502,
         };
     }
 }
