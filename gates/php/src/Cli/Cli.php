@@ -40,7 +40,7 @@ use Moat\Gate\Storage\Files;
  * inbound management endpoint). Trust, policy and identity change only here (SEC-06, SEC-13).
  *
  *   php moat-gate.php install --signer=<public key> [--threshold=1]
- *   php moat-gate.php trust --signer=<public key>[,<public key>…] [--threshold=1]
+ *   php moat-gate.php trust --signer=<public key>[,<public key>…] [--threshold=1] [--force]
  *   php moat-gate.php policy <policy.json>
  *   php moat-gate.php accept <bundle.json>
  *   php moat-gate.php pull
@@ -63,7 +63,7 @@ final class Cli
         try {
             return match ($command) {
                 'install' => self::install($gateDir, $options),
-                'trust' => self::trust($gateDir, $options),
+                'trust' => self::trust($gateDir, $args, $options),
                 'policy' => self::policy($gateDir, $args),
                 'accept' => self::accept($gateDir, $args),
                 'pull' => self::pull($gateDir),
@@ -140,16 +140,50 @@ final class Cli
         self::out('with this token (shown only now): ' . $token);
     }
 
-    /** @param array<string, string> $options */
-    private static function trust(string $gateDir, array $options): int
+    /**
+     * @param list<string>          $args
+     * @param array<string, string> $options
+     */
+    private static function trust(string $gateDir, array $args, array $options): int
     {
+        $force = $args === ['--force'];
+        if ($args !== [] && !$force) {
+            throw new UsageError('usage: php moat-gate.php trust --signer=<public key>[,<public key>…] [--threshold=n] [--force]');
+        }
         $gate = Gate::open($gateDir);
         $signers = self::signers($options);
-        $gate->data->write(Gate::TRUST, (new Trust($gate->identity->gateId, 1, self::threshold($options, \count($signers)), $signers))->encode());
+        $next = new Trust($gate->identity->gateId, 1, self::threshold($options, \count($signers)), $signers);
+        $before = $gate->data->read(Gate::TRUST);
+        $served = self::serves($gateDir);
+        $gate->data->write(Gate::TRUST, $next->encode());
+        // SEC-08: a rotation pins the old and the new key until a bundle signed with the new one
+        // is active. Dropping the key of the active bundle stops the site; only with --force.
+        if ($served && !self::serves($gateDir) && !$force) {
+            if ($before !== null) {
+                $gate->data->write(Gate::TRUST, $before);
+            }
+            fwrite(STDERR, "refused: the active bundle is not signed by these signers, so the gate would serve nothing.\n"
+                . "Rotate in two steps: pin the old and the new key (--signer=<old>,<new>), activate a bundle signed with the new key, then pin the new key alone.\n"
+                . "To stop serving the active bundle anyway, add --force.\n");
+
+            return 1;
+        }
         self::out('Pinned signers replaced. A bundle not signed by them is no longer served.');
         self::describe($gate->identity, $signers);
 
         return 0;
+    }
+
+    /** True when the gate has an active bundle it would serve right now. */
+    private static function serves(string $gateDir): bool
+    {
+        try {
+            Gate::open($gateDir)->active(time());
+
+            return true;
+        } catch (NotConfigured) {
+            return false;
+        }
     }
 
     /** @param list<string> $args */

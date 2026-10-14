@@ -50,7 +50,7 @@ php moat-gate.php policy <policy.json>     # install the local policy (moat poli
                                            # secrets that may be sent there (SEC-35), and the
                                            # rate limits that always apply (SEC-14)
 php moat-gate.php accept <bundle.json>     # verify (steps 1–10) and activate a bundle
-php moat-gate.php trust --signer=<pk>[,…] [--threshold=n]   # replace the pinned signers
+php moat-gate.php trust --signer=<pk>[,…] [--threshold=n] [--force]   # replace the pinned signers (key rotation below)
 php moat-gate.php pull                     # fetch the bundle from the policy's pull place now (below)
 php moat-gate.php status                   # fingerprints, policy, active bundle, pull, kill switch
 php moat-gate.php kill [--route=<name>]    # switch the gate or one route off at once (below)
@@ -357,6 +357,18 @@ budget as the sum of the routes' token budgets. The spending lives in `budget.ph
 at most 1024 entries, the spending of routes no longer in the bundle dropped); `status` prints
 each budget with what it has spent and when it resets. A damaged or full store refuses every
 request with a budget (`503 rate_limit_unavailable`); deleting `budget.php` resets the spending.
+
+## Key rotation (SEC-08)
+
+A new signing key replaces the old one in two steps, so the site never stops:
+
+1. `php moat-gate.php trust --signer=<old>,<new>` pins both keys.
+2. Sign the next bundle with the new key and activate it (`accept`, or the lazy pull).
+3. `php moat-gate.php trust --signer=<new>` pins the new key alone.
+
+`trust` refuses a list that would drop the key of the active bundle, because the gate would then
+serve nothing; `--force` does it anyway (a lost or stolen key: the gate stops until a bundle
+signed with the new key arrives). Moat Desktop guides through the steps («Schlüssel wechseln»).
 
 ## Setup mode (SEC-28, SEC-32, T-73)
 
