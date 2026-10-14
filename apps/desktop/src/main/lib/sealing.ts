@@ -15,6 +15,7 @@ export interface SealPreview {
   readonly currentVersion: number | null;
   readonly nextVersion: number;
   readonly usedBy: SealDialogView['usedBy'];
+  readonly comparedBy: SealDialogView['comparedBy'];
   readonly digest: string;
 }
 
@@ -78,6 +79,7 @@ export class SealingSession {
       currentVersion: preview.currentVersion,
       nextVersion: preview.nextVersion,
       usedBy: preview.usedBy,
+      comparedBy: preview.comparedBy,
       notice: this.notice,
     };
   }

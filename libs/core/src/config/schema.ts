@@ -1,10 +1,12 @@
 import { z } from 'zod';
 import { bodyFieldsSchema } from '../http/body';
+import { clientYamlSchemaWith } from '../http/client';
 import { budgetSchema } from '../http/budget';
 import { MEDIA_TYPE } from '../http/content-type';
 import {
   bodyRouteProblem,
   compiledRouteSchema,
+  isTokenUrl,
   isWebOrigin,
   JSON_TYPE,
   LIMIT_SCOPES,
@@ -101,6 +103,11 @@ export const routeSchema = z.strictObject({
    * `body_invalid` when one does not fit. POST, PUT or PATCH with JSON only.
    */
   body: bodyFieldsSchema.optional(),
+  /**
+   * FR-16: who may call the route — `apiKey` (`{secret, header?}`), `jwt` (`{issuer, audience,
+   * keys}`), `turnstile` (`{secret, header?, verifyUrl?}`), `honeypot` (`{field}`).
+   */
+  client: clientYamlSchemaWith(isTokenUrl).optional(),
 });
 
 /** FR-01: dev, staging, production … A locked environment locks every gate in it. */

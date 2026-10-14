@@ -9,6 +9,7 @@ use Moat\Gate\Config\ConfigValidator;
 use Moat\Gate\Config\Limit;
 use Moat\Gate\Config\LimitScope;
 use Moat\Gate\Config\Method;
+use Moat\Gate\Config\TokenEndpoint;
 use Moat\Gate\Http\PathNormaliser;
 use Moat\Gate\Json\JsonObject;
 use Moat\Gate\Rejection;
@@ -119,20 +120,17 @@ final class PolicyCheck
                     self::violation();
                 }
                 // FR-20: the token request is a POST with the secret, allowed like any other call.
-                $token = $upstream->auth->token;
-                if ($token !== null) {
-                    $host = $policy->upstreams[$token->hostKey()] ?? null;
-                    $within = false;
-                    foreach ($host === null ? [] : $host->pathPrefixes as $prefix) {
-                        $within = $within || self::matchesPrefix($token->path, $prefix);
-                    }
-                    if ($host === null || !$within || !\in_array($upstream->auth->secret, $host->secrets, true) || !\in_array(Method::Post, $host->methods, true)) {
-                        self::violation();
-                    }
+                if ($upstream->auth->token !== null) {
+                    self::checkEndpoint($policy, $upstream->auth->token, $upstream->auth->secret);
                 }
             }
         }
         foreach ($config->routes as $route) {
+            // FR-16: the Turnstile check sends its secret to the verify endpoint.
+            $turnstile = $route->client?->turnstile;
+            if ($turnstile !== null) {
+                self::checkEndpoint($policy, $turnstile[2], $turnstile[1]);
+            }
             $allowed = $policy->upstreams[$config->upstreamOf($route)->hostKey()] ?? null;
             if ($allowed === null || !\in_array($route->method, $allowed->methods, true) || $route->maxBodyBytes > $policy->maxBodyBytes) {
                 self::violation();
@@ -184,6 +182,19 @@ final class PolicyCheck
     }
 
     /** True when `path` equals the prefix or continues it at a segment boundary. */
+    /** A POST with `$secret` to `$endpoint`: the policy allows the path, POST and the secret on its host. */
+    private static function checkEndpoint(Policy $policy, TokenEndpoint $endpoint, string $secret): void
+    {
+        $host = $policy->upstreams[$endpoint->hostKey()] ?? null;
+        $within = false;
+        foreach ($host === null ? [] : $host->pathPrefixes as $prefix) {
+            $within = $within || self::matchesPrefix($endpoint->path, $prefix);
+        }
+        if ($host === null || !$within || !\in_array($secret, $host->secrets, true) || !\in_array(Method::Post, $host->methods, true)) {
+            self::violation();
+        }
+    }
+
     public static function matchesPrefix(string $path, string $prefix): bool
     {
         if ($prefix === '/' || $path === $prefix) {

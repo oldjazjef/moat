@@ -79,6 +79,7 @@ body come back. Errors are `{"error":"<code>"}`:
 | Status | Code                                                                        |
 | ------ | --------------------------------------------------------------------------- |
 | 400    | `path_invalid`, `body_invalid`, `request_unbounded`                         |
+| 401    | `client_unauthorized`                                                       |
 | 403    | `origin_forbidden`, `preflight_rejected`                                    |
 | 404    | `not_found`                                                                 |
 | 405    | `method_not_allowed` (with `Allow`)                                         |
@@ -109,6 +110,27 @@ it gets no extra encryption. A token request that fails answers `upstream_auth_f
 sends nothing to the API. The policy must allow POST to the token path on its host, with the
 secret bound to that host and to the API's host (SEC-35). An answer that contains the Basic
 value or the access token is refused like one with the secret (`upstream_reflected_secret`).
+
+### Client protection (FR-16, T-71)
+
+A route's `client` says who may call it; every check that is set must pass, else 401
+`client_unauthorized`, the same answer for each:
+
+- `apiKey` (`header`, `secret`): the header compared in constant time with a sealed secret. For
+  servers calling the gate, never for a key in a public page. It is no upstream's secret.
+- `jwt` (`issuer`, `audience`, `keys`): `Authorization: Bearer <JWT>` signed by a listed key
+  (`kid`, `alg` EdDSA, ES256 or RS256 ≥ 2048 bits, `spki` as base64url DER). The algorithm is
+  the key's; `iss`, `aud` (or a list containing it) and `exp` are required, `nbf` is respected,
+  60 s leeway. ES256 and RS256 need `ext-openssl` (without it: 500 `internal_error`). Apache
+  often passes `Authorization` to PHP only with `CGIPassAuth On`.
+- `turnstile` (`header`, `secret`, `verifyUrl`): the Cloudflare Turnstile token from the header,
+  checked with a POST to `verifyUrl` (Cloudflare's siteverify by default) through the pinned
+  client; the policy must allow it like a token endpoint. Unreachable or not `success: true` →
+  refused.
+- `honeypot` (`field`): a JSON body whose field is there and not `""` or `null` is refused.
+
+API key and JWT are checked before the limits, the honeypot with the body, Turnstile (a call)
+last, after the limits and the body.
 
 ### Body fields (FR-13, T-65)
 

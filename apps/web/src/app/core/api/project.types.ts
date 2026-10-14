@@ -61,6 +61,24 @@ export interface CompiledRoute {
   readonly budget?: Budget;
   /** FR-13: the fields of the JSON body the gate forwards; absent = the body as received. */
   readonly body?: BodyFields;
+  /** FR-16: who may call the route (libs/core/src/http/client.ts). */
+  readonly client?: ClientProtection;
+}
+
+/** FR-16, compiled: every header and the verify URL filled in. */
+export interface ClientProtection {
+  readonly apiKey?: { readonly header: string; readonly secret: string };
+  readonly jwt?: {
+    readonly issuer: string;
+    readonly audience: string;
+    readonly keys: readonly { readonly kid: string; readonly alg: string }[];
+  };
+  readonly turnstile?: {
+    readonly header: string;
+    readonly secret: string;
+    readonly verifyUrl: string;
+  };
+  readonly honeypot?: { readonly field: string };
 }
 
 /** FR-13: a body field (libs/core/src/http/body.ts). */
@@ -237,6 +255,12 @@ export interface RouteDefinition {
   readonly budget?: Budget;
   /** FR-13: not edited by the route form; absent = left as written. */
   readonly body?: BodyFields | null;
+  /** FR-16: API key, Turnstile, honeypot; a `jwt` stays as written. Absent = left as written. */
+  readonly client?: {
+    readonly apiKey?: { readonly secret: string; readonly header?: string };
+    readonly turnstile?: { readonly secret: string; readonly header?: string };
+    readonly honeypot?: { readonly field: string };
+  };
 }
 
 /** An upstream as moat.yaml writes it (UpstreamInput in libs/core/src/config/edit.ts). */

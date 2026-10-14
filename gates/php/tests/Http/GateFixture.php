@@ -66,7 +66,7 @@ final class GateFixture
         $this->secret = implode("\n", $values);
 
         $portFile = $dir . '/upstream.port';
-        $this->spawn([PHP_BINARY, __DIR__ . '/fake-upstream.php', $cert, $key, $portFile, $this->upstreamLog, $values['api-token'] ?? ''], $dir . '/upstream.err');
+        $this->spawn([PHP_BINARY, __DIR__ . '/fake-upstream.php', $cert, $key, $portFile, $this->upstreamLog, implode("\n", [$values['api-token'] ?? '', ...array_values(array_diff_key($values, ['api-token' => true]))])], $dir . '/upstream.err');
         $upstreamPort = self::waitForFile($portFile);
         $doc = self::decode(str_replace(['{port}', '{caFile}'], [$upstreamPort, $cert], $casesFile));
 

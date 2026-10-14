@@ -364,6 +364,113 @@
           },
           "body": {
             "$ref": "#/$defs/__schema0"
+          },
+          "client": {
+            "type": "object",
+            "properties": {
+              "apiKey": {
+                "type": "object",
+                "properties": {
+                  "header": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9-]{1,64}$"
+                  },
+                  "secret": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]{0,62}$"
+                  }
+                },
+                "required": [
+                  "secret"
+                ],
+                "additionalProperties": false
+              },
+              "jwt": {
+                "type": "object",
+                "properties": {
+                  "issuer": {
+                    "type": "string",
+                    "pattern": "^[\\x21-\\x7E]{1,256}$"
+                  },
+                  "audience": {
+                    "type": "string",
+                    "pattern": "^[\\x21-\\x7E]{1,256}$"
+                  },
+                  "keys": {
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kid": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9._-]{1,128}$"
+                        },
+                        "alg": {
+                          "type": "string",
+                          "enum": [
+                            "EdDSA",
+                            "ES256",
+                            "RS256"
+                          ]
+                        },
+                        "spki": {
+                          "type": "string",
+                          "maxLength": 1500
+                        }
+                      },
+                      "required": [
+                        "kid",
+                        "alg",
+                        "spki"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "issuer",
+                  "audience",
+                  "keys"
+                ],
+                "additionalProperties": false
+              },
+              "turnstile": {
+                "type": "object",
+                "properties": {
+                  "header": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9-]{1,64}$"
+                  },
+                  "secret": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]{0,62}$"
+                  },
+                  "verifyUrl": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "secret"
+                ],
+                "additionalProperties": false
+              },
+              "honeypot": {
+                "type": "object",
+                "properties": {
+                  "field": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+                  }
+                },
+                "required": [
+                  "field"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
           }
         },
         "required": [

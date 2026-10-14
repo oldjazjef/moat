@@ -1,3 +1,4 @@
+import { usedSecrets } from '../config/secrets';
 import { compileConfig } from '../config/compile';
 import type { MoatConfig } from '../config/schema';
 import type { JsonValue } from '../json/strict-json';
@@ -29,11 +30,7 @@ export async function buildBundle(
   input: BuildBundleInput,
   signers: readonly Ed25519Signer[],
 ): Promise<string> {
-  const referenced = new Set(
-    Object.values(input.config.upstreams).flatMap((upstream) =>
-      upstream.auth ? [upstream.auth.secret] : [],
-    ),
-  );
+  const referenced = new Set(usedSecrets(input.config));
   const secrets: Record<string, JsonValue> = {};
   for (const name of [...referenced].sort()) {
     const sealed = input.secrets[name];

@@ -94,6 +94,30 @@ describe('RoutesPage', () => {
     );
   });
 
+  it('FR-16: adds Turnstile and a honeypot to a route', async () => {
+    const { el, harness } = await openProjectTab('routes', RoutesPage, PROJECT);
+    (el.querySelector('[data-route-new]') as HTMLButtonElement).click();
+    await settle(harness);
+    type(el, '#route-name', 'contact');
+    type(el, '#route-path', '/contact');
+    type(el, '#route-upstream-path', '/crm/v3/objects/notes');
+    for (const box of ['[data-route-turnstile]', '[data-route-honeypot]']) {
+      const input = el.querySelector(box) as HTMLInputElement;
+      input.checked = true;
+      input.dispatchEvent(new Event('change'));
+    }
+    await settle(harness);
+    type(el, '#route-turnstile-secret', 'turnstile-key');
+    submit(el);
+    const edit = expectEdit();
+    expect(edit.request.body.definition.client).toEqual({
+      turnstile: { secret: 'turnstile-key' },
+      honeypot: { field: 'website' },
+    });
+    edit.flush(PROJECT);
+    await settle(harness);
+  });
+
   it('FR-13: says which body fields the gate checks, or that it forwards the body unchecked', async () => {
     const unchecked = await openProjectTab('routes', RoutesPage, PROJECT);
     expect(text(unchecked.el, '[data-body-unchecked]')).toBe(

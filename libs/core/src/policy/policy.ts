@@ -240,6 +240,21 @@ export function checkPolicy(config: CompiledConfig, policy: Policy): void {
       reject('policy_violation');
     }
     if (route.maxBodyBytes > policy.maxBodyBytes) reject('policy_violation');
+    // FR-16: the Turnstile check sends its secret to `verifyUrl`, allowed like any other call.
+    const turnstile = route.client?.turnstile;
+    if (turnstile !== undefined) {
+      const verify = splitTokenUrl(turnstile.verifyUrl);
+      const host = policy.upstreams[hostKey(verify.origin)];
+      if (
+        host === undefined ||
+        !host.secrets.includes(turnstile.secret) ||
+        !host.methods.includes('POST') ||
+        !host.pathPrefixes.some((pathPrefix) =>
+          matchesPrefix(verify.path, pathPrefix),
+        )
+      )
+        reject('policy_violation');
+    }
     if (allowed.requireBody === true && !checksBody(route))
       reject('policy_violation');
     if (allowed.budget !== undefined) {
@@ -364,6 +379,20 @@ export function suggestPolicy(config: CompiledConfig): Policy {
         host.secrets.push(upstream.auth.secret);
       if (!host.pathPrefixes.includes(token.path))
         host.pathPrefixes.push(token.path);
+      if (!host.methods.includes('POST')) host.methods.push('POST');
+    }
+    const turnstile = route.client?.turnstile;
+    if (turnstile !== undefined) {
+      const verify = splitTokenUrl(turnstile.verifyUrl);
+      const host = (upstreams[hostKey(verify.origin)] ??= {
+        pathPrefixes: [],
+        methods: [],
+        secrets: [],
+      });
+      if (!host.secrets.includes(turnstile.secret))
+        host.secrets.push(turnstile.secret);
+      if (!host.pathPrefixes.includes(verify.path))
+        host.pathPrefixes.push(verify.path);
       if (!host.methods.includes('POST')) host.methods.push('POST');
     }
     if (!entry.pathPrefixes.includes(route.upstreamPath))

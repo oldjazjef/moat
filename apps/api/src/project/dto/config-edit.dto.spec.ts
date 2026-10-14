@@ -52,3 +52,37 @@ describe('toConfigEdit: upstream auth (FR-20)', () => {
     expect(update({ type: 'bearer', scope: 'read', secret: 'k' })).toBeNull();
   });
 });
+
+describe('toConfigEdit: client checks (FR-16)', () => {
+  it('passes API key, Turnstile and honeypot on, nothing else', () => {
+    const edit = toConfigEdit({
+      base: BASE,
+      op: 'updateRoute',
+      route: 'newsletter',
+      definition: {
+        method: 'POST',
+        path: '/newsletter',
+        upstream: 'crm',
+        upstreamPath: '/contacts',
+        client: {
+          apiKey: { secret: 'client-key', header: 'X-Key' },
+          turnstile: { secret: 'turnstile-key' },
+          honeypot: { field: 'website' },
+          extra: { field: 'x' },
+        },
+      },
+    } as unknown as ConfigEditDto);
+    expect(edit).toMatchObject({
+      definition: {
+        client: {
+          apiKey: { secret: 'client-key', header: 'X-Key' },
+          turnstile: { secret: 'turnstile-key' },
+          honeypot: { field: 'website' },
+        },
+      },
+    });
+    expect(
+      (edit as { definition: { client: object } }).definition.client,
+    ).not.toHaveProperty('extra');
+  });
+});

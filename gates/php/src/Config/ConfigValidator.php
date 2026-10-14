@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Moat\Gate\Config;
 
+use Moat\Gate\Encoding\Base64Url;
 use Moat\Gate\Http\ContentType;
 use Moat\Gate\Http\PathNormaliser;
 use Moat\Gate\Json\JsonObject;
@@ -32,6 +33,14 @@ final class ConfigValidator
     /** RFC 6749 §3.3: scope tokens separated by single spaces. */
     private const OAUTH_SCOPE = '/^[\x21\x23-\x5B\x5D-\x7E]{1,128}(?: [\x21\x23-\x5B\x5D-\x7E]{1,128}){0,15}$/D';
     private const MAX_TOKEN_URL = 512;
+    /** FR-16: visible ASCII, for a JWT's issuer and audience. */
+    private const VISIBLE = '/^[\x21-\x7E]{1,256}$/D';
+    private const MAX_JWT_KEYS = 8;
+    /** Headers a client check may not read (RESERVED in libs/core http/client.ts). */
+    private const CLIENT_RESERVED = [
+        'host', 'content-type', 'content-length', 'transfer-encoding', 'connection', 'origin', 'cookie',
+        'access-control-request-method', 'access-control-request-headers',
+    ];
     /** Headers the gate sets itself; an auth header may not replace them. */
     private const RESERVED_HEADERS = [
         'host', 'content-type', 'content-length', 'transfer-encoding', 'connection', 'te', 'upgrade',
@@ -70,6 +79,20 @@ final class ConfigValidator
             }
             $seen[$key] = true;
             $routes[$name] = $route;
+            // FR-16: the checks' secrets are in the bundle; an API key is compared, never sent, so
+            // it is no upstream's or Turnstile's secret.
+            $client = $route->client;
+            if ($client !== null) {
+                foreach ($client->secrets() as $secret) {
+                    if (!\in_array($secret, $secretNames, true)) {
+                        self::fail();
+                    }
+                }
+                $apiKey = $client->apiKey[1] ?? null;
+                if ($apiKey !== null && ($apiKey === ($client->turnstile[1] ?? null) || array_filter($upstreams, static fn(Upstream $upstream): bool => $upstream->auth?->secret === $apiKey) !== [])) {
+                    self::fail();
+                }
+            }
         }
         // SEC-27: the budget store holds every route budget next to the policy's host budgets.
         if (\count(array_filter($routes, static fn(Route $route): bool => $route->budget !== null)) > self::MAX_ROUTE_BUDGETS) {
@@ -168,19 +191,21 @@ final class ConfigValidator
             self::fail();
         }
 
-        return new Auth($type, $name, $secret, $type === AuthType::OAuth2 ? self::tokenEndpoint($value) : null);
+        if ($type === AuthType::OAuth2 && $value->has('scope') && (!\is_string($value->get('scope')) || preg_match(self::OAUTH_SCOPE, $value->get('scope')) !== 1)) {
+            self::fail();
+        }
+        $scope = $value->has('scope') && \is_string($value->get('scope')) ? $value->get('scope') : null;
+
+        return new Auth($type, $name, $secret, $type === AuthType::OAuth2 ? self::endpoint($value->get('tokenUrl'), $scope) : null);
     }
 
-    /** FR-20: `tokenUrl` (an HTTPS origin and a path of plain segments) and the optional scope. */
-    private static function tokenEndpoint(JsonObject $value): TokenEndpoint
+    /** FR-20, FR-16: an HTTPS origin and a path of plain segments (isTokenUrl in libs/core). */
+    private static function endpoint(mixed $url, ?string $scope): TokenEndpoint
     {
-        $url = $value->get('tokenUrl');
-        $scope = $value->has('scope') ? $value->get('scope') : null;
         if (
             !\is_string($url) || \strlen($url) > self::MAX_TOKEN_URL
             || preg_match('#^(https://[^/]+)((?:/[A-Za-z0-9._~-]+)+)$#D', $url, $match) !== 1
             || !self::isOrigin($match[1])
-            || ($value->has('scope') && (!\is_string($scope) || preg_match(self::OAUTH_SCOPE, $scope) !== 1))
         ) {
             self::fail();
         }
@@ -190,7 +215,7 @@ final class ConfigValidator
             }
         }
 
-        return new TokenEndpoint($match[1], $match[2], \is_string($scope) ? $scope : null);
+        return new TokenEndpoint($match[1], $match[2], $scope);
     }
 
     private static function route(string $name, mixed $value): Route
@@ -209,6 +234,7 @@ final class ConfigValidator
             ...($value->has('quota') ? ['quota'] : []),
             ...($value->has('budget') ? ['budget'] : []),
             ...($value->has('body') ? ['body'] : []),
+            ...($value->has('client') ? ['client'] : []),
         )) {
             self::fail();
         }
@@ -241,6 +267,14 @@ final class ConfigValidator
         if ($body !== null && (!\in_array($method, [Method::Post, Method::Put, Method::Patch], true) || $contentTypes !== [self::JSON])) {
             self::fail();
         }
+        $client = $value->has('client') ? self::client($value->get('client')) : null;
+        // FR-16: the JWT has Authorization to itself; a honeypot needs a JSON body.
+        if ($client !== null && (
+            ($client->jwt !== null && strtolower($client->apiKey[0] ?? '') === 'authorization')
+            || ($client->honeypot !== null && (!\in_array($method, [Method::Post, Method::Put, Method::Patch], true) || $contentTypes !== [self::JSON]))
+        )) {
+            self::fail();
+        }
 
         return new Route(
             $name,
@@ -257,7 +291,117 @@ final class ConfigValidator
             $value->has('quota') ? self::quota($value->get('quota'), RejectionCode::ConfigInvalid) : null,
             $budget,
             $body,
+            $client,
         );
+    }
+
+    /** FR-16, as clientSchemaWith in libs/core/src/http/client.ts. */
+    private static function client(mixed $value): ClientProtection
+    {
+        if (!$value instanceof JsonObject || $value->members() === []) {
+            self::fail();
+        }
+        $known = ['apiKey', 'jwt', 'turnstile', 'honeypot'];
+        if (array_diff(array_keys($value->members()), $known) !== []) {
+            self::fail();
+        }
+        $apiKey = null;
+        if ($value->has('apiKey')) {
+            $entry = $value->get('apiKey');
+            if (!$entry instanceof JsonObject || !$entry->hasExactKeys('header', 'secret')) {
+                self::fail();
+            }
+            $apiKey = [self::clientHeader($entry->get('header')), self::secretName($entry->get('secret'))];
+        }
+        $jwt = $value->has('jwt') ? self::jwt($value->get('jwt')) : null;
+        $turnstile = null;
+        if ($value->has('turnstile')) {
+            $entry = $value->get('turnstile');
+            if (!$entry instanceof JsonObject || !$entry->hasExactKeys('header', 'secret', 'verifyUrl')) {
+                self::fail();
+            }
+            $turnstile = [self::clientHeader($entry->get('header')), self::secretName($entry->get('secret')), self::endpoint($entry->get('verifyUrl'), null)];
+        }
+        $honeypot = null;
+        if ($value->has('honeypot')) {
+            $entry = $value->get('honeypot');
+            $field = $entry instanceof JsonObject && $entry->hasExactKeys('field') ? $entry->get('field') : null;
+            if (!\is_string($field) || preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/D', $field) !== 1) {
+                self::fail();
+            }
+            $honeypot = $field;
+        }
+
+        return new ClientProtection($apiKey, $jwt, $turnstile, $honeypot);
+    }
+
+    /** @return array{string, string, list<JwtKey>} */
+    private static function jwt(mixed $value): array
+    {
+        if (!$value instanceof JsonObject || !$value->hasExactKeys('issuer', 'audience', 'keys')) {
+            self::fail();
+        }
+        $issuer = $value->get('issuer');
+        $audience = $value->get('audience');
+        $list = $value->get('keys');
+        if (
+            !\is_string($issuer) || preg_match(self::VISIBLE, $issuer) !== 1
+            || !\is_string($audience) || preg_match(self::VISIBLE, $audience) !== 1
+            || !\is_array($list) || !array_is_list($list) || $list === [] || \count($list) > self::MAX_JWT_KEYS
+        ) {
+            self::fail();
+        }
+        $keys = [];
+        foreach ($list as $entry) {
+            if (!$entry instanceof JsonObject || !$entry->hasExactKeys('kid', 'alg', 'spki')) {
+                self::fail();
+            }
+            $kid = $entry->get('kid');
+            $alg = \is_string($entry->get('alg')) ? JwtAlg::tryFrom($entry->get('alg')) : null;
+            $spki = $entry->get('spki');
+            if (!\is_string($kid) || preg_match('/^[A-Za-z0-9._-]{1,128}$/D', $kid) !== 1 || isset($keys[$kid]) || $alg === null || !\is_string($spki) || \strlen($spki) > 1500) {
+                self::fail();
+            }
+            try {
+                $der = Base64Url::decode($spki);
+            } catch (Rejection) {
+                self::fail();
+            }
+            if (!self::isSpkiFor($alg, $der)) {
+                self::fail();
+            }
+            $keys[$kid] = new JwtKey($kid, $alg, $der);
+        }
+
+        return [$issuer, $audience, array_values($keys)];
+    }
+
+    /** DER SubjectPublicKeyInfo of the algorithm, as isSpkiFor in libs/core. */
+    private static function isSpkiFor(JwtAlg $alg, string $der): bool
+    {
+        return match ($alg) {
+            JwtAlg::EdDSA => \strlen($der) === 44 && bin2hex(substr($der, 0, 12)) === '302a300506032b6570032100',
+            JwtAlg::ES256 => \strlen($der) === 91 && bin2hex(substr($der, 0, 27)) === '3059301306072a8648ce3d020106082a8648ce3d03010703420004',
+            JwtAlg::RS256 => \strlen($der) >= 290 && \strlen($der) <= 1100 && $der[0] === "\x30",
+        };
+    }
+
+    private static function clientHeader(mixed $value): string
+    {
+        if (!\is_string($value) || preg_match(self::HEADER_NAME, $value) !== 1 || \in_array(strtolower($value), self::CLIENT_RESERVED, true)) {
+            self::fail();
+        }
+
+        return $value;
+    }
+
+    private static function secretName(mixed $value): string
+    {
+        if (!\is_string($value) || preg_match(self::NAME, $value) !== 1) {
+            self::fail();
+        }
+
+        return $value;
     }
 
     /**

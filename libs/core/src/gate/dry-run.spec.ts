@@ -20,6 +20,8 @@ const ONLY_THE_GATE = new Set([
   'budget_exhausted',
   'rate_limit_unavailable',
   'upstream_forbidden',
+  // FR-16: the key's value, the JWT's signature and the Turnstile answer.
+  'client_unauthorized',
 ]);
 /** Headers the dry run answers itself (the rest come from the gate's response writer). */
 const OWN_HEADERS = [
@@ -97,6 +99,7 @@ describe('dryRun predicts the gate (conformance/http/, FR-42)', () => {
   it('covers every case file', () => {
     expect(files.sort()).toEqual([
       'gate-auth.json',
+      'gate-client.json',
       'gate-kill-switch.json',
       'gate-locked.json',
       'gate-pull.json',
@@ -140,12 +143,23 @@ describe('dryRun predicts the gate (conformance/http/, FR-42)', () => {
           } else if (result.kind === 'preflight') {
             expect(wanted.status).toBe(204);
             expect(wanted.upstreamCalls).toBe(0);
-          } else if (wanted.upstreamCalls === 0) {
+          } else if (
+            wanted.upstreamCalls === 0 ||
+            wanted.error === 'client_unauthorized'
+          ) {
+            // Refused by the gate, at most after a Turnstile check.
             expect(ONLY_THE_GATE).toContain(wanted.error);
+            expect(wanted.upstreamCalls).toBe(
+              result.call.turnstileCall === undefined ? 0 : 1,
+            );
           } else {
             // OAuth2 (FR-20): the token request too, unless the gate has a token cached.
+            // FR-16: a Turnstile check is one more.
+            const calls = result.call.turnstileCall === undefined ? 1 : 2;
             expect(
-              result.call.tokenCall === undefined ? [1] : [1, 2],
+              result.call.tokenCall === undefined
+                ? [calls]
+                : [calls, calls + 1],
             ).toContain(wanted.upstreamCalls);
             const sent = wanted.json;
             if (sent?.method !== undefined && sent.path !== undefined) {

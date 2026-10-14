@@ -87,7 +87,7 @@ final class OAuthToken
     private static function fetch(Auth $auth, string $secret, ActiveBundle $bundle): array
     {
         $endpoint = $auth->token ?? throw new Failure(GateError::UpstreamAuthFailed);
-        $credential = 'Basic ' . base64_encode(urlencode($auth->name) . ':' . urlencode($secret));
+        $credential = 'Basic ' . base64_encode(rawurlencode($auth->name) . ':' . rawurlencode($secret));
         $body = 'grant_type=client_credentials' . ($endpoint->scope === null ? '' : '&scope=' . rawurlencode($endpoint->scope));
         try {
             $response = UpstreamClient::send(new UpstreamRequest(

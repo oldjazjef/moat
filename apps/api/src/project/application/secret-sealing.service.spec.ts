@@ -57,6 +57,7 @@ describe('SecretSealingService', () => {
       currentVersion: null,
       nextVersion: 1,
       usedBy: [{ upstream: 'hubspot', origin: 'https://api.hubapi.com' }],
+      comparedBy: [],
     });
 
     const plaintext = bytes(PLANTED);

@@ -30,5 +30,7 @@ final readonly class Route
         public ?Budget $budget = null,
         /** FR-13: the fields of the JSON body the gate forwards; null = the body as received. */
         public ?array $body = null,
+        /** FR-16: who may call the route; null = anyone the origin rules let through. */
+        public ?ClientProtection $client = null,
     ) {}
 }

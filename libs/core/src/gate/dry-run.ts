@@ -10,6 +10,7 @@ import { MoatRejection } from '../errors';
 import { validateBody } from '../http/body';
 import { requestEstimate, type Budget, type Usage } from '../http/budget';
 import { mediaTypeOf } from '../http/content-type';
+import { honeypotFilled } from '../http/client';
 import { checkOrigin, preflight } from '../http/cors';
 import { normalisePath } from '../http/path';
 import { checkPolicy, type Policy } from '../policy/policy';
@@ -39,6 +40,7 @@ export const DRY_RUN_ERRORS = {
   gate_disabled: 503,
   gate_not_configured: 503,
   secret_unavailable: 500,
+  client_unauthorized: 401,
 } as const;
 export type DryRunError = keyof typeof DRY_RUN_ERRORS;
 
@@ -97,6 +99,8 @@ export interface DryRunUpstreamCall {
    * cached — whether it has one, only the gate knows. Absent for every other auth.
    */
   readonly tokenCall?: DryRunTokenCall;
+  /** FR-16: the Turnstile check the gate makes before it calls the upstream. */
+  readonly turnstileCall?: DryRunTokenCall;
 }
 
 /** The OAuth2 token request (RFC 6749 §4.4) with the secret as SECRET_PLACEHOLDER. */
@@ -223,6 +227,21 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
   const refuse = (error: DryRunError): never => {
     throw new Refusal(error, cors, name);
   };
+  // FR-16: the API key and the JWT come before the limits. Only the gate can open the key's
+  // secret and check a signature: the dry run sees only whether they are there.
+  const client = route.client;
+  if (
+    client?.apiKey !== undefined &&
+    !header(client.apiKey.header.toLowerCase())
+  )
+    refuse('client_unauthorized');
+  if (
+    client?.jwt !== undefined &&
+    !/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(
+      header('authorization') ?? '',
+    )
+  )
+    refuse('client_unauthorized');
 
   // Body size and media type (FR-18), with the bytes the gate would read.
   const bytes = new TextEncoder().encode(request.body).length;
@@ -253,6 +272,18 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
       throw error;
     }
   }
+
+  // FR-16: a filled honeypot, then a missing Turnstile token (whose check only the gate makes).
+  if (
+    client?.honeypot !== undefined &&
+    honeypotFilled(client.honeypot.field, request.body)
+  )
+    refuse('client_unauthorized');
+  if (
+    client?.turnstile !== undefined &&
+    !header(client.turnstile.header.toLowerCase())
+  )
+    refuse('client_unauthorized');
 
   const upstream = config.upstreams[route.upstream];
   if (upstream === undefined) return refuse('gate_not_configured');
@@ -310,12 +341,34 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
       timeoutMs: Math.min(upstream.timeoutMs, policy.maxTimeoutMs),
       secret: auth?.secret ?? null,
       ...(tokenCall === undefined ? {} : { tokenCall }),
+      ...(client?.turnstile === undefined
+        ? {}
+        : {
+            turnstileCall: {
+              method: 'POST',
+              url: client.turnstile.verifyUrl,
+              headers: [
+                ['User-Agent', GATE_USER_AGENT],
+                ['Accept', 'application/json'],
+                ['Content-Type', 'application/x-www-form-urlencoded'],
+              ],
+              body: `secret=${SECRET_PLACEHOLDER}&response=${formEncode(header(client.turnstile.header.toLowerCase()) ?? '')}`,
+            },
+          }),
     },
     headers: cors,
     counters: countersOf(policy, route),
     budgets,
     estimate,
   };
+}
+
+/** Like PHP's rawurlencode: every byte but `[A-Za-z0-9_.~-]` as `%XX`. */
+function formEncode(value: string): string {
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
 }
 
 /** `base64(user ":" password)` of HTTP Basic (RFC 7617). */
@@ -330,11 +383,6 @@ function basic(user: string, password: string): string {
 function tokenRequest(
   auth: Extract<CompiledUpstream['auth'], { type: 'oauth2' }>,
 ): DryRunTokenCall {
-  const form = (value: string) =>
-    encodeURIComponent(value).replace(
-      /[!'()*]/g,
-      (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
-    );
   return {
     method: 'POST',
     url: auth.tokenUrl,
@@ -344,12 +392,12 @@ function tokenRequest(
       ['Content-Type', 'application/x-www-form-urlencoded'],
       [
         'Authorization',
-        `Basic ${basic(form(auth.clientId), SECRET_PLACEHOLDER)}`,
+        `Basic ${basic(formEncode(auth.clientId), SECRET_PLACEHOLDER)}`,
       ],
     ],
     body:
       'grant_type=client_credentials' +
-      (auth.scope === undefined ? '' : `&scope=${form(auth.scope)}`),
+      (auth.scope === undefined ? '' : `&scope=${formEncode(auth.scope)}`),
   };
 }
 

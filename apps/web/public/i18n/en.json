@@ -390,7 +390,22 @@
       "pathPlaceholder": "/newsletter",
       "upstreamPathPlaceholder": "/crm/v3/objects/contacts",
       "maxBodySizePlaceholder": "64KiB",
-      "originsPlaceholder": "https://www.example.ch"
+      "originsPlaceholder": "https://www.example.ch",
+      "client": "Who may call the route?",
+      "clientHint": "Every check chosen must pass; otherwise the gate answers 401 and sends nothing on.",
+      "apiKey": "API key in a header",
+      "clientSecret": "Secret name",
+      "apiKeySecretPlaceholder": "client-key",
+      "apiKeyHeader": "Header",
+      "apiKeyHeaderPlaceholder": "X-Api-Key",
+      "apiKeyHint": "For calls from servers, never for a public page. The gate compares the header with the sealed secret: `moat secret seal <gate> <name>`.",
+      "turnstile": "Cloudflare Turnstile",
+      "turnstileSecretPlaceholder": "turnstile-key",
+      "turnstileHint": "The page sends the Turnstile token in the `X-Turnstile-Token` header. The gate checks it with Cloudflare using the sealed secret; the policy must allow POST to `challenges.cloudflare.com/turnstile/v0/siteverify`.",
+      "honeypot": "Honeypot field",
+      "honeypotField": "Field",
+      "honeypotHint": "An invisible form field only bots fill in. If it is filled in the JSON, the gate refuses.",
+      "jwtKept": "This route also checks a JWT. Change its keys in moat.yaml; the form leaves them as they are."
     }
   },
   "setup": {
@@ -801,7 +816,8 @@
           "origins": "If another website calls the route in a browser, add it under “Allowed websites” (in moat.yaml: `origins`). Without an entry, browsers refuse other websites.",
           "body": "So that only expected data reaches the API, list the fields your website sends under `body` in moat.yaml, with a type (`string`, `integer`, `boolean`, `object`, `array`) and bounds such as `required`, `maxLength`, `enum` or `format: email`. The gate removes every other field and refuses content that does not fit with 400 and `body_invalid`. The recipes bring their fields along. Under “Routes”, each route shows which fields are checked, or that its content is forwarded unchecked.",
           "bundle": "A new or changed route applies on the gate only with the next bundle: `moat build <gate>`, upload it and accept it.",
-          "check": "Under “Routes” you see every route as the gate checks it: path, target, allowed websites, limits and maximum size."
+          "check": "Under “Routes” you see every route as the gate checks it: path, target, allowed websites, limits and maximum size.",
+          "client": "Who may call the route: set an API key, Cloudflare Turnstile and a honeypot in “New route” or “Edit” under “Who may call the route?”. A JWT with its public keys (`client.jwt`) goes into moat.yaml. If a check fails, the gate answers 401 `client_unauthorized`."
         },
         "tips": {
           "exact": "Paths match exactly: `/newsletter` does not match `/newsletter/abc`.",
@@ -948,11 +964,13 @@
       "route_disabled": "The route is switched off.",
       "gate_disabled": "The gate is locked and answers every request like this.",
       "gate_not_configured": "The route names an upstream that does not exist.",
-      "secret_unavailable": "This upstream's secret is not sealed for the chosen gate."
+      "secret_unavailable": "This upstream's secret is not sealed for the chosen gate.",
+      "client_unauthorized": "The route wants an API key, a JWT, a Turnstile token or an empty honeypot field, and the request does not have it. Whether a key or JWT that is there holds, only the gate knows."
     },
     "preflight": "The gate answers the preflight itself. The browser may then send the request.",
     "forwarded": "Through the route {{route}}, the gate would forward the request like this:",
     "tokenCall": "If the gate has no valid access token stored, it fetches one first (OAuth2). The secret is then base64-encoded in the Basic credentials; the gate sends the API only the token (<TOKEN>).",
+    "turnstileCall": "First the gate checks the Turnstile token with Cloudflare, using the sealed secret (<SECRET>). Only if Cloudflare agrees does it call the API.",
     "secret": "The gate replaces {{placeholder}} with the sealed secret “{{secret}}”. The console does not know its value.",
     "countersTitle": "The gate counts",
     "counters": {

@@ -28,6 +28,7 @@ import {
   type RouteDefinition,
 } from '../../../../core/api/project.types';
 import { ProjectEdits } from '../../../../core/project/project-edits.service';
+import { RichText } from '../../../../shared/components/rich-text';
 import type { RouteRow } from '../../pages/routes-page/routes-page.service';
 
 type Method = (typeof METHODS)[number];
@@ -70,6 +71,19 @@ function budgetControl(field: string): string {
 const DEFAULT_MAX_BODY_BYTES = 64 * 1024;
 const PATH = /^\//;
 
+/** FR-16: the control that shows `client.<check>.<field>`. */
+function clientControl(field: string): string {
+  const [, check, key] = field.split('.');
+  if (check === 'apiKey')
+    return key === 'header' ? 'apiKeyHeader' : 'apiKeySecret';
+  if (check === 'turnstile') return 'turnstileSecret';
+  if (check === 'honeypot') return 'honeypotField';
+  return 'apiKeySecret';
+}
+
+/** What the gate reads the API key from when the route names no header (core default). */
+const DEFAULT_API_KEY_HEADER = 'X-Api-Key';
+
 /**
  * «Neue Route» / «Route bearbeiten»: the route's fields as moat.yaml writes them. The form checks
  * only what it can show at once (a name, a leading "/"); everything else is checked by the core
@@ -80,6 +94,7 @@ const PATH = /^\//;
   imports: [
     ReactiveFormsModule,
     TranslatePipe,
+    RichText,
     ...HlmButtonImports,
     ...HlmCardImports,
     ...HlmInputImports,
@@ -138,8 +153,20 @@ export class RouteForm implements OnInit {
     budgetLimit: new FormControl('', { nonNullable: true }),
     budgetInput: new FormControl('', { nonNullable: true }),
     budgetOutput: new FormControl('', { nonNullable: true }),
+    // FR-16: client checks; empty headers = the defaults (X-Api-Key, X-Turnstile-Token).
+    apiKeyOn: new FormControl(false, { nonNullable: true }),
+    apiKeySecret: new FormControl('', { nonNullable: true }),
+    apiKeyHeader: new FormControl('', { nonNullable: true }),
+    turnstileOn: new FormControl(false, { nonNullable: true }),
+    turnstileSecret: new FormControl('', { nonNullable: true }),
+    honeypotOn: new FormControl(false, { nonNullable: true }),
+    honeypotField: new FormControl('website', { nonNullable: true }),
   });
   protected readonly periods = QUOTA_PERIODS;
+  /** FR-16: the route checks a JWT; the form leaves it as moat.yaml writes it. */
+  protected readonly jwt = computed(
+    () => this.route()?.route.client?.jwt !== undefined,
+  );
   protected readonly usageFormats = USAGE_FORMATS;
 
   /** Fields the core refused in the last save, as form control names. */
@@ -154,6 +181,7 @@ export class RouteForm implements OnInit {
         if (first === 'quota')
           return second === 'period' ? 'quotaPeriod' : 'quotaRequests';
         if (first === 'budget') return budgetControl(field);
+        if (first === 'client') return clientControl(field);
         return first ?? '';
       }),
     );
@@ -197,6 +225,17 @@ export class RouteForm implements OnInit {
       budgetLimit: route.budget?.cost?.limit ?? '',
       budgetInput: route.budget?.cost?.inputPerMillion ?? '',
       budgetOutput: route.budget?.cost?.outputPerMillion ?? '',
+      apiKeyOn: route.client?.apiKey !== undefined,
+      apiKeySecret: route.client?.apiKey?.secret ?? '',
+      apiKeyHeader:
+        route.client?.apiKey === undefined ||
+        route.client.apiKey.header === DEFAULT_API_KEY_HEADER
+          ? ''
+          : route.client.apiKey.header,
+      turnstileOn: route.client?.turnstile !== undefined,
+      turnstileSecret: route.client?.turnstile?.secret ?? '',
+      honeypotOn: route.client?.honeypot !== undefined,
+      honeypotField: route.client?.honeypot?.field ?? 'website',
     });
   }
 
@@ -241,6 +280,40 @@ export class RouteForm implements OnInit {
           }
         : {}),
       ...(value.budgetOn ? { budget: this.budget() } : {}),
+      ...(this.clientEdited() ? { client: this.client() } : {}),
+    };
+  }
+
+  /** FR-16: sent when a check is ticked or the route had checks (unticking them all removes them). */
+  private clientEdited(): boolean {
+    const value = this.form.getRawValue();
+    return (
+      value.apiKeyOn ||
+      value.turnstileOn ||
+      value.honeypotOn ||
+      this.route()?.route.client !== undefined
+    );
+  }
+
+  /** FR-16: the checks ticked; the route's `jwt` stays as written in moat.yaml. */
+  private client(): NonNullable<RouteDefinition['client']> {
+    const value = this.form.getRawValue();
+    const header = value.apiKeyHeader.trim();
+    return {
+      ...(value.apiKeyOn
+        ? {
+            apiKey: {
+              secret: value.apiKeySecret.trim(),
+              ...(header === '' ? {} : { header }),
+            },
+          }
+        : {}),
+      ...(value.turnstileOn
+        ? { turnstile: { secret: value.turnstileSecret.trim() } }
+        : {}),
+      ...(value.honeypotOn
+        ? { honeypot: { field: value.honeypotField.trim() } }
+        : {}),
     };
   }
 

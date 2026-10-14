@@ -520,6 +520,56 @@ describe('route edits', () => {
     ).toEqual(['value_invalid', ['budget']]);
   });
 
+  it('writes the client checks (FR-16) and keeps a jwt as written', () => {
+    const withJwt = site.replace(
+      "    origins: ['https://www.example.ch']\n",
+      `    origins: ['https://www.example.ch']
+    client:
+      jwt:
+        issuer: 'https://login.example.ch' # the members' login
+        audience: shop
+        keys:
+          - kid: k1
+            alg: EdDSA
+            spki: MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o
+`,
+    );
+    const text = setRoute(
+      withJwt,
+      'newsletter',
+      {
+        ...newsletter,
+        client: {
+          turnstile: { secret: 'turnstile-key' },
+          honeypot: { field: 'website' },
+        },
+      },
+      'update',
+    );
+    expect(text).toContain(
+      "issuer: 'https://login.example.ch' # the members' login",
+    );
+    const client = loadMoatYaml(text).routes['newsletter']?.client;
+    expect(client?.turnstile).toEqual({ secret: 'turnstile-key' });
+    expect(client?.honeypot).toEqual({ field: 'website' });
+    expect(client?.jwt?.issuer).toBe('https://login.example.ch');
+    // Nothing but the jwt left: the jwt stays; nothing at all: `client` goes.
+    const jwtOnly = setRoute(
+      text,
+      'newsletter',
+      { ...newsletter, client: {} },
+      'update',
+    );
+    expect(jwtOnly).toBe(withJwt);
+    const none = setRoute(
+      site,
+      'newsletter',
+      { ...newsletter, client: {} },
+      'update',
+    );
+    expect(none).toBe(site);
+  });
+
   it('switches a route off and on, and removes it', () => {
     const off = setRouteEnabled(site, 'newsletter', false);
     expect(loadMoatYaml(off).routes['newsletter']?.enabled).toBe(false);

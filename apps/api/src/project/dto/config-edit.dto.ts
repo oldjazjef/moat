@@ -106,6 +106,45 @@ export class BudgetDto {
   cost?: CostDto;
 }
 
+/** FR-16: a client check's secret by name, and the header it reads. */
+export class ClientSecretCheckDto {
+  @IsString()
+  @Matches(NAME)
+  secret!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  header?: string;
+}
+
+export class HoneypotDto {
+  @IsString()
+  @MaxLength(64)
+  field!: string;
+}
+
+/** FR-16: the client checks the route form edits (a `jwt` stays as written in moat.yaml). */
+export class ClientDto {
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ClientSecretCheckDto)
+  apiKey?: ClientSecretCheckDto;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ClientSecretCheckDto)
+  turnstile?: ClientSecretCheckDto;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => HoneypotDto)
+  honeypot?: HoneypotDto;
+}
+
 /**
  * A route as the desktop's form sends it. Types and lengths only: whether a path, origin, size or
  * duration is valid is decided by the core's schema, the same one every moat.yaml passes.
@@ -155,6 +194,12 @@ export class RouteDto {
   @ValidateNested()
   @Type(() => BudgetDto)
   budget?: BudgetDto;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ClientDto)
+  client?: ClientDto;
 }
 
 export const AUTH_TYPES = [
@@ -310,6 +355,21 @@ function routeInput(dto: RouteDto): RouteInput {
           quota: { requests: dto.quota.requests, period: dto.quota.period },
         }),
     ...(dto.budget === undefined ? {} : { budget: budgetInput(dto.budget) }),
+    ...(dto.client === undefined ? {} : { client: clientInput(dto.client) }),
+  };
+}
+
+function clientInput(dto: ClientDto): NonNullable<RouteInput['client']> {
+  const check = (entry: ClientSecretCheckDto) => ({
+    secret: entry.secret,
+    ...(entry.header === undefined ? {} : { header: entry.header }),
+  });
+  return {
+    ...(dto.apiKey === undefined ? {} : { apiKey: check(dto.apiKey) }),
+    ...(dto.turnstile === undefined ? {} : { turnstile: check(dto.turnstile) }),
+    ...(dto.honeypot === undefined
+      ? {}
+      : { honeypot: { field: dto.honeypot.field } }),
   };
 }
 

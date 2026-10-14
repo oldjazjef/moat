@@ -51,6 +51,10 @@ function render(view: SealDialogView): void {
           .map(({ upstream, origin }) => `${upstream} (${origin})`)
           .join(', '),
   );
+  byId('compared-by-label').hidden = view.comparedBy.length === 0;
+  byId('compared-by').hidden = view.comparedBy.length === 0;
+  setText('compared-by-label', t.comparedBy);
+  setText('compared-by', view.comparedBy.join(', '));
   setText('value-label', t.value);
   setText('value-hint', t.valueHint);
   setText('show-label', t.show);

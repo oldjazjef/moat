@@ -17,6 +17,7 @@ export const DRY_RUN_ERRORS = [
   'gate_disabled',
   'gate_not_configured',
   'secret_unavailable',
+  'client_unauthorized',
 ] as const;
 export type DryRunError = (typeof DRY_RUN_ERRORS)[number];
 
@@ -61,6 +62,14 @@ export interface DryRunBudget {
   };
 }
 
+/** A call the gate makes besides the upstream call (OAuth2 token, Turnstile check). */
+export interface DryRunSideCall {
+  readonly method: string;
+  readonly url: string;
+  readonly headers: readonly (readonly [string, string])[];
+  readonly body: string;
+}
+
 export type DryRunResult =
   | { readonly kind: 'not_accepted'; readonly code: string }
   | {
@@ -86,12 +95,9 @@ export type DryRunResult =
         readonly timeoutMs: number;
         readonly secret: string | null;
         /** FR-20, OAuth2: the token request sent first when no token is cached. */
-        readonly tokenCall?: {
-          readonly method: string;
-          readonly url: string;
-          readonly headers: readonly (readonly [string, string])[];
-          readonly body: string;
-        };
+        readonly tokenCall?: DryRunSideCall;
+        /** FR-16: the Turnstile check the gate makes first. */
+        readonly turnstileCall?: DryRunSideCall;
       };
       readonly headers: Readonly<Record<string, string>>;
       readonly counters: readonly DryRunCounter[];

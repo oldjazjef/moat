@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 // The fake HTTPS upstream of the HTTP conformance runner (conformance/http/gate.json): one request
 // at a time on 127.0.0.1, TLS with the runner's TEST ONLY certificate. Never a real API.
-// php fake-upstream.php <cert.pem> <key.pem> <port file> <log file> <secret>
+// php fake-upstream.php <cert.pem> <key.pem> <port file> <log file> <secrets, one per line>
 
 $args = is_array($_SERVER['argv'] ?? null) ? array_values(array_filter($_SERVER['argv'], is_string(...))) : [];
 if (count($args) !== 6) {
     fwrite(STDERR, "usage: fake-upstream.php <cert> <key> <port file> <log file> <secret>\n");
     exit(2);
 }
-[, $cert, $key, $portFile, $logFile, $secret] = $args;
+[, $cert, $key, $portFile, $logFile, $secretList] = $args;
+// Every secret of the case file, one per line; the first is the upstream's.
+$secrets = explode("\n", $secretList);
+$secret = $secrets[0];
 // Failed handshakes and broken connections are expected: ignore their warnings.
 set_error_handler(static fn(): bool => true);
 
@@ -57,7 +60,7 @@ for (;;) {
     $status = 200;
     $type = 'application/json';
     $extra = [];
-    $hide = static function (string $text) use ($secret): string {
+    $hide = static function (string $text) use ($secret, $secrets): string {
         // A Basic credential `user:<secret>` (FR-20) and an access token from /token are shown as
         // placeholders, like the secret itself.
         if (preg_match('/^Basic ([A-Za-z0-9+\/=]+)$/D', $text, $basic) === 1) {
@@ -68,7 +71,11 @@ for (;;) {
         }
         $text = (string) preg_replace('/TEST-ONLY-access-token-[0-9]+/', '<TOKEN>', $text);
 
-        return str_replace([$secret, rawurlencode($secret)], '<SECRET>', $text);
+        foreach ($secrets as $one) {
+            $text = str_replace([$one, rawurlencode($one)], '<SECRET>', $text);
+        }
+
+        return $text;
     };
     if ($path === '/echo') {
         $answer = json_encode(
@@ -77,7 +84,7 @@ for (;;) {
         );
     } elseif ($path === '/token') {
         // OAuth2 client credentials (FR-20): client_secret_basic with the form-encoded id and secret.
-        $wanted = 'Basic ' . base64_encode('moat-client:' . urlencode($secret));
+        $wanted = 'Basic ' . base64_encode('moat-client:' . rawurlencode($secret));
         $grant = $method === 'POST' && ($headers['content-type'] ?? '') === 'application/x-www-form-urlencoded'
             && in_array($body, ['grant_type=client_credentials', 'grant_type=client_credentials&scope=read%20write'], true);
         if (hash_equals($wanted, $headers['authorization'] ?? '') && $grant) {
@@ -87,6 +94,15 @@ for (;;) {
             $status = 401;
             $answer = '{"error":"invalid_client"}';
         }
+    } elseif ($path === '/turnstile') {
+        // Cloudflare Turnstile's siteverify (FR-16): a form with one of the secrets and the token.
+        $form = [];
+        foreach (explode('&', $body) as $pair) {
+            [$name, $value] = array_pad(explode('=', $pair, 2), 2, '');
+            $form[rawurldecode($name)] = rawurldecode($value);
+        }
+        $pass = $method === 'POST' && in_array($form['secret'] ?? '', $secrets, true) && ($form['response'] ?? '') === 'TEST-ONLY-turnstile-pass';
+        $answer = $pass ? '{"success":true}' : '{"success":false,"error-codes":["invalid-input-response"]}';
     } elseif ($path === '/token-fail') {
         $status = 401;
         $answer = '{"error":"invalid_client"}';

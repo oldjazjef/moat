@@ -143,6 +143,7 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       firstVersion: 'erstmals',
       usedBy: 'Gesendet an',
       unused: 'Kein Upstream verwendet es zurzeit.',
+      comparedBy: 'Nur verglichen mit dem API-Schlüssel des Aufrufers (Routen)',
       value: 'Wert',
       valueHint:
         'Füge den Schlüssel oder das Token ein. Moat zeigt ihn danach nie wieder an.',
@@ -402,6 +403,7 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       firstVersion: 'first time',
       usedBy: 'Sent to',
       unused: 'No upstream uses it at the moment.',
+      comparedBy: "Only compared with the caller's API key (routes)",
       value: 'Value',
       valueHint:
         'Paste the key or token. Moat never shows it again afterwards.',

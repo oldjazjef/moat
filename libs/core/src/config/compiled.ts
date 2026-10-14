@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { bodyFieldsSchema, bodySchemaProblem } from '../http/body';
 import { budgetSchema } from '../http/budget';
+import {
+  clientRouteProblem,
+  clientSchemaWith,
+  clientSecrets,
+} from '../http/client';
 import { MEDIA_TYPE } from '../http/content-type';
 import { normalisePath } from '../http/path';
 import { MoatRejection, reject } from '../errors';
@@ -152,6 +157,11 @@ export const compiledRouteSchema = z.strictObject({
    * forwarded as received. Only on POST, PUT and PATCH routes that accept JSON alone.
    */
   body: bodyFieldsSchema.optional(),
+  /**
+   * FR-16: who may call the route (http/client.ts): API key, JWT, Turnstile, honeypot. Compiled
+   * only when set; a failed check answers 401 `client_unauthorized`.
+   */
+  client: clientSchemaWith(isTokenUrl).optional(),
 });
 
 /** Methods whose requests carry a body the gate forwards. */
@@ -201,6 +211,26 @@ export function validateCompiledConfig(
       reject('config_invalid');
     if (route.body !== undefined && bodyRouteProblem(route) !== null)
       reject('config_invalid');
+    if (route.client !== undefined) {
+      if (clientRouteProblem(route.client, route) !== null)
+        reject('config_invalid');
+      if (
+        !clientSecrets(route.client).every((secret) =>
+          secretNames.includes(secret),
+        )
+      )
+        reject('config_invalid');
+      // An API key is compared, never sent: it is no upstream's or Turnstile's secret.
+      const key = route.client.apiKey?.secret;
+      if (
+        key !== undefined &&
+        (key === route.client.turnstile?.secret ||
+          Object.values(result.upstreams).some(
+            (upstream) => upstream.auth?.secret === key,
+          ))
+      )
+        reject('config_invalid');
+    }
     const key = `${route.method} ${route.path}`;
     if (seen.has(key)) reject('config_invalid');
     seen.add(key);

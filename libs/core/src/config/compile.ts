@@ -1,4 +1,5 @@
 import { reject } from '../errors';
+import { compileClient } from '../http/client';
 import type { JsonValue } from '../json/strict-json';
 import { validateCompiledConfig, type CompiledConfig } from './compiled';
 import { gateLockState } from './lock';
@@ -72,6 +73,13 @@ export function compileConfig(
       ...(route.body === undefined
         ? {}
         : { body: JSON.parse(JSON.stringify(route.body)) as JsonValue }),
+      ...(route.client === undefined
+        ? {}
+        : {
+            client: JSON.parse(
+              JSON.stringify(compileClient(route.client)),
+            ) as JsonValue,
+          }),
     };
   }
   const locked = gate !== undefined && !gateLockState(config, gate).enabled;

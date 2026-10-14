@@ -390,7 +390,22 @@
       "pathPlaceholder": "/newsletter",
       "upstreamPathPlaceholder": "/crm/v3/objects/contacts",
       "maxBodySizePlaceholder": "64KiB",
-      "originsPlaceholder": "https://www.example.ch"
+      "originsPlaceholder": "https://www.example.ch",
+      "client": "Wer darf die Route aufrufen?",
+      "clientHint": "Jede gewählte Prüfung muss bestehen, sonst antwortet das Gate mit 401 und sendet nichts weiter.",
+      "apiKey": "API-Key im Header",
+      "clientSecret": "Name des Secrets",
+      "apiKeySecretPlaceholder": "client-key",
+      "apiKeyHeader": "Header",
+      "apiKeyHeaderPlaceholder": "X-Api-Key",
+      "apiKeyHint": "Für Aufrufe von Servern, nie für eine öffentliche Seite. Das Gate vergleicht den Header mit dem versiegelten Secret: `moat secret seal <gate> <name>`.",
+      "turnstile": "Cloudflare Turnstile",
+      "turnstileSecretPlaceholder": "turnstile-key",
+      "turnstileHint": "Die Seite schickt das Turnstile-Token im Header `X-Turnstile-Token`. Das Gate prüft es mit dem versiegelten Secret bei Cloudflare; die Policy muss POST auf `challenges.cloudflare.com/turnstile/v0/siteverify` erlauben.",
+      "honeypot": "Honeypot-Feld",
+      "honeypotField": "Feld",
+      "honeypotHint": "Ein unsichtbares Formularfeld, das nur Bots ausfüllen. Ist es im JSON gefüllt, lehnt das Gate ab.",
+      "jwtKept": "Diese Route prüft auch ein JWT. Seine Schlüssel änderst du in moat.yaml; das Formular lässt sie, wie sie sind."
     }
   },
   "setup": {
@@ -801,7 +816,8 @@
           "origins": "Ruft eine andere Website die Route im Browser auf, trage sie unter «Erlaubte Websites» ein (in moat.yaml: `origins`). Ohne Eintrag lehnen Browser fremde Websites ab.",
           "body": "Damit nur erwartete Daten zur API gehen, liste in moat.yaml unter `body` die Felder, die deine Website schickt, mit Typ (`string`, `integer`, `boolean`, `object`, `array`) und Grenzen wie `required`, `maxLength`, `enum` oder `format: email`. Das Gate entfernt jedes andere Feld und lehnt Inhalte, die nicht passen, mit 400 und `body_invalid` ab. Die Recipes bringen ihre Felder mit. Unter «Routen» steht bei jeder Route, welche Felder geprüft werden, oder dass der Inhalt ungeprüft weitergeht.",
           "bundle": "Eine neue oder geänderte Route gilt auf dem Gate erst mit dem nächsten Bundle: `moat build <gate>`, hochladen und annehmen.",
-          "check": "Unter «Routen» siehst du jede Route so, wie das Gate sie prüft: Pfad, Ziel, erlaubte Websites, Limits und maximale Grösse."
+          "check": "Unter «Routen» siehst du jede Route so, wie das Gate sie prüft: Pfad, Ziel, erlaubte Websites, Limits und maximale Grösse.",
+          "client": "Wer die Route aufrufen darf: API-Key, Cloudflare Turnstile und Honeypot stellst du in «Neue Route» bzw. «Bearbeiten» unter «Wer darf die Route aufrufen?» ein. Ein JWT mit seinen öffentlichen Schlüsseln (`client.jwt`) schreibst du in moat.yaml. Scheitert eine Prüfung, antwortet das Gate mit 401 `client_unauthorized`."
         },
         "tips": {
           "exact": "Pfade gelten exakt: `/newsletter` passt nicht auf `/newsletter/abc`.",
@@ -948,11 +964,13 @@
       "route_disabled": "Die Route ist ausgeschaltet.",
       "gate_disabled": "Das Gate ist gesperrt und beantwortet jede Anfrage so.",
       "gate_not_configured": "Die Route verweist auf einen Upstream, den es nicht gibt.",
-      "secret_unavailable": "Das Secret dieses Upstreams ist für das gewählte Gate nicht versiegelt."
+      "secret_unavailable": "Das Secret dieses Upstreams ist für das gewählte Gate nicht versiegelt.",
+      "client_unauthorized": "Die Route verlangt einen API-Key, ein JWT, ein Turnstile-Token oder ein leeres Honeypot-Feld, und die Anfrage hat es nicht. Ob ein vorhandener Key oder ein JWT gilt, weiss nur das Gate."
     },
     "preflight": "Das Gate beantwortet den Preflight selbst. Der Browser darf die Anfrage danach senden.",
     "forwarded": "Das Gate würde die Anfrage über die Route {{route}} so weiterleiten:",
     "tokenCall": "Hat das Gate kein gültiges Zugriffstoken gespeichert, holt es zuerst eins (OAuth2). Das Secret steckt dabei Base64-kodiert in der Basic-Anmeldung; der API schickt das Gate nur das Token (<TOKEN>).",
+    "turnstileCall": "Zuerst prüft das Gate das Turnstile-Token bei Cloudflare, mit dem versiegelten Secret (<SECRET>). Nur wenn Cloudflare zustimmt, ruft es die API auf.",
     "secret": "{{placeholder}} ersetzt das Gate durch das versiegelte Secret «{{secret}}». Die Konsole kennt den Wert nicht.",
     "countersTitle": "Dabei zählt das Gate",
     "counters": {

@@ -24,6 +24,8 @@ export interface SealPreview {
   readonly currentVersion: number | null;
   readonly nextVersion: number;
   readonly usedBy: SealPlan['usedBy'];
+  /** Routes that compare a caller's key with it (FR-16): it is never sent anywhere for them. */
+  readonly comparedBy: SealPlan['comparedBy'];
   /** Binds the value to exactly this gate key and version: seal() refuses when they changed. */
   readonly digest: string;
 }
@@ -74,6 +76,7 @@ export class SecretSealingService {
         currentVersion: plan.currentVersion,
         nextVersion: plan.nextVersion,
         usedBy: plan.usedBy,
+        comparedBy: plan.comparedBy,
         digest: digest(plan),
       },
     };
@@ -143,7 +146,7 @@ export class SecretSealingService {
 
 /**
  * SHA-256 over what the dialog shows: what the value is bound to (gate id, box key, name, new
- * version) and the upstreams that send it, so a change to either asks again (§1.5).
+ * version) the upstreams that send it and the routes that compare it, so a change to either asks again (§1.5).
  */
 function digest(plan: SealPlan): string {
   return createHash('sha256')
@@ -154,6 +157,7 @@ function digest(plan: SealPlan): string {
         plan.name,
         plan.nextVersion,
         plan.usedBy.map(({ upstream, origin }) => [upstream, origin]),
+        plan.comparedBy,
       ]),
     )
     .digest('hex');

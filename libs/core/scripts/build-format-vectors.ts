@@ -622,6 +622,321 @@ function configVectors(): Json {
           secret: 'other',
         }),
     ],
+    [
+      'client api key (FR-16)',
+      (c) =>
+        (route(c)['client'] = {
+          apiKey: { header: 'X-Api-Key', secret: 'client-key' },
+        }),
+      ['hubspot-token', 'client-key'],
+    ],
+    [
+      'client api key secret missing from the bundle',
+      (c) =>
+        (route(c)['client'] = {
+          apiKey: { header: 'X-Api-Key', secret: 'client-key' },
+        }),
+    ],
+    [
+      "client api key that is also the upstream's secret",
+      (c) =>
+        (route(c)['client'] = {
+          apiKey: { header: 'X-Api-Key', secret: 'hubspot-token' },
+        }),
+    ],
+    [
+      'client api key in the Cookie header',
+      (c) =>
+        (route(c)['client'] = {
+          apiKey: { header: 'Cookie', secret: 'client-key' },
+        }),
+      ['hubspot-token', 'client-key'],
+    ],
+    [
+      'client api key in Origin',
+      (c) =>
+        (route(c)['client'] = {
+          apiKey: { header: 'Origin', secret: 'client-key' },
+        }),
+      ['hubspot-token', 'client-key'],
+    ],
+    [
+      'client jwt with EdDSA, ES256 and RS256 keys',
+      (c) =>
+        (route(c)['client'] = {
+          jwt: {
+            issuer: 'https://issuer.example',
+            audience: 'site',
+            keys: [
+              {
+                kid: 'a',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+              {
+                kid: 'b',
+                alg: 'ES256',
+                spki: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAjXWc5nQ8mcxs2imNzkZfTunmT6eE5UyJ022HixmRWe_Jq5DPdU3q9Qzqb5cq0CiaDWZiCtfm-2sBuur7qEPJA',
+              },
+              {
+                kid: 'c',
+                alg: 'RS256',
+                spki: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxPFRd8cny2zKsUMNdccZoGrh_EW285v_vZD7Ecg2Uhjh6pgnsHO29hTkNNK2fIXJFTQjmjbW1pcGP0HGvf_TyLW685sZLAw5OqM_57xx12MP0rhF995zeJGd-czc8HXfYuKRJuomWxdpLUa9tAEqCyvr5G-_8dgaVEvE-2YnNVXPCMX8gV_1UmNiqpdpXSrnV5q8w-S1QkzbrbgInr44mknK_Isbs_iJ6H2wUvze8BneuzSqpKDnLmGue8SnSqoTtbu6z_casJxDPKKehx-QL1xH_8EKKG9kAEgYPtQszLwxsAITZTYz_4BPoFB5cO5-Z5b5BTD43zP9vkTA78XX3wIDAQAB',
+              },
+            ],
+          },
+        }),
+    ],
+    [
+      'client jwt key of another alg',
+      (c) =>
+        (route(c)['client'] = {
+          jwt: {
+            issuer: 'https://issuer.example',
+            audience: 'site',
+            keys: [
+              {
+                kid: 'a',
+                alg: 'ES256',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+            ],
+          },
+        }),
+    ],
+    [
+      'client jwt alg HS256',
+      (c) =>
+        (route(c)['client'] = {
+          jwt: {
+            issuer: 'https://issuer.example',
+            audience: 'site',
+            keys: [
+              {
+                kid: 'a',
+                alg: 'HS256',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+            ],
+          },
+        }),
+    ],
+    [
+      'client jwt alg none',
+      (c) =>
+        (route(c)['client'] = {
+          jwt: {
+            issuer: 'https://issuer.example',
+            audience: 'site',
+            keys: [
+              {
+                kid: 'a',
+                alg: 'none',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+            ],
+          },
+        }),
+    ],
+    [
+      'client jwt without keys',
+      (c) =>
+        (route(c)['client'] = {
+          jwt: { issuer: 'https://issuer.example', audience: 'site', keys: [] },
+        }),
+    ],
+    [
+      'client jwt two keys with the same kid',
+      (c) =>
+        (route(c)['client'] = {
+          jwt: {
+            issuer: 'https://issuer.example',
+            audience: 'site',
+            keys: [
+              {
+                kid: 'a',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+              {
+                kid: 'a',
+                alg: 'ES256',
+                spki: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAjXWc5nQ8mcxs2imNzkZfTunmT6eE5UyJ022HixmRWe_Jq5DPdU3q9Qzqb5cq0CiaDWZiCtfm-2sBuur7qEPJA',
+              },
+            ],
+          },
+        }),
+    ],
+    [
+      'client jwt 9 keys',
+      (c) =>
+        (route(c)['client'] = {
+          jwt: {
+            issuer: 'https://issuer.example',
+            audience: 'site',
+            keys: [
+              {
+                kid: 'k0',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+              {
+                kid: 'k1',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+              {
+                kid: 'k2',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+              {
+                kid: 'k3',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+              {
+                kid: 'k4',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+              {
+                kid: 'k5',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+              {
+                kid: 'k6',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+              {
+                kid: 'k7',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+              {
+                kid: 'k8',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+            ],
+          },
+        }),
+    ],
+    [
+      'client jwt key with padding',
+      (c) =>
+        (route(c)['client'] = {
+          jwt: {
+            issuer: 'https://issuer.example',
+            audience: 'site',
+            keys: [
+              {
+                kid: 'a',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o=',
+              },
+            ],
+          },
+        }),
+    ],
+    [
+      'client jwt with an extra key',
+      (c) =>
+        (route(c)['client'] = {
+          jwt: {
+            issuer: 'https://issuer.example',
+            audience: 'site',
+            keys: [
+              {
+                kid: 'a',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+            ],
+            leeway: 600,
+          },
+        }),
+    ],
+    [
+      'client jwt next to an api key in Authorization',
+      (c) =>
+        (route(c)['client'] = {
+          jwt: {
+            issuer: 'https://issuer.example',
+            audience: 'site',
+            keys: [
+              {
+                kid: 'a',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+            ],
+          },
+          apiKey: { header: 'Authorization', secret: 'client-key' },
+        }),
+      ['hubspot-token', 'client-key'],
+    ],
+    [
+      'client turnstile',
+      (c) =>
+        (route(c)['client'] = {
+          turnstile: {
+            header: 'X-Turnstile-Token',
+            secret: 'turnstile-key',
+            verifyUrl:
+              'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+          },
+        }),
+      ['hubspot-token', 'turnstile-key'],
+    ],
+    [
+      'client turnstile verify URL over plain HTTP',
+      (c) =>
+        (route(c)['client'] = {
+          turnstile: {
+            header: 'X-Turnstile-Token',
+            secret: 'turnstile-key',
+            verifyUrl:
+              'http://challenges.cloudflare.com/turnstile/v0/siteverify',
+          },
+        }),
+      ['hubspot-token', 'turnstile-key'],
+    ],
+    [
+      'client turnstile secret missing from the bundle',
+      (c) =>
+        (route(c)['client'] = {
+          turnstile: {
+            header: 'X-Turnstile-Token',
+            secret: 'turnstile-key',
+            verifyUrl:
+              'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+          },
+        }),
+    ],
+    [
+      'client honeypot',
+      (c) => (route(c)['client'] = { honeypot: { field: 'website' } }),
+    ],
+    [
+      'client honeypot field name with a dash',
+      (c) => (route(c)['client'] = { honeypot: { field: 'web-site' } }),
+    ],
+    ['client without any check', (c) => (route(c)['client'] = {})],
+    [
+      'client with an unknown check',
+      (c) => (route(c)['client'] = { captcha: { secret: 'x' } }),
+    ],
+    ['client null', (c) => (route(c)['client'] = null)],
+    [
+      'client honeypot on a GET route',
+      (c) => {
+        route(c)['method'] = 'GET';
+        route(c)['client'] = { honeypot: { field: 'website' } };
+      },
+    ],
     ['timeout 0', (c) => (upstream(c)['timeoutMs'] = 0)],
     ['timeout above 60 s', (c) => (upstream(c)['timeoutMs'] = 60001)],
     [
@@ -1617,6 +1932,57 @@ function policyVectors(): Json {
           secrets: ['hubspot-token'],
         };
         allowed(p)['secrets'] = [];
+      },
+    ],
+    [
+      'client turnstile: the verify endpoint is allowed with POST and the secret (FR-16, SEC-35)',
+      (c, p) => {
+        route(c)['client'] = {
+          turnstile: {
+            header: 'X-Turnstile-Token',
+            secret: 'hubspot-token',
+            verifyUrl:
+              'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+          },
+        };
+        (p['upstreams'] as Record<string, Json>)['challenges.cloudflare.com'] =
+          {
+            pathPrefixes: ['/turnstile/v0/siteverify'],
+            methods: ['POST'],
+            secrets: ['hubspot-token'],
+          };
+      },
+    ],
+    [
+      'client turnstile: the verify host is not in the policy',
+      (c) => {
+        route(c)['client'] = {
+          turnstile: {
+            header: 'X-Turnstile-Token',
+            secret: 'hubspot-token',
+            verifyUrl:
+              'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+          },
+        };
+      },
+    ],
+    [
+      'client turnstile: the verify host without the secret (SEC-35)',
+      (c, p) => {
+        route(c)['client'] = {
+          turnstile: {
+            header: 'X-Turnstile-Token',
+            secret: 'hubspot-token',
+            verifyUrl:
+              'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+          },
+        };
+        (p['upstreams'] as Record<string, Json>)['challenges.cloudflare.com'] =
+          {
+            pathPrefixes: ['/turnstile/v0/siteverify'],
+            methods: ['POST'],
+            secrets: [],
+          };
       },
     ],
     ['policy without a secrets list', (_c, p) => delete allowed(p)['secrets']],

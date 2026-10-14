@@ -1,3 +1,4 @@
+import { usedSecrets } from './secrets';
 import {
   isMap,
   isScalar,
@@ -239,6 +240,20 @@ export interface RouteInput {
    * them), null = the key is removed, fields = written as given.
    */
   readonly body?: BodyFields | null;
+  /**
+   * FR-16: the client checks the route form edits — API key, Turnstile, honeypot. Absent = left
+   * as written; given = each of the three as given (absent = removed). A `jwt` is always left as
+   * written (its keys are edited in moat.yaml); a `client` left empty is removed.
+   */
+  readonly client?: {
+    readonly apiKey?: { readonly secret: string; readonly header?: string };
+    readonly turnstile?: {
+      readonly secret: string;
+      readonly header?: string;
+      readonly verifyUrl?: string;
+    };
+    readonly honeypot?: { readonly field: string };
+  };
 }
 
 /** Same value as written, so the author's spelling ("10m" vs "600s") is kept. */
@@ -352,11 +367,7 @@ function dataNode(doc: Document, value: unknown): unknown {
 
 /** Every secret the upstreams use: what a bundle of this config must carry. */
 function secretsOf(config: MoatConfig): string[] {
-  return Object.values(config.upstreams).flatMap((upstream) =>
-    upstream.auth === undefined || upstream.auth === null
-      ? []
-      : [upstream.auth.secret],
-  );
+  return usedSecrets(config);
 }
 
 /**
@@ -512,7 +523,37 @@ export function setRoute(
     JSON.stringify(config.routes[route]?.body) !== JSON.stringify(input.body)
   )
     setIn(doc, at('body'), dataNode(doc, input.body));
+  if (input.client !== undefined) writeClient(doc, at('client'), input.client);
   return checkedEntry(doc, 'routes', route);
+}
+
+/** FR-16: API key, Turnstile and honeypot as given, `jwt` as written; an empty `client` goes. */
+function writeClient(
+  doc: Document,
+  at: string[],
+  client: NonNullable<RouteInput['client']>,
+): void {
+  if (!isMap(doc.getIn(at, true))) setIn(doc, at, emptyMap());
+  const checks = [
+    ['apiKey', client.apiKey, ['secret', 'header']],
+    ['turnstile', client.turnstile, ['secret', 'header', 'verifyUrl']],
+    ['honeypot', client.honeypot, ['field']],
+  ] as const;
+  for (const [key, check, fields] of checks) {
+    if (check === undefined) {
+      deleteIn(doc, [...at, key]);
+      continue;
+    }
+    if (!isMap(doc.getIn([...at, key], true)))
+      setIn(doc, [...at, key], emptyMap());
+    for (const field of fields) {
+      const value = (check as Record<string, string | undefined>)[field];
+      if (value === undefined) deleteIn(doc, [...at, key, field]);
+      else setScalar(doc, [...at, key, field], value, field === 'verifyUrl');
+    }
+  }
+  const written = doc.getIn(at, true);
+  if (isMap(written) && written.items.length === 0) deleteIn(doc, at);
 }
 
 /** Removes a route. */

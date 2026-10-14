@@ -80,8 +80,16 @@ final class RequestHandler
             $cors = ['Access-Control-Allow-Origin' => $allowOrigin, 'Access-Control-Expose-Headers' => 'Retry-After'] + $cors;
         }
         try {
+            // FR-16: API key and JWT before the limits; honeypot with the body; Turnstile, which
+            // costs a call, only for requests the limits and the body let through.
+            if ($route->client !== null) {
+                ClientCheck::credentials($request, $route->client, $bundle, $gate, $now);
+            }
             self::limit($request, $route, $bundle, $gate, $now);
             $payload = self::payload($request, $route, $bundle);
+            if ($route->client !== null) {
+                ClientCheck::turnstile($request, $route->client, $bundle, $gate);
+            }
             $budgets = self::budgets($route, $bundle);
             $response = $budgets === []
                 ? self::forward($payload, $route, $bundle, $gate, $now)
@@ -216,6 +224,9 @@ final class RequestHandler
         $mediaType = $request->contentType === null ? null : ContentType::mediaTypeOf($request->contentType);
         if ($hasBody && ($mediaType === null || !\in_array($mediaType, $route->contentTypes, true))) {
             throw new Failure(GateError::UnsupportedMediaType);
+        }
+        if ($route->client !== null) {
+            ClientCheck::honeypot($route->client, $body);
         }
         if ($route->body !== null) {
             try {

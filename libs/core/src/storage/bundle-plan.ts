@@ -1,3 +1,4 @@
+import { usedSecrets } from '../config/secrets';
 import { verifyBundle } from '../bundle/bundle';
 import { canonicalJson } from '../canonical/jcs';
 import { compileConfig } from '../config/compile';
@@ -112,13 +113,7 @@ export async function planBundle(
       throw new BundlePlanError('config_invalid');
     throw error;
   }
-  const used = [
-    ...new Set(
-      Object.values(parsed.upstreams).flatMap((upstream) =>
-        upstream.auth ? [upstream.auth.secret] : [],
-      ),
-    ),
-  ].sort();
+  const used = usedSecrets(parsed);
   const sealed = readSealed(storage, gate);
   const missing = used.filter((name) => !Object.hasOwn(sealed, name));
   if (missing.length > 0) throw new BundlePlanError('secrets_missing', missing);

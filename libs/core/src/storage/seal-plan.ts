@@ -1,6 +1,8 @@
 import { ConfigError, loadMoatYaml } from '../config/yaml';
 import type { MoatConfig } from '../config/schema';
+import { splitTokenUrl } from '../config/compiled';
 import { fingerprint } from '../crypto/kid';
+import { TURNSTILE_VERIFY_URL } from '../http/client';
 import { MoatRejection } from '../errors';
 import {
   CONFIG_FILE,
@@ -28,11 +30,16 @@ export interface SealPlan {
   readonly currentVersion: number | null;
   /** currentVersion + 1, or 1. */
   readonly nextVersion: number;
-  /** The upstreams of moat.yaml that send it (name and origin), sorted. */
+  /**
+   * Where moat.yaml sends it, sorted: upstreams (name and origin) and routes' Turnstile checks
+   * (`<route>`, the verify origin). FR-16: an API key a route only compares is never sent.
+   */
   readonly usedBy: readonly {
     readonly upstream: string;
     readonly origin: string;
   }[];
+  /** FR-16: the routes that compare a caller's API key with it (never sent anywhere). */
+  readonly comparedBy: readonly string[];
 }
 
 export type SealPlanErrorCode =
@@ -126,10 +133,27 @@ export async function planSeal(
     throw new SealPlanError('gate_unknown');
 
   const config = readConfig(storage);
-  const usedBy = Object.entries(config.upstreams)
-    .filter(([, upstream]) => upstream.auth?.secret === name)
-    .map(([upstream, { origin }]) => ({ upstream, origin }))
-    .sort((a, b) => (a.upstream < b.upstream ? -1 : 1));
+  const usedBy = [
+    ...Object.entries(config.upstreams)
+      .filter(([, upstream]) => upstream.auth?.secret === name)
+      .map(([upstream, { origin }]) => ({ upstream, origin })),
+    ...Object.entries(config.routes).flatMap(([route, { client }]) =>
+      client?.turnstile?.secret === name
+        ? [
+            {
+              upstream: route,
+              origin: splitTokenUrl(
+                client.turnstile.verifyUrl ?? TURNSTILE_VERIFY_URL,
+              ).origin,
+            },
+          ]
+        : [],
+    ),
+  ].sort((a, b) => (a.upstream < b.upstream ? -1 : 1));
+  const comparedBy = Object.entries(config.routes)
+    .filter(([, { client }]) => client?.apiKey?.secret === name)
+    .map(([route]) => route)
+    .sort();
   const sealedText = storage.read(`secrets/${gate}/${name}.json`);
   const sealed = parseJson(sealedText);
   const version = isRecord(sealed) ? sealed['secretVersion'] : undefined;
@@ -139,7 +163,7 @@ export async function planSeal(
       : null;
   if (sealedText !== null && currentVersion === null)
     throw new SealPlanError('secret_unreadable');
-  if (usedBy.length === 0 && currentVersion === null)
+  if (usedBy.length === 0 && comparedBy.length === 0 && currentVersion === null)
     throw new SealPlanError('secret_unknown');
   return {
     gate,
@@ -150,6 +174,7 @@ export async function planSeal(
     currentVersion,
     nextVersion: (currentVersion ?? 0) + 1,
     usedBy,
+    comparedBy,
   };
 }
 

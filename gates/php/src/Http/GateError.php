@@ -17,6 +17,8 @@ enum GateError: string
     case BodyInvalid = 'body_invalid';
     case UnsupportedMediaType = 'unsupported_media_type';
     case OriginForbidden = 'origin_forbidden';
+    /** FR-16: an API key, JWT, Turnstile token or honeypot check failed. */
+    case ClientUnauthorized = 'client_unauthorized';
     case PreflightRejected = 'preflight_rejected';
     case RateLimited = 'rate_limited';
     case QuotaExceeded = 'quota_exceeded';
@@ -44,6 +46,7 @@ enum GateError: string
         return match ($this) {
             self::NotFound => 404,
             self::MethodNotAllowed => 405,
+            self::ClientUnauthorized => 401,
             self::PathInvalid, self::BodyInvalid, self::RequestUnbounded => 400,
             self::BodyTooLarge => 413,
             self::UnsupportedMediaType => 415,

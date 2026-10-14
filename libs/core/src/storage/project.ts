@@ -1,3 +1,4 @@
+import { usedSecrets } from '../config/secrets';
 import { compileConfig } from '../config/compile';
 import type { CompiledConfig } from '../config/compiled';
 import { gateLockState, type GateLockState } from '../config/lock';
@@ -108,13 +109,7 @@ function readConfig(storage: StoragePort): {
   if (text === null) return { state: { status: 'missing' }, parsed: null };
   try {
     const parsed = loadMoatYaml(text);
-    const secretNames = [
-      ...new Set(
-        Object.values(parsed.upstreams).flatMap((upstream) =>
-          upstream.auth ? [upstream.auth.secret] : [],
-        ),
-      ),
-    ].sort();
+    const secretNames = usedSecrets(parsed);
     const environments = Object.entries(parsed.environments ?? {})
       .map(([name, environment]) => ({
         name,
