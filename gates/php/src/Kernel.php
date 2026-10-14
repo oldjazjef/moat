@@ -93,7 +93,7 @@ final class Kernel
             return;
         }
         if ($record !== null && $record->outcome !== PullOutcome::Accepted && $record->outcome !== PullOutcome::Unchanged) {
-            self::log(null, 'pull_' . ($record->outcome?->value ?? 'unknown') . ($record->reason === null ? '' : ' ' . $record->reason));
+            self::log(null, 'pull_' . ($record->outcome->value ?? 'unknown') . ($record->reason === null ? '' : ' ' . $record->reason));
         }
     }
 

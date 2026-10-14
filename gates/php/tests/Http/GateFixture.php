@@ -31,7 +31,11 @@ final class GateFixture
     public readonly string $certFile;
     public readonly string $keyFile;
     public readonly string $policy;
-    /** For bundles the cases publish for the pull (conformance/http/gate-pull.json). */
+    /**
+     * For bundles the cases publish for the pull (conformance/http/gate-pull.json).
+     *
+     * @var non-empty-string
+     */
     private string $signer;
     private string $gateId;
     private string $boxKey;
@@ -185,6 +189,9 @@ final class GateFixture
             if (($publish['tamper'] ?? false) === true) {
                 // One byte of the signed payload changed: the signature no longer fits.
                 $envelope = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+                if (!\is_array($envelope) || !\is_string($envelope['payload'] ?? null)) {
+                    throw new \RuntimeException('publish: not an envelope');
+                }
                 $payload = Base64Url::decode($envelope['payload']);
                 $envelope['payload'] = Base64Url::encode(str_replace('"version":' . $publish['version'], '"version":' . ($publish['version'] + 10), $payload));
                 $body = self::encode($envelope);

@@ -94,9 +94,6 @@ final readonly class Gate
 
             return $active;
         }, BundlePull::LOCK);
-        if (!$active instanceof ActiveBundle) {
-            throw new \LogicException('accept');
-        }
 
         return $active;
     }
