@@ -32,7 +32,7 @@ export const DRY_RUN_METHODS = [
 /** Stands for a secret's value wherever the gate would put it (core SECRET_PLACEHOLDER). */
 export const SECRET_PLACEHOLDER = '<SECRET>';
 /** The longest body the console sends (core MAX_DRY_RUN_BODY). */
-export const MAX_DRY_RUN_BODY = 64 * 1024;
+export const MAX_DRY_RUN_BODY = 32 * 1024;
 
 export interface DryRunBody {
   readonly gate: string | null;

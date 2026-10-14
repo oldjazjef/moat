@@ -143,6 +143,8 @@ export class ConsolePageService {
 
 function noticeOf(error: unknown): ConsoleNotice {
   if (!(error instanceof HttpErrorResponse)) return 'failed';
+  // Escaped as JSON, a body can still exceed the API's request limit.
+  if (error.status === 413) return 'body_too_long';
   const code = (error.error as { error?: unknown } | null)?.error;
   return DRY_RUN_REFUSALS.find((known) => known === code) ?? 'failed';
 }

@@ -772,7 +772,7 @@
         },
         "tips": {
           "nothingSent": "Die Konsole sendet nichts: kein Gate, keine API. Wo das Gate das Secret einsetzt, steht `<SECRET>`.",
-          "policy": "Geprüft wird gegen die Policy, die `moat policy suggest` vorschlägt. Die Policy auf deinem Gate kann enger sein.",
+          "policy": "Geprüft wird gegen die Policy, die `moat policy suggest` vorschlägt. Die Policy auf deinem Gate kann davon abweichen, und einen lokalen Kill-Switch sieht die Konsole nicht.",
           "counters": "Rate Limits, Quoten und Budgets zeigt die Konsole nur als Regel. Wie weit sie schon verbraucht sind, weiss nur das laufende Gate."
         }
       },
@@ -876,7 +876,7 @@
       "config_missing": "Im Projektordner fehlt die moat.yaml.",
       "config_invalid": "Die moat.yaml ist nicht gültig. Die Übersicht zeigt, was fehlt.",
       "gate_unknown": "Dieses Gate kennt das Projekt nicht mehr. Lade das Projekt neu.",
-      "body_too_long": "Der Inhalt ist länger als 64 KiB. Die Konsole prüft nur kürzere Inhalte.",
+      "body_too_long": "Der Inhalt ist zu lang. Die Konsole prüft Inhalte bis 32 KiB.",
       "failed": "Die Prüfung hat nicht geklappt. Versuche es nochmals."
     },
     "resultTitle": "So würde das Gate antworten",
@@ -900,10 +900,10 @@
     "secret": "{{placeholder}} ersetzt das Gate durch das versiegelte Secret «{{secret}}». Die Konsole kennt den Wert nicht.",
     "countersTitle": "Dabei zählt das Gate",
     "counters": {
-      "perIp": "höchstens {{requests}} Anfragen je Besucher in {{seconds}} s (Policy)",
-      "total": "höchstens {{requests}} Anfragen insgesamt in {{seconds}} s (Policy)",
+      "perIp": "höchstens {{requests}} Anfragen je Besucher in {{seconds}} s (vorgeschlagene Policy)",
+      "total": "höchstens {{requests}} Anfragen insgesamt in {{seconds}} s (vorgeschlagene Policy)",
       "route": "höchstens {{requests}} Anfragen in {{seconds}} s (Route)",
-      "quotaPeriod": "höchstens {{requests}} Anfragen pro {{period}} (Policy)",
+      "quotaPeriod": "höchstens {{requests}} Anfragen pro {{period}} (vorgeschlagene Policy)",
       "routeQuotaPeriod": "höchstens {{requests}} Anfragen pro {{period}} (Route)"
     },
     "periods": {
@@ -913,6 +913,6 @@
     "estimate": "Das Budget wird vorab mit {{input}} Bytes Eingabe und {{output}} Tokens Ausgabe belastet.",
     "gateOnly": "Wie weit diese Zähler schon sind und was die API antwortet, weiss nur das laufende Gate.",
     "headersTitle": "Header des Gates an den Browser",
-    "policyNote": "Geprüft gegen die Policy, die `moat policy suggest` für dieses Projekt vorschlägt. Die Policy auf deinem Gate kann enger sein."
+    "policyNote": "Geprüft gegen die Policy, die `moat policy suggest` für dieses Projekt vorschlägt. Die Policy auf deinem Gate kann davon abweichen, und einen lokalen Kill-Switch sieht die Konsole nicht."
   }
 }

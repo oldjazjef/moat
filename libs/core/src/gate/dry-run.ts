@@ -42,7 +42,7 @@ export const SECRET_PLACEHOLDER = '<SECRET>';
 /** The gate's own User-Agent on every upstream call. */
 export const GATE_USER_AGENT = 'moat-gate';
 /** The longest body the console sends to the API (it stays below the API's own request limit). */
-export const MAX_DRY_RUN_BODY = 64 * 1024;
+export const MAX_DRY_RUN_BODY = 32 * 1024;
 
 export interface DryRunRequest {
   readonly method: string;
@@ -242,7 +242,9 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
     if (estimate === null) refuse('request_unbounded');
   }
 
+  // cURL sends its User-Agent (CURLOPT_USERAGENT) before the headers the gate sets.
   const headers: [string, string][] = [
+    ['User-Agent', GATE_USER_AGENT],
     ['Accept', route.responseContentTypes.join(', ')],
   ];
   if (hasBody && mediaType !== null) headers.push(['Content-Type', mediaType]);
@@ -256,7 +258,6 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
       headers.push([auth.name, SECRET_PLACEHOLDER]);
     else url += `?${encodeURIComponent(auth.param)}=${SECRET_PLACEHOLDER}`;
   }
-  headers.push(['User-Agent', GATE_USER_AGENT]);
   return {
     kind: 'forwarded',
     route: name,

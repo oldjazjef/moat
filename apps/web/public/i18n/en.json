@@ -772,7 +772,7 @@
         },
         "tips": {
           "nothingSent": "The console sends nothing: no gate, no API. Where the gate puts the secret, it shows `<SECRET>`.",
-          "policy": "The check uses the policy `moat policy suggest` proposes. The policy on your gate can be narrower.",
+          "policy": "The check uses the policy `moat policy suggest` proposes. The policy on your gate can differ, and the console does not see a local kill switch.",
           "counters": "Rate limits, quotas and budgets appear as rules only. How much of them is used up, only the running gate knows."
         }
       },
@@ -876,7 +876,7 @@
       "config_missing": "The project folder has no moat.yaml.",
       "config_invalid": "The moat.yaml is not valid. The overview shows what is missing.",
       "gate_unknown": "The project no longer knows this gate. Reload the project.",
-      "body_too_long": "The body is longer than 64 KiB. The console checks shorter bodies only.",
+      "body_too_long": "The body is too long. The console checks bodies up to 32 KiB.",
       "failed": "The check did not work. Try again."
     },
     "resultTitle": "How the gate would answer",
@@ -900,10 +900,10 @@
     "secret": "The gate replaces {{placeholder}} with the sealed secret “{{secret}}”. The console does not know its value.",
     "countersTitle": "The gate counts",
     "counters": {
-      "perIp": "at most {{requests}} requests per visitor in {{seconds}} s (policy)",
-      "total": "at most {{requests}} requests in total in {{seconds}} s (policy)",
+      "perIp": "at most {{requests}} requests per visitor in {{seconds}} s (suggested policy)",
+      "total": "at most {{requests}} requests in total in {{seconds}} s (suggested policy)",
       "route": "at most {{requests}} requests in {{seconds}} s (route)",
-      "quotaPeriod": "at most {{requests}} requests per {{period}} (policy)",
+      "quotaPeriod": "at most {{requests}} requests per {{period}} (suggested policy)",
       "routeQuotaPeriod": "at most {{requests}} requests per {{period}} (route)"
     },
     "periods": {
@@ -913,6 +913,6 @@
     "estimate": "The budget is charged up front with {{input}} bytes of input and {{output}} tokens of output.",
     "gateOnly": "How far these counters are and what the API answers, only the running gate knows.",
     "headersTitle": "Headers from the gate to the browser",
-    "policyNote": "Checked against the policy `moat policy suggest` proposes for this project. The policy on your gate can be narrower."
+    "policyNote": "Checked against the policy `moat policy suggest` proposes for this project. The policy on your gate can differ, and the console does not see a local kill switch."
   }
 }
