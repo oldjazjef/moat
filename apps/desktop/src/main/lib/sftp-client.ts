@@ -22,16 +22,33 @@ export type UploadResult =
   | { readonly status: 'connect_failed' }
   /** The package's folder is on the server already; nothing was written. */
   | { readonly status: 'exists' }
-  /** The remote folder is missing or not writable, or a write failed. */
+  /** The remote folder is missing or not writable; nothing was written. */
   | { readonly status: 'upload_failed' }
+  /** The package folder was created, then a write failed or timed out: it is incomplete. */
+  | { readonly status: 'partial' }
   | { readonly status: 'uploaded' };
 
 /** Enough for a slow shared host; the handshake and every step after it. */
 export const SFTP_TIMEOUT_MS = 20_000;
 
-/** `SHA256:…` as `ssh-keygen -lf` and most hosters print it. */
+/**
+ * `<key type> SHA256:…` as `ssh-keygen -lf` and most hosters print it. The type is the name at
+ * the start of the key blob (uint32 length + name); `unknown` when it does not look like one.
+ */
 export function hostKeyFingerprint(key: Buffer): string {
-  return `SHA256:${createHash('sha256').update(key).digest('base64').replace(/=+$/, '')}`;
+  const digest = createHash('sha256')
+    .update(key)
+    .digest('base64')
+    .replace(/=+$/, '');
+  return `${hostKeyType(key)} SHA256:${digest}`;
+}
+
+function hostKeyType(key: Buffer): string {
+  if (key.length < 4) return 'unknown';
+  const length = key.readUInt32BE(0);
+  if (length < 3 || length > 64 || key.length < 4 + length) return 'unknown';
+  const name = key.subarray(4, 4 + length).toString('latin1');
+  return /^[a-z0-9@.-]+$/.test(name) ? name : 'unknown';
 }
 
 /**
@@ -50,12 +67,19 @@ export function uploadPackage(
     const client = new Client();
     let seen: string | null = null;
     let settled = false;
+    // Set once the package folder exists on the server: any failure after it leaves it partial.
+    const progress = { made: false };
     const finish = (result: UploadResult) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       client.end();
-      resolve(result);
+      client.destroy();
+      resolve(
+        progress.made && result.status !== 'uploaded'
+          ? { status: 'partial' }
+          : result,
+      );
     };
     const timer = setTimeout(
       () => finish({ status: 'connect_failed' }),
@@ -64,7 +88,7 @@ export function uploadPackage(
     client.on('ready', () => {
       client.sftp((error, sftp) => {
         if (error) return finish({ status: 'upload_failed' });
-        void writeAll(sftp, remoteDir, files).then(finish);
+        void writeAll(sftp, remoteDir, files, progress).then(finish);
       });
     });
     client.on('error', (error: Error & { level?: string }) => {
@@ -113,6 +137,7 @@ async function writeAll(
   sftp: SFTPWrapper,
   remoteDir: string,
   files: readonly DeployFile[],
+  progress: { made: boolean },
 ): Promise<UploadResult> {
   const folder = files[0]?.name.split('/')[0];
   if (folder === undefined) return { status: 'upload_failed' };
@@ -126,6 +151,7 @@ async function writeAll(
   });
   if (made !== 'made')
     return { status: made === 'exists' ? 'exists' : 'upload_failed' };
+  progress.made = true;
   for (const file of files) {
     const written = await new Promise<boolean>((resolve) => {
       sftp.open(posix.join(remoteDir, file.name), 'wx', (error, handle) => {

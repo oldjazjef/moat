@@ -1,11 +1,11 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import {
-  SFTP_DIR,
   SFTP_HOST,
   SFTP_HOST_KEY,
   SFTP_USER,
   type SftpTarget,
+  isRemoteDir,
 } from './sftp';
 
 /** `<userData>/config.json`: what the desktop remembers between starts. */
@@ -142,7 +142,7 @@ function sftpTargetOf(value: unknown): SftpTarget | null {
     typeof username !== 'string' ||
     !SFTP_USER.test(username) ||
     typeof remoteDir !== 'string' ||
-    !(remoteDir === '.' || SFTP_DIR.test(remoteDir)) ||
+    !(remoteDir === '.' || (remoteDir !== '' && isRemoteDir(remoteDir))) ||
     (auth !== 'password' && auth !== 'key') ||
     !(keyFile === null || absolute(keyFile) !== null) ||
     !(

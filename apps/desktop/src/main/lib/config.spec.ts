@@ -86,7 +86,7 @@ describe('desktop config', () => {
       remoteDir: 'moat-uploads',
       auth: 'password',
       keyFile: null,
-      hostKey: `SHA256:${'k'.repeat(43)}`,
+      hostKey: `ssh-ed25519 SHA256:${'k'.repeat(43)}`,
       secret: 'c2VhbGVk',
     };
     writeFileSync(

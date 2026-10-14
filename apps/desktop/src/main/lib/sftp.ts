@@ -24,7 +24,7 @@ export interface SftpTarget {
   readonly auth: SftpAuth;
   /** For `key`: the OpenSSH private key file the person chose. */
   readonly keyFile: string | null;
-  /** `SHA256:…` */
+  /** `<key type> SHA256:…` */
   readonly hostKey: string | null;
   /** base64 of the keychain's ciphertext of the password or passphrase. */
   readonly secret: string | null;
@@ -34,10 +34,25 @@ export interface SftpTarget {
 export const SFTP_HOST =
   /^(?:[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?|[0-9A-Fa-f:.]{2,45})$/;
 export const SFTP_USER = /^[A-Za-z0-9._@+-]{1,64}$/;
-/** A plain POSIX path, relative to the login folder or absolute; no `.` or `..` segment. */
-export const SFTP_DIR =
-  /^\/?(?:[A-Za-z0-9_~-][A-Za-z0-9._~-]{0,127}\/?){0,16}$/;
-export const SFTP_HOST_KEY = /^SHA256:[A-Za-z0-9+/]{43}$/;
+const SFTP_DIR_SEGMENT = /^[A-Za-z0-9_~-][A-Za-z0-9._~-]{0,127}$/;
+/**
+ * A plain POSIX path, relative to the login folder or absolute: at most 16 segments, none empty,
+ * `.` or `..`. Checked segment by segment (one regex over the whole path backtracks
+ * exponentially). `''` is the login folder.
+ */
+export function isRemoteDir(dir: string): boolean {
+  if (dir.length > 16 * 129 + 1) return false;
+  const rest = dir.startsWith('/') ? dir.slice(1) : dir;
+  if (rest === '') return true;
+  const parts = rest.endsWith('/')
+    ? rest.slice(0, -1).split('/')
+    : rest.split('/');
+  return (
+    parts.length <= 16 && parts.every((part) => SFTP_DIR_SEGMENT.test(part))
+  );
+}
+/** `<key type> SHA256:…`, e.g. `ssh-ed25519 SHA256:…`. */
+export const SFTP_HOST_KEY = /^[a-z0-9@.-]{3,64} SHA256:[A-Za-z0-9+/]{43}$/;
 /** Far more than a password or passphrase needs. */
 export const MAX_SECRET_LENGTH = 1024;
 /** An OpenSSH private key is a few KiB at most. */
@@ -132,7 +147,12 @@ export class SftpSession {
         keyName: this.keyFile === null ? null : basename(this.keyFile),
         secretRemembered:
           same && stored.secret !== null && this.deps.keychain.available,
-        hostKey: same ? stored.hostKey : null,
+        hostKey:
+          stored !== null &&
+          stored.host === this.draft.host &&
+          String(stored.port) === this.draft.port
+            ? stored.hostKey
+            : null,
       },
       canRemember: this.deps.keychain.available,
       hostKey: this.pending?.hostKey ?? null,
@@ -174,10 +194,7 @@ export class SftpSession {
       port < 1 ||
       port > 65535 ||
       !SFTP_USER.test(this.draft.username) ||
-      !SFTP_DIR.test(this.draft.remoteDir) ||
-      this.draft.remoteDir
-        .split('/')
-        .some((part) => part === '.' || part === '..') ||
+      !isRemoteDir(this.draft.remoteDir) ||
       input.secret.length > MAX_SECRET_LENGTH
     )
       return this.show('target_invalid');
@@ -226,7 +243,13 @@ export class SftpSession {
           : this.deps.keychain.seal(secret)
         : null;
     const attempt: Attempt = { target, connection, remember, hostKey: null };
-    const pinned = same ? stored.hostKey : null;
+    // The pin belongs to the server (host and port), whoever logs in there.
+    const pinned =
+      stored !== null &&
+      stored.host === target.host &&
+      stored.port === target.port
+        ? stored.hostKey
+        : null;
     return this.attempt(
       attempt,
       pinned,
@@ -291,6 +314,7 @@ export class SftpSession {
       }
       case 'connect_failed':
       case 'exists':
+      case 'partial':
       case 'upload_failed':
         return this.show(result.status);
     }

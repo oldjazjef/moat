@@ -26,7 +26,7 @@ import { hostKeyFingerprint, uploadPackage } from './sftp-client';
 /** TEST ONLY: a throwaway password and host key for the local server below. */
 const PASSWORD = 'TEST-ONLY-sftp-password';
 const HOST_KEY = utils.generateKeyPairSync('ed25519').private;
-const OTHER_PIN = `SHA256:${'A'.repeat(43)}`;
+const OTHER_PIN = `ssh-ed25519 SHA256:${'A'.repeat(43)}`;
 
 const FILES = [
   {
@@ -44,6 +44,8 @@ const FILES = [
 ];
 
 const { OK, FAILURE, NO_SUCH_FILE } = utils.sftp.STATUS_CODE;
+/** Files the server refuses to create, to break an upload halfway. */
+const refuse = new Set<string>();
 const { CREAT, EXCL, WRITE } = utils.sftp.OPEN_MODE;
 
 /** A minimal SFTP server over a temp folder: mkdir, stat, exclusive create, write, close. */
@@ -73,6 +75,8 @@ function serveSftp(sftp: SFTPWrapper, root: string): void {
   });
   sftp.on('OPEN', (id, path, flags) => {
     if ((flags & (CREAT | EXCL | WRITE)) !== (CREAT | EXCL | WRITE))
+      return sftp.status(id, FAILURE);
+    if (refuse.has(path.split('/').pop() ?? ''))
       return sftp.status(id, FAILURE);
     try {
       const fd = openSync(inside(path), 'wx');
@@ -196,6 +200,28 @@ describe('uploadPackage (DT-05, T-67) against a local SFTP server', () => {
     );
     // SFTP only: no command ever runs on the server.
     expect(execs).toEqual([]);
+  });
+
+  it('a failure after the folder was made is partial, never exists or upload_failed', async () => {
+    mkdirSync(join(root, 'half'));
+    refuse.add('policy.json');
+    try {
+      expect(await uploadPackage(connection(), pin, 'half', FILES)).toEqual({
+        status: 'partial',
+      });
+    } finally {
+      refuse.clear();
+    }
+    expect(readdirSync(join(root, 'half', 'moat-www-v3'))).toEqual([
+      'bundle-v3.json',
+    ]);
+  });
+
+  it('the fingerprint names the key type, as ssh-keygen -lf does', () => {
+    expect(pin).toMatch(/^ssh-ed25519 SHA256:[A-Za-z0-9+/]{43}$/);
+    expect(hostKeyFingerprint(Buffer.from([0, 0, 0, 200, 1]))).toMatch(
+      /^unknown SHA256:/,
+    );
   });
 
   it('a missing remote folder is upload_failed, an unreachable server connect_failed', async () => {

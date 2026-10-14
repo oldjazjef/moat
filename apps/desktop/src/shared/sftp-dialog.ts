@@ -41,6 +41,7 @@ export type SftpNotice =
   | 'auth_failed'
   | 'hostkey_changed'
   | 'exists'
+  | 'partial'
   | 'upload_failed'
   | 'forgotten';
 

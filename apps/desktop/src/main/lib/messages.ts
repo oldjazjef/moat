@@ -298,7 +298,9 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
         hostkey_changed:
           'Der Server zeigt einen anderen Host-Key als beim letzten Mal. Moat hat nichts gesendet. Frag deinen Hoster, ob der Schlüssel gewechselt hat. Nur dann entfernst du das Ziel und bestätigst den neuen Schlüssel.',
         exists:
-          'Auf dem Server liegt dieses Paket schon. Es wurde nichts überschrieben.',
+          'Auf dem Server liegt schon ein Ordner mit dem Namen dieses Pakets. Es wurde nichts überschrieben.',
+        partial:
+          'Das Hochladen brach mittendrin ab. Der Paketordner auf dem Server ist unvollständig: Lösche ihn, bevor du es noch einmal versuchst.',
         upload_failed:
           'Hochladen hat nicht geklappt. Gibt es den Ordner auf dem Server, und darfst du dort schreiben?',
         forgotten:
@@ -535,7 +537,10 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
         auth_failed: 'Sign-in was refused. Check user and password or key.',
         hostkey_changed:
           'The server shows another host key than last time. Moat sent nothing. Ask your hoster whether the key changed. Only then remove the target and confirm the new key.',
-        exists: 'This package is on the server already. Nothing was replaced.',
+        exists:
+          "A folder with this package's name is on the server already. Nothing was replaced.",
+        partial:
+          'The upload stopped halfway. The package folder on the server is incomplete: delete it before you try again.',
         upload_failed:
           'The upload did not work. Does the folder exist on the server, and may you write there?',
         forgotten:

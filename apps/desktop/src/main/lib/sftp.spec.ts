@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { DeployPackage } from './deploy';
 import { MESSAGES } from './messages';
-import { type SftpTarget, SftpSession } from './sftp';
+import { isRemoteDir, type SftpTarget, SftpSession } from './sftp';
 import type { UploadResult } from './sftp-client';
 
 const PKG: DeployPackage = {
@@ -15,7 +15,7 @@ const PKG: DeployPackage = {
   policy: '{}',
 };
 const FILES = [{ name: 'moat-www-v3/bundle-v3.json', data: new Uint8Array() }];
-const PIN = `SHA256:${'k'.repeat(43)}`;
+const PIN = `ssh-ed25519 SHA256:${'k'.repeat(43)}`;
 /** TEST ONLY */
 const PASSWORD = 'TEST-ONLY-password';
 const INPUT = {
@@ -139,12 +139,52 @@ describe('SftpSession (DT-05, T-67)', () => {
     const { session, results, saved } = setup(stored);
     results.push({
       status: 'hostkey_changed',
-      hostKey: `SHA256:${'z'.repeat(43)}`,
+      hostKey: `ssh-ed25519 SHA256:${'z'.repeat(43)}`,
     });
     const step = await session.connect(INPUT);
     expect('view' in step && step.view.notice).toBe('hostkey_changed');
     expect(saved()?.hostKey).toBe(PIN);
     expect(session.forget().notice).toBe('forgotten');
+    expect(saved()).toBeNull();
+  });
+
+  it('the pin belongs to host and port: another user or sign-in keeps it, the secret does not', async () => {
+    const stored: SftpTarget = {
+      host: 'sftp.example.ch',
+      port: 22,
+      username: 'eme',
+      remoteDir: 'moat-uploads',
+      auth: 'password',
+      keyFile: null,
+      hostKey: PIN,
+      secret: 'sealed:old',
+    };
+    const { session, upload, results } = setup(stored);
+    results.push({ status: 'hostkey_changed', hostKey: PIN });
+    const step = await session.connect({
+      ...INPUT,
+      username: 'other',
+      secret: 'typed',
+    });
+    expect(upload).toHaveBeenCalledWith(
+      expect.objectContaining({ username: 'other', password: 'typed' }),
+      PIN,
+      'moat-uploads',
+      FILES,
+    );
+    expect('view' in step && step.view).toMatchObject({
+      notice: 'hostkey_changed',
+      target: { hostKey: PIN, secretRemembered: false },
+    });
+  });
+
+  it('a package folder left incomplete says so', async () => {
+    const { session, results, saved } = setup();
+    results.push({ status: 'hostkey_unknown', hostKey: PIN });
+    await session.connect(INPUT);
+    results.push({ status: 'partial' });
+    const step = await session.trustHostKey();
+    expect('view' in step && step.view.notice).toBe('partial');
     expect(saved()).toBeNull();
   });
 
@@ -192,6 +232,8 @@ describe('SftpSession (DT-05, T-67)', () => {
       { remoteDir: '../www' },
       { remoteDir: 'a/./b' },
       { remoteDir: 'a b' },
+      { remoteDir: 'a//b' },
+      { remoteDir: `${'a/'.repeat(17)}` },
     ]) {
       const step = await session.connect({ ...INPUT, ...change });
       expect('view' in step && step.view.notice, JSON.stringify(change)).toBe(
@@ -221,5 +263,21 @@ describe('SftpSession (DT-05, T-67)', () => {
       'moat-uploads',
       FILES,
     );
+  });
+});
+
+describe('isRemoteDir', () => {
+  it('takes plain relative and absolute paths, refuses . and .. and empty parts', () => {
+    for (const ok of ['', '/', 'www', '/var/www/', 'a/b_c/~d', 'x.y-z'])
+      expect(isRemoteDir(ok), ok).toBe(true);
+    for (const bad of ['.', '..', 'a/../b', '//', 'a//b', '.x', 'a b', 'ä'])
+      expect(isRemoteDir(bad), bad).toBe(false);
+  });
+
+  it('answers at once on a long near-match (no catastrophic backtracking)', () => {
+    const started = performance.now();
+    for (const input of [`${'a'.repeat(32)}!`, `${'a.'.repeat(2000)}!`])
+      expect(isRemoteDir(input)).toBe(false);
+    expect(performance.now() - started).toBeLessThan(50);
   });
 });
