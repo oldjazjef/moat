@@ -206,7 +206,9 @@
       "secret_unreadable": "The sealed file `secrets/{{gate}}/{{name}}.json` is damaged. Delete it, then seal {{name}} again (the version starts at 1 again).",
       "not_writable": "The folder `secrets/{{gate}}` cannot be written. Nothing was saved.",
       "failed": "Sealing did not work. Nothing was saved."
-    }
+    },
+    "hardening": "Hardening",
+    "hardeningIntro": "Checks whether the gate's files can be read from the internet. Only the gate itself, on your server, determines the hardening level."
   },
   "routes": {
     "subtitle": "What the gate forwards, and to whom",
@@ -551,7 +553,35 @@
       "noGate": "No gate entered yet. Every gate fed from Moat Desktop is “Signed”.",
       "hardening": "Hardening level",
       "hardeningUnknown": "Not checked yet. Only the gate itself can tell the level, on your server.",
-      "hardeningCheck": "Run `php moat-gate.php check --url=https://<your-site>/<path>/moat-gate.php` there."
+      "hardeningCheck": "Run `php moat-gate.php check --url=https://<your-site>/<path>/moat-gate.php` there.",
+      "hardeningOutside": "Moat can also check from here whether the gate's files can be read from the internet."
+    }
+  },
+  "hardening": {
+    "levels": {
+      "unsafe": "Unsafe for secrets"
+    },
+    "check": {
+      "url": "Gate address",
+      "urlPlaceholder": "https://www.example.com/moat-gate.php",
+      "folder": "Data folder",
+      "folderPlaceholder": "moat-data-0123456789abcdef0123456789abcdef",
+      "folderHint": "`php moat-gate.php install` printed its name. The folder lies next to `moat-gate.php`.",
+      "run": "Check from outside",
+      "reachable": "Anyone on the internet can fetch these files of the gate:",
+      "reachableFix": "Do not bind secrets to this gate. The web server ignores the access rules in the data folder (`.htaccess`, `web.config`). Ask your host how to block the folder, then check again. If `identity.php` is listed, install the gate again: its key is no longer secret.",
+      "blocked": "With the data folder `{{folder}}`, no file of the gate came back. If the name is right, nothing can be read from outside.",
+      "blockedNext": "Moat shows a hardening level only once the gate has checked itself, including which user PHP runs as. To do that, run `php moat-gate.php check --url={{url}}` on the server.",
+      "notGate": "No gate answers at this address. Check the address of the gate file.",
+      "incomplete": "Not every request got a clear answer, for example because of a redirect, throttling or a server error. Without a complete check there is no result. Check the address and try again later.",
+      "notices": {
+        "url_invalid": "The address does not fit. It starts with https://, ends with the gate file (such as `moat-gate.php`) and has no part after ? or #.",
+        "folder_invalid": "The data folder is called `moat-data-` followed by 32 characters from 0–9 and a–f.",
+        "not_confirmed": "Nothing was sent: the address was not confirmed in Moat's window.",
+        "folder_format": "The data folder is called `moat-data-` followed by 32 characters from 0–9 and a–f.",
+        "failed": "That did not work. Try again.",
+        "busy": "A check is already running. Wait until it is done."
+      }
     }
   },
   "help": {
@@ -673,7 +703,8 @@
           "outside": "The gate then fetches its own data files over the internet, the way anyone could. If one of them comes back, it reports `data_reachable`.",
           "process": "The check also reaches the gate itself. That way the web server records which user PHP runs as and whether open_basedir is set.",
           "level": "At the end you see the hardening level: `H1, Basic` or `H1, Unsafe for secrets`. If something is missing for a safe verdict, it says `not determined`.",
-          "fix": "Below the level, every finding comes with a recommendation. Fix all `unsafe` ones before you bind secrets to this gate."
+          "fix": "Below the level, every finding comes with a recommendation. Fix all `unsafe` ones before you bind secrets to this gate.",
+          "desktop": "In Moat Desktop, “Check from outside” under “Gates” checks whether the gate's files can be read from the internet. Enter the address of the gate file and the “Data folder”; Moat asks in a window of its own whether it may reach that address. If a file is readable, Moat shows “Unsafe for secrets”. If none is, Moat shows no level, because only the gate itself determines it."
         },
         "tips": {
           "shared": "If all websites on the server run as the same user (such as www-data) and open_basedir is not set, other websites could read the gate's files. Ask your hoster for a separate PHP user per website.",

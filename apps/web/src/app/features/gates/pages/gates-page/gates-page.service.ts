@@ -63,6 +63,8 @@ export class GatesPageService {
   readonly canSign = this.bridge !== null;
   /** Only Moat Desktop seals (in its own window: the page never sees a value). */
   readonly canSeal = this.bridge !== null;
+  /** Only Moat Desktop checks from outside (DT-07): the Cloud does not call out (T-59). */
+  readonly canCheck = this.bridge !== null;
   /** `<gate>/<secret>` whose seal window is open. */
   readonly sealing = signal<string | null>(null);
   readonly sealed = signal<{

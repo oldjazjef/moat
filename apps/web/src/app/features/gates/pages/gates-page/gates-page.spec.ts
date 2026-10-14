@@ -264,6 +264,19 @@ describe('GatesPage', () => {
       expect(el.querySelector('[data-bundle-sign]')).toBeNull();
     });
 
+    it('offers the check from outside per gate only in the desktop (DT-07)', async () => {
+      const browser = await openProjectTab('gates', GatesPage, PROJECT);
+      expect(browser.el.querySelector('[data-gate-hardening]')).toBeNull();
+      TestBed.resetTestingModule();
+      desktop({ status: 'cancelled' });
+      const { el } = await openProjectTab('gates', GatesPage, PROJECT);
+      expect(
+        el.querySelectorAll(
+          '[data-gate] [data-gate-hardening] mt-hardening-check',
+        ).length,
+      ).toBe(el.querySelectorAll('[data-gate]').length);
+    });
+
     it('asks the desktop shell by ids only, then says where the bundle is and reads the project again', async () => {
       const sign = desktop({ status: 'signed', version: 4 });
       const { el, harness } = await openProjectTab('gates', GatesPage, PROJECT);

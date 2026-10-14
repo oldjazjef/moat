@@ -199,6 +199,19 @@
         </button>
         } }
       </div>
+      } @if (service.canCheck && resource.id(); as project) {
+      <div data-gate-hardening>
+        <div class="mb-1 flex items-center gap-1">
+          <h3 class="text-sm font-medium">
+            {{ 'gates.hardening' | translate }}
+          </h3>
+          <mt-help-link section="hardening" />
+        </div>
+        <p class="text-muted-foreground mb-3 text-sm">
+          {{ 'gates.hardeningIntro' | translate }}
+        </p>
+        <mt-hardening-check [project]="project" [gate]="gate.name" />
+      </div>
       } @if (service.signed(); as signed) { @if (signed.gate === gate.name) {
       <p
         class="text-sm"

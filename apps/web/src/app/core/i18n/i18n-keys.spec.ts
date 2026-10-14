@@ -28,6 +28,7 @@ import {
   RECIPE_NOTICES,
 } from '../../features/setup/components/steps/recipe-step';
 import { GATE_FAILURES, RECIPE_IDS } from '../api/recipe.types';
+import { HARDENING_NOTICES } from '../../shared/components/hardening-check';
 
 /**
  * Every i18n key the app references exists in every message file, and every text in the files is
@@ -71,6 +72,7 @@ const DYNAMIC_KEYS = [
   ...GATE_NOTICES.map((code) => `setup.gate.notices.${code}`),
   ...RECIPE_NOTICES.map((code) => `setup.recipe.notices.${code}`),
   ...GATE_CODES.map((code) => `setup.recipe.codes.${code}`),
+  ...HARDENING_NOTICES.map((code) => `hardening.check.notices.${code}`),
   ...GATE_FAILURES.map((reason) => `setup.recipe.failed.${reason}`),
   ...RECIPE_IDS.flatMap((id) => [
     `setup.recipe.recipes.${id}.title`,

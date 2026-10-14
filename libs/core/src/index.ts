@@ -169,6 +169,19 @@ export {
   type KillSwitch,
 } from './gate/kill-switch';
 export {
+  DATA_FILES,
+  DATA_FOLDER,
+  DATA_MARKER,
+  answersLikeGate,
+  classifyProbes,
+  inspectProbe,
+  probePaths,
+  type GateProbeAnswer,
+  type ProbeAnswer,
+  type DesktopExternalResult,
+  type ExternalProbe,
+} from './gate/external-probe';
+export {
   USAGE_FORMATS,
   MAX_USAGE_TOKENS,
   MAX_USAGE_DEPTH,

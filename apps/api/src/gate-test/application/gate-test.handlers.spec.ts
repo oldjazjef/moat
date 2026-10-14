@@ -35,6 +35,9 @@ class FakeClient extends GateClientPort {
       truncated: false,
     };
   }
+  async probe(): Promise<never> {
+    throw new Error('not used by «Testen»');
+  }
 }
 
 class FakeConfirmation extends GateTestConfirmationPort {

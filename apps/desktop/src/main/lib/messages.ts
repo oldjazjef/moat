@@ -176,11 +176,11 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       detail: (reason) => `Grund: ${reason}`,
     },
     testRequest: {
-      title: 'Testanfrage senden',
-      message: (host) => `Testanfrage an ${host} senden?`,
+      title: 'Gate erreichen',
+      message: (host) => `Anfragen an ${host} senden?`,
       detail: (origin) =>
-        `Moat sendet die Testanfrage aus dem Einrichtungsassistenten an ${origin}. Sende sie nur, wenn dort dein Gate läuft. Moat fragt für diese Adresse bis zum Beenden nicht noch einmal.`,
-      send: 'Senden',
+        `Moat sendet eine Testanfrage oder die Prüfung von aussen an ${origin}. Erlaube das nur, wenn dort dein Gate läuft. Moat fragt für diese Adresse bis zum Beenden nicht noch einmal.`,
+      send: 'Erlauben',
       cancel: 'Abbrechen',
     },
     menu: {
@@ -304,11 +304,11 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       detail: (reason) => `Reason: ${reason}`,
     },
     testRequest: {
-      title: 'Send test request',
-      message: (host) => `Send the test request to ${host}?`,
+      title: 'Reach the gate',
+      message: (host) => `Send requests to ${host}?`,
       detail: (origin) =>
-        `Moat sends the setup wizard's test request to ${origin}. Send it only if your gate runs there. Moat does not ask again for this address until it quits.`,
-      send: 'Send',
+        `Moat sends a test request or the check from outside to ${origin}. Allow this only if your gate runs there. Moat does not ask again for this address until it quits.`,
+      send: 'Allow',
       cancel: 'Cancel',
     },
     menu: { file: 'File', edit: 'Edit', view: 'View', quit: 'Quit' },

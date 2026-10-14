@@ -15,7 +15,11 @@ import {
   SuggestPolicyQuery,
   TestGateCommand,
 } from './application/gate-test.handlers';
-import { GateTestDto } from './dto/gate-test.dto';
+import {
+  HardeningCheckCommand,
+  type HardeningCheckReport,
+} from './application/hardening-check.handler';
+import { GateTestDto, HardeningCheckDto } from './dto/gate-test.dto';
 import type { GateAnswer } from './ports/gate-client.port';
 
 /**
@@ -66,5 +70,31 @@ export class GateTestController {
     if (result.status === 'refused')
       throw new UnprocessableEntityException({ error: result.code });
     return result.answer;
+  }
+
+  /**
+   * The check from outside (DT-07, SEC-49): probes the gate's data folder and files over the
+   * public URL and answers which came back readable, never their content. 422 when nothing was
+   * sent (HardeningCheckRefusal).
+   */
+  @Post(':id/hardening-check')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  async hardeningCheck(
+    @Param('id') id: string,
+    @Body() body: HardeningCheckDto,
+  ): Promise<HardeningCheckReport> {
+    const result = await this.commands.execute(
+      new HardeningCheckCommand(
+        id,
+        body.url,
+        body.dataFolder,
+        body.locale ?? '',
+      ),
+    );
+    if (result.status === 'not_found') throw new NotFoundException();
+    if (result.status === 'refused')
+      throw new UnprocessableEntityException({ error: result.code });
+    return result.report;
   }
 }
