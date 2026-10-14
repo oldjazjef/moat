@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { desktopApiEnv } from './lib/api-env';
 import type { SigningKeyInfo } from '../shared/bridge';
 import type { PrepareDeployResult } from './lib/deploy';
+import type { BundleImportResult, ImportInput } from './lib/import';
 import type { PrepareSealResult, SealResult } from './lib/sealing';
 import type { PlanSigner, PrepareResult, SignResult } from './lib/signing';
 
@@ -69,6 +70,13 @@ interface ApiBundle {
     signer: PlanSigner,
   ): Promise<PrepareDeployResult>;
   zipFiles(entries: readonly { name: string; data: Uint8Array }[]): Uint8Array;
+  importBundle(
+    api: ApiHandle,
+    id: string,
+    gate: string,
+    signer: PlanSigner,
+    input: ImportInput,
+  ): Promise<BundleImportResult>;
 }
 
 export interface RunningApi {
@@ -123,6 +131,13 @@ export interface RunningApi {
     signer: PlanSigner,
   ): Promise<PrepareDeployResult>;
   zipFiles(entries: readonly { name: string; data: Uint8Array }[]): Uint8Array;
+  /** In-process only (FR-45): the main process chose and read the file in its own dialog. */
+  importBundle(
+    id: string,
+    gate: string,
+    signer: PlanSigner,
+    input: ImportInput,
+  ): Promise<BundleImportResult>;
   close(): Promise<void>;
 }
 
@@ -168,6 +183,8 @@ export async function startApi(options: {
     prepareDeploy: (id, gate, signer) =>
       api.prepareDeploy(running, id, gate, signer),
     zipFiles: (entries) => api.zipFiles(entries),
+    importBundle: (id, gate, signer, input) =>
+      api.importBundle(running, id, gate, signer, input),
     close: () => running.app.close(),
   };
 }

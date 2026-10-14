@@ -6,6 +6,8 @@ import {
   type DeployResult,
   type DeployTarget,
   desktopBridge,
+  type ImportFrom,
+  type ImportResult,
   type SecretSealResult,
 } from '../../../../core/desktop/desktop-bridge';
 import type { RowAction } from '../../../../shared/components/row-actions';
@@ -69,6 +71,23 @@ export const DEPLOY_OUTCOMES = [
   'failed',
 ] as const;
 
+/** Every import outcome with a text (`gates.importResult.<outcome>`); a cancel says nothing. */
+export const IMPORT_OUTCOMES = [
+  'imported',
+  'key_missing',
+  'gate_unknown',
+  'unreadable',
+  'too_large',
+  'package_invalid',
+  'bundle_invalid',
+  'signature_invalid',
+  'gate_mismatch',
+  'version_not_newer',
+  'config_invalid',
+  'not_writable',
+  'failed',
+] as const;
+
 export type ValidGate = Extract<GateState, { status: 'valid' }>;
 
 /**
@@ -99,6 +118,14 @@ export class GatesPageService {
   readonly deployed = signal<{
     readonly gate: string;
     readonly result: Exclude<DeployResult, { status: 'cancelled' }>;
+  } | null>(null);
+  /** Only Moat Desktop imports bundles (what: its own dialog, FR-45). */
+  readonly canImport = this.bridge !== null;
+  /** The gate whose import dialog is open. */
+  readonly importing = signal<string | null>(null);
+  readonly imported = signal<{
+    readonly gate: string;
+    readonly result: Exclude<ImportResult, { status: 'cancelled' }>;
   } | null>(null);
   /** `<gate>/<secret>` whose seal window is open. */
   readonly sealing = signal<string | null>(null);
@@ -242,6 +269,49 @@ export class GatesPageService {
     gate: string,
   ): Record<string, string | number> {
     return result.status === 'exported' || result.status === 'committed'
+      ? { gate, version: result.version }
+      : { gate };
+  }
+
+  /**
+   * A bundle file, package ZIP or package folder into the gate (FR-45): chosen in the desktop's
+   * dialog, checked as the gate would (DT-17); the page learns only the outcome.
+   */
+  async importBundle(gate: ValidGate, from: ImportFrom): Promise<void> {
+    if (this.bridge === null || this.importing() !== null) return;
+    this.importing.set(gate.name);
+    this.imported.set(null);
+    let result: ImportResult;
+    try {
+      result = await this.bridge.gate.import(
+        this.resource.id(),
+        gate.name,
+        from,
+        this.translate.getCurrentLang() ?? '',
+      );
+    } catch {
+      result = { status: 'failed' };
+    } finally {
+      this.importing.set(null);
+    }
+    if (result.status === 'cancelled') return;
+    this.imported.set({ gate: gate.name, result });
+    // A new latest bundle: read the project again.
+    if (result.status === 'imported') this.resource.reload();
+  }
+
+  /** The i18n key for an import outcome (`gates.importResult.*`). */
+  importText(result: Exclude<ImportResult, { status: 'cancelled' }>): string {
+    return result.status === 'refused'
+      ? `gates.importResult.${result.code}`
+      : `gates.importResult.${result.status}`;
+  }
+
+  importParams(
+    result: Exclude<ImportResult, { status: 'cancelled' }>,
+    gate: string,
+  ): Record<string, string | number> {
+    return result.status === 'imported'
       ? { gate, version: result.version }
       : { gate };
   }

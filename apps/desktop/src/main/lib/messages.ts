@@ -79,6 +79,15 @@ export interface DesktopMessages {
   /** The SFTP window (DT-05) and its file dialog for a private key. */
   readonly sftpDialog: SftpDialogTexts;
   readonly sftpKey: { readonly title: string; readonly button: string };
+  /** Import (FR-45): a bundle file or package ZIP, or a package folder. */
+  readonly importBundle: {
+    readonly chooseFile: {
+      readonly title: string;
+      readonly button: string;
+      readonly filter: string;
+    };
+    readonly chooseFolder: { readonly title: string; readonly button: string };
+  };
   readonly menu: {
     readonly file: string;
     readonly edit: string;
@@ -344,6 +353,17 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       title: 'SSH-Schlüssel wählen',
       button: 'Diesen Schlüssel verwenden',
     },
+    importBundle: {
+      chooseFile: {
+        title: 'Bundle oder Deploy-Paket importieren',
+        button: 'Importieren',
+        filter: 'Bundle oder ZIP',
+      },
+      chooseFolder: {
+        title: 'Ordner des Deploy-Pakets wählen',
+        button: 'Diesen Ordner importieren',
+      },
+    },
     menu: {
       file: 'Datei',
       edit: 'Bearbeiten',
@@ -597,6 +617,17 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       },
     },
     sftpKey: { title: 'Choose SSH key', button: 'Use this key' },
+    importBundle: {
+      chooseFile: {
+        title: 'Import bundle or deploy package',
+        button: 'Import',
+        filter: 'Bundle or ZIP',
+      },
+      chooseFolder: {
+        title: 'Choose the deploy package folder',
+        button: 'Import this folder',
+      },
+    },
     menu: { file: 'File', edit: 'Edit', view: 'View', quit: 'Quit' },
   },
 };

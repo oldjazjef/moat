@@ -105,6 +105,37 @@ export type DeployResult =
   | { status: 'git_failed' }
   | { status: 'failed' };
 
+/** What «Bundle importieren» opens (FR-45): a bundle file or package ZIP, or a package folder. */
+export type ImportFrom = 'file' | 'folder';
+
+/**
+ * Why an import was refused (FR-45, DT-17): `key_missing`: no signing key chosen;
+ * `unreadable` / `too_large`: the chosen file cannot be read or is too big; `package_invalid`: not
+ * a deploy package as Moat writes it (unexpected or doubled files, links, unsafe ZIP entries);
+ * `bundle_invalid`: not a well-formed bundle; `signature_invalid`: not signed with the desktop's
+ * key; `gate_mismatch`: made for another gate; `version_not_newer`: not above the latest bundle;
+ * `config_invalid`: its config breaks the schema.
+ */
+export type ImportRefusal =
+  | 'key_missing'
+  | 'gate_unknown'
+  | 'unreadable'
+  | 'too_large'
+  | 'package_invalid'
+  | 'bundle_invalid'
+  | 'signature_invalid'
+  | 'gate_mismatch'
+  | 'version_not_newer'
+  | 'config_invalid';
+
+export type ImportResult =
+  | { status: 'imported'; version: number }
+  | { status: 'cancelled' }
+  | { status: 'refused'; code: ImportRefusal }
+  /** `bundles/<gate>/` could not be written; nothing was saved. */
+  | { status: 'not_writable' }
+  | { status: 'failed' };
+
 export interface DesktopBridge {
   readonly platform: string;
   readonly project: {
@@ -165,6 +196,17 @@ export interface DesktopBridge {
       target: DeployTarget,
       locale: string,
     ): Promise<DeployResult>;
+    /**
+     * Imports a bundle (FR-45): the main process's dialog chooses a `bundle-v<n>.json`, a deploy
+     * package ZIP or folder; the bundle is checked as the gate would and saved byte for byte.
+     * The page never learns the path, only the outcome.
+     */
+    import(
+      projectId: string,
+      gate: string,
+      from: ImportFrom,
+      locale: string,
+    ): Promise<ImportResult>;
   };
 }
 

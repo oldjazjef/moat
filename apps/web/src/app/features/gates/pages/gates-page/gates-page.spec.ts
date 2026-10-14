@@ -4,6 +4,7 @@ import type { ProjectView } from '../../../../core/api/project.types';
 import type {
   BundleSignResult,
   DeployResult,
+  ImportResult,
   SecretSealResult,
 } from '../../../../core/desktop/desktop-bridge';
 import {
@@ -256,7 +257,7 @@ describe('GatesPage', () => {
         key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
         bundle: { sign },
         secret: { seal: vi.fn() },
-        gate: { deploy: vi.fn() },
+        gate: { deploy: vi.fn(), import: vi.fn() },
       };
       return sign;
     };
@@ -337,7 +338,7 @@ describe('GatesPage', () => {
         key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
         bundle: { sign: vi.fn() },
         secret: { seal },
-        gate: { deploy: vi.fn() },
+        gate: { deploy: vi.fn(), import: vi.fn() },
       };
       return seal;
     };
@@ -394,7 +395,7 @@ describe('GatesPage', () => {
         key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
         bundle: { sign: vi.fn() },
         secret: { seal: vi.fn() },
-        gate: { deploy },
+        gate: { deploy, import: vi.fn() },
       };
       return deploy;
     };
@@ -522,6 +523,90 @@ describe('GatesPage', () => {
         (el.querySelector('[data-deploy-git]') as HTMLButtonElement).disabled,
       ).toBe(true);
       expect(text(el, '[data-gate-deploy] p')).toContain('Signiere zuerst');
+    });
+  });
+
+  describe('bundle import in Moat Desktop (FR-45, DT-17)', () => {
+    afterEach(() => delete window.moatDesktop);
+
+    const desktop = (result: ImportResult) => {
+      const importBundle = vi.fn().mockResolvedValue(result);
+      window.moatDesktop = {
+        platform: 'linux',
+        project: { add: vi.fn(), create: vi.fn(), reveal: vi.fn() },
+        key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
+        bundle: { sign: vi.fn() },
+        secret: { seal: vi.fn() },
+        gate: { deploy: vi.fn(), import: importBundle },
+      };
+      return importBundle;
+    };
+
+    it('offers no import in a browser', async () => {
+      const { el } = await openProjectTab('gates', GatesPage, PROJECT);
+      expect(el.querySelector('[data-gate-import]')).toBeNull();
+    });
+
+    it('asks the shell by ids only, says which version arrived and reads the project again', async () => {
+      const importBundle = desktop({ status: 'imported', version: 7 });
+      const { el, harness } = await openProjectTab('gates', GatesPage, PROJECT);
+      const button = el.querySelector(
+        '[data-import-file]',
+      ) as HTMLButtonElement;
+      expect(button.textContent?.trim()).toBe('Bundle importieren');
+      button.click();
+      // The project is read again: the new latest bundle shows.
+      await new Promise((resolve) => setTimeout(resolve));
+      TestBed.inject(HttpTestingController)
+        .expectOne(`/api/projects/${PROJECT.id}`)
+        .flush(PROJECT);
+      await settle(harness);
+      expect(importBundle).toHaveBeenCalledWith(
+        PROJECT.id,
+        'site',
+        'file',
+        'de-CH',
+      );
+      expect(text(el, '[data-import-outcome]')).toBe(
+        'Version 7 ist importiert. Sie ist jetzt das letzte Bundle dieses Gates.',
+      );
+    });
+
+    it('says nothing on cancel and why an import was refused', async () => {
+      const importBundle = desktop({ status: 'cancelled' });
+      const { el, harness } = await openProjectTab('gates', GatesPage, PROJECT);
+      const button = el.querySelector(
+        '[data-import-folder]',
+      ) as HTMLButtonElement;
+      expect(button.textContent?.trim()).toBe('Paketordner importieren');
+      button.click();
+      await settle(harness);
+      expect(importBundle).toHaveBeenCalledWith(
+        PROJECT.id,
+        'site',
+        'folder',
+        'de-CH',
+      );
+      expect(el.querySelector('[data-import-outcome]')).toBeNull();
+      const refusals: [ImportResult, string][] = [
+        [
+          { status: 'refused', code: 'signature_invalid' },
+          'nicht mit deiner Schlüsseldatei signiert',
+        ],
+        [{ status: 'refused', code: 'gate_mismatch' }, 'für ein anderes Gate'],
+        [
+          { status: 'refused', code: 'version_not_newer' },
+          'nicht neuer als das letzte Bundle',
+        ],
+        [{ status: 'refused', code: 'package_invalid' }, 'kein Deploy-Paket'],
+        [{ status: 'not_writable' }, 'bundles/site'],
+      ];
+      for (const [result, expected] of refusals) {
+        importBundle.mockResolvedValue(result);
+        button.click();
+        await settle(harness);
+        expect(text(el, '[data-import-outcome]')).toContain(expected);
+      }
     });
   });
 });

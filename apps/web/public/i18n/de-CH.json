@@ -239,6 +239,25 @@
       "not_writable": "Am gewählten Ort kann Moat nicht schreiben. Es wurde nichts gespeichert.",
       "git_failed": "Git konnte das Paket nicht committen. Ist `user.name` und `user.email` gesetzt, und läuft gerade kein Merge oder Rebase? Moat hat den Ordner wieder entfernt.",
       "failed": "Das Paket konnte nicht gespeichert werden."
+    },
+    "import": "Import",
+    "importIntro": "Übernimmt ein signiertes Bundle in dieses Projekt, zum Beispiel ein Deploy-Paket von einem anderen Computer. Moat nimmt nur ein Bundle an, das mit deiner Schlüsseldatei für dieses Gate signiert ist und eine höhere Version hat als das letzte. Die Policy im Paket übernimmt es nicht.",
+    "importFile": "Bundle importieren",
+    "importFolder": "Paketordner importieren",
+    "importResult": {
+      "imported": "Version {{version}} ist importiert. Sie ist jetzt das letzte Bundle dieses Gates.",
+      "key_missing": "Moat Desktop hat keine lesbare Schlüsseldatei. Wähle sie beim Signieren.",
+      "gate_unknown": "Die Gate-Datei fehlt oder ist beschädigt.",
+      "unreadable": "Die gewählte Datei oder der Ordner lässt sich nicht lesen. Moat liest nur gewöhnliche Dateien, keine Verknüpfungen.",
+      "too_large": "Die gewählte Datei ist zu gross für ein Bundle oder ein Deploy-Paket.",
+      "package_invalid": "Das ist kein Deploy-Paket, wie Moat es speichert. Erwartet werden `bundle-v<n>.json` und höchstens `policy.json`, `LIESMICH.txt` oder `README.txt`, ohne Verknüpfungen, Unterordner oder unsichere Pfade.",
+      "bundle_invalid": "Die Datei ist kein gültiges Bundle. Nichts wurde übernommen.",
+      "signature_invalid": "Das Bundle ist nicht mit deiner Schlüsseldatei signiert oder wurde verändert. Nichts wurde übernommen.",
+      "gate_mismatch": "Das Bundle ist für ein anderes Gate signiert. Nichts wurde übernommen.",
+      "version_not_newer": "Das Bundle ist nicht neuer als das letzte Bundle dieses Gates. Nichts wurde übernommen.",
+      "config_invalid": "Die Konfiguration im Bundle ist nicht gültig. Nichts wurde übernommen.",
+      "not_writable": "Der Ordner `bundles/{{gate}}` lässt sich nicht schreiben. Nichts wurde übernommen.",
+      "failed": "Der Import hat nicht geklappt."
     }
   },
   "routes": {
@@ -866,6 +885,7 @@
           "package": "Unter «Gates» speicherst du mit «Als ZIP speichern» oder «In Ordner ablegen» ein Deploy-Paket: das zuletzt signierte Bundle unverändert, die passende `policy.json` und eine Anleitung (`LIESMICH.txt`) mit den Befehlen und der Prüfsumme. Wohin, wählst du im Dialog von Moat Desktop. Moat packt nur ein Bundle ein, das mit deiner Schlüsseldatei für dieses Gate signiert ist.",
           "sftp": "Unter «Gates» lädt «Per SFTP hochladen» dasselbe Paket als neuen Ordner auf deinen Server. Server, Benutzer, Ordner und Passwort oder SSH-Schlüssel gibst du im Fenster von Moat Desktop ein, nie in der App-Seite. Beim ersten Mal zeigt es den Host-Key des Servers: Vergleiche ihn mit dem, den dein Hoster nennt. Erst danach sendet Moat Benutzer, Passwort und Dateien. Zeigt der Server später einen anderen Schlüssel, bricht Moat ab. Moat überschreibt auf dem Server nichts und führt dort keinen Befehl aus: `accept` startest du selbst.",
           "git": "Liefert dein Hoster aus einem Git-Repository aus, legt «Per Git ausliefern» unter «Gates» das Paket als neuen Ordner in deine lokale Arbeitskopie, committet nur diesen Ordner und pusht ihn auf den Upstream des ausgecheckten Branches. Den Ordner wählst du beim ersten Mal, danach bestätigst du jedes Mal Branch und Remote. Moat nutzt dein installiertes Git mit deinen Zugangsdaten, führt aber keine Hooks des Repositorys aus und liefert nicht in ein Repository aus, dessen eigene Config Programme startet. Hat der Branch Commits, die noch nicht gepusht sind, pushst du sie zuerst selbst: Moat schickt nur das Paket. Klappt der Push nicht, bleibt der Commit, und du pushst ihn selbst.",
+          "import": "Unter «Gates» übernimmt «Bundle importieren» ein signiertes Bundle (`bundle-v<n>.json`) oder ein Deploy-Paket als ZIP ins Projekt, «Paketordner importieren» den Ordner eines Pakets. So arbeitest du auch ohne Cloud an mehreren Computern mit derselben Schlüsseldatei. Moat prüft es wie das Gate: Signatur deiner Schlüsseldatei, Gate-ID, eine höhere Version als das letzte Bundle und eine gültige Konfiguration. Übernommen wird nur das Bundle, Byte für Byte. Die `policy.json` im Paket bleibt draussen: Die Policy gehört dem Gate.",
           "build": "Im CLI baust du das Bundle mit `moat build <gate> --key <datei>.moatkey`. Es liegt danach unter `bundles`.",
           "deploy": "Lade die Bundle-Datei auf den Server.",
           "accept": "Aktiviere sie dort mit `php moat-gate.php accept <bundle>.json`. Unter «Gates» siehst du die zuletzt gebaute Version."

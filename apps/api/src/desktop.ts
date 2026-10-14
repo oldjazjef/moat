@@ -27,6 +27,11 @@ import {
   DeployPackageService,
   type PrepareDeployResult,
 } from './project/application/deploy-package.service';
+import {
+  BundleImportService,
+  type BundleImportResult,
+  type ImportInput,
+} from './project/application/bundle-import.service';
 import { MainProcessConfirmation } from './gate-test/ports/gate-test-confirmation.port';
 import { ProjectService } from './project/project.service';
 
@@ -200,6 +205,26 @@ export function prepareDeploy(
 /** The deploy package as a ZIP (stored, reproducible: core storedZip). */
 export function zipFiles(entries: readonly ZipEntry[]): Uint8Array {
   return storedZip(entries);
+}
+
+export type {
+  BundleImportResult,
+  ImportInput,
+} from './project/application/bundle-import.service';
+
+/**
+ * Imports a bundle file, a deploy package folder or its ZIP (FR-45, DT-17) that the main process
+ * read after its own dialog: checked as the gate would against `signer`, then written as
+ * `bundles/<gate>/<version>.json` byte for byte. Never an HTTP route: the page cannot name a file.
+ */
+export function importBundle(
+  api: RunningApi,
+  id: string,
+  gate: string,
+  signer: { kid: string; publicKey: Uint8Array },
+  input: ImportInput,
+): Promise<BundleImportResult> {
+  return api.app.get(BundleImportService).import(id, gate, signer, input);
 }
 
 /**
