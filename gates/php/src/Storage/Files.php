@@ -62,6 +62,25 @@ final class Files
         }
     }
 
+    /** Appends to an existing file; only under the caller's lock (the request log). */
+    public static function append(string $path, string $bytes): void
+    {
+        if (str_contains($path, '://') || !is_file($path)) {
+            throw new \RuntimeException('not a local file');
+        }
+        $handle = fopen($path, 'ab');
+        if ($handle === false) {
+            throw new \RuntimeException('cannot open a data file');
+        }
+        try {
+            if (fwrite($handle, $bytes) !== \strlen($bytes) || !fflush($handle)) {
+                throw new \RuntimeException('cannot append to a data file');
+            }
+        } finally {
+            fclose($handle);
+        }
+    }
+
     /**
      * Runs `$critical` while holding an exclusive lock on `$path` (created with `$initial` when
      * missing, so a guarded lock file stays guarded). Waits at most LOCK_WAIT_SECONDS, then throws.

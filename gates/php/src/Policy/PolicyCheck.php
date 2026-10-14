@@ -14,6 +14,7 @@ use Moat\Gate\Http\PathNormaliser;
 use Moat\Gate\Json\JsonObject;
 use Moat\Gate\Rejection;
 use Moat\Gate\RejectionCode;
+use Moat\Gate\Runtime\RequestLog;
 
 /**
  * Parses the local policy and checks a config against it, exactly as libs/core does
@@ -36,7 +37,12 @@ final class PolicyCheck
         $testing = $value->has('testing');
         $hasMaxAge = $value->has('maxConfigAgeSeconds');
         $hasPull = $value->has('pull');
-        if (!$value->hasExactKeys('v', 'upstreams', 'maxBodyBytes', 'maxResponseBytes', 'maxTimeoutMs', 'limits', ...($testing ? ['testing'] : []), ...($hasMaxAge ? ['maxConfigAgeSeconds'] : []), ...($hasPull ? ['pull'] : []))) {
+        $hasLog = $value->has('logMaxBytes');
+        if (!$value->hasExactKeys('v', 'upstreams', 'maxBodyBytes', 'maxResponseBytes', 'maxTimeoutMs', 'limits', ...($testing ? ['testing'] : []), ...($hasMaxAge ? ['maxConfigAgeSeconds'] : []), ...($hasPull ? ['pull'] : []), ...($hasLog ? ['logMaxBytes'] : []))) {
+            self::invalid();
+        }
+        $logMaxBytes = $hasLog ? $value->get('logMaxBytes') : RequestLog::DEFAULT_MAX_BYTES;
+        if (!\is_int($logMaxBytes) || !ConfigValidator::intIn($logMaxBytes, 0, RequestLog::MAX_BYTES)) {
             self::invalid();
         }
         $maxAge = null;
@@ -67,7 +73,7 @@ final class PolicyCheck
 
         $pull = $hasPull ? self::pull($value->get('pull')) : null;
 
-        return new Policy($allowed, $maxBodyBytes, $maxResponseBytes, $maxTimeoutMs, $limits, $testing, $resolve, $caFile, $maxAge, $pull);
+        return new Policy($allowed, $maxBodyBytes, $maxResponseBytes, $maxTimeoutMs, $limits, $testing, $resolve, $caFile, $maxAge, $pull, $logMaxBytes);
     }
 
     /**

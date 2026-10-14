@@ -1,0 +1,211 @@
+{
+  "description": "The request log (FR-50, DT-12, SEC-34, T-72): after every request the gate appends one line to the data file `log` — `t` (unix seconds), `route` (the matched route's name or null), `method`, `status`, `error` (the gate's error code, or null when the upstream answered), `ms` and `client` (16 hex digits: a keyed hash of the client address, the same for one client on one UTC day, never the address). No path, query, header or body is written. When `log` grows beyond the policy's `logMaxBytes` (default 262144, 0 = no log), it becomes `logold` and a new `log` starts, so both together stay below twice the limit. Same runner and fake upstream as gate.json. A case's `expect.log` is compared with the newest line (`t`, `ms` and `client` only by their shape), `expect.logExcludes` lists texts neither file may contain, `expect.logBytesAtMost` bounds the content of both files together (without the marker lines).",
+  "config": {
+    "version": 1,
+    "enabled": true,
+    "upstreams": {
+      "fake": {
+        "origin": "https://upstream.test:{port}",
+        "auth": {
+          "type": "bearer",
+          "secret": "api-token"
+        },
+        "timeoutMs": 5000
+      }
+    },
+    "routes": {
+      "newsletter": {
+        "method": "POST",
+        "path": "/newsletter",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 1024,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": ["https://www.example.ch"],
+        "rateLimit": null
+      },
+      "status": {
+        "method": "GET",
+        "path": "/status",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
+      }
+    }
+  },
+  "policy": {
+    "v": 1,
+    "upstreams": {
+      "upstream.test:{port}": {
+        "pathPrefixes": ["/echo"],
+        "methods": ["GET", "POST"],
+        "secrets": ["api-token"]
+      }
+    },
+    "maxBodyBytes": 1024,
+    "maxResponseBytes": 65536,
+    "maxTimeoutMs": 5000,
+    "limits": {
+      "perIp": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "total": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "maxClients": 5000
+    },
+    "testing": {
+      "resolve": {
+        "upstream.test:{port}": "127.0.0.1"
+      },
+      "caFile": "{caFile}"
+    },
+    "logMaxBytes": 300
+  },
+  "secrets": {
+    "api-token": "TEST-ONLY-planted-secret-7f3a9c"
+  },
+  "cases": [
+    {
+      "name": "an answered request is logged with its route",
+      "request": {
+        "method": "GET",
+        "path": "/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "log": {
+          "route": "status",
+          "method": "GET",
+          "status": 200,
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "no body, query or address in the log",
+      "request": {
+        "method": "POST",
+        "path": "/newsletter?email=planted-person%40example.ch",
+        "headers": {
+          "Origin": "https://www.example.ch",
+          "Content-Type": "application/json"
+        },
+        "body": "{\"email\":\"planted-person@example.ch\"}"
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "log": {
+          "route": "newsletter",
+          "method": "POST",
+          "status": 200,
+          "error": null
+        },
+        "logExcludes": [
+          "planted-person",
+          "email",
+          "127.0.0.1",
+          "/newsletter",
+          "TEST-ONLY"
+        ]
+      }
+    },
+    {
+      "name": "an unknown path is logged without a route and without the path",
+      "request": {
+        "method": "GET",
+        "path": "/planted-path",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0,
+        "log": {
+          "route": null,
+          "method": "GET",
+          "status": 404,
+          "error": "not_found"
+        },
+        "logExcludes": ["planted-path"]
+      }
+    },
+    {
+      "name": "a refused origin is logged with the route and the code",
+      "request": {
+        "method": "POST",
+        "path": "/newsletter",
+        "headers": {
+          "Origin": "https://evil.example",
+          "Content-Type": "application/json"
+        },
+        "body": "{\"email\":\"a@b.ch\"}"
+      },
+      "expect": {
+        "status": 403,
+        "error": "origin_forbidden",
+        "upstreamCalls": 0,
+        "log": {
+          "route": "newsletter",
+          "method": "POST",
+          "status": 403,
+          "error": "origin_forbidden"
+        }
+      }
+    },
+    {
+      "name": "a wrong method is logged without a route",
+      "request": {
+        "method": "DELETE",
+        "path": "/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 405,
+        "error": "method_not_allowed",
+        "upstreamCalls": 0,
+        "log": {
+          "route": null,
+          "method": "DELETE",
+          "status": 405,
+          "error": "method_not_allowed"
+        }
+      }
+    },
+    {
+      "name": "the log rolls over and stays below twice logMaxBytes",
+      "request": {
+        "method": "GET",
+        "path": "/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "log": {
+          "route": "status",
+          "method": "GET",
+          "status": 200,
+          "error": null
+        },
+        "logBytesAtMost": 600
+      }
+    }
+  ]
+}

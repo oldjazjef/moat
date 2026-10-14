@@ -42,18 +42,36 @@ final class RequestHandler
 
     public static function handle(Request $request, ActiveBundle $bundle, Gate $gate, int $now): Response
     {
+        $started = hrtime(true);
+        $route = null;
+        $error = null;
         try {
-            return self::dispatch($request, $bundle, $gate, $now);
+            $response = self::dispatch($request, $bundle, $gate, $now, $route);
         } catch (Failure $failure) {
             if ($failure->error->status() >= 500) {
                 Kernel::log(null, $failure->error->value);
             }
-
-            return Response::error($failure->error, $failure->headers);
+            $error = $failure->error->value;
+            $response = Response::error($failure->error, $failure->headers);
         }
+        // FR-50: one line per request, without path, query, headers, body or address.
+        RequestLog::record(
+            $gate->data,
+            $bundle->policy->logMaxBytes,
+            $now,
+            $route,
+            $request->method,
+            $response->status,
+            $error,
+            intdiv(hrtime(true) - $started, 1_000_000),
+            $request->remoteAddr,
+        );
+
+        return $response;
     }
 
-    private static function dispatch(Request $request, ActiveBundle $bundle, Gate $gate, int $now): Response
+    /** @param-out ?string $route the matched route's name */
+    private static function dispatch(Request $request, ActiveBundle $bundle, Gate $gate, int $now, ?string &$route): Response
     {
         $kill = KillSwitch::read($gate->data);
         if (!$bundle->config->enabled || $kill->gate) {
@@ -69,31 +87,32 @@ final class RequestHandler
 
             return new Response(204, $headers + ['Vary' => self::PREFLIGHT_VARY], '');
         }
-        $route = self::match($request, $routes, $kill);
+        $matched = self::match($request, $routes, $kill);
+        $route = $matched->name;
         try {
-            $allowOrigin = Cors::check($route, $request->origin, $request->fetchSite);
+            $allowOrigin = Cors::check($matched, $request->origin, $request->fetchSite);
         } catch (Rejection) {
             throw new Failure(GateError::OriginForbidden, ['Vary' => 'Origin']);
         }
-        $cors = $route->origins === [] ? [] : ['Vary' => 'Origin'];
+        $cors = $matched->origins === [] ? [] : ['Vary' => 'Origin'];
         if ($allowOrigin !== null) {
             $cors = ['Access-Control-Allow-Origin' => $allowOrigin, 'Access-Control-Expose-Headers' => 'Retry-After'] + $cors;
         }
         try {
             // FR-16: API key and JWT before the limits; honeypot with the body; Turnstile, which
             // costs a call, only for requests the limits and the body let through.
-            if ($route->client !== null) {
-                ClientCheck::credentials($request, $route->client, $bundle, $gate, $now);
+            if ($matched->client !== null) {
+                ClientCheck::credentials($request, $matched->client, $bundle, $gate, $now);
             }
-            self::limit($request, $route, $bundle, $gate, $now);
-            $payload = self::payload($request, $route, $bundle);
-            if ($route->client !== null) {
-                ClientCheck::turnstile($request, $route->client, $bundle, $gate);
+            self::limit($request, $matched, $bundle, $gate, $now);
+            $payload = self::payload($request, $matched, $bundle);
+            if ($matched->client !== null) {
+                ClientCheck::turnstile($request, $matched->client, $bundle, $gate);
             }
-            $budgets = self::budgets($route, $bundle);
+            $budgets = self::budgets($matched, $bundle);
             $response = $budgets === []
-                ? self::forward($payload, $route, $bundle, $gate, $now)
-                : self::forwardWithin($budgets, $payload, $route, $bundle, $gate, $now);
+                ? self::forward($payload, $matched, $bundle, $gate, $now)
+                : self::forwardWithin($budgets, $payload, $matched, $bundle, $gate, $now);
 
             return new Response($response->status, $response->headers + $cors, $response->body);
         } catch (Failure $failure) {

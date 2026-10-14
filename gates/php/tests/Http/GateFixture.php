@@ -132,6 +132,14 @@ final class GateFixture
         }
     }
 
+    /** The request log's content, `logold` then `log`, without the marker lines (FR-50). */
+    public function requestLog(): string
+    {
+        $data = DataDir::locate($this->site) ?? throw new \RuntimeException('no data folder');
+
+        return ($data->read('logold') ?? '') . ($data->read('log') ?? '');
+    }
+
     /** Upstream calls other than fetching the published bundle file. */
     public function upstreamCalls(): int
     {

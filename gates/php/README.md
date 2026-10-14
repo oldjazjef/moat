@@ -25,16 +25,18 @@ This creates a data folder `moat-data-<random>/` next to the gate file, with `.h
 `web.config`, an empty `index.php`, and data files that stop PHP before their content (fetched over
 HTTP they answer 404 with an empty body):
 
-| File           | Content                                                                      |
-| -------------- | ---------------------------------------------------------------------------- |
-| `identity.php` | gate id and the gate's X25519 box key (never leaves the server)              |
-| `trust.php`    | pinned signers and threshold (docs/CRYPTO.md §8)                             |
-| `policy.php`   | the local policy                                                             |
-| `bundle.php`   | the active bundle, exactly as received                                       |
-| `state.php`    | the highest version ever accepted (a deleted bundle reopens no rollback)     |
-| `limits.php`   | rate-limit counters, keyed by hashes (no IP addresses), at most `maxClients` |
-| `lock.php`     | the lock that serialises updates to `limits.php`                             |
-| `webfacts.php` | what the web server process saw of itself, for the hardening check           |
+| File           | Content                                                                         |
+| -------------- | ------------------------------------------------------------------------------- |
+| `identity.php` | gate id and the gate's X25519 box key (never leaves the server)                 |
+| `trust.php`    | pinned signers and threshold (docs/CRYPTO.md §8)                                |
+| `policy.php`   | the local policy                                                                |
+| `bundle.php`   | the active bundle, exactly as received                                          |
+| `state.php`    | the highest version ever accepted (a deleted bundle reopens no rollback)        |
+| `limits.php`   | rate-limit counters, keyed by hashes (no IP addresses), at most `maxClients`    |
+| `lock.php`     | the lock that serialises updates to `limits.php`                                |
+| `webfacts.php` | what the web server process saw of itself, for the hardening check              |
+| `log.php`      | the request log, one JSON line per request (below); `logold.php` the one before |
+| `logkey.php`   | the random key of the request log's client hashes                               |
 
 `install` prints the gate id, the box key and the fingerprints. Compare them, then pin the gate
 in the project folder with the `moat gate add` line it prints.
@@ -53,6 +55,7 @@ php moat-gate.php status                   # fingerprints, policy, active bundle
 php moat-gate.php kill [--route=<name>]    # switch the gate or one route off at once (below)
 php moat-gate.php revive [--route=<name>]  # and on again (without --route: everything)
 php moat-gate.php check [--url=https://…/moat-gate.php]   # the hardening check (below)
+php moat-gate.php log [--lines=1000]       # the newest lines of the request log (below)
 ```
 
 A bundle is accepted only when its signature is valid for the pinned signers, it is bound to this
@@ -352,6 +355,35 @@ budget as the sum of the routes' token budgets. The spending lives in `budget.ph
 at most 1024 entries, the spending of routes no longer in the bundle dropped); `status` prints
 each budget with what it has spent and when it resets. A damaged or full store refuses every
 request with a budget (`503 rate_limit_unavailable`); deleting `budget.php` resets the spending.
+
+## Request log (FR-50, DT-12, T-72)
+
+After every request the gate appends one JSON line to `log.php`
+(`conformance/http/gate-log.json`):
+
+```json
+{
+  "t": 1792010534,
+  "route": "newsletter",
+  "method": "POST",
+  "status": 200,
+  "error": null,
+  "ms": 184,
+  "client": "b431975193a03e04"
+}
+```
+
+`route` is null when no route matched, `error` is the gate's code (null when the upstream answered),
+`client` a keyed BLAKE2b hash of the client address (IPv4, or the IPv6 /64) and the UTC day: one
+client is one id for one day, and the address cannot be read back (the key in `logkey.php` never
+leaves the server). There is no path, query, header or body in it. When `log.php` would grow
+beyond the policy's `logMaxBytes` (default 262144 bytes, at most 1 MiB), it becomes `logold.php`
+and a new one starts; `"logMaxBytes": 0` turns the log off. Writing the log never changes an
+answer: when the lock is busy or the disk full, the line is lost.
+
+`php moat-gate.php log` prints the newest lines of both files, oldest first. Moat Desktop reads
+that output, or the two data files fetched by SFTP or FTP («Log ansehen» in «Gates»); there is
+no endpoint for it (SEC-40).
 
 ## Hardening check (SEC-49, SEC-49a)
 

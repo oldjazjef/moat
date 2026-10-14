@@ -29,6 +29,7 @@ use Moat\Gate\Runtime\KillSwitch;
 use Moat\Gate\Runtime\NotConfigured;
 use Moat\Gate\Runtime\PullOutcome;
 use Moat\Gate\Runtime\PullRecord;
+use Moat\Gate\Runtime\RequestLog;
 use Moat\Gate\Runtime\Trust;
 use Moat\Gate\Storage\DataDir;
 use Moat\Gate\Storage\Files;
@@ -46,10 +47,11 @@ use Moat\Gate\Storage\Files;
  *   php moat-gate.php kill [--route=<name>]
  *   php moat-gate.php revive [--route=<name>]
  *   php moat-gate.php check [--url=https://<site>/<path>/moat-gate.php]
+ *   php moat-gate.php log [--lines=<n>]
  */
 final class Cli
 {
-    private const USAGE = "usage: php moat-gate.php install|trust|policy|accept|pull|status|check|kill|revive (see the gate README)\n";
+    private const USAGE = "usage: php moat-gate.php install|trust|policy|accept|pull|status|check|kill|revive|log (see the gate README)\n";
 
     /** @param list<string> $argv */
     public static function main(string $gateDir, array $argv): int
@@ -67,6 +69,7 @@ final class Cli
                 'check' => self::check($gateDir, $args, $options),
                 'kill' => self::kill($gateDir, $args, $options, true),
                 'revive' => self::kill($gateDir, $args, $options, false),
+                'log' => self::log($gateDir, $args, $options),
                 default => self::usage(self::USAGE),
             };
         } catch (Rejection $rejection) {
@@ -175,6 +178,29 @@ final class Cli
             PullOutcome::Failed => 'no usable answer (' . $record->reason . '), the active bundle stays.',
             null => 'still running or interrupted.',
         };
+    }
+
+    /**
+     * The request log (FR-50, DT-12): the newest lines of `logold` and `log`, oldest first, one
+     * JSON object per line — what Moat Desktop reads («Log ansehen»). Never a path, query, body
+     * or address: the gate does not write them.
+     *
+     * @param list<string>          $args
+     * @param array<string, string> $options
+     */
+    private static function log(string $gateDir, array $args, array $options): int
+    {
+        $data = DataDir::locate($gateDir) ?? throw new NotConfigured();
+        $lines = $options['lines'] ?? '1000';
+        unset($options['lines']);
+        if ($args !== [] || $options !== [] || preg_match('/^[1-9][0-9]{0,4}$/D', $lines) !== 1) {
+            throw new UsageError('usage: php moat-gate.php log [--lines=<1 to 99999>]');
+        }
+        foreach (RequestLog::lines($data, (int) $lines) as $line) {
+            self::out($line);
+        }
+
+        return 0;
     }
 
     /**

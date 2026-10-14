@@ -52,6 +52,10 @@ export const MIN_PULL_INTERVAL = 60;
 export const MAX_PULL_INTERVAL = 86_400;
 export const MAX_PULL_URL = 2048;
 
+/** FR-50: the request log's size before it rolls over (gate/request-log.ts); 0 = no log. */
+export const DEFAULT_LOG_BYTES = 262_144;
+export const MAX_LOG_BYTES = 1_048_576;
+
 /**
  * The pull URL (DT-11): `https://host[:port]` as an upstream origin (isOrigin: lower-case DNS
  * name, no IP literal, no `:443`) plus a path to a file, each segment of unreserved characters
@@ -139,6 +143,12 @@ export const policySchema = z.strictObject({
       intervalSeconds: z.int().min(MIN_PULL_INTERVAL).max(MAX_PULL_INTERVAL),
     })
     .optional(),
+  /**
+   * FR-50, DT-12: bytes the request log (data file `log`) may reach before it becomes `logold`
+   * and a new one starts — so both together stay below twice this. Default DEFAULT_LOG_BYTES;
+   * 0 writes no log at all.
+   */
+  logMaxBytes: z.int().min(0).max(MAX_LOG_BYTES).optional(),
   /**
    * Local test setups only (the conformance runner, a demo): send these `host[:port]`s to a fixed
    * IP — loopback included — and trust an extra CA file. Never set by a bundle; the hardening

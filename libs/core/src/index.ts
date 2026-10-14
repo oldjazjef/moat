@@ -103,6 +103,8 @@ export {
   isPullUrl,
   MIN_PULL_INTERVAL,
   MAX_PULL_INTERVAL,
+  DEFAULT_LOG_BYTES,
+  MAX_LOG_BYTES,
   type Policy,
 } from './policy/policy';
 export {
@@ -251,3 +253,15 @@ export {
   type Recipe,
   type RecipeId,
 } from './recipes/recipes';
+export {
+  LOG_FILE,
+  LOG_OLD_FILE,
+  MAX_LOG_ENTRIES,
+  MAX_LOG_TEXT,
+  parseRequestLog,
+  summariseRequestLog,
+  type RequestLog,
+  type RequestLogEntry,
+  type RequestLogRouteSummary,
+  type RequestLogSummary,
+} from './gate/request-log';

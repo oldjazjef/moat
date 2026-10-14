@@ -107,6 +107,8 @@ describe('the check from outside in Moat Desktop (DT-07, SEC-49)', () => {
       'Hardening/WebFacts.php',
       'Storage/DataDir.php',
       'Runtime/BundlePull.php',
+      'Runtime/OAuthToken.php',
+      'Runtime/RequestLog.php',
     ].flatMap((file) =>
       [
         ...readFileSync(path.join(src, file), 'utf8').matchAll(

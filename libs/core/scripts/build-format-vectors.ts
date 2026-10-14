@@ -2078,6 +2078,10 @@ function policyVectors(): Json {
       'maximum config age as a duration text',
       (_c, p) => (p['maxConfigAgeSeconds'] = '30d'),
     ],
+    ['request log of 64 KiB (FR-50)', (_c, p) => (p['logMaxBytes'] = 65_536)],
+    ['request log off (FR-50)', (_c, p) => (p['logMaxBytes'] = 0)],
+    ['request log above 1 MiB', (_c, p) => (p['logMaxBytes'] = 1_048_577)],
+    ['request log as a size text', (_c, p) => (p['logMaxBytes'] = '256KiB')],
     [
       'policy quota of 0 requests',
       (_c, p) =>

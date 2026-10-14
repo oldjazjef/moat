@@ -84,6 +84,29 @@ final readonly class DataDir
         return Files::withLock($this->file($lock), self::MARKER . "\n", $critical);
     }
 
+    /** Appends after the content; the file must exist (write() it first). Only under a lock. */
+    public function append(string $name, string $content): void
+    {
+        Files::append($this->file($name), $content);
+    }
+
+    /** The content's size in bytes (without the marker line); null when the file is missing. */
+    public function contentSize(string $name): ?int
+    {
+        clearstatcache(true, $this->file($name));
+        $size = is_file($this->file($name)) ? filesize($this->file($name)) : false;
+
+        return $size === false ? null : max(0, $size - \strlen(self::MARKER) - 1);
+    }
+
+    /** Replaces `$to` with `$from` in one step (the request log rolling over). */
+    public function rename(string $from, string $to): void
+    {
+        if (!rename($this->file($from), $this->file($to))) {
+            throw new \RuntimeException('cannot rename a data file');
+        }
+    }
+
     public function remove(string $name): void
     {
         if (is_file($this->file($name))) {

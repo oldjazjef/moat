@@ -24,6 +24,7 @@ use Moat\Gate\Upstream\UpstreamRequest;
 final class OAuthToken
 {
     public const FILE = 'tokens';
+    public const LOCK = 'tokenslock';
     /** A token is used until this many seconds before it expires. */
     private const MARGIN = 30;
     /** And never longer than this, whatever the provider says. */
@@ -58,7 +59,7 @@ final class OAuthToken
                     unset($entries[$key]);
                     self::write($data, $entries);
                 }
-            }, self::FILE . 'lock');
+            }, self::LOCK);
         } catch (\RuntimeException) {
             // A cache that cannot be written is only a cache.
         }
@@ -143,7 +144,7 @@ final class OAuthToken
                 $entries = array_filter(self::entries($data), static fn(array $entry): bool => $entry[1] > $now);
                 $entries[$key] = [$token, $expires];
                 self::write($data, \array_slice($entries, -self::MAX_ENTRIES, null, true));
-            }, self::FILE . 'lock');
+            }, self::LOCK);
         } catch (\RuntimeException) {
             // Not cached: the next request fetches again.
         }
