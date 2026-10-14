@@ -20,13 +20,26 @@ export interface DesktopConfig {
    * `safeStorage` (the OS keychain, DT-04), base64. Never plain text in this file.
    */
   readonly passphrases: Readonly<Record<string, string>>;
+  /**
+   * The last deploy package per `<projectId>/<gate>` (DT-05, T-66): kept here, outside the
+   * project folder, so a changed folder cannot pass off another gate's or an older bundle.
+   */
+  readonly deployed: Readonly<Record<string, DeployedPackage>>;
+}
+
+export interface DeployedPackage {
+  readonly gateId: string;
+  readonly version: number;
 }
 
 export const EMPTY_CONFIG: DesktopConfig = {
   projectDir: null,
   keyFile: null,
   passphrases: {},
+  deployed: {},
 };
+
+const DEPLOYED_KEY = /^[A-Za-z0-9_-]{22}\/[a-z][a-z0-9-]{0,62}$/;
 
 /** The stored config; a missing or damaged file is an empty one (the user chooses again). */
 export function readConfig(userData: string): DesktopConfig {
@@ -43,10 +56,30 @@ export function readConfig(userData: string): DesktopConfig {
           passphrases[kid] = sealed;
       }
     }
+    const deployed: Record<string, DeployedPackage> = {};
+    const packages = value['deployed'];
+    if (isRecord(packages)) {
+      for (const [key, entry] of Object.entries(packages)) {
+        if (
+          DEPLOYED_KEY.test(key) &&
+          isRecord(entry) &&
+          typeof entry['gateId'] === 'string' &&
+          KID.test(entry['gateId']) &&
+          typeof entry['version'] === 'number' &&
+          Number.isSafeInteger(entry['version']) &&
+          entry['version'] >= 1
+        )
+          deployed[key] = {
+            gateId: entry['gateId'],
+            version: entry['version'],
+          };
+      }
+    }
     return {
       projectDir: absolute(value['projectDir']),
       keyFile: absolute(value['keyFile']),
       passphrases,
+      deployed,
     };
   } catch {
     return EMPTY_CONFIG;

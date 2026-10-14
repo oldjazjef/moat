@@ -60,7 +60,7 @@ Four components (ANFORDERUNGEN.md, header):
 > data file is readable and no level otherwise. The test console (FR-42): tab «Test-Konsole» →
 > `POST /api/projects/:id/dry-run` → core `planDryRun` + `dryRun` (`gate/dry-run.ts`): the gate's
 > answer to one request from moat.yaml and the suggested policy, nothing sent, the secret as
-> `<SECRET>`; its spec runs every `conformance/http/` case against it. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, setup mode, trust mode 2. Everything else below is
+> `<SECRET>`; its spec runs every `conformance/http/` case against it. The deploy package (DT-05, T-66): «Deploy» per gate in «Gates» → «Als ZIP speichern» / «In Ordner ablegen» → IPC `moat:gate:deploy` (ids + target only) → `prepareDeploy` in-process (`DeployPackageService`, core `planDeploy`: the latest bundle verified against the desktop's key, unchanged, + `suggestPolicy` of its config) → the main process's save/folder dialog → `apps/desktop/src/main/lib/deploy.ts` writes a new folder `moat-<gate>-v<n>/` (never replaces) or a stored ZIP (core `package/zip.ts`) with `bundle-v<n>.json`, `policy.json` and `LIESMICH.txt`/`README.txt`. SFTP/Git targets not yet. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, setup mode, trust mode 2. Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
 

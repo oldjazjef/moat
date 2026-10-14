@@ -3,6 +3,7 @@
  * for any de-*, English otherwise. The window's texts live in apps/web's message files.
  */
 import type { KeyDialogTexts } from '../../shared/key-dialog';
+import type { DeployPackage, DeployTexts } from './deploy';
 import type { SealDialogTexts } from '../../shared/seal-dialog';
 import type { SignDialogTexts } from '../../shared/sign-dialog';
 
@@ -47,6 +48,15 @@ export interface DesktopMessages {
     readonly detail: (origin: string) => string;
     readonly send: string;
     readonly cancel: string;
+  };
+  /** The deploy package (DT-05): where it goes, and the instructions inside it. */
+  readonly deploy: DeployTexts & {
+    readonly saveZip: {
+      readonly title: string;
+      readonly button: string;
+      readonly filter: string;
+    };
+    readonly chooseFolder: { readonly title: string; readonly button: string };
   };
   readonly menu: {
     readonly file: string;
@@ -183,6 +193,59 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       send: 'Erlauben',
       cancel: 'Abbrechen',
     },
+    deploy: {
+      readmeName: 'LIESMICH.txt',
+      readme: (pkg: DeployPackage, bundle: string) =>
+        [
+          'Moat – Deploy-Paket',
+          '',
+          `Projekt:        ${pkg.project}`,
+          `Gate:           ${pkg.gate}`,
+          `Gate-ID:        ${pkg.gateId}`,
+          `Bundle-Version: ${pkg.version}${pkg.locked ? ' (sperrt das Gate)' : ''}`,
+          `SHA-256 von ${bundle}:`,
+          `  ${pkg.bundleSha256}`,
+          '',
+          'Das Paket enthält kein Secret im Klartext: Das Bundle trägt die Secrets',
+          'nur versiegelt, und nur dieses Gate kann sie öffnen.',
+          '',
+          'So kommt diese Version auf das Gate:',
+          '',
+          `1. Lade ${bundle} und policy.json auf den Server, am besten in einen`,
+          '   Ordner ausserhalb des Web-Ordners.',
+          '',
+          '2. Vergleiche mit dem Gate, bevor du etwas installierst:',
+          '     php moat-gate.php status',
+          '   Die Gate-ID muss die oben sein, und die Version des aktiven Bundles',
+          `   muss kleiner als ${pkg.version} sein. Sonst brich hier ab.`,
+          '',
+          '3. Bundle aktivieren:',
+          `     php moat-gate.php accept <Pfad>/${bundle}`,
+          '   Das Gate prüft Signatur, Gate-ID, Version und Policy selbst und',
+          '   lehnt ab, was nicht passt.',
+          '',
+          '4. Nur beim ersten Mal, oder wenn accept das Bundle ablehnt, weil es',
+          '   nicht zur Policy passt, und nur, wenn du die Policy auf dem Server',
+          '   nicht von Hand angepasst hast (etwa für Lazy Pull): Policy',
+          '   installieren und Schritt 3 wiederholen.',
+          '     php moat-gate.php policy <Pfad>/policy.json',
+          '',
+          '5. Lösche die beiden Dateien danach wieder vom Server.',
+          '',
+          `Mit Lazy Pull lädst du nur ${bundle} an die Adresse aus der Policy`,
+          '(pull.url) hoch, unter dem Dateinamen, den sie nennt.',
+          '',
+        ].join('\n'),
+      saveZip: {
+        title: 'Deploy-Paket speichern',
+        button: 'Speichern',
+        filter: 'ZIP-Archiv',
+      },
+      chooseFolder: {
+        title: 'Ordner für das Deploy-Paket wählen',
+        button: 'Hier ablegen',
+      },
+    },
     menu: {
       file: 'Datei',
       edit: 'Bearbeiten',
@@ -310,6 +373,59 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
         `Moat sends a test request or the check from outside to ${origin}. Allow this only if your gate runs there. Moat does not ask again for this address until it quits.`,
       send: 'Allow',
       cancel: 'Cancel',
+    },
+    deploy: {
+      readmeName: 'README.txt',
+      readme: (pkg: DeployPackage, bundle: string) =>
+        [
+          'Moat – deploy package',
+          '',
+          `Project:        ${pkg.project}`,
+          `Gate:           ${pkg.gate}`,
+          `Gate id:        ${pkg.gateId}`,
+          `Bundle version: ${pkg.version}${pkg.locked ? ' (locks the gate)' : ''}`,
+          `SHA-256 of ${bundle}:`,
+          `  ${pkg.bundleSha256}`,
+          '',
+          'The package holds no secret in plain text: the bundle carries the secrets',
+          'sealed only, and only this gate can open them.',
+          '',
+          'How this version gets onto the gate:',
+          '',
+          `1. Upload ${bundle} and policy.json to the server, preferably to a`,
+          '   folder outside the web root.',
+          '',
+          '2. Compare with the gate before you install anything:',
+          '     php moat-gate.php status',
+          "   The gate id must be the one above, and the active bundle's version",
+          `   must be lower than ${pkg.version}. Otherwise stop here.`,
+          '',
+          '3. Activate the bundle:',
+          `     php moat-gate.php accept <path>/${bundle}`,
+          '   The gate checks signature, gate id, version and policy itself and',
+          '   refuses what does not fit.',
+          '',
+          '4. Only the first time, or when accept refuses the bundle because it',
+          '   does not fit the policy, and only if you have not edited the policy',
+          '   on the server by hand (for lazy pull, say): install the policy and',
+          '   repeat step 3.',
+          '     php moat-gate.php policy <path>/policy.json',
+          '',
+          '5. Delete both files from the server afterwards.',
+          '',
+          `With lazy pull, upload only ${bundle} to the address in the policy`,
+          '(pull.url), under the file name it gives.',
+          '',
+        ].join('\n'),
+      saveZip: {
+        title: 'Save deploy package',
+        button: 'Save',
+        filter: 'ZIP archive',
+      },
+      chooseFolder: {
+        title: 'Choose the folder for the deploy package',
+        button: 'Put it here',
+      },
     },
     menu: { file: 'File', edit: 'Edit', view: 'View', quit: 'Quit' },
   },

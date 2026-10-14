@@ -9,6 +9,8 @@ import {
   fingerprint,
   fromBase64UrlLength,
   keyId,
+  storedZip,
+  type ZipEntry,
 } from '@moat/core';
 import type { RunningApi } from './bootstrap';
 import {
@@ -21,6 +23,10 @@ import {
   type PrepareSealResult,
   type SealResult,
 } from './project/application/secret-sealing.service';
+import {
+  DeployPackageService,
+  type PrepareDeployResult,
+} from './project/application/deploy-package.service';
 import { MainProcessConfirmation } from './gate-test/ports/gate-test-confirmation.port';
 import { ProjectService } from './project/project.service';
 
@@ -171,6 +177,29 @@ export function sealSecret(
   value: Uint8Array,
 ): Promise<SealResult> {
   return api.app.get(SecretSealingService).seal(id, gate, name, digest, value);
+}
+
+export type {
+  DeployPackage,
+  PrepareDeployResult,
+} from './project/application/deploy-package.service';
+
+/**
+ * A gate's deploy package (DT-05): its latest bundle signed with `signer`, and the policy for it.
+ * Never an HTTP route: the main process asks where to save it in its own dialog and writes it.
+ */
+export function prepareDeploy(
+  api: RunningApi,
+  id: string,
+  gate: string,
+  signer: { kid: string; publicKey: Uint8Array },
+): Promise<PrepareDeployResult> {
+  return api.app.get(DeployPackageService).prepare(id, gate, signer);
+}
+
+/** The deploy package as a ZIP (stored, reproducible: core storedZip). */
+export function zipFiles(entries: readonly ZipEntry[]): Uint8Array {
+  return storedZip(entries);
 }
 
 /**

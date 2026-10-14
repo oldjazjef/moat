@@ -13,6 +13,9 @@ import {
 } from 'electron';
 import {
   type BundleSignResult,
+  DEPLOY_TARGETS,
+  type DeployResult,
+  type DeployTarget,
   GATE_NAME,
   IPC,
   PROJECT_ID,
@@ -31,6 +34,13 @@ import {
   pageLocale,
   systemLocale,
 } from './lib/messages';
+import {
+  deployFiles,
+  deployRefusal,
+  packageName,
+  writeDeployFolder,
+  writeDeployZip,
+} from './lib/deploy';
 import { KeyCreationSession, writeKeyFile } from './lib/key-creation';
 import { gateTestConfirmation } from './lib/test-confirmation';
 import { PassphraseVault, readKeyFile, SigningSession } from './lib/signing';
@@ -409,6 +419,102 @@ function registerIpc(): void {
     },
   );
   registerSealDialogIpc();
+  // DT-05: the page asks for a gate's deploy package; where it goes is chosen in the main
+  // process's own dialog, and the page learns only the outcome, never the path.
+  ipcMain.handle(
+    IPC.gateDeploy,
+    async (
+      event,
+      id: unknown,
+      gate: unknown,
+      target: unknown,
+      locale: unknown,
+    ): Promise<DeployResult> => {
+      if (!fromApp(event) || mainWindow === null || api === null)
+        return { status: 'failed' };
+      if (typeof id !== 'string' || !PROJECT_ID.test(id))
+        return { status: 'failed' };
+      if (typeof gate !== 'string' || !GATE_NAME.test(gate))
+        return { status: 'failed' };
+      if (!DEPLOY_TARGETS.includes(target as DeployTarget))
+        return { status: 'failed' };
+      const text = MESSAGES[pageLocale(locale, app.getLocale())];
+      try {
+        return await deployGate(
+          mainWindow,
+          api,
+          id,
+          gate,
+          target as DeployTarget,
+          text,
+        );
+      } catch (error) {
+        // Never a message to the page: it could name paths (SEC-46).
+        console.error('[desktop] deploy package failed', error);
+        return { status: 'failed' };
+      }
+    },
+  );
+}
+
+/**
+ * The deploy package (DT-05) of the gate's latest bundle, signed with the desktop's own key (only
+ * such a bundle shapes the policy in it, T-66), saved where the person chooses.
+ */
+async function deployGate(
+  parent: BrowserWindow,
+  running: RunningApi,
+  id: string,
+  gate: string,
+  target: DeployTarget,
+  text: DesktopMessages,
+): Promise<DeployResult> {
+  const userData = app.getPath('userData');
+  const keyPath = readConfig(userData).keyFile;
+  const signer = keyPath === null ? null : readKeyFile(keyPath)?.signer;
+  if (signer === null || signer === undefined)
+    return { status: 'refused', code: 'key_missing' };
+  const prepared = await running.prepareDeploy(id, gate, signer);
+  if (prepared.status === 'not_found') return { status: 'failed' };
+  if (prepared.status === 'refused')
+    return { status: 'refused', code: prepared.code };
+  const pkg = prepared.package;
+  const key = `${id}/${gate}`;
+  const refused = deployRefusal(pkg, readConfig(userData).deployed[key]);
+  if (refused !== null) return refused;
+  const files = deployFiles(pkg, text.deploy);
+  let written;
+  if (target === 'zip') {
+    const picked = await dialog.showSaveDialog(parent, {
+      title: text.deploy.saveZip.title,
+      buttonLabel: text.deploy.saveZip.button,
+      defaultPath: join(app.getPath('documents'), `${packageName(pkg)}.zip`),
+      filters: [{ name: text.deploy.saveZip.filter, extensions: ['zip'] }],
+      properties: ['createDirectory', 'showOverwriteConfirmation'],
+    });
+    if (picked.canceled || picked.filePath === undefined)
+      return { status: 'cancelled' };
+    written = writeDeployZip(picked.filePath, running.zipFiles(files));
+  } else {
+    const picked = await dialog.showOpenDialog(parent, {
+      title: text.deploy.chooseFolder.title,
+      buttonLabel: text.deploy.chooseFolder.button,
+      defaultPath: app.getPath('documents'),
+      properties: ['openDirectory', 'createDirectory', 'promptToCreate'],
+    });
+    const dir = picked.filePaths[0];
+    if (picked.canceled || dir === undefined) return { status: 'cancelled' };
+    if (!isFolder(dir)) return { status: 'not_writable' };
+    written = writeDeployFolder(dir, files);
+  }
+  if (written !== null) return written;
+  updateConfig(userData, {
+    deployed: {
+      ...readConfig(userData).deployed,
+      [key]: { gateId: pkg.gateId, version: pkg.version },
+    },
+  });
+  return { status: 'exported', target, version: pkg.version };
 }
 
 /**

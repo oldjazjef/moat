@@ -3,6 +3,8 @@ import { TranslateService } from '@ngx-translate/core';
 import type { GateState } from '../../../../core/api/project.types';
 import {
   type BundleSignResult,
+  type DeployResult,
+  type DeployTarget,
   desktopBridge,
   type SecretSealResult,
 } from '../../../../core/desktop/desktop-bridge';
@@ -42,6 +44,21 @@ export const SIGN_OUTCOMES = [
   'failed',
 ] as const;
 
+/** Every deploy outcome with a text (`gates.deployResult.<outcome>`); a cancel says nothing. */
+export const DEPLOY_OUTCOMES = [
+  'exported_zip',
+  'exported_folder',
+  'key_missing',
+  'gate_unknown',
+  'bundle_missing',
+  'bundle_unverified',
+  'gate_changed',
+  'bundle_older',
+  'exists',
+  'not_writable',
+  'failed',
+] as const;
+
 export type ValidGate = Extract<GateState, { status: 'valid' }>;
 
 /**
@@ -65,6 +82,14 @@ export class GatesPageService {
   readonly canSeal = this.bridge !== null;
   /** Only Moat Desktop checks from outside (DT-07): the Cloud does not call out (T-59). */
   readonly canCheck = this.bridge !== null;
+  /** Only Moat Desktop saves deploy packages (where: its own dialog, DT-05). */
+  readonly canDeploy = this.bridge !== null;
+  /** The gate whose deploy dialog is open. */
+  readonly deploying = signal<string | null>(null);
+  readonly deployed = signal<{
+    readonly gate: string;
+    readonly result: Exclude<DeployResult, { status: 'cancelled' }>;
+  } | null>(null);
   /** `<gate>/<secret>` whose seal window is open. */
   readonly sealing = signal<string | null>(null);
   readonly sealed = signal<{
@@ -169,6 +194,46 @@ export class GatesPageService {
     if (result.status === 'refused')
       return { gate, secrets: result.secrets.join(', ') };
     return { gate };
+  }
+
+  /** The latest bundle as a ZIP or into a folder, where the person chooses in the desktop. */
+  async deploy(gate: ValidGate, target: DeployTarget): Promise<void> {
+    if (this.bridge === null || this.deploying() !== null) return;
+    this.deploying.set(gate.name);
+    this.deployed.set(null);
+    let result: DeployResult;
+    try {
+      result = await this.bridge.gate.deploy(
+        this.resource.id(),
+        gate.name,
+        target,
+        this.translate.getCurrentLang() ?? '',
+      );
+    } catch {
+      result = { status: 'failed' };
+    } finally {
+      this.deploying.set(null);
+    }
+    if (result.status !== 'cancelled')
+      this.deployed.set({ gate: gate.name, result });
+  }
+
+  /** The i18n key for a deploy outcome (`gates.deployResult.*`). */
+  deployText(result: Exclude<DeployResult, { status: 'cancelled' }>): string {
+    if (result.status === 'exported')
+      return `gates.deployResult.exported_${result.target}`;
+    return result.status === 'refused'
+      ? `gates.deployResult.${result.code}`
+      : `gates.deployResult.${result.status}`;
+  }
+
+  deployParams(
+    result: Exclude<DeployResult, { status: 'cancelled' }>,
+    gate: string,
+  ): Record<string, string | number> {
+    return result.status === 'exported'
+      ? { gate, version: result.version }
+      : { gate };
   }
 
   /** What the config uses and what is sealed, by name; names only (SEC-31). */

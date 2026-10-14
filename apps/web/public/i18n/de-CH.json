@@ -209,7 +209,25 @@
       "failed": "Das Versiegeln hat nicht geklappt. Es wurde nichts gespeichert."
     },
     "hardening": "Härtung",
-    "hardeningIntro": "Prüft, ob die Dateien des Gates aus dem Internet lesbar sind. Die Härtungsstufe stellt nur das Gate selbst auf deinem Server fest."
+    "hardeningIntro": "Prüft, ob die Dateien des Gates aus dem Internet lesbar sind. Die Härtungsstufe stellt nur das Gate selbst auf deinem Server fest.",
+    "deploy": "Deploy",
+    "deployIntro": "Speichert Version {{version}} zusammen mit der Policy und einer Anleitung als Paket, das du auf den Server lädst. Moat packt nur ein Bundle ein, das mit deiner Schlüsseldatei signiert ist.",
+    "deployNoBundle": "Signiere zuerst ein Bundle, dann kannst du es als Paket speichern.",
+    "deployZip": "Als ZIP speichern",
+    "deployFolder": "In Ordner ablegen",
+    "deployResult": {
+      "exported_zip": "Das Paket mit Version {{version}} ist als ZIP gespeichert. Die Anleitung darin heisst `LIESMICH.txt`.",
+      "exported_folder": "Das Paket mit Version {{version}} liegt im neuen Ordner `moat-{{gate}}-v{{version}}`. Die Anleitung darin heisst `LIESMICH.txt`.",
+      "key_missing": "Moat Desktop hat keine lesbare Schlüsseldatei. Wähle sie beim Signieren.",
+      "gate_unknown": "Die Gate-Datei fehlt oder ist beschädigt.",
+      "bundle_missing": "Für dieses Gate ist noch kein Bundle signiert.",
+      "bundle_unverified": "Das letzte Bundle ist nicht mit deiner Schlüsseldatei für dieses Gate signiert. Moat packt es nicht ein: Signiere eine neue Version.",
+      "gate_changed": "Die Gate-ID in diesem Projekt ist nicht mehr die des letzten Pakets. Moat packt nichts ein: Prüfe die Datei `gates/{{gate}}.json`.",
+      "bundle_older": "Das letzte Bundle in diesem Projekt ist älter als das letzte Paket. Moat packt es nicht ein: Prüfe den Ordner `bundles/{{gate}}` oder signiere eine neue Version.",
+      "exists": "Im gewählten Ordner liegt dieses Paket schon. Es wurde nichts überschrieben.",
+      "not_writable": "Am gewählten Ort kann Moat nicht schreiben. Es wurde nichts gespeichert.",
+      "failed": "Das Paket konnte nicht gespeichert werden."
+    }
   },
   "routes": {
     "subtitle": "Was das Gate weiterleitet, und an wen",
@@ -802,6 +820,7 @@
         "where": "Projekt › Gates › Letztes Bundle",
         "steps": {
           "sign": "Klicke unter «Gates» beim Gate auf «Bundle signieren». Ein eigenes Fenster von Moat Desktop zeigt, was sich gegenüber dem letzten Bundle ändert. Wähle beim ersten Mal deine Schlüsseldatei (`.moatkey`), gib die Passphrase ein und bestätige. Das Bundle liegt danach unter `bundles`.",
+          "package": "Unter «Gates» speicherst du mit «Als ZIP speichern» oder «In Ordner ablegen» ein Deploy-Paket: das zuletzt signierte Bundle unverändert, die passende `policy.json` und eine Anleitung (`LIESMICH.txt`) mit den Befehlen und der Prüfsumme. Wohin, wählst du im Dialog von Moat Desktop. Moat packt nur ein Bundle ein, das mit deiner Schlüsseldatei für dieses Gate signiert ist.",
           "build": "Im CLI baust du das Bundle mit `moat build <gate> --key <datei>.moatkey`. Es liegt danach unter `bundles`.",
           "deploy": "Lade die Bundle-Datei auf den Server.",
           "accept": "Aktiviere sie dort mit `php moat-gate.php accept <bundle>.json`. Unter «Gates» siehst du die zuletzt gebaute Version."

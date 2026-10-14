@@ -3,6 +3,7 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import type { ProjectView } from '../../../../core/api/project.types';
 import type {
   BundleSignResult,
+  DeployResult,
   SecretSealResult,
 } from '../../../../core/desktop/desktop-bridge';
 import {
@@ -255,6 +256,7 @@ describe('GatesPage', () => {
         key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
         bundle: { sign },
         secret: { seal: vi.fn() },
+        gate: { deploy: vi.fn() },
       };
       return sign;
     };
@@ -335,6 +337,7 @@ describe('GatesPage', () => {
         key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
         bundle: { sign: vi.fn() },
         secret: { seal },
+        gate: { deploy: vi.fn() },
       };
       return seal;
     };
@@ -377,6 +380,95 @@ describe('GatesPage', () => {
       button.click();
       await settle(harness);
       expect(el.querySelector('[data-seal-outcome]')).toBeNull();
+    });
+  });
+
+  describe('deploy package in Moat Desktop (DT-05)', () => {
+    afterEach(() => delete window.moatDesktop);
+
+    const desktop = (result: DeployResult) => {
+      const deploy = vi.fn().mockResolvedValue(result);
+      window.moatDesktop = {
+        platform: 'linux',
+        project: { add: vi.fn(), create: vi.fn(), reveal: vi.fn() },
+        key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
+        bundle: { sign: vi.fn() },
+        secret: { seal: vi.fn() },
+        gate: { deploy },
+      };
+      return deploy;
+    };
+
+    it('offers no package in a browser', async () => {
+      const { el } = await openProjectTab('gates', GatesPage, PROJECT);
+      expect(el.querySelector('[data-gate-deploy]')).toBeNull();
+    });
+
+    it('asks the shell by ids and target only, and says where the package is', async () => {
+      const deploy = desktop({
+        status: 'exported',
+        target: 'folder',
+        version: 4,
+      });
+      const { el, harness } = await openProjectTab(
+        'gates',
+        GatesPage,
+        withGate({ ...site(), latestBundle: 4 }),
+      );
+      const button = el.querySelector(
+        '[data-deploy-folder]',
+      ) as HTMLButtonElement;
+      expect(button.textContent?.trim()).toBe('In Ordner ablegen');
+      button.click();
+      await settle(harness);
+      expect(deploy).toHaveBeenCalledWith(
+        PROJECT.id,
+        'site',
+        'folder',
+        'de-CH',
+      );
+      expect(text(el, '[data-deploy-outcome]')).toBe(
+        'Das Paket mit Version 4 liegt im neuen Ordner moat-site-v4. Die Anleitung darin heisst LIESMICH.txt.',
+      );
+    });
+
+    it('says nothing on cancel and why a package was refused', async () => {
+      const deploy = desktop({ status: 'cancelled' });
+      const { el, harness } = await openProjectTab(
+        'gates',
+        GatesPage,
+        withGate({ ...site(), latestBundle: 2 }),
+      );
+      (el.querySelector('[data-deploy-zip]') as HTMLButtonElement).click();
+      await settle(harness);
+      expect(deploy).toHaveBeenCalledWith(PROJECT.id, 'site', 'zip', 'de-CH');
+      expect(el.querySelector('[data-deploy-outcome]')).toBeNull();
+      deploy.mockResolvedValue({
+        status: 'refused',
+        code: 'bundle_unverified',
+      });
+      (el.querySelector('[data-deploy-zip]') as HTMLButtonElement).click();
+      await settle(harness);
+      expect(text(el, '[data-deploy-outcome]')).toContain(
+        'nicht mit deiner Schlüsseldatei',
+      );
+    });
+
+    it('keeps both buttons off until a bundle is signed', async () => {
+      desktop({ status: 'failed' });
+      const { el } = await openProjectTab(
+        'gates',
+        GatesPage,
+        withGate({ ...site(), latestBundle: 0 }),
+      );
+      expect(
+        (el.querySelector('[data-deploy-zip]') as HTMLButtonElement).disabled,
+      ).toBe(true);
+      expect(
+        (el.querySelector('[data-deploy-folder]') as HTMLButtonElement)
+          .disabled,
+      ).toBe(true);
+      expect(text(el, '[data-gate-deploy] p')).toContain('Signiere zuerst');
     });
   });
 });

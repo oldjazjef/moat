@@ -123,6 +123,19 @@ export {
   type PlanSigner,
 } from './storage/bundle-plan';
 export {
+  DeployPlanError,
+  planDeploy,
+  type DeployPlan,
+  type DeployPlanErrorCode,
+} from './storage/deploy-plan';
+export {
+  crc32,
+  storedZip,
+  MAX_ZIP_ENTRIES,
+  MAX_ZIP_ENTRY_BYTES,
+  type ZipEntry,
+} from './package/zip';
+export {
   isSecretValue,
   MAX_SECRET_BYTES,
   planSeal,

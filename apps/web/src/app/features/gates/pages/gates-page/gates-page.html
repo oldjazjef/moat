@@ -199,6 +199,55 @@
         </button>
         } }
       </div>
+      } @if (service.canDeploy) {
+      <div data-gate-deploy>
+        <div class="mb-1 flex items-center gap-1">
+          <h3 class="text-sm font-medium">{{ 'gates.deploy' | translate }}</h3>
+          <mt-help-link section="release" />
+        </div>
+        <p class="text-muted-foreground mb-3 text-sm">
+          @if (gate.latestBundle > 0) { {{ 'gates.deployIntro' | translate: {
+          version: gate.latestBundle } }} } @else { {{ 'gates.deployNoBundle' |
+          translate }} }
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            hlmBtn
+            variant="outline"
+            size="sm"
+            type="button"
+            data-deploy-zip
+            [disabled]="gate.latestBundle === 0 || service.deploying() !== null || service.signing() !== null"
+            (click)="service.deploy(gate, 'zip')"
+          >
+            {{ 'gates.deployZip' | translate }}
+          </button>
+          <button
+            hlmBtn
+            variant="outline"
+            size="sm"
+            type="button"
+            data-deploy-folder
+            [disabled]="gate.latestBundle === 0 || service.deploying() !== null || service.signing() !== null"
+            (click)="service.deploy(gate, 'folder')"
+          >
+            {{ 'gates.deployFolder' | translate }}
+          </button>
+        </div>
+        @if (service.deployed(); as deployed) { @if (deployed.gate ===
+        gate.name) {
+        <p
+          class="mt-2 text-sm"
+          data-deploy-outcome
+          [class.text-destructive]="deployed.result.status !== 'exported'"
+          role="status"
+        >
+          <mt-rich-text
+            [text]="service.deployText(deployed.result) | translate: service.deployParams(deployed.result, gate.name)"
+          />
+        </p>
+        } }
+      </div>
       } @if (service.canCheck && resource.id(); as project) {
       <div data-gate-hardening>
         <div class="mb-1 flex items-center gap-1">
