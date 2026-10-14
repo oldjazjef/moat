@@ -150,14 +150,18 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     steps: items(
       { id: 'sign', only: 'desktop' },
       { id: 'package', only: 'desktop' },
+      { id: 'sftp', only: 'desktop' },
       'build',
       'deploy',
       'accept',
     ),
-    tips: items('rollback', 'policy', 'pull', {
-      id: 'keychain',
-      only: 'desktop',
-    }),
+    tips: items(
+      'rollback',
+      'policy',
+      'pull',
+      { id: 'keychain', only: 'desktop' },
+      { id: 'sftpKeychain', only: 'desktop' },
+    ),
     links: [PROJECTS],
   },
   {

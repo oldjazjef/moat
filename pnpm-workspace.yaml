@@ -16,6 +16,8 @@ packages:
 #
 # The `false` entries are deliberate: `@nestjs/core` only prints a sponsorship notice,
 # `electron-winstaller` (via electron-builder) is Squirrel.Windows, unused: the desktop app ships NSIS.
+# `ssh2` (SFTP deploy, DT-05) and `cpu-features` would compile optional native crypto; the desktop
+# uses ssh2's pure-JS path on Node's own crypto, so the packaged app keeps no native module.
 allowBuilds:
   '@parcel/watcher': true
   '@swc/core': true
@@ -28,6 +30,8 @@ allowBuilds:
   unrs-resolver: true
   '@nestjs/core': false
   electron-winstaller: false
+  ssh2: false
+  cpu-features: false
 
 # Nx is pinned to one exact version; keep @nx/devkit in step with it (see lazy-koins).
 overrides:

@@ -42,6 +42,9 @@ import {
   writeDeployZip,
 } from './lib/deploy';
 import { KeyCreationSession, writeKeyFile } from './lib/key-creation';
+import { readPrivateKey, SftpSession } from './lib/sftp';
+import { uploadPackage } from './lib/sftp-client';
+import { registerSftpDialogIpc, showSftpDialog } from './sftp-window';
 import { gateTestConfirmation } from './lib/test-confirmation';
 import { PassphraseVault, readKeyFile, SigningSession } from './lib/signing';
 import { SealingSession } from './lib/sealing';
@@ -419,6 +422,7 @@ function registerIpc(): void {
     },
   );
   registerSealDialogIpc();
+  registerSftpDialogIpc();
   // DT-05: the page asks for a gate's deploy package; where it goes is chosen in the main
   // process's own dialog, and the page learns only the outcome, never the path.
   ipcMain.handle(
@@ -483,6 +487,63 @@ async function deployGate(
   const refused = deployRefusal(pkg, readConfig(userData).deployed[key]);
   if (refused !== null) return refused;
   const files = deployFiles(pkg, text.deploy);
+  const remember = () =>
+    updateConfig(userData, {
+      deployed: {
+        ...readConfig(userData).deployed,
+        [key]: { gateId: pkg.gateId, version: pkg.version },
+      },
+    });
+  if (target === 'sftp') {
+    const result = await showSftpDialog({
+      parent,
+      appDir,
+      title: text.sftpDialog.title,
+      session: new SftpSession({
+        texts: text.sftpDialog,
+        pkg,
+        files,
+        keychain: {
+          available: keychain.isEncryptionAvailable(),
+          seal: (secret) => keychain.encryptString(secret).toString('base64'),
+          open: (sealed) => {
+            try {
+              return keychain.decryptString(Buffer.from(sealed, 'base64'));
+            } catch {
+              return null;
+            }
+          },
+        },
+        stored: () => readConfig(userData).sftpTargets[key] ?? null,
+        save: (stored) =>
+          updateConfig(userData, {
+            sftpTargets: {
+              ...readConfig(userData).sftpTargets,
+              [key]: stored,
+            },
+          }),
+        forget: () => {
+          const { [key]: _dropped, ...rest } = readConfig(userData).sftpTargets;
+          updateConfig(userData, { sftpTargets: rest });
+        },
+        chooseKeyFile: async () => {
+          const owner = BrowserWindow.getFocusedWindow() ?? parent;
+          const picked = await dialog.showOpenDialog(owner, {
+            title: text.sftpKey.title,
+            buttonLabel: text.sftpKey.button,
+            defaultPath: join(app.getPath('home'), '.ssh'),
+            properties: ['openFile', 'showHiddenFiles'],
+          });
+          const file = picked.filePaths[0];
+          return picked.canceled || file === undefined ? null : file;
+        },
+        readPrivateKey,
+        upload: uploadPackage,
+      }),
+    });
+    if (result.status === 'exported') remember();
+    return result;
+  }
   let written;
   if (target === 'zip') {
     const picked = await dialog.showSaveDialog(parent, {
@@ -508,12 +569,7 @@ async function deployGate(
     written = writeDeployFolder(dir, files);
   }
   if (written !== null) return written;
-  updateConfig(userData, {
-    deployed: {
-      ...readConfig(userData).deployed,
-      [key]: { gateId: pkg.gateId, version: pkg.version },
-    },
-  });
+  remember();
   return { status: 'exported', target, version: pkg.version };
 }
 

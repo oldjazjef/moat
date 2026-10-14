@@ -1,0 +1,113 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!-- No script on this page: its preload renders the view with textContent. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="dialog.css" />
+    <title>Moat</title>
+  </head>
+  <body>
+    <form id="form" hidden>
+      <h1 id="title"></h1>
+      <p id="intro" class="muted"></p>
+      <dl class="facts">
+        <dt id="project-label"></dt>
+        <dd id="project"></dd>
+        <dt id="gate-label"></dt>
+        <dd id="gate" class="code"></dd>
+        <dt id="version-label"></dt>
+        <dd id="version"></dd>
+        <dt id="files-label"></dt>
+        <dd><ul id="files" class="code small"></ul></dd>
+      </dl>
+      <div id="target-step">
+        <fieldset>
+          <div class="grid">
+            <label>
+              <span id="host-label" class="label"></span>
+              <input
+                id="host"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </label>
+            <label>
+              <span id="port-label" class="label"></span>
+              <input
+                id="port"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+              />
+            </label>
+          </div>
+          <label class="stack">
+            <span id="username-label" class="label"></span>
+            <input
+              id="username"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </label>
+          <label class="stack">
+            <span id="remote-dir-label" class="label"></span>
+            <input
+              id="remote-dir"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <span id="remote-dir-hint" class="muted small"></span>
+          </label>
+          <label class="stack">
+            <span id="auth-label" class="label"></span>
+            <select id="auth">
+              <option id="auth-password" value="password"></option>
+              <option id="auth-key" value="key"></option>
+            </select>
+          </label>
+          <div id="key-row" class="row">
+            <span id="key-file-label" class="label"></span>
+            <span id="key-file" class="code"></span>
+            <button id="choose-key" type="button" class="secondary"></button>
+          </div>
+          <label class="stack">
+            <span id="secret-label" class="label"></span>
+            <input
+              id="secret"
+              type="password"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <span id="remembered" class="muted small" hidden></span>
+          </label>
+          <label id="remember-row" class="check">
+            <input id="remember" type="checkbox" />
+            <span id="remember-label"></span>
+          </label>
+          <p id="pinned" class="muted small" hidden></p>
+        </fieldset>
+      </div>
+      <div id="hostkey-step" hidden>
+        <h2 id="hostkey-title"></h2>
+        <p id="hostkey-intro" class="muted"></p>
+        <p id="hostkey" class="hostkey code"></p>
+        <p id="hostkey-hint" class="muted small"></p>
+      </div>
+      <p id="notice" class="error" role="alert" hidden></p>
+      <div class="buttons">
+        <button id="forget" type="button" class="secondary"></button>
+        <button id="cancel" type="button" class="secondary"></button>
+        <button id="upload" type="submit"></button>
+        <button id="trust" type="button" hidden></button>
+      </div>
+    </form>
+  </body>
+</html>

@@ -215,9 +215,11 @@
     "deployNoBundle": "Signiere zuerst ein Bundle, dann kannst du es als Paket speichern.",
     "deployZip": "Als ZIP speichern",
     "deployFolder": "In Ordner ablegen",
+    "deploySftp": "Per SFTP hochladen",
     "deployResult": {
       "exported_zip": "Das Paket mit Version {{version}} ist als ZIP gespeichert. Die Anleitung darin heisst `LIESMICH.txt`.",
       "exported_folder": "Das Paket mit Version {{version}} liegt im neuen Ordner `moat-{{gate}}-v{{version}}`. Die Anleitung darin heisst `LIESMICH.txt`.",
+      "exported_sftp": "Das Paket mit Version {{version}} liegt auf dem Server im neuen Ordner `moat-{{gate}}-v{{version}}`. Aktiviere es dort wie in `LIESMICH.txt` beschrieben.",
       "key_missing": "Moat Desktop hat keine lesbare Schlüsseldatei. Wähle sie beim Signieren.",
       "gate_unknown": "Die Gate-Datei fehlt oder ist beschädigt.",
       "bundle_missing": "Für dieses Gate ist noch kein Bundle signiert.",
@@ -821,6 +823,7 @@
         "steps": {
           "sign": "Klicke unter «Gates» beim Gate auf «Bundle signieren». Ein eigenes Fenster von Moat Desktop zeigt, was sich gegenüber dem letzten Bundle ändert. Wähle beim ersten Mal deine Schlüsseldatei (`.moatkey`), gib die Passphrase ein und bestätige. Das Bundle liegt danach unter `bundles`.",
           "package": "Unter «Gates» speicherst du mit «Als ZIP speichern» oder «In Ordner ablegen» ein Deploy-Paket: das zuletzt signierte Bundle unverändert, die passende `policy.json` und eine Anleitung (`LIESMICH.txt`) mit den Befehlen und der Prüfsumme. Wohin, wählst du im Dialog von Moat Desktop. Moat packt nur ein Bundle ein, das mit deiner Schlüsseldatei für dieses Gate signiert ist.",
+          "sftp": "Unter «Gates» lädt «Per SFTP hochladen» dasselbe Paket als neuen Ordner auf deinen Server. Server, Benutzer, Ordner und Passwort oder SSH-Schlüssel gibst du im Fenster von Moat Desktop ein, nie in der App-Seite. Beim ersten Mal zeigt es den Host-Key des Servers: Vergleiche ihn mit dem, den dein Hoster nennt. Erst danach sendet Moat Benutzer, Passwort und Dateien. Zeigt der Server später einen anderen Schlüssel, bricht Moat ab. Moat überschreibt auf dem Server nichts und führt dort keinen Befehl aus: `accept` startest du selbst.",
           "build": "Im CLI baust du das Bundle mit `moat build <gate> --key <datei>.moatkey`. Es liegt danach unter `bundles`.",
           "deploy": "Lade die Bundle-Datei auf den Server.",
           "accept": "Aktiviere sie dort mit `php moat-gate.php accept <bundle>.json`. Unter «Gates» siehst du die zuletzt gebaute Version."
@@ -829,7 +832,8 @@
           "rollback": "Zurück zu einer älteren Konfiguration? Baue sie als neue, höhere Version.",
           "policy": "Passt ein Bundle nicht zur lokalen Policy, lehnt das Gate es ab. Die Policy änderst du nur am Gate selbst.",
           "pull": "Ohne Upload aufs Gate: Steht in der lokalen Policy ein `pull`-Block mit einer HTTPS-Adresse, holt das Gate das Bundle dort selbst ab, höchstens einmal pro Intervall, und prüft es wie bei `accept`. Du lädst das signierte Bundle dann nur an diese Adresse hoch. Mit `php moat-gate.php pull` holt es sofort, `php moat-gate.php status` zeigt den letzten Versuch.",
-          "keychain": "Auf Wunsch merkt sich Moat Desktop die Passphrase im Schlüsselbund deines Betriebssystems. Nimmst du das Häkchen beim nächsten Signieren weg, wird sie dort gelöscht. Ohne echten Schlüsselbund bietet Moat Desktop das gar nicht an."
+          "keychain": "Auf Wunsch merkt sich Moat Desktop die Passphrase im Schlüsselbund deines Betriebssystems. Nimmst du das Häkchen beim nächsten Signieren weg, wird sie dort gelöscht. Ohne echten Schlüsselbund bietet Moat Desktop das gar nicht an.",
+          "sftpKeychain": "Das Passwort oder die Passphrase des Schlüssels merkt sich Moat Desktop nur im Schlüsselbund deines Betriebssystems und nur, wenn du das willst. Ohne echten Schlüsselbund fragt es jedes Mal."
         }
       },
       "environments": {

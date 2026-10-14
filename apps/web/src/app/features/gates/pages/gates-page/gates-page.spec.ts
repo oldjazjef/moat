@@ -454,6 +454,29 @@ describe('GatesPage', () => {
       );
     });
 
+    it('SFTP: asks the shell by ids and target only and says where the package is on the server', async () => {
+      const deploy = desktop({
+        status: 'exported',
+        target: 'sftp',
+        version: 5,
+      });
+      const { el, harness } = await openProjectTab(
+        'gates',
+        GatesPage,
+        withGate({ ...site(), latestBundle: 5 }),
+      );
+      const button = el.querySelector(
+        '[data-deploy-sftp]',
+      ) as HTMLButtonElement;
+      expect(button.textContent?.trim()).toBe('Per SFTP hochladen');
+      button.click();
+      await settle(harness);
+      expect(deploy).toHaveBeenCalledWith(PROJECT.id, 'site', 'sftp', 'de-CH');
+      expect(text(el, '[data-deploy-outcome]')).toBe(
+        'Das Paket mit Version 5 liegt auf dem Server im neuen Ordner moat-site-v5. Aktiviere es dort wie in LIESMICH.txt beschrieben.',
+      );
+    });
+
     it('keeps both buttons off until a bundle is signed', async () => {
       desktop({ status: 'failed' });
       const { el } = await openProjectTab(

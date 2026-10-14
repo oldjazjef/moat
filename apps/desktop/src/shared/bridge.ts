@@ -82,9 +82,16 @@ export type SecretSealResult =
   | { status: 'not_writable' }
   | { status: 'failed' };
 
-/** Where a deploy package goes (DT-05): a ZIP file, or a new folder inside a chosen one. */
-export type DeployTarget = 'zip' | 'folder';
-export const DEPLOY_TARGETS: readonly DeployTarget[] = ['zip', 'folder'];
+/**
+ * Where a deploy package goes (DT-05): a ZIP file, a new folder inside a chosen one, or a new
+ * folder on a server over SFTP.
+ */
+export type DeployTarget = 'zip' | 'folder' | 'sftp';
+export const DEPLOY_TARGETS: readonly DeployTarget[] = [
+  'zip',
+  'folder',
+  'sftp',
+];
 
 /**
  * `key_missing`: no signing key chosen (or it cannot be read); `bundle_missing`: nothing signed
@@ -104,7 +111,7 @@ export type DeployResult =
   | { status: 'exported'; target: DeployTarget; version: number }
   | { status: 'cancelled' }
   | { status: 'refused'; code: DeployRefusal }
-  /** A folder of the package's name is there already; nothing was written. */
+  /** A folder of the package's name is there already (locally or on the server); nothing was written. */
   | { status: 'exists' }
   /** The chosen place could not be written; nothing was left behind. */
   | { status: 'not_writable' }

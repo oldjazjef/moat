@@ -52,6 +52,7 @@
     "@types/express": "^5.0.6",
     "@types/libsodium-wrappers-sumo": "^0.8.2",
     "@types/node": "^24.0.0",
+    "@types/ssh2": "^1.15.6",
     "@typescript-eslint/rule-tester": "^8.71.1",
     "@typescript-eslint/utils": "^8.71.1",
     "angular-eslint": "^22.5.0",
@@ -105,6 +106,7 @@
     "libsodium-wrappers-sumo": "^0.8.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "~7.8.2",
+    "ssh2": "1.17.0",
     "tailwind-merge": "^3.7.0",
     "yaml": "^2.9.1",
     "zod": "^4.4.3"
