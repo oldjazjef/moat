@@ -18,6 +18,8 @@ import { HlmButtonImports } from '@moat/ui/button';
 import type { ProjectView } from '../../../../core/api/project.types';
 import type { SetupStepId } from '../../../../core/api/setup.types';
 import { apiUrl } from '../../../../core/config/runtime-env';
+import { desktopBridge } from '../../../../core/desktop/desktop-bridge';
+import { HardeningCheck } from '../../../../shared/components/hardening-check';
 import { RichText } from '../../../../shared/components/rich-text';
 import { TrustModeBadge } from '../../../../shared/components/trust-mode-badge';
 import { HelpLink } from '../../../help/components/help-link';
@@ -27,7 +29,8 @@ import { SetupPageService } from '../../pages/setup-page/setup-page.service';
  * FR-73, step «Zusammenfassung»: every step with its state, the trust mode of the project's
  * gates and the hardening level — only what is in force (§1.5): «Signiert» once a gate is
  * pinned, and no hardening level at all, because only the gate's own check on the server can
- * tell it (SEC-49).
+ * tell it (SEC-49). In Moat Desktop, the check from outside (DT-07) can show that the gate's files
+ * are readable from the internet, which is «Unsicher für Secrets» on its own.
  */
 @Component({
   selector: 'mt-setup-summary-step',
@@ -37,6 +40,7 @@ import { SetupPageService } from '../../pages/setup-page/setup-page.service';
     RichText,
     TrustModeBadge,
     HelpLink,
+    HardeningCheck,
     ...HlmButtonImports,
   ],
   providers: [
@@ -138,6 +142,14 @@ import { SetupPageService } from '../../pages/setup-page/setup-page.service';
         </p>
       </section>
     </div>
+    @if (outsideCheck(); as target) {
+      <section class="mt-6" data-summary-outside>
+        <p class="mb-3 text-sm">
+          {{ 'setup.summary.hardeningOutside' | translate }}
+        </p>
+        <mt-hardening-check [project]="target.project" [gate]="target.gate" />
+      </section>
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -160,5 +172,15 @@ export class SummaryStep {
     if (this.service.project() === null) return false;
     const view = this.project.hasValue() ? this.project.value() : null;
     return (view?.project?.gates ?? []).some((gate) => gate.status === 'valid');
+  });
+  /** The first pinned gate, for the check from outside (Moat Desktop only, DT-07). */
+  protected readonly outsideCheck = computed(() => {
+    const project = this.service.project();
+    if (project === null || desktopBridge() === null) return null;
+    const view = this.project.hasValue() ? this.project.value() : null;
+    const gate = (view?.project?.gates ?? []).find(
+      (entry) => entry.status === 'valid',
+    );
+    return gate === undefined ? null : { project, gate: gate.name };
   });
 }

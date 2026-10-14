@@ -4,6 +4,7 @@ import {
   SuggestPolicyHandler,
   TestGateHandler,
 } from './application/gate-test.handlers';
+import { HardeningCheckHandler } from './application/hardening-check.handler';
 import { GateTestController } from './gate-test.controller';
 import { RecipesController } from './recipes.controller';
 import { HttpsGateClient } from './infrastructure/https-gate-client';
@@ -19,6 +20,7 @@ import {
   providers: [
     TestGateHandler,
     SuggestPolicyHandler,
+    HardeningCheckHandler,
     { provide: GateClientPort, useClass: HttpsGateClient },
     MainProcessConfirmation,
     { provide: GateTestConfirmationPort, useExisting: MainProcessConfirmation },

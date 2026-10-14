@@ -29,3 +29,21 @@ export class GateTestDto {
   @IsIn(['de-CH', 'en'])
   locale?: 'de-CH' | 'en';
 }
+
+/** `POST /api/projects/:id/hardening-check` (DT-07). */
+export class HardeningCheckDto {
+  /** The URL of the gate file as the website calls it; the handler decides. */
+  @IsString()
+  @MaxLength(MAX_GATE_URL)
+  url!: string;
+
+  /** `moat-data-<32 hex>`, as `php moat-gate.php install` printed it. */
+  @IsString()
+  @Matches(/^moat-data-[0-9a-f]{32}$/)
+  dataFolder!: string;
+
+  /** The page's language, for the desktop's confirmation dialog. */
+  @IsOptional()
+  @IsIn(['de-CH', 'en'])
+  locale?: 'de-CH' | 'en';
+}

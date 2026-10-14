@@ -10,6 +10,7 @@ import {
   type GateAnswer,
   type GateFailure,
   type GateRequest,
+  type ProbeReply,
 } from '../ports/gate-client.port';
 import { addressAllowed } from './address-rules';
 
@@ -38,6 +39,35 @@ export class HttpsGateClient extends GateClientPort {
   }
 
   async send(request: GateRequest): Promise<GateAnswer> {
+    const raw = await this.resolveAndExchange(request);
+    if (raw.status === 'failed') return raw;
+    const text = raw.body.toString('utf8');
+    return {
+      status: 'answered',
+      httpStatus: raw.httpStatus,
+      contentType: raw.contentType,
+      excerpt: text.slice(0, MAX_EXCERPT),
+      truncated: raw.truncated || text.length > MAX_EXCERPT,
+    };
+  }
+
+  /** A GET without a body, for the check from outside (DT-07); the caller wipes the body. */
+  async probe(url: URL): Promise<ProbeReply> {
+    const raw = await this.resolveAndExchange({
+      url,
+      method: 'GET',
+      body: null,
+    });
+    if (raw.status === 'failed') return raw;
+    return {
+      status: 'answered',
+      httpStatus: raw.httpStatus,
+      contentEncoding: raw.contentEncoding,
+      body: raw.body,
+    };
+  }
+
+  private async resolveAndExchange(request: GateRequest): Promise<RawAnswer> {
     const host = request.url.hostname.replace(/^\[|\]$/g, '');
     const loopback =
       this.allowLoopback && LOOPBACK_NAMES.has(request.url.hostname);
@@ -59,7 +89,7 @@ export class HttpsGateClient extends GateClientPort {
   private exchange(
     request: GateRequest,
     pinned: { address: string; family: number },
-  ): Promise<GateAnswer> {
+  ): Promise<RawAnswer> {
     const pin: LookupFunction = (_host, options, callback) => {
       if (typeof options === 'object' && options.all === true)
         (
@@ -71,15 +101,18 @@ export class HttpsGateClient extends GateClientPort {
       else callback(null, pinned.address, pinned.family);
     };
     const send = request.url.protocol === 'https:' ? httpsRequest : httpRequest;
-    return new Promise<GateAnswer>((resolve) => {
+    return new Promise<RawAnswer>((resolve) => {
       let settled = false;
-      const done = (answer: GateAnswer) => {
-        if (settled) return;
+      const done = (answer: RawAnswer): boolean => {
+        if (settled) return false;
         settled = true;
         clearTimeout(timer);
         resolve(answer);
+        return true;
       };
-      const fail = (reason: GateFailure) => done({ status: 'failed', reason });
+      const fail = (reason: GateFailure) => {
+        done({ status: 'failed', reason });
+      };
       const outgoing = send(
         request.url,
         {
@@ -88,6 +121,8 @@ export class HttpsGateClient extends GateClientPort {
           agent: false,
           headers: {
             Accept: 'application/json',
+            // The marker must be found in the bytes as they are (DT-07): no compression.
+            'Accept-Encoding': 'identity',
             'User-Agent': 'MoatDesktop-Test',
             ...(request.body === null
               ? {}
@@ -111,26 +146,50 @@ export class HttpsGateClient extends GateClientPort {
   }
 }
 
-function read(response: IncomingMessage, done: (answer: GateAnswer) => void) {
+type RawAnswer =
+  | {
+      readonly status: 'answered';
+      readonly httpStatus: number;
+      readonly contentType: string | null;
+      readonly contentEncoding: string | null;
+      readonly body: Buffer;
+      readonly truncated: boolean;
+    }
+  | { readonly status: 'failed'; readonly reason: GateFailure };
+
+function read(response: IncomingMessage, done: (answer: RawAnswer) => boolean) {
+  // Every byte read is wiped once the answer is built, or dropped (DT-07: a data file holds keys).
   const chunks: Buffer[] = [];
   let length = 0;
   let truncated = false;
+  let finished = false;
   const finish = () => {
-    const text = Buffer.concat(chunks).toString('utf8');
+    if (finished) return;
+    finished = true;
+    const body = Buffer.concat(chunks);
+    for (const chunk of chunks) chunk.fill(0);
     const type = response.headers['content-type'];
-    done({
+    const encoding = response.headers['content-encoding'];
+    const accepted = done({
       status: 'answered',
       httpStatus: response.statusCode ?? 0,
       contentType: typeof type === 'string' ? type.slice(0, 128) : null,
-      excerpt: text.slice(0, MAX_EXCERPT),
-      truncated: truncated || text.length > MAX_EXCERPT,
+      contentEncoding:
+        typeof encoding === 'string' ? encoding.slice(0, 64) : null,
+      body,
+      truncated,
     });
+    if (!accepted) body.fill(0);
   };
   response.on('data', (chunk: Buffer) => {
-    if (truncated) return;
+    if (finished) {
+      chunk.fill(0);
+      return;
+    }
     const room = MAX_READ_BYTES - length;
     if (chunk.length > room) {
-      chunks.push(chunk.subarray(0, room));
+      chunks.push(Buffer.from(chunk.subarray(0, room)));
+      chunk.fill(0);
       length = MAX_READ_BYTES;
       truncated = true;
       finish();
@@ -142,6 +201,7 @@ function read(response: IncomingMessage, done: (answer: GateAnswer) => void) {
   });
   response.on('end', finish);
   response.on('error', finish);
+  response.on('close', finish);
 }
 
 function failureOf(error: NodeJS.ErrnoException): GateFailure {

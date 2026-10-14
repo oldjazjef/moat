@@ -1,5 +1,5 @@
 /**
- * «Testen» in the setup wizard (FR-73, T-59): before the first test request to an address, the
+ * «Testen» in the setup wizard (FR-73) and «Von aussen prüfen» (DT-07), T-59: before the first request to an address, the
  * main process asks in a dialog of its own, naming the host — the page may be compromised and the
  * test request is its only way out to the internet. A yes is remembered per origin until the app
  * quits; a no is not, so the next test asks again.

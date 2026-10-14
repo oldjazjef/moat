@@ -3,7 +3,11 @@ import type { AddressInfo } from 'node:net';
 import type { ConfigService } from '@nestjs/config';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Env } from '../../config/env';
-import { HttpsGateClient, MAX_EXCERPT } from './https-gate-client';
+import {
+  HttpsGateClient,
+  MAX_EXCERPT,
+  MAX_READ_BYTES,
+} from './https-gate-client';
 
 const env = (loopback: boolean) =>
   ({
@@ -143,5 +147,29 @@ describe('HttpsGateClient (T-59)', () => {
       body: '{}',
     });
     expect(answer).toEqual({ status: 'failed', reason: 'unreachable' });
+  });
+
+  it('probes with a plain GET and hands back the raw body, at most MAX_READ_BYTES (DT-07)', async () => {
+    const { url, seen } = await fakeGate(() => ({
+      status: 200,
+      body: '<?php exit; __halt_compiler();' + 'k'.repeat(100_000),
+    }));
+    const reply = await new HttpsGateClient(env(true)).probe(url);
+    expect(seen.method).toBe('GET');
+    expect(seen.body).toBe('');
+    expect(seen.headers?.cookie).toBeUndefined();
+    expect(reply.status).toBe('answered');
+    if (reply.status !== 'answered') return;
+    expect(reply.httpStatus).toBe(200);
+    expect(reply.body.length).toBe(MAX_READ_BYTES);
+    expect(reply.body.toString('latin1')).toContain('__halt_compiler');
+  });
+
+  it('refuses to probe a private address too', async () => {
+    expect(
+      await new HttpsGateClient(env(true)).probe(
+        new URL('https://169.254.169.254/moat-gate.php/moat-check'),
+      ),
+    ).toEqual({ status: 'failed', reason: 'address_forbidden' });
   });
 });

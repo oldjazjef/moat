@@ -31,7 +31,25 @@ export type GateFailure =
   /** TLS failed: the certificate does not fit the host, or is not trusted. */
   | 'tls';
 
+/**
+ * One GET of the check from outside (DT-07): the raw body (at most MAX_READ_BYTES), for the API
+ * to look for the data-file marker and wipe. Never handed to the page.
+ */
+export type ProbeReply =
+  | {
+      readonly status: 'answered';
+      readonly httpStatus: number;
+      /** `Content-Encoding` as the server sent it; anything but identity hides the bytes. */
+      readonly contentEncoding: string | null;
+      readonly body: Buffer;
+    }
+  | {
+      readonly status: 'failed';
+      readonly reason: GateFailure;
+    };
+
 /** Outbound HTTPS to the gate the person named; nothing else in the API calls out. */
 export abstract class GateClientPort {
   abstract send(request: GateRequest): Promise<GateAnswer>;
+  abstract probe(url: URL): Promise<ProbeReply>;
 }

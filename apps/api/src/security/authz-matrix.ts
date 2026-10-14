@@ -132,6 +132,18 @@ export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
     },
     expect: { ...LOCAL_ONLY, desktop: 422 },
   },
+  {
+    // Calls out (DT-07, T-59): the desktop only. Plain HTTP to another host is refused before
+    // anything is sent, so even the desktop gets 422 `url_invalid` and the spec makes no request.
+    method: 'POST',
+    path: '/api/projects/:id/hardening-check',
+    request: `/api/projects/${SEEDED_PROJECT}/hardening-check`,
+    body: {
+      url: 'http://www.example.ch/moat-gate.php',
+      dataFolder: `moat-data-${'0'.repeat(32)}`,
+    },
+    expect: { ...LOCAL_ONLY, desktop: 422 },
+  },
   { method: 'GET', path: '/api/setup', expect: LOCAL_ONLY },
   {
     method: 'PATCH',

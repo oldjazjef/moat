@@ -97,9 +97,12 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
   },
   {
     id: 'hardening',
-    steps: items('run', 'outside', 'process', 'level', 'fix'),
+    steps: items('run', 'outside', 'process', 'level', 'fix', {
+      id: 'desktop',
+      only: 'desktop',
+    }),
     tips: items('shared', 'again', 'stronger'),
-    links: [],
+    links: [PROJECTS],
   },
   {
     id: 'trust',

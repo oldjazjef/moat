@@ -48,7 +48,11 @@ Four components (ANFORDERUNGEN.md, header):
 > `GET /api/recipes`; seal and sign as in «Gates»; `GET /api/projects/:id/policy` = `suggestPolicy`;
 > «Testen» = `POST /api/projects/:id/test-request` in `apps/api/src/gate-test/`, desktop only, the main
 > process confirms each new address in its own dialog, HTTPS to public addresses pinned after the
-> check, T-59), Zusammenfassung. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, lazy pull, setup mode, trust mode 2. Everything else below is
+> check, T-59), Zusammenfassung. The check from outside in the desktop (DT-07): «Von aussen prüfen»
+> (`mt-hardening-check`, in the wizard summary and per gate in «Gates») →
+> `POST /api/projects/:id/hardening-check` (same target rules, confirmation and pinned client as
+> «Testen»; probe rules in core `gate/external-probe.ts`); it shows «Unsicher für Secrets» when a
+> data file is readable and no level otherwise. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, lazy pull, setup mode, trust mode 2. Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
 
