@@ -132,6 +132,41 @@ final class GateFixture
         }
     }
 
+    /** What `php moat-gate.php setup` printed last (conformance/http/gate-setup.json). */
+    public string $setupToken = '';
+
+    /**
+     * conformance/http/gate-setup.json: `enable` runs `setup` and keeps the token, `expire` moves
+     * the setup file's expiry into the past, `acceptNext` accepts a bundle one version higher.
+     */
+    public function setup(string $step): void
+    {
+        $data = DataDir::locate($this->site) ?? throw new \RuntimeException('no data folder');
+        if ($step === 'enable') {
+            $out = $this->cli($this->site, ['setup']);
+            if (preg_match('/token \(shown only now\): (\S+)/', $out, $match) !== 1) {
+                throw new \RuntimeException('setup printed no token');
+            }
+            $this->setupToken = $match[1];
+        } elseif ($step === 'expire') {
+            $state = json_decode((string) $data->read('setup'), true, 4, JSON_THROW_ON_ERROR);
+            if (!\is_array($state)) {
+                throw new \RuntimeException('no setup file');
+            }
+            $state['expiresAt'] = time() - 1;
+            $data->write('setup', self::encode($state));
+        } elseif ($step === 'acceptNext') {
+            $this->version += 1;
+            $sealed = ['api-token' => self::seal(explode("\n", $this->secret)[0], Base64Url::decode($this->boxKey), $this->gateId, 'api-token')];
+            file_put_contents($this->dir . '/next.json', self::bundle($this->config, $sealed, $this->gateId, $this->signer, $this->version));
+            $this->cli($this->site, ['accept', $this->dir . '/next.json']);
+        } else {
+            throw new \RuntimeException('setup: enable, expire or acceptNext');
+        }
+    }
+
+    private int $version = 1;
+
     /** The request log's content, `logold` then `log`, without the marker lines (FR-50). */
     public function requestLog(): string
     {

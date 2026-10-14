@@ -14,6 +14,7 @@ use Moat\Gate\Runtime\Gate;
 use Moat\Gate\Runtime\NotConfigured;
 use Moat\Gate\Runtime\PullOutcome;
 use Moat\Gate\Runtime\RequestHandler;
+use Moat\Gate\Runtime\SetupMode;
 use Moat\Gate\Storage\DataDir;
 
 /**
@@ -66,6 +67,18 @@ final class Kernel
                 self::log($error, 'web_facts_unwritable');
             }
         }
+        $request = Request::fromServer($_SERVER);
+        $query = \is_string($_SERVER['QUERY_STRING'] ?? null) ? $_SERVER['QUERY_STRING'] : '';
+        if (SetupMode::isSetupRequest($request->rawPath, $query)) {
+            // SEC-28: before the policy and the bundle, which a gate in setup has not yet.
+            try {
+                SetupMode::answer($request, Gate::open($gateDir), time())->send();
+            } catch (NotConfigured) {
+                Response::error(GateError::NotFound)->send();
+            }
+
+            return;
+        }
         try {
             $gate = Gate::open($gateDir);
             self::pull($gate);
@@ -76,7 +89,7 @@ final class Kernel
 
             return;
         }
-        RequestHandler::handle(Request::fromServer($_SERVER), $bundle, $gate, time())->send();
+        RequestHandler::handle($request, $bundle, $gate, time())->send();
     }
 
     /**

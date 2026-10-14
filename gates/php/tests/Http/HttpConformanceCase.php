@@ -54,6 +54,9 @@ abstract class HttpConformanceCase extends TestCase
         if (\array_key_exists('killFile', $case)) {
             $gate->setKillFile($case['killFile'] === null ? null : Vectors::map($case['killFile']));
         }
+        if (isset($case['setup'])) {
+            $gate->setup(Vectors::string($case['setup']));
+        }
         if (isset($case['publish'])) {
             $gate->publish(Vectors::map($case['publish']));
         }
@@ -63,6 +66,7 @@ abstract class HttpConformanceCase extends TestCase
         $before = $gate->upstreamCalls();
         $pullsBefore = $gate->pulls();
 
+        $request = self::withSetupToken($request, $gate->setupToken);
         [$status, $headers, $body] = self::send($gate->baseUrl, $request);
 
         self::assertSame(Vectors::int($expect['status']), $status, $body);
@@ -131,6 +135,25 @@ abstract class HttpConformanceCase extends TestCase
         sort($keys);
 
         return $keys;
+    }
+
+    /**
+     * `{setupToken}` in the path or a header value: the token `setup` printed.
+     *
+     * @param array<string, mixed> $request
+     *
+     * @return array<string, mixed>
+     */
+    private static function withSetupToken(array $request, string $token): array
+    {
+        $request['path'] = str_replace('{setupToken}', $token, Vectors::string($request['path']));
+        $headers = [];
+        foreach (Vectors::map($request['headers']) as $name => $value) {
+            $headers[$name] = str_replace('{setupToken}', $token, Vectors::string($value));
+        }
+        $request['headers'] = $headers;
+
+        return $request;
     }
 
     /** Runs after every case (PHPUnit keeps declaration order). */

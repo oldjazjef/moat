@@ -30,6 +30,7 @@ export const DATA_FILES = [
   'logold',
   'logkey',
   'loglock',
+  'setup',
 ] as const;
 
 /** `moat-data-<hex>`: the random name `php moat-gate.php install` printed. */

@@ -36,6 +36,7 @@ HTTP they answer 404 with an empty body):
 | `lock.php`     | the lock that serialises updates to `limits.php`                                |
 | `webfacts.php` | what the web server process saw of itself, for the hardening check              |
 | `log.php`      | the request log, one JSON line per request (below); `logold.php` the one before |
+| `setup.php`    | the setup mode: the token's SHA-256, its expiry, the version when switched on   |
 | `logkey.php`   | the random key of the request log's client hashes                               |
 
 `install` prints the gate id, the box key and the fingerprints. Compare them, then pin the gate
@@ -56,6 +57,7 @@ php moat-gate.php kill [--route=<name>]    # switch the gate or one route off at
 php moat-gate.php revive [--route=<name>]  # and on again (without --route: everything)
 php moat-gate.php check [--url=https://…/moat-gate.php]   # the hardening check (below)
 php moat-gate.php log [--lines=1000]       # the newest lines of the request log (below)
+php moat-gate.php setup                    # the setup mode for 30 minutes, with a new token (below)
 ```
 
 A bundle is accepted only when its signature is valid for the pinned signers, it is bound to this
@@ -355,6 +357,25 @@ budget as the sum of the routes' token budgets. The spending lives in `budget.ph
 at most 1024 entries, the spending of routes no longer in the bundle dropped); `status` prints
 each budget with what it has spent and when it resets. A damaged or full store refuses every
 request with a budget (`503 rate_limit_unavailable`); deleting `budget.php` resets the spending.
+
+## Setup mode (SEC-28, SEC-32, T-73)
+
+`install` switches the setup mode on and prints a token once; `php moat-gate.php setup` does it
+again with a new token. While it is on,
+
+```
+GET https://<site>/<path>/moat-gate.php?moat-setup
+X-Moat-Setup-Token: <token>
+```
+
+answers the gate's public identity — `gateId`, `boxKey`, `boxKeyFingerprint`, the pinned `signers`
+with their fingerprints, `threshold` and `mode` — so the fingerprints can be compared from Moat
+Desktop without a shell on the server (`conformance/http/gate-setup.json`). Nothing in the answer
+is secret, and nothing can be changed through it (SEC-40). The data file `setup.php` holds only the
+token's SHA-256. The mode switches itself off for good after 30 minutes and as soon as a bundle
+above the version accepted when it was switched on arrives; only the command line switches it on
+again. Every other answer — no token, a wrong one, the token in the query, another method, the
+mode off — is the gate's plain 404 `not_found`. `status` shows whether it is on.
 
 ## Request log (FR-50, DT-12, T-72)
 

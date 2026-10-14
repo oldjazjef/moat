@@ -104,6 +104,7 @@ describe('dryRun predicts the gate (conformance/http/, FR-42)', () => {
       'gate-locked.json',
       'gate-log.json',
       'gate-pull.json',
+      'gate-setup.json',
       'gate.json',
     ]);
   });
@@ -119,7 +120,10 @@ describe('dryRun predicts the gate (conformance/http/, FR-42)', () => {
         published ||= entry.publish?.version !== undefined;
         return published && entry.pullDue === true;
       });
-      const fixed = changed === -1 ? cases : cases.slice(0, changed);
+      // The setup mode (gate-setup.json) is the gate's own, before any bundle: not predicted.
+      const fixed = (changed === -1 ? cases : cases.slice(0, changed)).filter(
+        (entry) => !entry.request.path.includes('moat-setup'),
+      );
       for (const entry of fixed) {
         it(entry.name, () => {
           if (entry.killFile !== undefined)

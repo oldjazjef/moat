@@ -30,6 +30,7 @@ use Moat\Gate\Runtime\NotConfigured;
 use Moat\Gate\Runtime\PullOutcome;
 use Moat\Gate\Runtime\PullRecord;
 use Moat\Gate\Runtime\RequestLog;
+use Moat\Gate\Runtime\SetupMode;
 use Moat\Gate\Runtime\Trust;
 use Moat\Gate\Storage\DataDir;
 use Moat\Gate\Storage\Files;
@@ -48,10 +49,11 @@ use Moat\Gate\Storage\Files;
  *   php moat-gate.php revive [--route=<name>]
  *   php moat-gate.php check [--url=https://<site>/<path>/moat-gate.php]
  *   php moat-gate.php log [--lines=<n>]
+ *   php moat-gate.php setup
  */
 final class Cli
 {
-    private const USAGE = "usage: php moat-gate.php install|trust|policy|accept|pull|status|check|kill|revive|log (see the gate README)\n";
+    private const USAGE = "usage: php moat-gate.php install|trust|policy|accept|pull|status|check|kill|revive|log|setup (see the gate README)\n";
 
     /** @param list<string> $argv */
     public static function main(string $gateDir, array $argv): int
@@ -70,6 +72,7 @@ final class Cli
                 'kill' => self::kill($gateDir, $args, $options, true),
                 'revive' => self::kill($gateDir, $args, $options, false),
                 'log' => self::log($gateDir, $args, $options),
+                'setup' => self::setup($gateDir, $args, $options),
                 default => self::usage(self::USAGE),
             };
         } catch (Rejection $rejection) {
@@ -107,8 +110,34 @@ final class Cli
         // `=` form: a base64url value may start with "-" and would read as an option.
         self::out('  moat gate add <name> --gate-id=' . $identity->gateId . ' --box-key=' . Base64Url::encode($identity->boxPublicKey));
         self::out('and install a local policy: php moat-gate.php policy <policy.json>');
+        self::setupText(SetupMode::enable(Gate::open($gateDir), time()));
 
         return 0;
+    }
+
+    /**
+     * SEC-28: switches the setup mode on again (30 minutes, until a newer bundle arrives) and
+     * prints the new token once. Only here, on the server's command line.
+     *
+     * @param list<string>          $args
+     * @param array<string, string> $options
+     */
+    private static function setup(string $gateDir, array $args, array $options): int
+    {
+        if ($args !== [] || $options !== []) {
+            throw new UsageError('usage: php moat-gate.php setup');
+        }
+        self::setupText(SetupMode::enable(Gate::open($gateDir), time()));
+
+        return 0;
+    }
+
+    private static function setupText(string $token): void
+    {
+        self::out('');
+        self::out('Setup mode is on for ' . intdiv(SetupMode::LIFETIME_SECONDS, 60) . ' minutes and until the next bundle is accepted.');
+        self::out('Moat Desktop reads the fingerprints from https://<site>/<path>/moat-gate.php?' . SetupMode::QUERY);
+        self::out('with this token (shown only now): ' . $token);
     }
 
     /** @param array<string, string> $options */
@@ -307,6 +336,8 @@ final class Cli
             self::out('Pull:       ' . $gate->policy->pull->url() . ' at most every ' . $gate->policy->pull->intervalSeconds . ' s; '
                 . ($record === null ? 'not tried yet' : 'last ' . gmdate('Y-m-d H:i', $record->attemptedAt) . ' UTC, ' . self::pullText($record)));
         }
+        $setup = SetupMode::remaining($gate, time());
+        self::out('Setup mode: ' . ($setup === null ? 'off (php moat-gate.php setup switches it on)' : 'on for ' . intdiv($setup + 59, 60) . ' more minute(s)'));
         $switch = KillSwitch::read($gate->data);
         self::out(self::killText($switch));
         foreach ($routeNames === null ? [] : array_diff($switch->routes, $routeNames) as $missing) {
