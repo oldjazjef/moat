@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Moat\Gate\Json;
 
+use Moat\Gate\Rejection;
+use Moat\Gate\RejectionCode;
+
 /**
  * RFC 8785 (JCS) for what StrictJson decodes: null, booleans, integers from 0 to 2^53 − 1,
  * strings, lists and JsonObject — the same text as canonicalJson() in libs/core
@@ -22,7 +25,7 @@ final class Canonical
             $keys = array_map(strval(...), array_keys($members));
             foreach ($keys as $key) {
                 if (preg_match('/^[\x00-\x7F]*$/D', $key) !== 1) {
-                    throw new \InvalidArgumentException('Canonical: ASCII keys only');
+                    throw new Rejection(RejectionCode::BodyInvalid);
                 }
             }
             sort($keys, SORT_STRING);
@@ -40,6 +43,6 @@ final class Canonical
             return json_encode($value, self::FLAGS);
         }
 
-        throw new \InvalidArgumentException('Canonical: not a strict JSON value');
+        throw new Rejection(RejectionCode::BodyInvalid);
     }
 }

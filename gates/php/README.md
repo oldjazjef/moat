@@ -115,9 +115,10 @@ forwards their canonical JSON (RFC 8785); a missing required field, a wrong type
 out of bounds or anything but a JSON object → 400 `body_invalid`, before anything is sent. A route
 with a budget estimates the body it forwards. Without `body` the body goes on as received.
 
-`requireBody: true` under a host in the local policy refuses every bundle with a POST, PUT or
-PATCH route to that host without `body` (`policy_violation`); `moat policy suggest` proposes it
-once every such route has its fields.
+`requireBody: true` under a host in the local policy refuses every bundle with a route to that
+host that has no `body` but takes a body (`policy_violation`), whatever its method: such a route
+needs `maxBodySize: '0B'`. `moat policy suggest` proposes it once every route to the host
+qualifies.
 
 ## Locked gate
 

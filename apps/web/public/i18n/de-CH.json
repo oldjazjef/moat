@@ -761,7 +761,7 @@
         "tips": {
           "exact": "Pfade gelten exakt: `/newsletter` passt nicht auf `/newsletter/abc`.",
           "quote": "Setze Pfade, URLs und Zeitangaben in Anführungszeichen, zum Beispiel `'10m'`.",
-          "requireBody": "Haben alle Routen zu einer API ihre Felder, schlägt `moat policy suggest` für diesen Host `requireBody: true` vor. Dann nimmt das Gate kein Bundle mehr an, das eine Route zu dieser API ohne Felder enthält, auch kein signiertes."
+          "requireBody": "Haben alle Routen zu einer API, die Inhalte annehmen, ihre Felder, schlägt `moat policy suggest` für diesen Host `requireBody: true` vor. Dann nimmt das Gate kein Bundle mehr an, in dem eine Route zu dieser API ohne Felder einen Inhalt annimmt, auch kein signiertes. Eine Route ohne Felder braucht dann `maxBodySize: '0B'`."
         }
       },
       "console": {

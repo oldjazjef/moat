@@ -1255,11 +1255,35 @@ function policyVectors(): Json {
       },
     ],
     [
-      'requireBody: a GET route needs none',
+      'requireBody: a GET route that takes no body needs no fields',
       (c, p) => {
         allowed(p)['requireBody'] = true;
         allowed(p)['methods'] = ['GET'];
         route(c)['method'] = 'GET';
+        route(c)['maxBodyBytes'] = 0;
+      },
+    ],
+    [
+      'requireBody: a GET route that takes a body (T-65)',
+      (c, p) => {
+        allowed(p)['requireBody'] = true;
+        allowed(p)['methods'] = ['GET'];
+        route(c)['method'] = 'GET';
+      },
+    ],
+    [
+      'requireBody: a DELETE route that takes a body (T-65)',
+      (c, p) => {
+        allowed(p)['requireBody'] = true;
+        allowed(p)['methods'] = ['DELETE'];
+        route(c)['method'] = 'DELETE';
+      },
+    ],
+    [
+      'requireBody: a POST route that takes no body needs no fields',
+      (c, p) => {
+        allowed(p)['requireBody'] = true;
+        route(c)['maxBodyBytes'] = 0;
       },
     ],
     ['requireBody false', (_c, p) => (allowed(p)['requireBody'] = false)],

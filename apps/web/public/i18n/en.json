@@ -760,7 +760,7 @@
         },
         "tips": {
           "exact": "Paths match exactly: `/newsletter` does not match `/newsletter/abc`.",
-          "requireBody": "When every route to an API lists its fields, `moat policy suggest` proposes `requireBody: true` for that host. The gate then accepts no bundle with a route to that API without fields, not even a signed one.",
+          "requireBody": "When every route to an API that takes content lists its fields, `moat policy suggest` proposes `requireBody: true` for that host. The gate then accepts no bundle in which a route to that API takes content without fields, not even a signed one. A route without fields then needs `maxBodySize: '0B'`.",
           "quote": "Put paths, URLs and durations in quotes, for example `'10m'`."
         }
       },

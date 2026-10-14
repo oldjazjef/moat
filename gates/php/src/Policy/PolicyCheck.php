@@ -132,8 +132,9 @@ final class PolicyCheck
             if (!$within) {
                 self::violation();
             }
-            // FR-13, SEC-14: a bundle cannot drop the body check of a host that requires it.
-            if ($allowed->requireBody && $route->body === null && \in_array($route->method, [Method::Post, Method::Put, Method::Patch], true)) {
+            // FR-13, SEC-14, T-65: a bundle cannot drop the body check of a host that requires it;
+            // a route without body fields must take no body at all, whatever its method.
+            if ($allowed->requireBody && $route->body === null && $route->maxBodyBytes !== 0) {
                 self::violation();
             }
             // Every answer from a host with a budget must be countable, in the policy's format.
