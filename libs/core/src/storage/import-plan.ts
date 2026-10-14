@@ -15,7 +15,7 @@ import type { StoragePort } from './storage-port';
  * bundle is checked exactly as the gate would accept it (CRYPTO.md §4.3, steps 1–9): signed by
  * the person's own key (the only signer a gate of this project pins), for this gate's id, a
  * version above the project's latest bundle, strict JSON, a valid config. On top, the import
- * hardening of DT-17: no `__proto__`/`constructor`/`prototype` key anywhere, a strict ZIP reader
+ * hardening of DT-17: no `__proto__` key anywhere, a strict ZIP reader
  * (Zip-Slip, links, duplicates, limits) and only the file names a package has. The policy and
  * the instructions in a package are ignored: the local policy is the gate's business (SEC-10).
  *
@@ -87,8 +87,11 @@ const BUNDLE_FILE = /^bundle-v([1-9][0-9]{0,8})\.json$/;
 const OTHER_FILES = new Set(['policy.json', 'LIESMICH.txt', 'README.txt']);
 /** The folder a package ZIP keeps its files in: `moat-<gate>-v<n>`. */
 const PACKAGE_FOLDER = /^moat-[a-z][a-z0-9-]{0,62}-v([1-9][0-9]{0,8})$/;
-/** Keys that change an ordinary object's prototype or reach its constructor (DT-17). */
-const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+/**
+ * The key that changes an ordinary object's prototype (DT-17). `constructor` and `prototype` are
+ * valid route, upstream and secret names, and strict JSON objects have no prototype to reach.
+ */
+const FORBIDDEN_KEYS = new Set(['__proto__']);
 
 export interface PackageEntry {
   readonly name: string;
@@ -279,7 +282,7 @@ export async function planImport(
   };
 }
 
-/** True when any object in the value has a `__proto__`, `constructor` or `prototype` key. */
+/** True when any object in the value has a `__proto__` key. */
 export function hasForbiddenKey(value: JsonValue): boolean {
   if (value === null || typeof value !== 'object') return false;
   if (Array.isArray(value)) return value.some(hasForbiddenKey);

@@ -237,35 +237,33 @@ describe('planImport (FR-45, DT-17, T-50)', () => {
     }
   });
 
-  it('DT-17: refuses __proto__, constructor and prototype keys anywhere in the payload', async () => {
+  it('DT-17: refuses a __proto__ key anywhere in the payload', async () => {
     const { signer, plan } = await keys();
     const v1 = await bundle(signer, 1);
-    const edits: ((payload: { [key: string]: JsonValue }) => void)[] = [
-      (p) => {
-        const routes = (p['config'] as { routes: { [k: string]: JsonValue } })
-          .routes;
-        const [first] = Object.keys(routes);
-        routes['constructor'] = routes[first as string] as JsonValue;
-        delete routes[first as string];
-      },
-      (p) => {
-        (p['config'] as { [k: string]: JsonValue })['__proto__'] = {
-          polluted: true,
-        };
-      },
-      (p) => {
-        (p['secrets'] as { [k: string]: JsonValue })['prototype'] = JSON.parse(
-          SEALED,
-        ) as JsonValue;
-      },
-    ];
-    for (const edit of edits) {
-      const signed = await resigned(v1, signer, edit);
-      expect(
-        await code(() => planImport(folder(BASE), 'site', plan, file(signed))),
-      ).toBe('bundle_invalid');
-    }
+    const signed = await resigned(v1, signer, (p) => {
+      (p['config'] as { [k: string]: JsonValue })['__proto__'] = {
+        polluted: true,
+      };
+    });
+    expect(
+      await code(() => planImport(folder(BASE), 'site', plan, file(signed))),
+    ).toBe('bundle_invalid');
     expect(({} as { polluted?: boolean }).polluted).toBeUndefined();
+  });
+
+  it('DT-17: takes `constructor` and `prototype` as the names they are', async () => {
+    const { signer, plan } = await keys();
+    const v1 = await bundle(signer, 1);
+    const signed = await resigned(v1, signer, (p) => {
+      const routes = (p['config'] as { routes: { [k: string]: JsonValue } })
+        .routes;
+      const [first] = Object.keys(routes);
+      routes['constructor'] = routes[first as string] as JsonValue;
+      delete routes[first as string];
+    });
+    await expect(
+      planImport(folder(BASE), 'site', plan, file(signed)),
+    ).resolves.toBeDefined();
   });
 
   it('refuses an envelope with a __proto__ key, a BOM, broken UTF-8 or too deep JSON', async () => {
@@ -500,12 +498,10 @@ describe('packageBundleName (DT-17)', () => {
 
   it('hasForbiddenKey looks into arrays and nested objects', () => {
     expect(
-      hasForbiddenKey(parseStrictJson(utf8('{"a":[{"b":{"constructor":1}}]}'))),
+      hasForbiddenKey(parseStrictJson(utf8('{"a":[{"b":{"__proto__":1}}]}'))),
     ).toBe(true);
     expect(
-      hasForbiddenKey(
-        parseStrictJson(utf8('{"a":[{"b":{"constructors":1}}]}')),
-      ),
+      hasForbiddenKey(parseStrictJson(utf8('{"a":[{"b":{"constructor":1}}]}'))),
     ).toBe(false);
   });
 });
