@@ -58,6 +58,23 @@ export interface DesktopMessages {
       readonly filter: string;
     };
     readonly chooseFolder: { readonly title: string; readonly button: string };
+    /** Git (T-68): the working copy folder, then a confirmation with branch and remote. */
+    readonly git: {
+      readonly chooseFolder: {
+        readonly title: string;
+        readonly button: string;
+      };
+      readonly confirm: {
+        readonly title: string;
+        /** {package}, {folder} */
+        readonly message: string;
+        /** {branch}, {remote}, {remoteBranch} */
+        readonly detail: string;
+        readonly push: string;
+        readonly other: string;
+        readonly cancel: string;
+      };
+    };
   };
   /** The SFTP window (DT-05) and its file dialog for a private key. */
   readonly sftpDialog: SftpDialogTexts;
@@ -248,6 +265,21 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       chooseFolder: {
         title: 'Ordner für das Deploy-Paket wählen',
         button: 'Hier ablegen',
+      },
+      git: {
+        chooseFolder: {
+          title: 'Ordner in deiner Git-Arbeitskopie wählen',
+          button: 'Diesen Ordner verwenden',
+        },
+        confirm: {
+          title: 'Per Git ausliefern',
+          message: 'Paket {package} nach {folder} committen und pushen?',
+          detail:
+            'Moat legt das Paket als neuen Ordner an, committet nur diesen Ordner auf den Branch {branch} und pusht ihn nach {remote} ({remoteBranch}). Deine anderen Änderungen bleiben, wie sie sind. Hooks des Repositorys führt Moat nicht aus.',
+          push: 'Committen und pushen',
+          other: 'Anderen Ordner wählen',
+          cancel: 'Abbrechen',
+        },
       },
     },
     sftpDialog: {
@@ -490,6 +522,21 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       chooseFolder: {
         title: 'Choose the folder for the deploy package',
         button: 'Put it here',
+      },
+      git: {
+        chooseFolder: {
+          title: 'Choose a folder in your Git working copy',
+          button: 'Use this folder',
+        },
+        confirm: {
+          title: 'Deliver via Git',
+          message: 'Commit and push package {package} to {folder}?',
+          detail:
+            "Moat adds the package as a new folder, commits only that folder on branch {branch} and pushes it to {remote} ({remoteBranch}). Your other changes stay as they are. Moat runs none of the repository's hooks.",
+          push: 'Commit and push',
+          other: 'Choose another folder',
+          cancel: 'Cancel',
+        },
       },
     },
     sftpDialog: {

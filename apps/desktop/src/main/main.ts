@@ -42,6 +42,7 @@ import {
   writeDeployZip,
 } from './lib/deploy';
 import { KeyCreationSession, writeKeyFile } from './lib/key-creation';
+import { gitRunner, runGitDeploy } from './lib/git-deploy';
 import { readPrivateKey, SftpSession } from './lib/sftp';
 import { uploadPackage } from './lib/sftp-client';
 import { registerSftpDialogIpc, showSftpDialog } from './sftp-window';
@@ -542,6 +543,67 @@ async function deployGate(
       }),
     });
     if (result.status === 'exported') remember();
+    return result;
+  }
+  if (target === 'git') {
+    const git = text.deploy.git;
+    const fill = (template: string, values: Record<string, string>) =>
+      template.replace(
+        /\{(\w+)\}/g,
+        (all, name: string) => values[name] ?? all,
+      );
+    const result = await runGitDeploy({
+      // A folder that does not exist: no hook of the repository ever runs (T-68).
+      git: gitRunner(join(userData, 'no-git-hooks')),
+      pkg,
+      files,
+      stored: () => readConfig(userData).gitTargets[key] ?? null,
+      save: (dir) =>
+        updateConfig(userData, {
+          gitTargets: { ...readConfig(userData).gitTargets, [key]: dir },
+        }),
+      forget: () => {
+        const { [key]: _dropped, ...rest } = readConfig(userData).gitTargets;
+        updateConfig(userData, { gitTargets: rest });
+      },
+      isFolder,
+      chooseFolder: async () => {
+        const picked = await dialog.showOpenDialog(parent, {
+          title: git.chooseFolder.title,
+          buttonLabel: git.chooseFolder.button,
+          defaultPath: app.getPath('documents'),
+          properties: ['openDirectory'],
+        });
+        const dir = picked.filePaths[0];
+        return picked.canceled || dir === undefined ? null : dir;
+      },
+      confirm: async (dir, found) => {
+        const answer = await dialog.showMessageBox(parent, {
+          type: 'question',
+          title: git.confirm.title,
+          message: fill(git.confirm.message, {
+            package: packageName(pkg),
+            folder: dir,
+          }),
+          detail: fill(git.confirm.detail, {
+            branch: found.branch,
+            remote: found.remote,
+            remoteBranch: found.merge.slice('refs/heads/'.length),
+          }),
+          buttons: [git.confirm.push, git.confirm.other, git.confirm.cancel],
+          defaultId: 0,
+          cancelId: 2,
+          noLink: true,
+        });
+        return answer.response === 0
+          ? 'push'
+          : answer.response === 1
+            ? 'other'
+            : 'cancel';
+      },
+    });
+    if (result.status === 'exported' || result.status === 'committed')
+      remember();
     return result;
   }
   let written;

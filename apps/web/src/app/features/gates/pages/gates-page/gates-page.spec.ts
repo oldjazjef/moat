@@ -477,6 +477,33 @@ describe('GatesPage', () => {
       );
     });
 
+    it('Git: says pushed, committed only, or why the folder does not fit', async () => {
+      const deploy = desktop({ status: 'exported', target: 'git', version: 5 });
+      const { el, harness } = await openProjectTab(
+        'gates',
+        GatesPage,
+        withGate({ ...site(), latestBundle: 5 }),
+      );
+      const button = el.querySelector('[data-deploy-git]') as HTMLButtonElement;
+      expect(button.textContent?.trim()).toBe('Per Git ausliefern');
+      button.click();
+      await settle(harness);
+      expect(deploy).toHaveBeenCalledWith(PROJECT.id, 'site', 'git', 'de-CH');
+      expect(text(el, '[data-deploy-outcome]')).toContain(
+        'als neuer Ordner moat-site-v5 committet und gepusht',
+      );
+      deploy.mockResolvedValue({ status: 'committed', version: 5 });
+      button.click();
+      await settle(harness);
+      expect(text(el, '[data-deploy-outcome]')).toContain(
+        'Version 5 ist committet, aber der Push hat nicht geklappt',
+      );
+      deploy.mockResolvedValue({ status: 'refused', code: 'git_no_upstream' });
+      button.click();
+      await settle(harness);
+      expect(text(el, '[data-deploy-outcome]')).toContain('keinen Upstream');
+    });
+
     it('keeps both buttons off until a bundle is signed', async () => {
       desktop({ status: 'failed' });
       const { el } = await openProjectTab(
@@ -490,6 +517,9 @@ describe('GatesPage', () => {
       expect(
         (el.querySelector('[data-deploy-folder]') as HTMLButtonElement)
           .disabled,
+      ).toBe(true);
+      expect(
+        (el.querySelector('[data-deploy-git]') as HTMLButtonElement).disabled,
       ).toBe(true);
       expect(text(el, '[data-gate-deploy] p')).toContain('Signiere zuerst');
     });

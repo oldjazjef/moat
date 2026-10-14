@@ -40,6 +40,7 @@ describe('desktop config', () => {
       passphrases: { [KID]: 'c2VhbGVk' },
       deployed: {},
       sftpTargets: {},
+      gitTargets: {},
     });
     if (process.platform !== 'win32')
       expect(statSync(join(dir, CONFIG_FILE)).mode & 0o077).toBe(0);
@@ -102,6 +103,24 @@ describe('desktop config', () => {
       }),
     );
     expect(readConfig(dir).sftpTargets).toEqual({ [`${id}/www`]: target });
+  });
+
+  it('keeps a Git working copy folder per project and gate only as an absolute path (DT-05)', () => {
+    const id = 'EET8NETuKZO4J4p9vrWNKg';
+    writeFileSync(
+      join(dir, CONFIG_FILE),
+      JSON.stringify({
+        gitTargets: {
+          [`${id}/www`]: '/home/me/site-deploy',
+          [`${id}/a`]: 'relative/folder',
+          [`${id}/b`]: 42,
+          '../x': '/home/me/x',
+        },
+      }),
+    );
+    expect(readConfig(dir).gitTargets).toEqual({
+      [`${id}/www`]: '/home/me/site-deploy',
+    });
   });
 
   it('drops remembered passphrases under a name that is not a key id', () => {

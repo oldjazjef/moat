@@ -84,20 +84,21 @@ export type SecretSealResult =
 
 /**
  * Where a deploy package goes (DT-05): a ZIP file, a new folder inside a chosen one, or a new
- * folder on a server over SFTP.
+ * folder on a server over SFTP, or a new folder committed and pushed in a Git working copy.
  */
-export type DeployTarget = 'zip' | 'folder' | 'sftp';
+export type DeployTarget = 'zip' | 'folder' | 'sftp' | 'git';
 export const DEPLOY_TARGETS: readonly DeployTarget[] = [
   'zip',
   'folder',
   'sftp',
+  'git',
 ];
 
 /**
  * `key_missing`: no signing key chosen (or it cannot be read); `bundle_missing`: nothing signed
  * yet; `bundle_unverified`: the latest bundle is not one this key signed for this gate;
  * `gate_changed` / `bundle_older`: another gate id or a lower version than the last package of
- * this gate (T-66).
+ * this gate (T-66); `git_*`: the chosen folder cannot take a Git deploy (T-68).
  */
 export type DeployRefusal =
   | 'key_missing'
@@ -105,7 +106,11 @@ export type DeployRefusal =
   | 'bundle_missing'
   | 'bundle_unverified'
   | 'gate_changed'
-  | 'bundle_older';
+  | 'bundle_older'
+  | 'git_not_a_repo'
+  | 'git_detached'
+  | 'git_no_upstream'
+  | 'git_ignored';
 
 export type DeployResult =
   | { status: 'exported'; target: DeployTarget; version: number }
@@ -115,6 +120,10 @@ export type DeployResult =
   | { status: 'exists' }
   /** The chosen place could not be written; nothing was left behind. */
   | { status: 'not_writable' }
+  /** Git: committed in the working copy, but the push failed (push by hand). */
+  | { status: 'committed'; version: number }
+  /** Git: `git add` or `git commit` failed; the package folder was removed again. */
+  | { status: 'git_failed' }
   | { status: 'failed' };
 
 export interface DesktopBridge {

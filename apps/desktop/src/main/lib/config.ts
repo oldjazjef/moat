@@ -37,6 +37,11 @@ export interface DesktopConfig {
    * and the password or passphrase only as keychain ciphertext (DT-04).
    */
   readonly sftpTargets: Readonly<Record<string, SftpTarget>>;
+  /**
+   * The Git working copy folder per `<projectId>/<gate>` (DT-05, T-68), chosen in the main
+   * process's folder dialog; the page never learns it.
+   */
+  readonly gitTargets: Readonly<Record<string, string>>;
 }
 
 export interface DeployedPackage {
@@ -50,6 +55,7 @@ export const EMPTY_CONFIG: DesktopConfig = {
   passphrases: {},
   deployed: {},
   sftpTargets: {},
+  gitTargets: {},
 };
 
 const DEPLOYED_KEY = /^[A-Za-z0-9_-]{22}\/[a-z][a-z0-9-]{0,62}$/;
@@ -96,12 +102,21 @@ export function readConfig(userData: string): DesktopConfig {
         if (target !== null) sftpTargets[key] = target;
       }
     }
+    const gitTargets: Record<string, string> = {};
+    const folders = value['gitTargets'];
+    if (isRecord(folders)) {
+      for (const [key, entry] of Object.entries(folders)) {
+        const dir = absolute(entry);
+        if (DEPLOYED_KEY.test(key) && dir !== null) gitTargets[key] = dir;
+      }
+    }
     return {
       projectDir: absolute(value['projectDir']),
       keyFile: absolute(value['keyFile']),
       passphrases,
       deployed,
       sftpTargets,
+      gitTargets,
     };
   } catch {
     return EMPTY_CONFIG;
