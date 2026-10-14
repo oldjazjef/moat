@@ -14,6 +14,7 @@ enum GateError: string
     case MethodNotAllowed = 'method_not_allowed';
     case PathInvalid = 'path_invalid';
     case BodyTooLarge = 'body_too_large';
+    case BodyInvalid = 'body_invalid';
     case UnsupportedMediaType = 'unsupported_media_type';
     case OriginForbidden = 'origin_forbidden';
     case PreflightRejected = 'preflight_rejected';
@@ -41,7 +42,7 @@ enum GateError: string
         return match ($this) {
             self::NotFound => 404,
             self::MethodNotAllowed => 405,
-            self::PathInvalid, self::RequestUnbounded => 400,
+            self::PathInvalid, self::BodyInvalid, self::RequestUnbounded => 400,
             self::BodyTooLarge => 413,
             self::UnsupportedMediaType => 415,
             self::OriginForbidden, self::PreflightRejected => 403,

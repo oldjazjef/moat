@@ -10,6 +10,7 @@ use Moat\Gate\Config\LimitScope;
 use Moat\Gate\Config\Method;
 use Moat\Gate\Config\Route;
 use Moat\Gate\Config\Usage;
+use Moat\Gate\Http\BodyValidator;
 use Moat\Gate\Http\ContentType;
 use Moat\Gate\Http\Cors;
 use Moat\Gate\Http\Failure;
@@ -25,7 +26,7 @@ use Moat\Gate\Upstream\UpstreamRequest;
 /**
  * One client request → at most one upstream call, in a fixed order (change-gate skill): path
  * normalised before matching, exact route match (SEC-42), then gating — origin (FR-15) and rate
- * limits (FR-30, SEC-45) — then body size and content type (FR-18), then the secret, opened only
+ * limits (FR-30, SEC-45) — then body size and content type (FR-18), the body's fields (FR-13), then the secret, opened only
  * for this call and wiped after (SEC-35), and the answer reduced to status, media type and body.
  * A CORS preflight is answered by the gate itself and never reaches an upstream. A locked gate
  * (the bundle's `enabled: false`) or one switched off by the local kill switch (SEC-15) refuses
@@ -203,7 +204,8 @@ final class RequestHandler
 
     /**
      * The request's body (FR-18): within the size limits, and of an allowed media type when there
-     * is one.
+     * is one. A route with body fields (FR-13) forwards only those, as canonical JSON, and refuses
+     * a body that does not fit them with 400 `body_invalid`.
      *
      * @return array{string, bool, ?string} body, whether it is sent, its media type
      */
@@ -214,6 +216,13 @@ final class RequestHandler
         $mediaType = $request->contentType === null ? null : ContentType::mediaTypeOf($request->contentType);
         if ($hasBody && ($mediaType === null || !\in_array($mediaType, $route->contentTypes, true))) {
             throw new Failure(GateError::UnsupportedMediaType);
+        }
+        if ($route->body !== null) {
+            try {
+                $body = BodyValidator::validate($route->body, $body);
+            } catch (Rejection) {
+                throw new Failure(GateError::BodyInvalid);
+            }
         }
 
         return [$body, $hasBody, $mediaType];

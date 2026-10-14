@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Moat\Gate\Tests\Conformance;
 
+use Moat\Gate\Config\BodySchema;
 use Moat\Gate\Config\ConfigValidator;
 use Moat\Gate\Config\Limit;
 use Moat\Gate\Config\Method;
 use Moat\Gate\Config\Quota;
 use Moat\Gate\Config\QuotaPeriod;
 use Moat\Gate\Config\Route;
+use Moat\Gate\Http\BodyValidator;
 use Moat\Gate\Http\ContentType;
 use Moat\Gate\Http\Cors;
 use Moat\Gate\Http\PathNormaliser;
@@ -32,6 +34,12 @@ final class FormatVectorsTest extends TestCase
     public static function path(): iterable
     {
         return Vectors::cases('http/path.json');
+    }
+
+    /** @return iterable<string, array{array<string, mixed>}> */
+    public static function body(): iterable
+    {
+        return Vectors::cases('http/body.json');
     }
 
     /** @return iterable<string, array{array<string, mixed>}> */
@@ -173,6 +181,17 @@ final class FormatVectorsTest extends TestCase
             array_map(Vectors::string(...), array_values(Vectors::list($route['origins']))),
             null,
         );
+    }
+
+    /** @param array<string, mixed> $case */
+    #[DataProvider('body')]
+    public function testBody(array $case): void
+    {
+        $name = Vectors::string($case['name']);
+        $fields = BodySchema::parse(Vectors::strict('http/body.json', $name, 'fields'));
+        $bytes = isset($case['bodyHex']) ? (string) hex2bin(Vectors::string($case['bodyHex'])) : Vectors::string($case['body']);
+        $result = self::outcome(static fn(): array => ['body' => BodyValidator::validate($fields, $bytes)]);
+        self::assertSame(Vectors::map($case['expect']), $result);
     }
 
     /** @param array<string, mixed> $case */

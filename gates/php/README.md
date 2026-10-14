@@ -70,7 +70,7 @@ Content-Type: application/json
 ```
 
 The gate normalises the path (SEC-42), matches it exactly, checks body size and content type
-(FR-18), adds the upstream's secret, and calls the upstream over HTTPS only: the address is
+(FR-18) and, when the route lists its body fields, the body (FR-13, below), adds the upstream's secret, and calls the upstream over HTTPS only: the address is
 resolved once, checked to be public and pinned for the connection (SEC-41), no proxy from the
 environment, no redirects, TLS verification always on, timeouts and a response size limit. No
 client header, cookie or query parameter is forwarded; only the upstream's status, media type and
@@ -78,7 +78,7 @@ body come back. Errors are `{"error":"<code>"}`:
 
 | Status | Code                                                                        |
 | ------ | --------------------------------------------------------------------------- |
-| 400    | `path_invalid`, `request_unbounded`                                         |
+| 400    | `path_invalid`, `body_invalid`, `request_unbounded`                         |
 | 403    | `origin_forbidden`, `preflight_rejected`                                    |
 | 404    | `not_found`                                                                 |
 | 405    | `method_not_allowed` (with `Allow`)                                         |
@@ -94,6 +94,31 @@ body come back. Errors are `{"error":"<code>"}`:
 | 504    | `upstream_timeout`                                                          |
 
 The log gets these codes only, never a value.
+
+### Body fields (FR-13, T-65)
+
+A route's `body` in moat.yaml lists the fields of the JSON object the website sends:
+
+```yaml
+body:
+  email: { type: string, required: true, format: email, maxLength: 254 }
+  plan: { type: string, enum: ['free', 'pro'] }
+  tags: { type: array, maxItems: 5, items: { type: string, maxLength: 20 } }
+```
+
+Types are `string` (`minLength`, `maxLength` in code points, `enum`, `format: email`), `integer`
+(`minimum`, `maximum`; strict JSON has no negative numbers or fractions), `boolean`, `object`
+(`fields`) and `array` (`items`, `maxItems`, `minItems`); any field can be `required`. At most 64
+fields per object, 256 in all, 4 nested levels; only on POST, PUT and PATCH routes that accept
+JSON alone. The gate parses the body as strict JSON, keeps only the listed fields at every level and
+forwards their canonical JSON (RFC 8785); a missing required field, a wrong type, `null`, a value
+out of bounds or anything but a JSON object → 400 `body_invalid`, before anything is sent. A route
+with a budget estimates the body it forwards. Without `body` the body goes on as received.
+
+`requireBody: true` under a host in the local policy refuses every bundle with a route to that
+host that has no `body` but takes a body (`policy_violation`), whatever its method: such a route
+needs `maxBodySize: '0B'`. `moat policy suggest` proposes it once every route to the host
+qualifies.
 
 ## Locked gate
 

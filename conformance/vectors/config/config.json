@@ -4282,6 +4282,2950 @@
       }
     },
     {
+      "name": "body with every field type (FR-13)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "email": {
+                "type": "string",
+                "required": true,
+                "format": "email",
+                "maxLength": 254
+              },
+              "firstName": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "plan": {
+                "type": "string",
+                "enum": [
+                  "free",
+                  "pro"
+                ]
+              },
+              "age": {
+                "type": "integer",
+                "minimum": 16,
+                "maximum": 120
+              },
+              "consent": {
+                "type": "boolean",
+                "required": true
+              },
+              "address": {
+                "type": "object",
+                "fields": {
+                  "city": {
+                    "type": "string",
+                    "maxLength": 80
+                  }
+                }
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 20
+                },
+                "minItems": 1,
+                "maxItems": 5
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "body on a GET route",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "GET",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "email": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body on a route that also accepts text",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json",
+              "text/plain"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "email": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body without fields",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {}
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body null",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": null
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body field of unknown type",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "email": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body field with an unknown key (no pattern)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "email": {
+                "type": "string",
+                "pattern": "^.*$"
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body field with an unknown format",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "site": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body field name with a dash",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "first-name": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body field name starting with a digit",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "1st": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body field named __proto__",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "__proto__": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body minLength above maxLength",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "name": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 4
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body minimum above maximum",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "age": {
+                "type": "integer",
+                "minimum": 5,
+                "maximum": 4
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body array without maxItems",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body minItems above maxItems",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 3,
+                "maxItems": 2
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body array item marked required",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "required": true
+                },
+                "maxItems": 2
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body object without fields",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "address": {
+                "type": "object",
+                "fields": {}
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body enum empty",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "plan": {
+                "type": "string",
+                "enum": []
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body required as a string",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "email": {
+                "type": "string",
+                "required": "yes"
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body nested 4 levels",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "a": {
+                "type": "object",
+                "fields": {
+                  "a": {
+                    "type": "object",
+                    "fields": {
+                      "a": {
+                        "type": "object",
+                        "fields": {
+                          "a": {
+                            "type": "object",
+                            "fields": {
+                              "a": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "body nested 5 levels",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "a": {
+                "type": "object",
+                "fields": {
+                  "a": {
+                    "type": "object",
+                    "fields": {
+                      "a": {
+                        "type": "object",
+                        "fields": {
+                          "a": {
+                            "type": "object",
+                            "fields": {
+                              "a": {
+                                "type": "object",
+                                "fields": {
+                                  "a": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body with 256 fields",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "g0": {
+                "type": "object",
+                "fields": {
+                  "f0": {
+                    "type": "boolean"
+                  },
+                  "f1": {
+                    "type": "boolean"
+                  },
+                  "f2": {
+                    "type": "boolean"
+                  },
+                  "f3": {
+                    "type": "boolean"
+                  },
+                  "f4": {
+                    "type": "boolean"
+                  },
+                  "f5": {
+                    "type": "boolean"
+                  },
+                  "f6": {
+                    "type": "boolean"
+                  },
+                  "f7": {
+                    "type": "boolean"
+                  },
+                  "f8": {
+                    "type": "boolean"
+                  },
+                  "f9": {
+                    "type": "boolean"
+                  },
+                  "f10": {
+                    "type": "boolean"
+                  },
+                  "f11": {
+                    "type": "boolean"
+                  },
+                  "f12": {
+                    "type": "boolean"
+                  },
+                  "f13": {
+                    "type": "boolean"
+                  },
+                  "f14": {
+                    "type": "boolean"
+                  },
+                  "f15": {
+                    "type": "boolean"
+                  },
+                  "f16": {
+                    "type": "boolean"
+                  },
+                  "f17": {
+                    "type": "boolean"
+                  },
+                  "f18": {
+                    "type": "boolean"
+                  },
+                  "f19": {
+                    "type": "boolean"
+                  },
+                  "f20": {
+                    "type": "boolean"
+                  },
+                  "f21": {
+                    "type": "boolean"
+                  },
+                  "f22": {
+                    "type": "boolean"
+                  },
+                  "f23": {
+                    "type": "boolean"
+                  },
+                  "f24": {
+                    "type": "boolean"
+                  },
+                  "f25": {
+                    "type": "boolean"
+                  },
+                  "f26": {
+                    "type": "boolean"
+                  },
+                  "f27": {
+                    "type": "boolean"
+                  },
+                  "f28": {
+                    "type": "boolean"
+                  },
+                  "f29": {
+                    "type": "boolean"
+                  },
+                  "f30": {
+                    "type": "boolean"
+                  },
+                  "f31": {
+                    "type": "boolean"
+                  },
+                  "f32": {
+                    "type": "boolean"
+                  },
+                  "f33": {
+                    "type": "boolean"
+                  },
+                  "f34": {
+                    "type": "boolean"
+                  },
+                  "f35": {
+                    "type": "boolean"
+                  },
+                  "f36": {
+                    "type": "boolean"
+                  },
+                  "f37": {
+                    "type": "boolean"
+                  },
+                  "f38": {
+                    "type": "boolean"
+                  },
+                  "f39": {
+                    "type": "boolean"
+                  },
+                  "f40": {
+                    "type": "boolean"
+                  },
+                  "f41": {
+                    "type": "boolean"
+                  },
+                  "f42": {
+                    "type": "boolean"
+                  },
+                  "f43": {
+                    "type": "boolean"
+                  },
+                  "f44": {
+                    "type": "boolean"
+                  },
+                  "f45": {
+                    "type": "boolean"
+                  },
+                  "f46": {
+                    "type": "boolean"
+                  },
+                  "f47": {
+                    "type": "boolean"
+                  },
+                  "f48": {
+                    "type": "boolean"
+                  },
+                  "f49": {
+                    "type": "boolean"
+                  },
+                  "f50": {
+                    "type": "boolean"
+                  },
+                  "f51": {
+                    "type": "boolean"
+                  },
+                  "f52": {
+                    "type": "boolean"
+                  },
+                  "f53": {
+                    "type": "boolean"
+                  },
+                  "f54": {
+                    "type": "boolean"
+                  },
+                  "f55": {
+                    "type": "boolean"
+                  },
+                  "f56": {
+                    "type": "boolean"
+                  },
+                  "f57": {
+                    "type": "boolean"
+                  },
+                  "f58": {
+                    "type": "boolean"
+                  },
+                  "f59": {
+                    "type": "boolean"
+                  },
+                  "f60": {
+                    "type": "boolean"
+                  },
+                  "f61": {
+                    "type": "boolean"
+                  },
+                  "f62": {
+                    "type": "boolean"
+                  },
+                  "f63": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "g1": {
+                "type": "object",
+                "fields": {
+                  "f0": {
+                    "type": "boolean"
+                  },
+                  "f1": {
+                    "type": "boolean"
+                  },
+                  "f2": {
+                    "type": "boolean"
+                  },
+                  "f3": {
+                    "type": "boolean"
+                  },
+                  "f4": {
+                    "type": "boolean"
+                  },
+                  "f5": {
+                    "type": "boolean"
+                  },
+                  "f6": {
+                    "type": "boolean"
+                  },
+                  "f7": {
+                    "type": "boolean"
+                  },
+                  "f8": {
+                    "type": "boolean"
+                  },
+                  "f9": {
+                    "type": "boolean"
+                  },
+                  "f10": {
+                    "type": "boolean"
+                  },
+                  "f11": {
+                    "type": "boolean"
+                  },
+                  "f12": {
+                    "type": "boolean"
+                  },
+                  "f13": {
+                    "type": "boolean"
+                  },
+                  "f14": {
+                    "type": "boolean"
+                  },
+                  "f15": {
+                    "type": "boolean"
+                  },
+                  "f16": {
+                    "type": "boolean"
+                  },
+                  "f17": {
+                    "type": "boolean"
+                  },
+                  "f18": {
+                    "type": "boolean"
+                  },
+                  "f19": {
+                    "type": "boolean"
+                  },
+                  "f20": {
+                    "type": "boolean"
+                  },
+                  "f21": {
+                    "type": "boolean"
+                  },
+                  "f22": {
+                    "type": "boolean"
+                  },
+                  "f23": {
+                    "type": "boolean"
+                  },
+                  "f24": {
+                    "type": "boolean"
+                  },
+                  "f25": {
+                    "type": "boolean"
+                  },
+                  "f26": {
+                    "type": "boolean"
+                  },
+                  "f27": {
+                    "type": "boolean"
+                  },
+                  "f28": {
+                    "type": "boolean"
+                  },
+                  "f29": {
+                    "type": "boolean"
+                  },
+                  "f30": {
+                    "type": "boolean"
+                  },
+                  "f31": {
+                    "type": "boolean"
+                  },
+                  "f32": {
+                    "type": "boolean"
+                  },
+                  "f33": {
+                    "type": "boolean"
+                  },
+                  "f34": {
+                    "type": "boolean"
+                  },
+                  "f35": {
+                    "type": "boolean"
+                  },
+                  "f36": {
+                    "type": "boolean"
+                  },
+                  "f37": {
+                    "type": "boolean"
+                  },
+                  "f38": {
+                    "type": "boolean"
+                  },
+                  "f39": {
+                    "type": "boolean"
+                  },
+                  "f40": {
+                    "type": "boolean"
+                  },
+                  "f41": {
+                    "type": "boolean"
+                  },
+                  "f42": {
+                    "type": "boolean"
+                  },
+                  "f43": {
+                    "type": "boolean"
+                  },
+                  "f44": {
+                    "type": "boolean"
+                  },
+                  "f45": {
+                    "type": "boolean"
+                  },
+                  "f46": {
+                    "type": "boolean"
+                  },
+                  "f47": {
+                    "type": "boolean"
+                  },
+                  "f48": {
+                    "type": "boolean"
+                  },
+                  "f49": {
+                    "type": "boolean"
+                  },
+                  "f50": {
+                    "type": "boolean"
+                  },
+                  "f51": {
+                    "type": "boolean"
+                  },
+                  "f52": {
+                    "type": "boolean"
+                  },
+                  "f53": {
+                    "type": "boolean"
+                  },
+                  "f54": {
+                    "type": "boolean"
+                  },
+                  "f55": {
+                    "type": "boolean"
+                  },
+                  "f56": {
+                    "type": "boolean"
+                  },
+                  "f57": {
+                    "type": "boolean"
+                  },
+                  "f58": {
+                    "type": "boolean"
+                  },
+                  "f59": {
+                    "type": "boolean"
+                  },
+                  "f60": {
+                    "type": "boolean"
+                  },
+                  "f61": {
+                    "type": "boolean"
+                  },
+                  "f62": {
+                    "type": "boolean"
+                  },
+                  "f63": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "g2": {
+                "type": "object",
+                "fields": {
+                  "f0": {
+                    "type": "boolean"
+                  },
+                  "f1": {
+                    "type": "boolean"
+                  },
+                  "f2": {
+                    "type": "boolean"
+                  },
+                  "f3": {
+                    "type": "boolean"
+                  },
+                  "f4": {
+                    "type": "boolean"
+                  },
+                  "f5": {
+                    "type": "boolean"
+                  },
+                  "f6": {
+                    "type": "boolean"
+                  },
+                  "f7": {
+                    "type": "boolean"
+                  },
+                  "f8": {
+                    "type": "boolean"
+                  },
+                  "f9": {
+                    "type": "boolean"
+                  },
+                  "f10": {
+                    "type": "boolean"
+                  },
+                  "f11": {
+                    "type": "boolean"
+                  },
+                  "f12": {
+                    "type": "boolean"
+                  },
+                  "f13": {
+                    "type": "boolean"
+                  },
+                  "f14": {
+                    "type": "boolean"
+                  },
+                  "f15": {
+                    "type": "boolean"
+                  },
+                  "f16": {
+                    "type": "boolean"
+                  },
+                  "f17": {
+                    "type": "boolean"
+                  },
+                  "f18": {
+                    "type": "boolean"
+                  },
+                  "f19": {
+                    "type": "boolean"
+                  },
+                  "f20": {
+                    "type": "boolean"
+                  },
+                  "f21": {
+                    "type": "boolean"
+                  },
+                  "f22": {
+                    "type": "boolean"
+                  },
+                  "f23": {
+                    "type": "boolean"
+                  },
+                  "f24": {
+                    "type": "boolean"
+                  },
+                  "f25": {
+                    "type": "boolean"
+                  },
+                  "f26": {
+                    "type": "boolean"
+                  },
+                  "f27": {
+                    "type": "boolean"
+                  },
+                  "f28": {
+                    "type": "boolean"
+                  },
+                  "f29": {
+                    "type": "boolean"
+                  },
+                  "f30": {
+                    "type": "boolean"
+                  },
+                  "f31": {
+                    "type": "boolean"
+                  },
+                  "f32": {
+                    "type": "boolean"
+                  },
+                  "f33": {
+                    "type": "boolean"
+                  },
+                  "f34": {
+                    "type": "boolean"
+                  },
+                  "f35": {
+                    "type": "boolean"
+                  },
+                  "f36": {
+                    "type": "boolean"
+                  },
+                  "f37": {
+                    "type": "boolean"
+                  },
+                  "f38": {
+                    "type": "boolean"
+                  },
+                  "f39": {
+                    "type": "boolean"
+                  },
+                  "f40": {
+                    "type": "boolean"
+                  },
+                  "f41": {
+                    "type": "boolean"
+                  },
+                  "f42": {
+                    "type": "boolean"
+                  },
+                  "f43": {
+                    "type": "boolean"
+                  },
+                  "f44": {
+                    "type": "boolean"
+                  },
+                  "f45": {
+                    "type": "boolean"
+                  },
+                  "f46": {
+                    "type": "boolean"
+                  },
+                  "f47": {
+                    "type": "boolean"
+                  },
+                  "f48": {
+                    "type": "boolean"
+                  },
+                  "f49": {
+                    "type": "boolean"
+                  },
+                  "f50": {
+                    "type": "boolean"
+                  },
+                  "f51": {
+                    "type": "boolean"
+                  },
+                  "f52": {
+                    "type": "boolean"
+                  },
+                  "f53": {
+                    "type": "boolean"
+                  },
+                  "f54": {
+                    "type": "boolean"
+                  },
+                  "f55": {
+                    "type": "boolean"
+                  },
+                  "f56": {
+                    "type": "boolean"
+                  },
+                  "f57": {
+                    "type": "boolean"
+                  },
+                  "f58": {
+                    "type": "boolean"
+                  },
+                  "f59": {
+                    "type": "boolean"
+                  },
+                  "f60": {
+                    "type": "boolean"
+                  },
+                  "f61": {
+                    "type": "boolean"
+                  },
+                  "f62": {
+                    "type": "boolean"
+                  },
+                  "f63": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "g3": {
+                "type": "object",
+                "fields": {
+                  "f0": {
+                    "type": "boolean"
+                  },
+                  "f1": {
+                    "type": "boolean"
+                  },
+                  "f2": {
+                    "type": "boolean"
+                  },
+                  "f3": {
+                    "type": "boolean"
+                  },
+                  "f4": {
+                    "type": "boolean"
+                  },
+                  "f5": {
+                    "type": "boolean"
+                  },
+                  "f6": {
+                    "type": "boolean"
+                  },
+                  "f7": {
+                    "type": "boolean"
+                  },
+                  "f8": {
+                    "type": "boolean"
+                  },
+                  "f9": {
+                    "type": "boolean"
+                  },
+                  "f10": {
+                    "type": "boolean"
+                  },
+                  "f11": {
+                    "type": "boolean"
+                  },
+                  "f12": {
+                    "type": "boolean"
+                  },
+                  "f13": {
+                    "type": "boolean"
+                  },
+                  "f14": {
+                    "type": "boolean"
+                  },
+                  "f15": {
+                    "type": "boolean"
+                  },
+                  "f16": {
+                    "type": "boolean"
+                  },
+                  "f17": {
+                    "type": "boolean"
+                  },
+                  "f18": {
+                    "type": "boolean"
+                  },
+                  "f19": {
+                    "type": "boolean"
+                  },
+                  "f20": {
+                    "type": "boolean"
+                  },
+                  "f21": {
+                    "type": "boolean"
+                  },
+                  "f22": {
+                    "type": "boolean"
+                  },
+                  "f23": {
+                    "type": "boolean"
+                  },
+                  "f24": {
+                    "type": "boolean"
+                  },
+                  "f25": {
+                    "type": "boolean"
+                  },
+                  "f26": {
+                    "type": "boolean"
+                  },
+                  "f27": {
+                    "type": "boolean"
+                  },
+                  "f28": {
+                    "type": "boolean"
+                  },
+                  "f29": {
+                    "type": "boolean"
+                  },
+                  "f30": {
+                    "type": "boolean"
+                  },
+                  "f31": {
+                    "type": "boolean"
+                  },
+                  "f32": {
+                    "type": "boolean"
+                  },
+                  "f33": {
+                    "type": "boolean"
+                  },
+                  "f34": {
+                    "type": "boolean"
+                  },
+                  "f35": {
+                    "type": "boolean"
+                  },
+                  "f36": {
+                    "type": "boolean"
+                  },
+                  "f37": {
+                    "type": "boolean"
+                  },
+                  "f38": {
+                    "type": "boolean"
+                  },
+                  "f39": {
+                    "type": "boolean"
+                  },
+                  "f40": {
+                    "type": "boolean"
+                  },
+                  "f41": {
+                    "type": "boolean"
+                  },
+                  "f42": {
+                    "type": "boolean"
+                  },
+                  "f43": {
+                    "type": "boolean"
+                  },
+                  "f44": {
+                    "type": "boolean"
+                  },
+                  "f45": {
+                    "type": "boolean"
+                  },
+                  "f46": {
+                    "type": "boolean"
+                  },
+                  "f47": {
+                    "type": "boolean"
+                  },
+                  "f48": {
+                    "type": "boolean"
+                  },
+                  "f49": {
+                    "type": "boolean"
+                  },
+                  "f50": {
+                    "type": "boolean"
+                  },
+                  "f51": {
+                    "type": "boolean"
+                  },
+                  "f52": {
+                    "type": "boolean"
+                  },
+                  "f53": {
+                    "type": "boolean"
+                  },
+                  "f54": {
+                    "type": "boolean"
+                  },
+                  "f55": {
+                    "type": "boolean"
+                  },
+                  "f56": {
+                    "type": "boolean"
+                  },
+                  "f57": {
+                    "type": "boolean"
+                  },
+                  "f58": {
+                    "type": "boolean"
+                  },
+                  "f59": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "body with 257 fields",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "g0": {
+                "type": "object",
+                "fields": {
+                  "f0": {
+                    "type": "boolean"
+                  },
+                  "f1": {
+                    "type": "boolean"
+                  },
+                  "f2": {
+                    "type": "boolean"
+                  },
+                  "f3": {
+                    "type": "boolean"
+                  },
+                  "f4": {
+                    "type": "boolean"
+                  },
+                  "f5": {
+                    "type": "boolean"
+                  },
+                  "f6": {
+                    "type": "boolean"
+                  },
+                  "f7": {
+                    "type": "boolean"
+                  },
+                  "f8": {
+                    "type": "boolean"
+                  },
+                  "f9": {
+                    "type": "boolean"
+                  },
+                  "f10": {
+                    "type": "boolean"
+                  },
+                  "f11": {
+                    "type": "boolean"
+                  },
+                  "f12": {
+                    "type": "boolean"
+                  },
+                  "f13": {
+                    "type": "boolean"
+                  },
+                  "f14": {
+                    "type": "boolean"
+                  },
+                  "f15": {
+                    "type": "boolean"
+                  },
+                  "f16": {
+                    "type": "boolean"
+                  },
+                  "f17": {
+                    "type": "boolean"
+                  },
+                  "f18": {
+                    "type": "boolean"
+                  },
+                  "f19": {
+                    "type": "boolean"
+                  },
+                  "f20": {
+                    "type": "boolean"
+                  },
+                  "f21": {
+                    "type": "boolean"
+                  },
+                  "f22": {
+                    "type": "boolean"
+                  },
+                  "f23": {
+                    "type": "boolean"
+                  },
+                  "f24": {
+                    "type": "boolean"
+                  },
+                  "f25": {
+                    "type": "boolean"
+                  },
+                  "f26": {
+                    "type": "boolean"
+                  },
+                  "f27": {
+                    "type": "boolean"
+                  },
+                  "f28": {
+                    "type": "boolean"
+                  },
+                  "f29": {
+                    "type": "boolean"
+                  },
+                  "f30": {
+                    "type": "boolean"
+                  },
+                  "f31": {
+                    "type": "boolean"
+                  },
+                  "f32": {
+                    "type": "boolean"
+                  },
+                  "f33": {
+                    "type": "boolean"
+                  },
+                  "f34": {
+                    "type": "boolean"
+                  },
+                  "f35": {
+                    "type": "boolean"
+                  },
+                  "f36": {
+                    "type": "boolean"
+                  },
+                  "f37": {
+                    "type": "boolean"
+                  },
+                  "f38": {
+                    "type": "boolean"
+                  },
+                  "f39": {
+                    "type": "boolean"
+                  },
+                  "f40": {
+                    "type": "boolean"
+                  },
+                  "f41": {
+                    "type": "boolean"
+                  },
+                  "f42": {
+                    "type": "boolean"
+                  },
+                  "f43": {
+                    "type": "boolean"
+                  },
+                  "f44": {
+                    "type": "boolean"
+                  },
+                  "f45": {
+                    "type": "boolean"
+                  },
+                  "f46": {
+                    "type": "boolean"
+                  },
+                  "f47": {
+                    "type": "boolean"
+                  },
+                  "f48": {
+                    "type": "boolean"
+                  },
+                  "f49": {
+                    "type": "boolean"
+                  },
+                  "f50": {
+                    "type": "boolean"
+                  },
+                  "f51": {
+                    "type": "boolean"
+                  },
+                  "f52": {
+                    "type": "boolean"
+                  },
+                  "f53": {
+                    "type": "boolean"
+                  },
+                  "f54": {
+                    "type": "boolean"
+                  },
+                  "f55": {
+                    "type": "boolean"
+                  },
+                  "f56": {
+                    "type": "boolean"
+                  },
+                  "f57": {
+                    "type": "boolean"
+                  },
+                  "f58": {
+                    "type": "boolean"
+                  },
+                  "f59": {
+                    "type": "boolean"
+                  },
+                  "f60": {
+                    "type": "boolean"
+                  },
+                  "f61": {
+                    "type": "boolean"
+                  },
+                  "f62": {
+                    "type": "boolean"
+                  },
+                  "f63": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "g1": {
+                "type": "object",
+                "fields": {
+                  "f0": {
+                    "type": "boolean"
+                  },
+                  "f1": {
+                    "type": "boolean"
+                  },
+                  "f2": {
+                    "type": "boolean"
+                  },
+                  "f3": {
+                    "type": "boolean"
+                  },
+                  "f4": {
+                    "type": "boolean"
+                  },
+                  "f5": {
+                    "type": "boolean"
+                  },
+                  "f6": {
+                    "type": "boolean"
+                  },
+                  "f7": {
+                    "type": "boolean"
+                  },
+                  "f8": {
+                    "type": "boolean"
+                  },
+                  "f9": {
+                    "type": "boolean"
+                  },
+                  "f10": {
+                    "type": "boolean"
+                  },
+                  "f11": {
+                    "type": "boolean"
+                  },
+                  "f12": {
+                    "type": "boolean"
+                  },
+                  "f13": {
+                    "type": "boolean"
+                  },
+                  "f14": {
+                    "type": "boolean"
+                  },
+                  "f15": {
+                    "type": "boolean"
+                  },
+                  "f16": {
+                    "type": "boolean"
+                  },
+                  "f17": {
+                    "type": "boolean"
+                  },
+                  "f18": {
+                    "type": "boolean"
+                  },
+                  "f19": {
+                    "type": "boolean"
+                  },
+                  "f20": {
+                    "type": "boolean"
+                  },
+                  "f21": {
+                    "type": "boolean"
+                  },
+                  "f22": {
+                    "type": "boolean"
+                  },
+                  "f23": {
+                    "type": "boolean"
+                  },
+                  "f24": {
+                    "type": "boolean"
+                  },
+                  "f25": {
+                    "type": "boolean"
+                  },
+                  "f26": {
+                    "type": "boolean"
+                  },
+                  "f27": {
+                    "type": "boolean"
+                  },
+                  "f28": {
+                    "type": "boolean"
+                  },
+                  "f29": {
+                    "type": "boolean"
+                  },
+                  "f30": {
+                    "type": "boolean"
+                  },
+                  "f31": {
+                    "type": "boolean"
+                  },
+                  "f32": {
+                    "type": "boolean"
+                  },
+                  "f33": {
+                    "type": "boolean"
+                  },
+                  "f34": {
+                    "type": "boolean"
+                  },
+                  "f35": {
+                    "type": "boolean"
+                  },
+                  "f36": {
+                    "type": "boolean"
+                  },
+                  "f37": {
+                    "type": "boolean"
+                  },
+                  "f38": {
+                    "type": "boolean"
+                  },
+                  "f39": {
+                    "type": "boolean"
+                  },
+                  "f40": {
+                    "type": "boolean"
+                  },
+                  "f41": {
+                    "type": "boolean"
+                  },
+                  "f42": {
+                    "type": "boolean"
+                  },
+                  "f43": {
+                    "type": "boolean"
+                  },
+                  "f44": {
+                    "type": "boolean"
+                  },
+                  "f45": {
+                    "type": "boolean"
+                  },
+                  "f46": {
+                    "type": "boolean"
+                  },
+                  "f47": {
+                    "type": "boolean"
+                  },
+                  "f48": {
+                    "type": "boolean"
+                  },
+                  "f49": {
+                    "type": "boolean"
+                  },
+                  "f50": {
+                    "type": "boolean"
+                  },
+                  "f51": {
+                    "type": "boolean"
+                  },
+                  "f52": {
+                    "type": "boolean"
+                  },
+                  "f53": {
+                    "type": "boolean"
+                  },
+                  "f54": {
+                    "type": "boolean"
+                  },
+                  "f55": {
+                    "type": "boolean"
+                  },
+                  "f56": {
+                    "type": "boolean"
+                  },
+                  "f57": {
+                    "type": "boolean"
+                  },
+                  "f58": {
+                    "type": "boolean"
+                  },
+                  "f59": {
+                    "type": "boolean"
+                  },
+                  "f60": {
+                    "type": "boolean"
+                  },
+                  "f61": {
+                    "type": "boolean"
+                  },
+                  "f62": {
+                    "type": "boolean"
+                  },
+                  "f63": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "g2": {
+                "type": "object",
+                "fields": {
+                  "f0": {
+                    "type": "boolean"
+                  },
+                  "f1": {
+                    "type": "boolean"
+                  },
+                  "f2": {
+                    "type": "boolean"
+                  },
+                  "f3": {
+                    "type": "boolean"
+                  },
+                  "f4": {
+                    "type": "boolean"
+                  },
+                  "f5": {
+                    "type": "boolean"
+                  },
+                  "f6": {
+                    "type": "boolean"
+                  },
+                  "f7": {
+                    "type": "boolean"
+                  },
+                  "f8": {
+                    "type": "boolean"
+                  },
+                  "f9": {
+                    "type": "boolean"
+                  },
+                  "f10": {
+                    "type": "boolean"
+                  },
+                  "f11": {
+                    "type": "boolean"
+                  },
+                  "f12": {
+                    "type": "boolean"
+                  },
+                  "f13": {
+                    "type": "boolean"
+                  },
+                  "f14": {
+                    "type": "boolean"
+                  },
+                  "f15": {
+                    "type": "boolean"
+                  },
+                  "f16": {
+                    "type": "boolean"
+                  },
+                  "f17": {
+                    "type": "boolean"
+                  },
+                  "f18": {
+                    "type": "boolean"
+                  },
+                  "f19": {
+                    "type": "boolean"
+                  },
+                  "f20": {
+                    "type": "boolean"
+                  },
+                  "f21": {
+                    "type": "boolean"
+                  },
+                  "f22": {
+                    "type": "boolean"
+                  },
+                  "f23": {
+                    "type": "boolean"
+                  },
+                  "f24": {
+                    "type": "boolean"
+                  },
+                  "f25": {
+                    "type": "boolean"
+                  },
+                  "f26": {
+                    "type": "boolean"
+                  },
+                  "f27": {
+                    "type": "boolean"
+                  },
+                  "f28": {
+                    "type": "boolean"
+                  },
+                  "f29": {
+                    "type": "boolean"
+                  },
+                  "f30": {
+                    "type": "boolean"
+                  },
+                  "f31": {
+                    "type": "boolean"
+                  },
+                  "f32": {
+                    "type": "boolean"
+                  },
+                  "f33": {
+                    "type": "boolean"
+                  },
+                  "f34": {
+                    "type": "boolean"
+                  },
+                  "f35": {
+                    "type": "boolean"
+                  },
+                  "f36": {
+                    "type": "boolean"
+                  },
+                  "f37": {
+                    "type": "boolean"
+                  },
+                  "f38": {
+                    "type": "boolean"
+                  },
+                  "f39": {
+                    "type": "boolean"
+                  },
+                  "f40": {
+                    "type": "boolean"
+                  },
+                  "f41": {
+                    "type": "boolean"
+                  },
+                  "f42": {
+                    "type": "boolean"
+                  },
+                  "f43": {
+                    "type": "boolean"
+                  },
+                  "f44": {
+                    "type": "boolean"
+                  },
+                  "f45": {
+                    "type": "boolean"
+                  },
+                  "f46": {
+                    "type": "boolean"
+                  },
+                  "f47": {
+                    "type": "boolean"
+                  },
+                  "f48": {
+                    "type": "boolean"
+                  },
+                  "f49": {
+                    "type": "boolean"
+                  },
+                  "f50": {
+                    "type": "boolean"
+                  },
+                  "f51": {
+                    "type": "boolean"
+                  },
+                  "f52": {
+                    "type": "boolean"
+                  },
+                  "f53": {
+                    "type": "boolean"
+                  },
+                  "f54": {
+                    "type": "boolean"
+                  },
+                  "f55": {
+                    "type": "boolean"
+                  },
+                  "f56": {
+                    "type": "boolean"
+                  },
+                  "f57": {
+                    "type": "boolean"
+                  },
+                  "f58": {
+                    "type": "boolean"
+                  },
+                  "f59": {
+                    "type": "boolean"
+                  },
+                  "f60": {
+                    "type": "boolean"
+                  },
+                  "f61": {
+                    "type": "boolean"
+                  },
+                  "f62": {
+                    "type": "boolean"
+                  },
+                  "f63": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "g3": {
+                "type": "object",
+                "fields": {
+                  "f0": {
+                    "type": "boolean"
+                  },
+                  "f1": {
+                    "type": "boolean"
+                  },
+                  "f2": {
+                    "type": "boolean"
+                  },
+                  "f3": {
+                    "type": "boolean"
+                  },
+                  "f4": {
+                    "type": "boolean"
+                  },
+                  "f5": {
+                    "type": "boolean"
+                  },
+                  "f6": {
+                    "type": "boolean"
+                  },
+                  "f7": {
+                    "type": "boolean"
+                  },
+                  "f8": {
+                    "type": "boolean"
+                  },
+                  "f9": {
+                    "type": "boolean"
+                  },
+                  "f10": {
+                    "type": "boolean"
+                  },
+                  "f11": {
+                    "type": "boolean"
+                  },
+                  "f12": {
+                    "type": "boolean"
+                  },
+                  "f13": {
+                    "type": "boolean"
+                  },
+                  "f14": {
+                    "type": "boolean"
+                  },
+                  "f15": {
+                    "type": "boolean"
+                  },
+                  "f16": {
+                    "type": "boolean"
+                  },
+                  "f17": {
+                    "type": "boolean"
+                  },
+                  "f18": {
+                    "type": "boolean"
+                  },
+                  "f19": {
+                    "type": "boolean"
+                  },
+                  "f20": {
+                    "type": "boolean"
+                  },
+                  "f21": {
+                    "type": "boolean"
+                  },
+                  "f22": {
+                    "type": "boolean"
+                  },
+                  "f23": {
+                    "type": "boolean"
+                  },
+                  "f24": {
+                    "type": "boolean"
+                  },
+                  "f25": {
+                    "type": "boolean"
+                  },
+                  "f26": {
+                    "type": "boolean"
+                  },
+                  "f27": {
+                    "type": "boolean"
+                  },
+                  "f28": {
+                    "type": "boolean"
+                  },
+                  "f29": {
+                    "type": "boolean"
+                  },
+                  "f30": {
+                    "type": "boolean"
+                  },
+                  "f31": {
+                    "type": "boolean"
+                  },
+                  "f32": {
+                    "type": "boolean"
+                  },
+                  "f33": {
+                    "type": "boolean"
+                  },
+                  "f34": {
+                    "type": "boolean"
+                  },
+                  "f35": {
+                    "type": "boolean"
+                  },
+                  "f36": {
+                    "type": "boolean"
+                  },
+                  "f37": {
+                    "type": "boolean"
+                  },
+                  "f38": {
+                    "type": "boolean"
+                  },
+                  "f39": {
+                    "type": "boolean"
+                  },
+                  "f40": {
+                    "type": "boolean"
+                  },
+                  "f41": {
+                    "type": "boolean"
+                  },
+                  "f42": {
+                    "type": "boolean"
+                  },
+                  "f43": {
+                    "type": "boolean"
+                  },
+                  "f44": {
+                    "type": "boolean"
+                  },
+                  "f45": {
+                    "type": "boolean"
+                  },
+                  "f46": {
+                    "type": "boolean"
+                  },
+                  "f47": {
+                    "type": "boolean"
+                  },
+                  "f48": {
+                    "type": "boolean"
+                  },
+                  "f49": {
+                    "type": "boolean"
+                  },
+                  "f50": {
+                    "type": "boolean"
+                  },
+                  "f51": {
+                    "type": "boolean"
+                  },
+                  "f52": {
+                    "type": "boolean"
+                  },
+                  "f53": {
+                    "type": "boolean"
+                  },
+                  "f54": {
+                    "type": "boolean"
+                  },
+                  "f55": {
+                    "type": "boolean"
+                  },
+                  "f56": {
+                    "type": "boolean"
+                  },
+                  "f57": {
+                    "type": "boolean"
+                  },
+                  "f58": {
+                    "type": "boolean"
+                  },
+                  "f59": {
+                    "type": "boolean"
+                  },
+                  "f60": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
+      "name": "body object with 65 fields",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null,
+            "body": {
+              "f0": {
+                "type": "boolean"
+              },
+              "f1": {
+                "type": "boolean"
+              },
+              "f2": {
+                "type": "boolean"
+              },
+              "f3": {
+                "type": "boolean"
+              },
+              "f4": {
+                "type": "boolean"
+              },
+              "f5": {
+                "type": "boolean"
+              },
+              "f6": {
+                "type": "boolean"
+              },
+              "f7": {
+                "type": "boolean"
+              },
+              "f8": {
+                "type": "boolean"
+              },
+              "f9": {
+                "type": "boolean"
+              },
+              "f10": {
+                "type": "boolean"
+              },
+              "f11": {
+                "type": "boolean"
+              },
+              "f12": {
+                "type": "boolean"
+              },
+              "f13": {
+                "type": "boolean"
+              },
+              "f14": {
+                "type": "boolean"
+              },
+              "f15": {
+                "type": "boolean"
+              },
+              "f16": {
+                "type": "boolean"
+              },
+              "f17": {
+                "type": "boolean"
+              },
+              "f18": {
+                "type": "boolean"
+              },
+              "f19": {
+                "type": "boolean"
+              },
+              "f20": {
+                "type": "boolean"
+              },
+              "f21": {
+                "type": "boolean"
+              },
+              "f22": {
+                "type": "boolean"
+              },
+              "f23": {
+                "type": "boolean"
+              },
+              "f24": {
+                "type": "boolean"
+              },
+              "f25": {
+                "type": "boolean"
+              },
+              "f26": {
+                "type": "boolean"
+              },
+              "f27": {
+                "type": "boolean"
+              },
+              "f28": {
+                "type": "boolean"
+              },
+              "f29": {
+                "type": "boolean"
+              },
+              "f30": {
+                "type": "boolean"
+              },
+              "f31": {
+                "type": "boolean"
+              },
+              "f32": {
+                "type": "boolean"
+              },
+              "f33": {
+                "type": "boolean"
+              },
+              "f34": {
+                "type": "boolean"
+              },
+              "f35": {
+                "type": "boolean"
+              },
+              "f36": {
+                "type": "boolean"
+              },
+              "f37": {
+                "type": "boolean"
+              },
+              "f38": {
+                "type": "boolean"
+              },
+              "f39": {
+                "type": "boolean"
+              },
+              "f40": {
+                "type": "boolean"
+              },
+              "f41": {
+                "type": "boolean"
+              },
+              "f42": {
+                "type": "boolean"
+              },
+              "f43": {
+                "type": "boolean"
+              },
+              "f44": {
+                "type": "boolean"
+              },
+              "f45": {
+                "type": "boolean"
+              },
+              "f46": {
+                "type": "boolean"
+              },
+              "f47": {
+                "type": "boolean"
+              },
+              "f48": {
+                "type": "boolean"
+              },
+              "f49": {
+                "type": "boolean"
+              },
+              "f50": {
+                "type": "boolean"
+              },
+              "f51": {
+                "type": "boolean"
+              },
+              "f52": {
+                "type": "boolean"
+              },
+              "f53": {
+                "type": "boolean"
+              },
+              "f54": {
+                "type": "boolean"
+              },
+              "f55": {
+                "type": "boolean"
+              },
+              "f56": {
+                "type": "boolean"
+              },
+              "f57": {
+                "type": "boolean"
+              },
+              "f58": {
+                "type": "boolean"
+              },
+              "f59": {
+                "type": "boolean"
+              },
+              "f60": {
+                "type": "boolean"
+              },
+              "f61": {
+                "type": "boolean"
+              },
+              "f62": {
+                "type": "boolean"
+              },
+              "f63": {
+                "type": "boolean"
+              },
+              "f64": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "secrets": [
+        "hubspot-token"
+      ],
+      "expect": {
+        "ok": false,
+        "error": "config_invalid"
+      }
+    },
+    {
       "name": "256 routes with a budget",
       "config": {
         "version": 1,

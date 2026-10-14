@@ -175,6 +175,7 @@ final class ConfigValidator
             'rateLimit',
             ...($value->has('quota') ? ['quota'] : []),
             ...($value->has('budget') ? ['budget'] : []),
+            ...($value->has('body') ? ['body'] : []),
         )) {
             self::fail();
         }
@@ -201,6 +202,12 @@ final class ConfigValidator
         if ($budget !== null && array_diff($responseTypes, [self::JSON]) !== []) {
             self::fail();
         }
+        $contentTypes = self::mediaTypes($value->get('contentTypes'));
+        // FR-13: body fields only where a JSON body is sent, and only JSON.
+        $body = $value->has('body') ? BodySchema::parse($value->get('body')) : null;
+        if ($body !== null && (!\in_array($method, [Method::Post, Method::Put, Method::Patch], true) || $contentTypes !== [self::JSON])) {
+            self::fail();
+        }
 
         return new Route(
             $name,
@@ -209,13 +216,14 @@ final class ConfigValidator
             $upstream,
             $upstreamPath,
             $maxBodyBytes,
-            self::mediaTypes($value->get('contentTypes')),
+            $contentTypes,
             $responseTypes,
             $enabled,
             self::origins($value->get('origins')),
             $value->get('rateLimit') === null ? null : self::routeLimit($value->get('rateLimit')),
             $value->has('quota') ? self::quota($value->get('quota'), RejectionCode::ConfigInvalid) : null,
             $budget,
+            $body,
         );
     }
 

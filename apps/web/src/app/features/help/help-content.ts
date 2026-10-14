@@ -129,8 +129,8 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
   },
   {
     id: 'routes',
-    steps: items('write', 'recipe', 'origins', 'bundle', 'check'),
-    tips: items('exact', 'quote'),
+    steps: items('write', 'recipe', 'origins', 'body', 'bundle', 'check'),
+    tips: items('exact', 'quote', 'requireBody'),
     links: [PROJECTS],
   },
   {

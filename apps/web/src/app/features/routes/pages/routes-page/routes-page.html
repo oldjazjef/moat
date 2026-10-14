@@ -84,6 +84,19 @@
               {{ 'routes.maxBody' | translate: { value: row.maxBody.value, unit:
               (row.maxBody.unitKey | translate) } }}
             </span>
+            @if (row.bodyFields; as fields) { @if (fields.length > 0) {
+            <span class="text-muted-foreground block text-xs" data-body-fields>
+              {{ 'routes.bodyFields' | translate: { fields: fields.join(', ') }
+              }}
+            </span>
+            } @else {
+            <span
+              class="text-muted-foreground block text-xs"
+              data-body-unchecked
+            >
+              {{ 'routes.bodyUnchecked' | translate }}
+            </span>
+            } }
           </td>
           <td hlmTd>
             <span class="mt-code">{{ row.target }}</span>

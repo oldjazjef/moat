@@ -132,6 +132,11 @@ final class PolicyCheck
             if (!$within) {
                 self::violation();
             }
+            // FR-13, SEC-14, T-65: a bundle cannot drop the body check of a host that requires it;
+            // a route without body fields must take no body at all, whatever its method.
+            if ($allowed->requireBody && $route->body === null && $route->maxBodyBytes !== 0) {
+                self::violation();
+            }
             // Every answer from a host with a budget must be countable, in the policy's format.
             if ($allowed->budget !== null && (
                 array_diff($route->responseContentTypes, [ConfigValidator::JSON]) !== []
@@ -187,7 +192,7 @@ final class PolicyCheck
 
     private static function upstream(mixed $entry): PolicyUpstream
     {
-        if (!$entry instanceof JsonObject || !$entry->hasExactKeys('pathPrefixes', 'methods', 'secrets', ...($entry->has('budget') ? ['budget'] : []))) {
+        if (!$entry instanceof JsonObject || !$entry->hasExactKeys('pathPrefixes', 'methods', 'secrets', ...($entry->has('budget') ? ['budget'] : []), ...($entry->has('requireBody') ? ['requireBody'] : []))) {
             self::invalid();
         }
         $prefixes = $entry->get('pathPrefixes');
@@ -221,8 +226,12 @@ final class PolicyCheck
         }
 
         $budget = $entry->has('budget') ? ConfigValidator::budget($entry->get('budget'), RejectionCode::PolicyInvalid, false) : null;
+        $requireBody = $entry->has('requireBody') ? $entry->get('requireBody') : false;
+        if (!\is_bool($requireBody)) {
+            self::invalid();
+        }
 
-        return new PolicyUpstream($pathPrefixes, $allowed, $secrets, $budget);
+        return new PolicyUpstream($pathPrefixes, $allowed, $secrets, $budget, $requireBody);
     }
 
     private static function isPrefix(string $value): bool

@@ -1,9 +1,12 @@
 import { z } from 'zod';
+import { bodyFieldsSchema } from '../http/body';
 import { budgetSchema } from '../http/budget';
 import { MEDIA_TYPE } from '../http/content-type';
 import {
+  bodyRouteProblem,
   compiledRouteSchema,
   isWebOrigin,
+  JSON_TYPE,
   LIMIT_SCOPES,
   quotaSchema,
   MAX_LIMIT_REQUESTS,
@@ -92,6 +95,12 @@ export const routeSchema = z.strictObject({
    * [application/json]` (the default).
    */
   budget: budgetSchema.optional(),
+  /**
+   * FR-13, e.g. `{email: {type: string, required: true, format: email, maxLength: 254}}`: the
+   * fields of the JSON object the website sends. The gate forwards only these and answers 400
+   * `body_invalid` when one does not fit. POST, PUT or PATCH with JSON only.
+   */
+  body: bodyFieldsSchema.optional(),
 });
 
 /** FR-01: dev, staging, production … A locked environment locks every gate in it. */
@@ -120,6 +129,19 @@ export const moatConfigSchema = z
     routes: z.record(name, routeSchema),
   })
   .superRefine((config, context) => {
+    for (const [route, entry] of Object.entries(config.routes)) {
+      const problem = bodyRouteProblem({
+        method: entry.method,
+        contentTypes: entry.contentTypes ?? [JSON_TYPE],
+        body: entry.body,
+      });
+      if (problem !== null)
+        context.addIssue({
+          code: 'custom',
+          path: ['routes', route, 'body'],
+          message: problem,
+        });
+    }
     for (const [gate, entry] of Object.entries(config.gates ?? {})) {
       if (
         entry.environment !== undefined &&

@@ -307,6 +307,9 @@
               "maxOutputTokens"
             ],
             "additionalProperties": false
+          },
+          "body": {
+            "$ref": "#/$defs/__schema0"
           }
         },
         "required": [
@@ -325,5 +328,154 @@
     "routes"
   ],
   "additionalProperties": false,
-  "description": "Moat configuration (moat.yaml), version 1"
+  "description": "Moat configuration (moat.yaml), version 1",
+  "$defs": {
+    "__schema0": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/__schema1"
+      }
+    },
+    "__schema1": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "string"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "minLength": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "maxLength": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "enum": {
+              "minItems": 1,
+              "maxItems": 64,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "email"
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "integer"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "minimum": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "maximum": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "boolean"
+            },
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "object"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "fields": {
+              "$ref": "#/$defs/__schema0"
+            }
+          },
+          "required": [
+            "type",
+            "fields"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "array"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "items": {
+              "$ref": "#/$defs/__schema1"
+            },
+            "minItems": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "maxItems": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          "required": [
+            "type",
+            "items",
+            "maxItems"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
 }

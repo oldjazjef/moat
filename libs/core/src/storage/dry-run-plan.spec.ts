@@ -28,7 +28,7 @@ const SIGNUP = {
   method: 'POST',
   path: '/newsletter',
   headers: { 'Content-Type': 'application/json' },
-  body: '{"email":"a@example.com"}',
+  body: '{"properties":{"email":"a@example.com","hs_lead_status":"x"},"admin":true}',
 };
 
 function folder(files: Record<string, string>): StoragePort {
@@ -63,6 +63,8 @@ describe('planDryRun (FR-42)', () => {
       call: {
         method: 'POST',
         url: 'https://api.hubapi.com/crm/v3/objects/contacts',
+        // FR-13: the recipe's body fields, nothing else.
+        body: '{"properties":{"email":"a@example.com"}}',
       },
     });
   });

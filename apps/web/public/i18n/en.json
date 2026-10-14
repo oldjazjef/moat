@@ -250,6 +250,8 @@
       }
     },
     "maxBody": "max. {{value}} {{unit}} per request",
+    "bodyFields": "Checked fields: {{fields}}",
+    "bodyUnchecked": "Body forwarded unchecked",
     "duration": "{{value}} {{unit}}",
     "disabled": "Switched off",
     "auth": {
@@ -518,6 +520,7 @@
         "method_not_allowed": "The route does not take this method.",
         "unsupported_media_type": "The route does not take this content type.",
         "body_too_large": "The body is larger than the route allows.",
+        "body_invalid": "The content does not fit the route's fields: a required field is missing, or a value has the wrong type or is out of bounds.",
         "origin_forbidden": "The gate refused the request because of where it came from.",
         "request_unbounded": "The request needs max_tokens up to the route's limit and no stream.",
         "rate_limited": "Too many requests. Wait a moment, then test again.",
@@ -751,11 +754,13 @@
           "write": "Under “Routes”, click “New route” and fill in method, path, upstream and target path. The three-dot menu at the end of each row has “Edit”, “Switch off” (disables the route without deleting it) and “Delete”. If you prefer your editor, write it into moat.yaml directly.",
           "recipe": "For common cases there are recipes, for example the newsletter sign-up with HubSpot.",
           "origins": "If another website calls the route in a browser, add it under “Allowed websites” (in moat.yaml: `origins`). Without an entry, browsers refuse other websites.",
+          "body": "So that only expected data reaches the API, list the fields your website sends under `body` in moat.yaml, with a type (`string`, `integer`, `boolean`, `object`, `array`) and bounds such as `required`, `maxLength`, `enum` or `format: email`. The gate removes every other field and refuses content that does not fit with 400 and `body_invalid`. The recipes bring their fields along. Under “Routes”, each route shows which fields are checked, or that its content is forwarded unchecked.",
           "bundle": "A new or changed route applies on the gate only with the next bundle: `moat build <gate>`, upload it and accept it.",
           "check": "Under “Routes” you see every route as the gate checks it: path, target, allowed websites, limits and maximum size."
         },
         "tips": {
           "exact": "Paths match exactly: `/newsletter` does not match `/newsletter/abc`.",
+          "requireBody": "When every route to an API that takes content lists its fields, `moat policy suggest` proposes `requireBody: true` for that host. The gate then accepts no bundle in which a route to that API takes content without fields, not even a signed one. A route without fields then needs `maxBodySize: '0B'`.",
           "quote": "Put paths, URLs and durations in quotes, for example `'10m'`."
         }
       },
@@ -885,6 +890,7 @@
       "not_found": "No route has exactly this path.",
       "method_not_allowed": "The path exists, but not with this method.",
       "path_invalid": "The path is invalid, for example because of “..” or encoded slashes.",
+      "body_invalid": "The content does not fit the route's fields: not a JSON object, a required field is missing, or a value has the wrong type or is out of bounds.",
       "request_unbounded": "The route has a budget: the request must bound its cost (no stream, one answer, an output cap up to maxOutputTokens).",
       "body_too_large": "The body is larger than the route or the policy allows.",
       "unsupported_media_type": "This Content-Type is not allowed for the route.",

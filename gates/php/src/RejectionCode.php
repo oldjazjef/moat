@@ -28,5 +28,6 @@ enum RejectionCode: string
     case PathInvalid = 'path_invalid';
     case OriginForbidden = 'origin_forbidden';
     case PreflightRejected = 'preflight_rejected';
+    case BodyInvalid = 'body_invalid';
     // keyfile_invalid and keyfile_locked exist only in Desktop/CLI: a gate never opens a key file.
 }

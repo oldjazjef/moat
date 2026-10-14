@@ -91,6 +91,12 @@ export const policySchema = z.strictObject({
           tokens: z.int().min(1).max(MAX_BUDGET_TOKENS),
         })
         .optional(),
+      /**
+       * FR-13, SEC-14, T-65: every route to this host lists its body fields or accepts no body at
+       * all (`maxBodyBytes: 0`), whatever its method — so a bundle cannot drop the validation and
+       * pass any body on with the host's secret.
+       */
+      requireBody: z.boolean().optional(),
     }),
   ),
   maxBodyBytes: z.int().min(0).max(MAX_BODY_BYTES),
@@ -185,6 +191,11 @@ export function matchesPrefix(path: string, pathPrefix: string): boolean {
   return path.startsWith(base);
 }
 
+/** FR-13: the route forwards no body it has not checked — it lists its fields or takes none. */
+function checksBody(route: CompiledConfig['routes'][string]): boolean {
+  return route.body !== undefined || route.maxBodyBytes === 0;
+}
+
 /** Throws `policy_violation` unless every upstream, route and limit lies within the policy. */
 export function checkPolicy(config: CompiledConfig, policy: Policy): void {
   for (const upstream of Object.values(config.upstreams)) {
@@ -213,6 +224,8 @@ export function checkPolicy(config: CompiledConfig, policy: Policy): void {
       reject('policy_violation');
     }
     if (route.maxBodyBytes > policy.maxBodyBytes) reject('policy_violation');
+    if (allowed.requireBody === true && !checksBody(route))
+      reject('policy_violation');
     if (allowed.budget !== undefined) {
       // Every answer from a host with a budget must be countable, in the policy's format.
       if (!route.responseContentTypes.every((type) => type === JSON_TYPE))
@@ -330,6 +343,19 @@ export function suggestPolicy(config: CompiledConfig): Policy {
   }
   for (const [key, budget] of hostBudgets(config))
     if (upstreams[key] !== undefined) upstreams[key].budget = budget;
+  for (const [key, entry] of Object.entries(upstreams)) {
+    const toHost = Object.values(config.routes).filter(
+      (route) =>
+        config.upstreams[route.upstream] !== undefined &&
+        hostKey(config.upstreams[route.upstream]?.origin ?? '') === key,
+    );
+    // FR-13: once every route to the host checks its body (or takes none), keep it that way.
+    if (
+      toHost.some((route) => route.body !== undefined) &&
+      toHost.every(checksBody)
+    )
+      entry.requireBody = true;
+  }
   const routes = Object.values(config.routes);
   const policy: Policy = {
     v: 1,

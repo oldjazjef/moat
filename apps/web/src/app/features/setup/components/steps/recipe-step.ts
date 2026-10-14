@@ -61,6 +61,7 @@ export const GATE_CODES = [
   'method_not_allowed',
   'unsupported_media_type',
   'body_too_large',
+  'body_invalid',
   'origin_forbidden',
   'request_unbounded',
   'rate_limited',

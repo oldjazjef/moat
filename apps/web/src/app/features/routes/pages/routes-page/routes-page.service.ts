@@ -15,7 +15,15 @@ export interface RouteRow {
   readonly target: string;
   readonly window: ReturnType<typeof durationParts> | null;
   readonly maxBody: ReturnType<typeof sizeParts>;
+  /**
+   * FR-13: the body fields the gate forwards (top level), [] when it forwards the body unchecked,
+   * null when the method sends no body.
+   */
+  readonly bodyFields: readonly string[] | null;
 }
+
+/** Methods whose body the gate forwards (BODY_METHODS in libs/core). */
+const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
 
 export interface UpstreamRow {
   readonly name: string;
@@ -67,6 +75,9 @@ export class RoutesPageService {
           ? durationParts(route.rateLimit.windowSeconds)
           : null,
         maxBody: sizeParts(route.maxBodyBytes),
+        bodyFields: BODY_METHODS.includes(route.method)
+          ? Object.keys(route.body ?? {})
+          : null,
       }));
   });
 

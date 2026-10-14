@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { bodyFieldsSchema, bodySchemaProblem } from '../http/body';
 import { budgetSchema } from '../http/budget';
 import { MEDIA_TYPE } from '../http/content-type';
 import { normalisePath } from '../http/path';
@@ -120,7 +121,16 @@ export const compiledRouteSchema = z.strictObject({
    * answer reports (http/budget.ts). Compiled only when set. The route must answer JSON only.
    */
   budget: budgetSchema.optional(),
+  /**
+   * FR-13: the fields of the JSON object the website sends (http/body.ts); the gate forwards only
+   * these and refuses a body that does not fit. Compiled only when set: without it the body is
+   * forwarded as received. Only on POST, PUT and PATCH routes that accept JSON alone.
+   */
+  body: bodyFieldsSchema.optional(),
 });
+
+/** Methods whose requests carry a body the gate forwards. */
+export const BODY_METHODS: readonly string[] = ['POST', 'PUT', 'PATCH'];
 
 export const compiledConfigSchema = z.strictObject({
   version: z.literal(1),
@@ -164,6 +174,8 @@ export function validateCompiledConfig(
       !route.responseContentTypes.every((type) => type === JSON_TYPE)
     )
       reject('config_invalid');
+    if (route.body !== undefined && bodyRouteProblem(route) !== null)
+      reject('config_invalid');
     const key = `${route.method} ${route.path}`;
     if (seen.has(key)) reject('config_invalid');
     seen.add(key);
@@ -179,6 +191,21 @@ export function validateCompiledConfig(
       reject('config_invalid');
   }
   return result;
+}
+
+/**
+ * Why a route cannot have its `body` (FR-13): the method sends no body, the route accepts more
+ * than JSON, or the fields break a limit of http/body.ts. Null when it can.
+ */
+export function bodyRouteProblem(
+  route: Pick<CompiledRoute, 'method' | 'contentTypes' | 'body'>,
+): string | null {
+  if (route.body === undefined) return null;
+  if (!BODY_METHODS.includes(route.method))
+    return '`body` needs method POST, PUT or PATCH';
+  if (route.contentTypes.length !== 1 || route.contentTypes[0] !== JSON_TYPE)
+    return '`body` needs `contentTypes: [application/json]` (the default)';
+  return bodySchemaProblem(route.body);
 }
 
 /** A path as routes and upstream paths are written: already normalised, no trailing "/". */

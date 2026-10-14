@@ -4,6 +4,7 @@ import {
   type CompiledRoute,
 } from '../config/compiled';
 import { MoatRejection } from '../errors';
+import { validateBody } from '../http/body';
 import { requestEstimate, type Budget, type Usage } from '../http/budget';
 import { mediaTypeOf } from '../http/content-type';
 import { checkOrigin, preflight } from '../http/cors';
@@ -16,7 +17,7 @@ import type { KillSwitch } from './kill-switch';
  * alone, before anything is signed — no gate, no network, no secret. It follows the gate's order
  * (gates/php RequestHandler; conformance/http/ checks both agree): lock and kill switch, path
  * normalised and matched exactly, CORS preflight, method, origin, body size and media type, the
- * budget's bound, then the upstream call the gate would build. What only a running gate knows —
+ * body's fields (FR-13), the budget's bound, then the upstream call the gate would build. What only a running gate knows —
  * counters for rate limits, quotas and budgets, the upstream's answer — is named, not guessed.
  */
 
@@ -25,6 +26,7 @@ export const DRY_RUN_ERRORS = {
   not_found: 404,
   method_not_allowed: 405,
   path_invalid: 400,
+  body_invalid: 400,
   request_unbounded: 400,
   body_too_large: 413,
   unsupported_media_type: 415,
@@ -223,6 +225,16 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
     (mediaType === null || !route.contentTypes.includes(mediaType))
   )
     refuse('unsupported_media_type');
+  // FR-13: only the listed fields go on, as canonical JSON — the budget estimates that body.
+  let body = hasBody ? request.body : '';
+  if (route.body !== undefined) {
+    try {
+      body = validateBody(route.body, new TextEncoder().encode(request.body));
+    } catch (error) {
+      if (error instanceof MoatRejection) refuse('body_invalid');
+      throw error;
+    }
+  }
 
   const upstream = config.upstreams[route.upstream];
   if (upstream === undefined) return refuse('gate_not_configured');
@@ -238,7 +250,7 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
     const maxOutput = Math.min(
       ...budgets.map((entry) => entry.budget.maxOutputTokens),
     );
-    estimate = requestEstimate(first.budget.usage, request.body, maxOutput);
+    estimate = requestEstimate(first.budget.usage, body, maxOutput);
     if (estimate === null) refuse('request_unbounded');
   }
 
@@ -265,7 +277,7 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
       method: route.method,
       url,
       headers,
-      body: hasBody ? request.body : '',
+      body,
       timeoutMs: Math.min(upstream.timeoutMs, policy.maxTimeoutMs),
       secret: auth?.secret ?? null,
     },
