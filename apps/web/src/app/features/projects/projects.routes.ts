@@ -27,6 +27,10 @@ const routes: Routes = [
         path: 'routes',
         loadChildren: () => import('../routes/routes.routes'),
       },
+      {
+        path: 'console',
+        loadChildren: () => import('../console/console.routes'),
+      },
     ],
   },
 ];

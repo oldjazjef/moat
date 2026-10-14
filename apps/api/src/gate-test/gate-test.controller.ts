@@ -10,7 +10,8 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import type { Policy } from '@moat/core';
+import type { DryRunResult, Policy } from '@moat/core';
+import { DryRunQuery } from './application/dry-run.handler';
 import {
   SuggestPolicyQuery,
   TestGateCommand,
@@ -19,7 +20,7 @@ import {
   HardeningCheckCommand,
   type HardeningCheckReport,
 } from './application/hardening-check.handler';
-import { GateTestDto, HardeningCheckDto } from './dto/gate-test.dto';
+import { DryRunDto, GateTestDto, HardeningCheckDto } from './dto/gate-test.dto';
 import type { GateAnswer } from './ports/gate-client.port';
 
 /**
@@ -96,5 +97,33 @@ export class GateTestController {
     if (result.status === 'refused')
       throw new UnprocessableEntityException({ error: result.code });
     return result.report;
+  }
+
+  /**
+   * The test console (FR-42): what the gate would answer to this request, from the project's
+   * config and the suggested policy, without sending anything or opening a secret. 422 when the
+   * config is missing or invalid or the gate is unknown (DryRunPlanErrorCode).
+   */
+  @Post(':id/dry-run')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  async dryRun(
+    @Param('id') id: string,
+    @Body() body: DryRunDto,
+  ): Promise<DryRunResult> {
+    const result = await this.queries.execute(
+      new DryRunQuery(id, body.gate ?? null, {
+        method: body.method,
+        path: body.path,
+        origin: body.origin ?? null,
+        contentType: body.contentType ?? null,
+        requestMethod: body.requestMethod ?? null,
+        body: body.body,
+      }),
+    );
+    if (result.status === 'not_found') throw new NotFoundException();
+    if (result.status === 'refused')
+      throw new UnprocessableEntityException({ error: result.code });
+    return result.result;
   }
 }

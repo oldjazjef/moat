@@ -144,6 +144,19 @@ export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
     },
     expect: { ...LOCAL_ONLY, desktop: 422 },
   },
+  {
+    // Sends nothing anywhere: the answer is worked out from the seeded moat.yaml (FR-42).
+    method: 'POST',
+    path: '/api/projects/:id/dry-run',
+    request: `/api/projects/${SEEDED_PROJECT}/dry-run`,
+    body: {
+      method: 'POST',
+      path: '/newsletter',
+      contentType: 'application/json',
+      body: '{}',
+    },
+    expect: LOCAL_ONLY,
+  },
   { method: 'GET', path: '/api/setup', expect: LOCAL_ONLY },
   {
     method: 'PATCH',

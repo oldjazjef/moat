@@ -32,6 +32,7 @@ export const HELP_SECTION_IDS = [
   'trust',
   'secrets',
   'routes',
+  'console',
   'limits',
   'release',
   'environments',
@@ -130,6 +131,12 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     id: 'routes',
     steps: items('write', 'recipe', 'origins', 'bundle', 'check'),
     tips: items('exact', 'quote'),
+    links: [PROJECTS],
+  },
+  {
+    id: 'console',
+    steps: items('open', 'route', 'gate', 'check', 'read'),
+    tips: items('nothingSent', 'policy', 'counters'),
     links: [PROJECTS],
   },
   {

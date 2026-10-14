@@ -52,7 +52,8 @@
       "label": "Parts of the project",
       "overview": "Overview",
       "gates": "Gates",
-      "routes": "Routes"
+      "routes": "Routes",
+      "console": "Test console"
     },
     "remove": {
       "button": "Remove from list",
@@ -758,6 +759,23 @@
           "quote": "Put paths, URLs and durations in quotes, for example `'10m'`."
         }
       },
+      "console": {
+        "title": "Test console",
+        "purpose": "Before you sign, the test console shows what the gate would do with a request: which route it hits, whether the gate refuses it and why, and which call it would send to the API.",
+        "where": "Project › Test console",
+        "steps": {
+          "open": "Open “Test console” in the project.",
+          "route": "Pick a route under “Start from a route”. Method, path, origin and Content-Type are filled in; you can change all of them.",
+          "gate": "Pick a gate under “Gate” so that its lock and its sealed secrets count. Without a gate, the console checks the configuration only.",
+          "check": "Click “Check”.",
+          "read": "Under “How the gate would answer” you see the refusal with its code and reason, or the call to the API with method, address, headers and body."
+        },
+        "tips": {
+          "nothingSent": "The console sends nothing: no gate, no API. Where the gate puts the secret, it shows `<SECRET>`.",
+          "policy": "The check uses the policy `moat policy suggest` proposes. The policy on your gate can be narrower.",
+          "counters": "Rate limits, quotas and budgets appear as rules only. How much of them is used up, only the running gate knows."
+        }
+      },
       "limits": {
         "title": "Limits",
         "purpose": "Rate limits protect your API from scripts; quotas cap how much a route uses per day or month in total, and budgets how many tokens or how much money an AI API may cost. The gate counts by itself.",
@@ -837,5 +855,64 @@
         }
       }
     }
+  },
+  "console": {
+    "subtitle": "Check a request before you sign: what would the gate do with this configuration? Nothing is sent.",
+    "unusable": "The moat.yaml is not valid. The overview shows what is missing.",
+    "route": "Start from a route",
+    "routeNone": "Own request",
+    "gate": "Gate",
+    "gateNone": "Configuration only (all secrets sealed)",
+    "method": "Method",
+    "path": "Path after the gate file",
+    "origin": "Origin (website)",
+    "originPlaceholder": "https://www.example.com",
+    "requestMethod": "Requested method (preflight)",
+    "contentType": "Content-Type",
+    "body": "Body",
+    "run": "Check",
+    "nothingSent": "Only Moat calculates: no gate, no API, no secret.",
+    "notices": {
+      "config_missing": "The project folder has no moat.yaml.",
+      "config_invalid": "The moat.yaml is not valid. The overview shows what is missing.",
+      "gate_unknown": "The project no longer knows this gate. Reload the project.",
+      "body_too_long": "The body is longer than 64 KiB. The console checks shorter bodies only.",
+      "failed": "The check did not work. Try again."
+    },
+    "resultTitle": "How the gate would answer",
+    "notAccepted": "The gate would not accept this bundle at all ({{code}}): the configuration goes beyond the suggested policy.",
+    "errors": {
+      "not_found": "No route has exactly this path.",
+      "method_not_allowed": "The path exists, but not with this method.",
+      "path_invalid": "The path is invalid, for example because of “..” or encoded slashes.",
+      "request_unbounded": "The route has a budget: the request must bound its cost (no stream, one answer, an output cap up to maxOutputTokens).",
+      "body_too_large": "The body is larger than the route or the policy allows.",
+      "unsupported_media_type": "This Content-Type is not allowed for the route.",
+      "origin_forbidden": "This website (origin) may not call the route.",
+      "preflight_rejected": "The browser would get no permission for this request (CORS).",
+      "route_disabled": "The route is switched off.",
+      "gate_disabled": "The gate is locked and answers every request like this.",
+      "gate_not_configured": "The route names an upstream that does not exist.",
+      "secret_unavailable": "This upstream's secret is not sealed for the chosen gate."
+    },
+    "preflight": "The gate answers the preflight itself. The browser may then send the request.",
+    "forwarded": "Through the route {{route}}, the gate would forward the request like this:",
+    "secret": "The gate replaces {{placeholder}} with the sealed secret “{{secret}}”. The console does not know its value.",
+    "countersTitle": "The gate counts",
+    "counters": {
+      "perIp": "at most {{requests}} requests per visitor in {{seconds}} s (policy)",
+      "total": "at most {{requests}} requests in total in {{seconds}} s (policy)",
+      "route": "at most {{requests}} requests in {{seconds}} s (route)",
+      "quotaPeriod": "at most {{requests}} requests per {{period}} (policy)",
+      "routeQuotaPeriod": "at most {{requests}} requests per {{period}} (route)"
+    },
+    "periods": {
+      "day": "day",
+      "month": "month"
+    },
+    "estimate": "The budget is charged up front with {{input}} bytes of input and {{output}} tokens of output.",
+    "gateOnly": "How far these counters are and what the API answers, only the running gate knows.",
+    "headersTitle": "Headers from the gate to the browser",
+    "policyNote": "Checked against the policy `moat policy suggest` proposes for this project. The policy on your gate can be narrower."
   }
 }

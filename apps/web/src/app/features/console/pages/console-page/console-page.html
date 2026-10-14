@@ -1,0 +1,264 @@
+<div class="mb-6 flex items-center justify-between gap-3">
+  <p class="text-muted-foreground text-sm">
+    {{ 'console.subtitle' | translate }}
+  </p>
+  <mt-help-link section="console" />
+</div>
+
+@if (service.unusable()) {
+<p class="mt-note" data-config-unusable>
+  <span class="flex-1">{{ 'console.unusable' | translate }}</span>
+  <a
+    hlmBtn
+    size="sm"
+    variant="outline"
+    [routerLink]="[resource.base(), 'overview']"
+  >
+    {{ 'common.toOverview' | translate }}
+  </a>
+</p>
+} @else {
+<form
+  class="grid max-w-3xl gap-4"
+  [formGroup]="service.form"
+  (ngSubmit)="service.run()"
+  data-console-form
+>
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="console-route"
+        >{{ 'console.route' | translate }}</label
+      >
+      <select
+        hlmInput
+        id="console-route"
+        class="mt-code"
+        data-console-route
+        #routePick
+        (change)="service.useRoute(routePick.value)"
+      >
+        <option value="">{{ 'console.routeNone' | translate }}</option>
+        @for (row of service.routes(); track row.name) {
+        <option [value]="row.name">
+          {{ row.name }} · {{ row.route.method }} {{ row.route.path }}
+        </option>
+        }
+      </select>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="console-gate"
+        >{{ 'console.gate' | translate }}</label
+      >
+      <select
+        hlmInput
+        id="console-gate"
+        class="mt-code"
+        formControlName="gate"
+        data-console-gate
+      >
+        <option value="">{{ 'console.gateNone' | translate }}</option>
+        @for (gate of service.gates(); track gate) {
+        <option [value]="gate">{{ gate }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-[8rem_1fr]">
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="console-method"
+        >{{ 'console.method' | translate }}</label
+      >
+      <select
+        hlmInput
+        id="console-method"
+        class="mt-code"
+        formControlName="method"
+        data-console-method
+      >
+        @for (method of methods; track method) {
+        <option [value]="method">{{ method }}</option>
+        }
+      </select>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="console-path"
+        >{{ 'console.path' | translate }}</label
+      >
+      <input
+        hlmInput
+        id="console-path"
+        class="mt-code"
+        formControlName="path"
+        data-console-path
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="console-origin"
+        >{{ 'console.origin' | translate }}</label
+      >
+      <input
+        hlmInput
+        id="console-origin"
+        class="mt-code"
+        formControlName="origin"
+        data-console-origin
+        [placeholder]="'console.originPlaceholder' | translate"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+    @if (service.form.controls.method.value === 'OPTIONS') {
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="console-request-method"
+        >{{ 'console.requestMethod' | translate }}</label
+      >
+      <select
+        hlmInput
+        id="console-request-method"
+        class="mt-code"
+        formControlName="requestMethod"
+        data-console-request-method
+      >
+        @for (method of methods; track method) {
+        <option [value]="method">{{ method }}</option>
+        }
+      </select>
+    </div>
+    } @else {
+    <div class="flex flex-col gap-1.5">
+      <label hlmLabel for="console-content-type"
+        >{{ 'console.contentType' | translate }}</label
+      >
+      <input
+        hlmInput
+        id="console-content-type"
+        class="mt-code"
+        formControlName="contentType"
+        data-console-content-type
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+    }
+  </div>
+
+  @if (service.form.controls.method.value !== 'OPTIONS') {
+  <div class="flex flex-col gap-1.5">
+    <label hlmLabel for="console-body">{{ 'console.body' | translate }}</label>
+    <textarea
+      hlmInput
+      id="console-body"
+      class="mt-code min-h-28"
+      formControlName="body"
+      data-console-body
+      spellcheck="false"
+    ></textarea>
+  </div>
+  }
+
+  <div class="flex flex-wrap items-center gap-3">
+    <button hlmBtn type="submit" data-console-run [disabled]="service.busy()">
+      {{ 'console.run' | translate }}
+    </button>
+    <p class="text-muted-foreground text-xs">
+      {{ 'console.nothingSent' | translate }}
+    </p>
+  </div>
+</form>
+
+@if (service.notice(); as code) {
+<p class="text-destructive mt-4 text-sm" role="alert" data-console-notice>
+  {{ 'console.notices.' + code | translate }}
+</p>
+} @if (service.result(); as result) {
+<section
+  class="mt-6 flex max-w-3xl flex-col gap-3 text-sm"
+  role="status"
+  aria-labelledby="console-result-title"
+  data-console-result
+  [attr.data-kind]="result.kind"
+>
+  <h2 id="console-result-title" class="text-lg font-semibold">
+    {{ 'console.resultTitle' | translate }}
+  </h2>
+  @switch (result.kind) { @case ('not_accepted') {
+  <p class="text-destructive" data-console-not-accepted>
+    {{ 'console.notAccepted' | translate: { code: result.code } }}
+  </p>
+  } @case ('refused') {
+  <p class="flex flex-wrap items-center gap-2">
+    <span hlmBadge variant="outline" class="mt-code" data-console-status>
+      {{ result.status }}
+    </span>
+    <span class="mt-code" data-console-error>{{ result.error }}</span>
+  </p>
+  <p data-console-explain>{{ 'console.errors.' + result.error | translate }}</p>
+  } @case ('preflight') {
+  <p class="flex flex-wrap items-center gap-2">
+    <span hlmBadge variant="outline" class="mt-code" data-console-status>
+      204
+    </span>
+    <span>{{ 'console.preflight' | translate }}</span>
+  </p>
+  } @case ('forwarded') {
+  <p data-console-forwarded>
+    {{ 'console.forwarded' | translate: { route: result.route } }}
+  </p>
+  <pre
+    class="mt-code bg-muted overflow-x-auto rounded-md p-3 text-xs"
+    data-console-call
+  >
+{{ result.call.method }} {{ result.call.url }}
+@for (header of result.call.headers; track $index) {{{ header[0] }}: {{ header[1] }}
+}@if (result.call.body !== '') {
+{{ result.call.body }}}</pre>
+  @if (result.call.secret; as secret) {
+  <p class="text-muted-foreground" data-console-secret>
+    {{ 'console.secret' | translate: { placeholder: placeholder, secret: secret
+    } }}
+  </p>
+  }
+  <div>
+    <h3 class="font-medium">{{ 'console.countersTitle' | translate }}</h3>
+    <ul class="text-muted-foreground list-disc pl-5" data-console-counters>
+      @for (counter of result.counters; track counter.kind) {
+      <li>
+        @if (counter.per === 'day' || counter.per === 'month') { {{
+        'console.counters.' + counter.kind + 'Period' | translate : { requests:
+        counter.requests, period: ('console.periods.' + counter.per | translate)
+        } }} } @else { {{ 'console.counters.' + counter.kind | translate: {
+        requests: counter.requests, seconds: counter.per } }} }
+      </li>
+      } @if (result.estimate; as estimate) {
+      <li data-console-estimate>
+        {{ 'console.estimate' | translate : { input: estimate.input, output:
+        estimate.output } }}
+      </li>
+      }
+    </ul>
+  </div>
+  <p class="text-muted-foreground" data-console-gate-only>
+    {{ 'console.gateOnly' | translate }}
+  </p>
+  } } @if (result.kind !== 'not_accepted' && headerList(result.headers).length >
+  0) {
+  <div>
+    <h3 class="font-medium">{{ 'console.headersTitle' | translate }}</h3>
+    <ul class="mt-code text-xs" data-console-headers>
+      @for (header of headerList(result.headers); track header[0]) {
+      <li>{{ header[0] }}: {{ header[1] }}</li>
+      }
+    </ul>
+  </div>
+  }
+  <p class="text-muted-foreground text-xs" data-console-policy>
+    <mt-rich-text [text]="'console.policyNote' | translate" />
+  </p>
+</section>
+} }
