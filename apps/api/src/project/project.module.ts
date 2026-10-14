@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { AddProjectHandler } from './application/add-project.handler';
+import { CreateProjectHandler } from './application/create-project.handler';
+import { AddGateHandler, CheckGateHandler } from './application/gate.handlers';
 import { BundleSigningService } from './application/bundle-signing.service';
 import { SecretSealingService } from './application/secret-sealing.service';
 import { EditConfigHandler } from './application/edit-config.handler';
@@ -18,6 +20,9 @@ import { ProjectService } from './project.service';
     ListProjectsHandler,
     GetProjectHandler,
     AddProjectHandler,
+    CreateProjectHandler,
+    CheckGateHandler,
+    AddGateHandler,
     RemoveProjectHandler,
     EditConfigHandler,
     BundleSigningService,

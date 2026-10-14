@@ -78,7 +78,8 @@ describe('ProjectsPage', () => {
     const add = vi.fn().mockResolvedValue({ status: 'added', id: SHOP.id });
     window.moatDesktop = {
       platform: 'linux',
-      project: { add, reveal: vi.fn() },
+      project: { add, create: vi.fn(), reveal: vi.fn() },
+      key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
       bundle: { sign: vi.fn() },
       secret: { seal: vi.fn() },
     };
@@ -93,7 +94,8 @@ describe('ProjectsPage', () => {
     const add = vi.fn().mockResolvedValue({ status: 'failed' });
     window.moatDesktop = {
       platform: 'linux',
-      project: { add, reveal: vi.fn() },
+      project: { add, create: vi.fn(), reveal: vi.fn() },
+      key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
       bundle: { sign: vi.fn() },
       secret: { seal: vi.fn() },
     };

@@ -222,6 +222,78 @@
     @apply bg-muted text-muted-foreground inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs tabular-nums;
   }
 
+  /* The setup wizard (FR-73, as lazy-koins): the step bar, a choice, a command, the footer. */
+  .mt-stepper {
+    @apply flex gap-1 overflow-x-auto pb-1;
+  }
+
+  .mt-step {
+    @apply text-muted-foreground flex min-w-0 shrink-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors lg:shrink;
+  }
+
+  .mt-step:enabled {
+    @apply hover:bg-muted hover:text-foreground cursor-pointer;
+  }
+
+  .mt-step:disabled {
+    @apply cursor-default opacity-60;
+  }
+
+  /* Narrow screens: only the current step shows its title, the others their number. */
+  .mt-step-title-collapsed {
+    @apply hidden lg:inline;
+  }
+
+  .mt-step-current {
+    @apply bg-secondary text-secondary-foreground font-medium;
+  }
+
+  .mt-step-number {
+    @apply border-border bg-card flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums;
+  }
+
+  .mt-step-current .mt-step-number {
+    @apply border-primary bg-primary text-primary-foreground;
+  }
+
+  .mt-step-done .mt-step-number {
+    border-color: var(--trust-strong);
+    background-color: var(--trust-strong);
+    color: var(--card);
+  }
+
+  .mt-step-error .mt-step-number {
+    @apply border-destructive bg-destructive text-primary-foreground;
+  }
+
+  .mt-step-skipped .mt-step-number {
+    @apply border-dashed;
+  }
+
+  /* A radio choice as a bordered row (language, project). */
+  .mt-choice {
+    @apply hover:bg-muted flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 text-sm has-[:checked]:border-primary;
+  }
+
+  .mt-choice input {
+    @apply mt-1;
+  }
+
+  /* A command to copy into a terminal. */
+  .mt-command {
+    @apply bg-muted mt-2 overflow-x-auto rounded-md px-3 py-2 font-mono text-xs whitespace-pre-wrap break-all;
+  }
+
+  /* A fingerprint to compare group by group (SEC-32). */
+  .mt-fingerprint {
+    @apply bg-muted rounded-md px-3 py-2 font-mono text-base font-semibold tracking-wide break-all;
+  }
+
+  /* The wizard's footer: stays at the bottom of the scroll area (Zurück / Später / Weiter). */
+  .mt-wizard-footer {
+    @apply bg-background/95 sticky bottom-0 z-20 -mx-4 mt-6 flex flex-wrap items-center gap-2 border-t px-4 py-3 backdrop-blur md:-mx-6 md:px-6;
+  }
+
   /* An outline, not a ring: the card's own ring utility would win over a component class. */
   .mt-help-highlight {
     @apply outline-primary outline-2 outline-offset-2;

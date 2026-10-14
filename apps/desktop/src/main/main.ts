@@ -17,7 +17,11 @@ import {
   IPC,
   PROJECT_ID,
   type ProjectAddResult,
+  type ProjectCreateResult,
   type SecretSealResult,
+  type SigningKeyInfo,
+  type SigningKeyResult,
+  type SigningKeyStatus,
 } from '../shared/bridge';
 import { type RunningApi, startApi } from './api-host';
 import { readConfig, updateConfig } from './lib/config';
@@ -27,8 +31,10 @@ import {
   pageLocale,
   systemLocale,
 } from './lib/messages';
-import { PassphraseVault, SigningSession } from './lib/signing';
+import { KeyCreationSession, writeKeyFile } from './lib/key-creation';
+import { PassphraseVault, readKeyFile, SigningSession } from './lib/signing';
 import { SealingSession } from './lib/sealing';
+import { registerKeyDialogIpc, showKeyDialog } from './key-window';
 import { registerSealDialogIpc, showSealDialog } from './seal-window';
 import { registerSignDialogIpc, showSignDialog } from './sign-window';
 import { APP_ORIGIN, isAppUrl } from './lib/web-protocol';
@@ -193,6 +199,102 @@ function registerIpc(): void {
       return { status: 'failed' };
     }
   });
+  // «Neues Projekt» (FR-73): like projectAdd, plus a new moat.yaml in the chosen folder.
+  ipcMain.handle(
+    IPC.projectCreate,
+    async (event): Promise<ProjectCreateResult> => {
+      if (!fromApp(event) || mainWindow === null || api === null) {
+        return { status: 'failed' };
+      }
+      const text = messages().createProject;
+      const picked = await dialog.showOpenDialog(mainWindow, {
+        title: text.title,
+        buttonLabel: text.button,
+        properties: ['openDirectory', 'createDirectory', 'promptToCreate'],
+      });
+      const dir = picked.filePaths[0];
+      if (picked.canceled || dir === undefined) return { status: 'cancelled' };
+      try {
+        if (!isFolder(dir)) return { status: 'failed' };
+        accessSync(dir, constants.R_OK | constants.W_OK);
+        const { id, created } = await api.createProject(dir);
+        return { status: 'added', id, created };
+      } catch {
+        return { status: 'failed' };
+      }
+    },
+  );
+  // The signing key (FR-73): the page learns only its public half, never the path.
+  ipcMain.handle(IPC.keyStatus, async (event): Promise<SigningKeyStatus> => {
+    if (!fromApp(event) || api === null) return { status: 'unreadable' };
+    const path = readConfig(app.getPath('userData')).keyFile;
+    if (path === null) return { status: 'none' };
+    const key = await keyInfo(api, path);
+    return key === null ? { status: 'unreadable' } : { status: 'ready', key };
+  });
+  ipcMain.handle(IPC.keyChoose, async (event): Promise<SigningKeyResult> => {
+    if (!fromApp(event) || mainWindow === null || api === null)
+      return { status: 'failed' };
+    const text = messages().chooseKey;
+    const picked = await dialog.showOpenDialog(mainWindow, {
+      title: text.title,
+      buttonLabel: text.button,
+      properties: ['openFile'],
+      filters: [{ name: text.filter, extensions: ['moatkey'] }],
+    });
+    const file = picked.filePaths[0];
+    if (picked.canceled || file === undefined) return { status: 'cancelled' };
+    const key = await keyInfo(api, file);
+    if (key === null) return { status: 'unreadable' };
+    updateConfig(app.getPath('userData'), { keyFile: file });
+    return { status: 'chosen', key };
+  });
+  ipcMain.handle(
+    IPC.keyCreate,
+    async (event, locale: unknown): Promise<SigningKeyResult> => {
+      if (!fromApp(event) || mainWindow === null || api === null)
+        return { status: 'failed' };
+      const text = MESSAGES[pageLocale(locale, app.getLocale())];
+      const parent = mainWindow;
+      const running = api;
+      const userData = app.getPath('userData');
+      const session = new KeyCreationSession({
+        texts: text.keyDialog,
+        chooseTarget: async () => {
+          const owner = BrowserWindow.getFocusedWindow() ?? parent;
+          const picked = await dialog.showSaveDialog(owner, {
+            title: text.saveKey.title,
+            buttonLabel: text.saveKey.button,
+            defaultPath: join(
+              app.getPath('documents'),
+              text.saveKey.defaultName,
+            ),
+            filters: [{ name: text.saveKey.filter, extensions: ['moatkey'] }],
+            // No overwrite prompt: a key file is never replaced (`wx`), the window says so.
+            properties: ['createDirectory'],
+          });
+          return picked.canceled || picked.filePath === undefined
+            ? null
+            : picked.filePath;
+        },
+        create: (passphrase) => running.createSigningKey(passphrase),
+        write: writeKeyFile,
+        use: (path) => updateConfig(userData, { keyFile: path }),
+      });
+      try {
+        return await showKeyDialog({
+          parent,
+          appDir,
+          title: text.keyDialog.title,
+          session,
+        });
+      } catch {
+        console.error('[desktop] creating the key failed');
+        return { status: 'failed' };
+      }
+    },
+  );
+  registerKeyDialogIpc();
   // The page passes only an id; the folder comes from the API's own list.
   ipcMain.handle(
     IPC.projectReveal,
@@ -336,6 +438,23 @@ async function signBundle(
     title: text.signDialog.title,
     session,
   });
+}
+
+/**
+ * The public half of a key file, as the API computes it from `pk`; null when the file cannot be
+ * read or names another key id than its `pk` gives. Read for display: whether the file really
+ * holds that key shows only when it is opened to sign.
+ */
+async function keyInfo(
+  running: RunningApi,
+  path: string,
+): Promise<SigningKeyInfo | null> {
+  const file = readKeyFile(path);
+  if (file === null || file.signer === null) return null;
+  const info = await running.signingKeyInfo(
+    Buffer.from(file.signer.publicKey).toString('base64url'),
+  );
+  return info !== null && info.kid === file.kid ? info : null;
 }
 
 /** The resolved path when it is a directory, otherwise null. */

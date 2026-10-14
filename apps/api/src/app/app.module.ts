@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { validateEnv } from '../config/env';
 import { PersistenceModule } from '../persistence/persistence.module';
 import { ProjectModule } from '../project/project.module';
+import { SetupModule } from '../setup/setup.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -18,6 +19,7 @@ import { HealthController } from './health.controller';
     // Global: every storage port → its adapter.
     PersistenceModule,
     ProjectModule,
+    SetupModule,
   ],
   controllers: [HealthController],
 })

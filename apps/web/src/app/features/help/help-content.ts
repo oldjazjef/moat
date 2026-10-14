@@ -25,6 +25,7 @@ export interface HelpLink {
 }
 
 export const HELP_SECTION_IDS = [
+  'setup',
   'project',
   'gate',
   'hardening',
@@ -51,18 +52,45 @@ const items = (...ids: readonly (string | HelpItem)[]): readonly HelpItem[] =>
 
 /** Gates and routes live inside a project, so every step opens the project list. */
 const PROJECTS: HelpLink = { id: 'projects', path: '/app/projects' };
+/** FR-73: the setup wizard. */
+const SETUP: HelpLink = { id: 'setup', path: '/app/setup' };
 
 /** The guide, in the order of the work (FR-70): "Schritt N von M" is the position here. */
 export const HELP_SECTIONS: readonly HelpSection[] = [
   {
+    id: 'setup',
+    steps: items(
+      'language',
+      { id: 'key', only: 'desktop' },
+      { id: 'project', only: 'desktop' },
+      'gate',
+      'summary',
+    ),
+    tips: items('later', 'again'),
+    links: [SETUP],
+  },
+  {
     id: 'project',
-    steps: items('cli', 'folder', { id: 'add', only: 'desktop' }, 'check'),
+    steps: items(
+      'cli',
+      'folder',
+      { id: 'add', only: 'desktop' },
+      { id: 'create', only: 'desktop' },
+      'check',
+    ),
     tips: items('git', 'reload', 'remove'),
     links: [PROJECTS],
   },
   {
     id: 'gate',
-    steps: items('upload', 'install', 'add', 'compare', 'check'),
+    steps: items(
+      'upload',
+      'install',
+      'add',
+      { id: 'addDesktop', only: 'desktop' },
+      'compare',
+      'check',
+    ),
     tips: items('mismatch', 'php'),
     links: [PROJECTS],
   },
@@ -74,7 +102,12 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
   },
   {
     id: 'trust',
-    steps: items('keygen', 'trust', 'badge'),
+    steps: items(
+      'keygen',
+      { id: 'keyDesktop', only: 'desktop' },
+      'trust',
+      'badge',
+    ),
     tips: items('passphrase', { id: 'desktopOnly', only: 'desktop' }),
     links: [PROJECTS],
   },

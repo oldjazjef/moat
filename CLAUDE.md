@@ -38,7 +38,13 @@ Four components (ANFORDERUNGEN.md, header):
 > UI (`apps/web`: Projekte → workspace with Übersicht incl. Umgebungen, Gates with lock state, Routen;
 > Hilfe), and signing a gate's next bundle («Bundle signieren» → the main-process dialog of DT-15,
 > `BundleSigningService` + `planBundle` in core) and sealing secrets («Versiegeln» → the seal
-> window, `SecretSealingService` + `planSeal`; the value is typed only there). Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, setup wizard (FR-73), lazy pull, setup mode, trust mode 2. Everything else below is
+> window, `SecretSealingService` + `planSeal`; the value is typed only there), and the setup
+> wizard (FR-73, `/app/setup`, progress in `<MOAT_DATA_DIR>/setup.json` via `/api/setup`, a guard
+> until it is finished): Sprache, Signaturschlüssel (create in the main-process key window, the
+> passphrase typed only there, or choose a `.moatkey`), Erstes Projekt (new folder with core
+> `NEW_PROJECT_CONFIG`, or an existing one), Erstes Gate (`POST /api/projects/:id/gates/check`
+> shows the box key fingerprint, `POST …/gates` pins it only with that fingerprint; core
+> `planGate`), Zusammenfassung. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, the wizard's recipe step with a test request, lazy pull, setup mode, trust mode 2. Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
 
@@ -97,9 +103,9 @@ DT-04). Electron over Tauri: decided by "same stack as lazy-koins" (closes ANFOR
 As built: the API refuses any request whose `Host` is not exactly `127.0.0.1:<port>` (DT-16)
 or that lacks the per-launch `x-moat-desktop` token; both refusals are the same 403. IPC
 handlers answer only the `app://moat` origin (DT-08) and take at most a project id, a gate name
-and a language. Signing (DT-15) and sealing: the page only asks; `src/main/{sign,seal}-window.ts` open a modal window
+and a language. Signing (DT-15), sealing and creating a key: the page only asks; `src/main/{sign,seal,key}-window.ts` open a modal window
 through `DialogSlot` (`dialog-window.ts`) from a local file in `src/dialogs/` with no script of
-its own, rendered by its own preload (`sign-preload.ts`, `seal-preload.ts`,
+its own, rendered by its own preload (`sign-preload.ts`, `seal-preload.ts`, `key-preload.ts`,
 `textContent` only), whose IPC answers only that window's main frame. The main process reads the
 key file (path in `config.json`), calls `signBundle` in-process (never HTTP) with the digest the
 person confirmed, and remembers the passphrase only through `safeStorage` with a real keychain

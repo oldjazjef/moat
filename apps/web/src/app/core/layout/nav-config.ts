@@ -1,4 +1,8 @@
-import { lucideCircleHelp, lucideFolderKanban } from '@ng-icons/lucide';
+import {
+  lucideCircleHelp,
+  lucideFolderKanban,
+  lucideListChecks,
+} from '@ng-icons/lucide';
 
 export interface NavItem {
   readonly path: string;
@@ -26,9 +30,17 @@ export const HELP_NAV_ITEM: NavItem = {
   icon: 'lucideCircleHelp',
 };
 
+/** «Einrichtung» (FR-73): the setup wizard, again at any time; in the footer above «Hilfe». */
+export const SETUP_NAV_ITEM: NavItem = {
+  path: '/app/setup',
+  labelKey: 'nav.setup',
+  icon: 'lucideListChecks',
+};
+
 export const NAV_ICONS = {
   lucideCircleHelp,
   lucideFolderKanban,
+  lucideListChecks,
 };
 
 /** Whether a navigation entry is the current one: the URL lies under its path. */

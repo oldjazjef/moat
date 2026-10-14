@@ -38,7 +38,8 @@ describe('ProjectWorkspace', () => {
     const reveal = vi.fn().mockResolvedValue(undefined);
     window.moatDesktop = {
       platform: 'linux',
-      project: { add: vi.fn(), reveal },
+      project: { add: vi.fn(), create: vi.fn(), reveal },
+      key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
       bundle: { sign: vi.fn() },
       secret: { seal: vi.fn() },
     };

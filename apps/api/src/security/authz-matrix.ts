@@ -59,6 +59,13 @@ const SEEDED_CONFIG_HASH = createHash('sha256')
   .update(SEEDED_CONFIG, 'utf8')
   .digest('hex');
 
+/** A gate as `php moat-gate.php install` prints it (TEST ONLY values, no gate behind them). */
+const SEEDED_GATE = {
+  name: 'www',
+  gateId: 'seededGate000000000000',
+  boxKey: 'B'.repeat(42) + 'A',
+};
+
 export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
   { method: 'GET', path: '/api/health', expect: LOCAL_ONLY },
   { method: 'GET', path: '/api/projects', expect: LOCAL_ONLY },
@@ -85,6 +92,40 @@ export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
       op: 'addEnvironment',
       environment: 'staging',
     },
+    expect: LOCAL_ONLY,
+  },
+  {
+    // Writes nothing: the gate with its fingerprint, for the person to compare (SEC-32).
+    method: 'POST',
+    path: '/api/projects/:id/gates/check',
+    request: `/api/projects/${SEEDED_PROJECT}/gates/check`,
+    body: SEEDED_GATE,
+    expect: LOCAL_ONLY,
+  },
+  {
+    // Pins a gate only with the fingerprint check showed; this one is wrong, so even the desktop
+    // gets 422 `fingerprint_mismatch` and nothing is written.
+    method: 'POST',
+    path: '/api/projects/:id/gates',
+    request: `/api/projects/${SEEDED_PROJECT}/gates`,
+    body: { ...SEEDED_GATE, fingerprint: 'MOAT-AAAA' },
+    expect: { ...LOCAL_ONLY, desktop: 422 },
+  },
+  { method: 'GET', path: '/api/setup', expect: LOCAL_ONLY },
+  {
+    method: 'PATCH',
+    path: '/api/setup',
+    body: {
+      currentStep: 'summary',
+      states: { language: 'done', project: 'done' },
+    },
+    expect: LOCAL_ONLY,
+  },
+  {
+    // Order matters: after the PATCH above the required steps are done (the seeded projects
+    // are listed), so the desktop gets 200.
+    method: 'POST',
+    path: '/api/setup/complete',
     expect: LOCAL_ONLY,
   },
 ];

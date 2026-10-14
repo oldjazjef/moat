@@ -5,6 +5,11 @@ export class BundleExistsError extends Error {
   override readonly name = 'BundleExistsError';
 }
 
+/** createConfig / writeGate found that file there already; nothing was written. */
+export class FileExistsError extends Error {
+  override readonly name = 'FileExistsError';
+}
+
 /** A project's files (DT-03): today always the project folder on disk. */
 export abstract class ProjectFilesPort {
   /** The folder's files, or null when it can no longer be read. */
@@ -38,4 +43,17 @@ export abstract class ProjectFilesPort {
     name: string,
     text: string,
   ): void;
+
+  /**
+   * Writes the moat.yaml of a new project. Never replaces one: throws FileExistsError when the
+   * folder has a moat.yaml already, another error when it cannot be written.
+   */
+  abstract createConfig(folder: string, text: string): void;
+
+  /**
+   * Pins a gate: writes `gates/<gate>.json`. Never replaces one (another key under the same name
+   * is a new gate, SEC-32): throws FileExistsError when it is there, another error when the
+   * folder cannot be written.
+   */
+  abstract writeGate(folder: string, gate: string, text: string): void;
 }

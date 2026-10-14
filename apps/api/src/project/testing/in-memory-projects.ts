@@ -1,6 +1,7 @@
 import type { StoragePort } from '@moat/core';
 import {
   BundleExistsError,
+  FileExistsError,
   ProjectFilesPort,
 } from '../ports/project-files.port';
 import { ProjectRegistryPort } from '../ports/project-registry.port';
@@ -72,6 +73,22 @@ export class InMemoryProjectFiles extends ProjectFilesPort {
     if (files === undefined || this.readOnly.has(folder))
       throw new Error('not writable');
     files[`secrets/${gate}/${name}.json`] = text;
+  }
+
+  createConfig(folder: string, text: string): void {
+    this.create(folder, 'moat.yaml', text);
+  }
+
+  writeGate(folder: string, gate: string, text: string): void {
+    this.create(folder, `gates/${gate}.json`, text);
+  }
+
+  private create(folder: string, path: string, text: string): void {
+    const files = this.folders[folder];
+    if (files === undefined || this.readOnly.has(folder))
+      throw new Error('not writable');
+    if (files[path] !== undefined) throw new FileExistsError(path);
+    files[path] = text;
   }
 
   open(folder: string): StoragePort | null {
