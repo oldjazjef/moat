@@ -386,6 +386,10 @@
         "title": "Erstes Gate",
         "intro": "Das Gate läuft auf deinem Hosting. Installiere es und trage es hier ein. Bevor es gespeichert wird, vergleichst du seinen Fingerprint."
       },
+      "recipe": {
+        "title": "Erstes Recipe",
+        "intro": "Ein Recipe richtet eine fertige Route für einen häufigen Zweck ein. Danach schickst du eine Testanfrage durch dein Gate."
+      },
       "summary": {
         "title": "Zusammenfassung",
         "intro": "Das ist eingerichtet. Was noch fehlt, holst du jederzeit unter «Einrichtung» nach."
@@ -454,6 +458,91 @@
         "required": "Trage ein Gate ein, oder klicke auf «Später».",
         "rejected": "Nichts wurde gespeichert. Kopiere Gate-ID und Box-Schlüssel noch einmal aus der Ausgabe genau dieses Gates.",
         "noProject": "Wähle zuerst ein Projekt."
+      }
+    },
+    "recipe": {
+      "noProject": "Wähle zuerst im Schritt «Erstes Projekt» ein Projekt.",
+      "choose": "Was soll deine Website über das Gate tun?",
+      "recipes": {
+        "hubspot-newsletter": {
+          "title": "HubSpot-Newsletter",
+          "description": "Ein Anmeldeformular legt in HubSpot einen Kontakt an. Mit Rate-Limit und höchstens 500 Anmeldungen pro Tag."
+        },
+        "openai-chat": {
+          "title": "OpenAI-Chat mit Tagesbudget",
+          "description": "Ein Chatfenster fragt OpenAI. Mit Rate-Limit und einem Budget von 500 000 Tokens bzw. 5.00 USD pro Tag."
+        }
+      },
+      "site": "Adresse der Website (optional)",
+      "sitePlaceholder": "https://www.example.ch",
+      "siteHint": "Nur nötig, wenn die Website auf einer anderen Adresse läuft als das Gate. Dann nimmt das Gate Anfragen aus dem Browser nur von dieser Adresse an.",
+      "apply": "Übernehmen",
+      "applied": "«{{recipe}}» ist im Projekt: Die Website ruft das Gate unter {{route}} auf.",
+      "seal": "Versiegle das Secret {{secret}} für das Gate {{gate}}. Den Wert gibst du nur im eigenen Fenster von Moat ein.",
+      "scopes": {
+        "hubspot-newsletter": "Ein Token einer privaten HubSpot-App mit dem Bereich crm.objects.contacts.write genügt.",
+        "openai-chat": "Ein OpenAI-Projektschlüssel, am besten mit eigenem Ausgabenlimit bei OpenAI."
+      },
+      "sealed": "Versiegelt, Version {{version}}.",
+      "sign": "Signiere ein neues Bundle für {{gate}}. Erst damit erhält das Gate Route und Secret.",
+      "bundle": "Neuestes Bundle: Version {{version}}.",
+      "server": "Auf dem Server: Speichere die Richtlinie als `policy.json` neben `moat-gate.php`, lade das Bundle hoch und führe aus:",
+      "showPolicy": "Richtlinie anzeigen",
+      "bundleFile": "Das Bundle liegt im Projektordner unter `{{file}}`.",
+      "test": "Trage die Adresse des Gates ein, also die Adresse von `moat-gate.php` auf deiner Website, und sende eine Testanfrage. Sie geht den gleichen Weg wie eine Anfrage deiner Website.",
+      "testWarning": {
+        "hubspot-newsletter": "Die Testanfrage legt in HubSpot wirklich einen Kontakt an. Setze eine Adresse ein, die du danach löschen kannst.",
+        "openai-chat": "Die Testanfrage geht wirklich an OpenAI und kostet ein paar Tokens."
+      },
+      "gateUrl": "Adresse des Gates",
+      "gateUrlPlaceholder": "https://www.example.ch/moat-gate.php",
+      "body": "Inhalt der Anfrage (JSON)",
+      "testButton": "Testen",
+      "passed": "Es funktioniert: Das Gate hat die Anfrage weitergeleitet, die API hat mit {{status}} geantwortet.",
+      "upstreamError": "Das Gate hat die Anfrage weitergeleitet, aber die API hat mit {{status}} geantwortet. Prüfe den Inhalt der Anfrage und das Secret.",
+      "failed": {
+        "address_forbidden": "Diese Adresse zeigt in ein privates Netz. Moat testet nur Gates, die öffentlich erreichbar sind.",
+        "not_found": "Diesen Server gibt es nicht. Prüfe die Adresse.",
+        "unreachable": "Der Server antwortet nicht. Prüfe die Adresse.",
+        "timeout": "Der Server hat zu lange nicht geantwortet.",
+        "tls": "Das Zertifikat des Servers passt nicht zur Adresse oder ist nicht vertrauenswürdig."
+      },
+      "codes": {
+        "gate_not_configured": "Das Gate hat noch kein Bundle. Nimm das signierte Bundle mit `php moat-gate.php accept` an.",
+        "gate_disabled": "Das Gate ist gesperrt, mit dem Kill-Switch oder mit einem gesperrten Bundle.",
+        "route_disabled": "Die Route ist ausgeschaltet.",
+        "not_found": "Das Gate kennt diese Route nicht. Hast du das neueste Bundle angenommen?",
+        "method_not_allowed": "Die Route nimmt diese Methode nicht an.",
+        "unsupported_media_type": "Die Route nimmt diesen Inhaltstyp nicht an.",
+        "body_too_large": "Der Inhalt ist grösser, als die Route erlaubt.",
+        "origin_forbidden": "Das Gate hat die Anfrage wegen ihrer Herkunft abgelehnt.",
+        "request_unbounded": "Die Anfrage braucht max_tokens bis zur Grenze der Route und kein stream.",
+        "rate_limited": "Zu viele Anfragen. Warte kurz und teste dann noch einmal.",
+        "quota_exceeded": "Das Tageskontingent der Route ist aufgebraucht.",
+        "budget_exhausted": "Das Budget der Route ist aufgebraucht.",
+        "secret_unavailable": "Das Gate kann das Secret nicht öffnen. Versiegle es für dieses Gate und signiere ein neues Bundle.",
+        "upstream_forbidden": "Die Richtlinie auf dem Server erlaubt diesen Aufruf nicht. Installiere die angezeigte Richtlinie.",
+        "upstream_unreachable": "Das Gate erreicht die API nicht. Erlaubt dein Hosting ausgehende HTTPS-Verbindungen?",
+        "upstream_timeout": "Die API hat dem Gate zu lange nicht geantwortet.",
+        "internal_error": "Im Gate ist ein Fehler aufgetreten. `php moat-gate.php status` auf dem Server zeigt mehr."
+      },
+      "noGate": "Für eine Testanfrage braucht das Projekt ein Gate. Hole den Schritt «Erstes Gate» nach.",
+      "notices": {
+        "route_exists": "Im Projekt gibt es schon eine Route mit diesem Namen. Es wurde nichts geändert.",
+        "upstream_exists": "Im Projekt gibt es schon einen Upstream mit diesem Namen. Es wurde nichts geändert.",
+        "value_invalid": "Die Adresse der Website passt nicht. Sie beginnt mit https:// und endet ohne Pfad, zum Beispiel https://www.example.ch.",
+        "config_changed": "moat.yaml hat sich inzwischen geändert. Versuche es noch einmal.",
+        "not_writable": "moat.yaml kann nicht gespeichert werden.",
+        "policy_failed": "Die Richtlinie konnte nicht erstellt werden. Ist moat.yaml gültig?",
+        "failed": "Das hat nicht geklappt. Versuche es noch einmal.",
+        "required": "Übernimm ein Recipe, oder klicke auf «Später».",
+        "noProject": "Wähle zuerst ein Projekt.",
+        "config_missing": "Es gibt noch keine moat.yaml in diesem Projekt.",
+        "config_invalid": "moat.yaml ist nicht gültig. Behebe die Fehler in der «Übersicht».",
+        "route_unknown": "Die Route ist nicht mehr im Projekt.",
+        "url_invalid": "Die Adresse passt nicht. Sie beginnt mit https:// und hat keinen Teil nach ? oder #.",
+        "body_invalid": "Der Inhalt der Anfrage ist kein gültiges JSON.",
+        "not_confirmed": "Die Testanfrage wurde nicht gesendet: Die Adresse wurde im Fenster von Moat nicht bestätigt."
       }
     },
     "summary": {
@@ -533,6 +622,7 @@
           "key": "Erstelle unter «Signaturschlüssel» mit «Neuen Schlüssel erstellen» deine Schlüsseldatei, oder wähle mit «Vorhandene Schlüsseldatei wählen» eine, die du schon hast. Die Passphrase gibst du nur im eigenen Fenster von Moat ein.",
           "project": "Lege unter «Erstes Projekt» mit «Neues Projekt anlegen» einen Projektordner an, oder füge mit «Vorhandenen Ordner hinzufügen» einen bestehenden hinzu.",
           "gate": "Installiere unter «Erstes Gate» das Gate mit dem angezeigten Befehl, trage Gate-ID und Box-Schlüssel ein und klicke auf «Prüfen». Vergleiche den Fingerprint mit der Ausgabe des Gates und bestätige mit «Stimmt überein».",
+          "recipe": "Wähle unter «Erstes Recipe» eine fertige Route und klicke auf «Übernehmen». Versiegle das Secret mit «Versiegeln», signiere mit «Bundle signieren» und installiere auf dem Server die Richtlinie aus «Richtlinie anzeigen» und das Bundle. Mit «Testen» schickst du dann eine Anfrage durch das Gate.",
           "summary": "Die «Zusammenfassung» zeigt, was eingerichtet ist, den Vertrauensmodus und die Härtungsstufe. Mit «Fertig» öffnet sich dein Projekt."
         },
         "tips": {

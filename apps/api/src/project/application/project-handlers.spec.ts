@@ -293,4 +293,33 @@ describe('editing moat.yaml', () => {
     await run({ op: 'removeUpstream', upstream: 'mailchimp' });
     expect(text()).toBe(YAML);
   });
+
+  it('applies a recipe once, with the website origin (FR-43)', async () => {
+    const { edit, id, text } = await shop();
+    const run = async (
+      change: ConstructorParameters<typeof EditConfigCommand>[2],
+    ) => edit.execute(new EditConfigCommand(id, configHash(text()), change));
+    expect(
+      await run({
+        op: 'applyRecipe',
+        recipe: 'openai-chat',
+        origins: ['https://www.example.ch'],
+      }),
+    ).toEqual({ status: 'saved' });
+    expect(text()).toContain('upstreamPath: "/v1/chat/completions"');
+    expect(text()).toContain('https://www.example.ch');
+    const before = text();
+    expect(await run({ op: 'applyRecipe', recipe: 'openai-chat' })).toEqual({
+      status: 'refused',
+      code: 'route_exists',
+    });
+    expect(
+      await run({
+        op: 'applyRecipe',
+        recipe: 'hubspot-newsletter',
+        origins: ['not an origin'],
+      }),
+    ).toMatchObject({ status: 'refused', code: 'route_exists' });
+    expect(text()).toBe(before);
+  });
 });

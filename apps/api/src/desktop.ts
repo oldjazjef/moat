@@ -21,6 +21,7 @@ import {
   type PrepareSealResult,
   type SealResult,
 } from './project/application/secret-sealing.service';
+import { MainProcessConfirmation } from './gate-test/ports/gate-test-confirmation.port';
 import { ProjectService } from './project/project.service';
 
 export {
@@ -170,4 +171,15 @@ export function sealSecret(
   value: Uint8Array,
 ): Promise<SealResult> {
   return api.app.get(SecretSealingService).seal(id, gate, name, digest, value);
+}
+
+/**
+ * Registers the main process's confirmation for «Testen» (T-59): `ask` shows the address in a
+ * dialog of its own and answers whether the person agreed. Without it, every test is refused.
+ */
+export function setGateTestConfirmation(
+  api: RunningApi,
+  ask: (target: string, locale: string) => Promise<boolean>,
+): void {
+  api.app.get(MainProcessConfirmation).register(ask);
 }

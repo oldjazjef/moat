@@ -28,6 +28,7 @@ import { GateStep } from '../../components/steps/gate-step';
 import { KeyStep } from '../../components/steps/key-step';
 import { LanguageStep } from '../../components/steps/language-step';
 import { ProjectStep } from '../../components/steps/project-step';
+import { RecipeStep } from '../../components/steps/recipe-step';
 import { SummaryStep } from '../../components/steps/summary-step';
 import { SetupPageService } from './setup-page.service';
 
@@ -47,6 +48,7 @@ import { SetupPageService } from './setup-page.service';
     KeyStep,
     ProjectStep,
     GateStep,
+    RecipeStep,
     SummaryStep,
     ...HlmButtonImports,
     ...HlmCardImports,

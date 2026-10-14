@@ -4,6 +4,7 @@ import { validateEnv } from '../config/env';
 import { PersistenceModule } from '../persistence/persistence.module';
 import { ProjectModule } from '../project/project.module';
 import { SetupModule } from '../setup/setup.module';
+import { GateTestModule } from '../gate-test/gate-test.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -20,6 +21,7 @@ import { HealthController } from './health.controller';
     PersistenceModule,
     ProjectModule,
     SetupModule,
+    GateTestModule,
   ],
   controllers: [HealthController],
 })

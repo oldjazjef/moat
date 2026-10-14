@@ -40,6 +40,14 @@ export interface DesktopMessages {
   };
   readonly signDialog: SignDialogTexts;
   readonly sealDialog: SealDialogTexts;
+  /** «Testen» (T-59): the address of the first test request, confirmed outside the page. */
+  readonly testRequest: {
+    readonly title: string;
+    readonly message: (host: string) => string;
+    readonly detail: (origin: string) => string;
+    readonly send: string;
+    readonly cancel: string;
+  };
   readonly menu: {
     readonly file: string;
     readonly edit: string;
@@ -167,6 +175,14 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       title: 'Moat Desktop konnte nicht starten',
       detail: (reason) => `Grund: ${reason}`,
     },
+    testRequest: {
+      title: 'Testanfrage senden',
+      message: (host) => `Testanfrage an ${host} senden?`,
+      detail: (origin) =>
+        `Moat sendet die Testanfrage aus dem Einrichtungsassistenten an ${origin}. Sende sie nur, wenn dort dein Gate läuft. Moat fragt für diese Adresse bis zum Beenden nicht noch einmal.`,
+      send: 'Senden',
+      cancel: 'Abbrechen',
+    },
     menu: {
       file: 'Datei',
       edit: 'Bearbeiten',
@@ -286,6 +302,14 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
     startFailed: {
       title: 'Moat Desktop could not start',
       detail: (reason) => `Reason: ${reason}`,
+    },
+    testRequest: {
+      title: 'Send test request',
+      message: (host) => `Send the test request to ${host}?`,
+      detail: (origin) =>
+        `Moat sends the setup wizard's test request to ${origin}. Send it only if your gate runs there. Moat does not ask again for this address until it quits.`,
+      send: 'Send',
+      cancel: 'Cancel',
     },
     menu: { file: 'File', edit: 'Edit', view: 'View', quit: 'Quit' },
   },

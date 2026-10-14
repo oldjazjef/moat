@@ -111,6 +111,27 @@ export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
     body: { ...SEEDED_GATE, fingerprint: 'MOAT-AAAA' },
     expect: { ...LOCAL_ONLY, desktop: 422 },
   },
+  { method: 'GET', path: '/api/recipes', expect: LOCAL_ONLY },
+  {
+    // Reads moat.yaml and proposes a policy (SEC-14); writes nothing.
+    method: 'GET',
+    path: '/api/projects/:id/policy',
+    request: `/api/projects/${SEEDED_PROJECT}/policy`,
+    expect: LOCAL_ONLY,
+  },
+  {
+    // Calls out (T-59): the desktop only. Plain HTTP to another host is refused before anything
+    // is sent, so even the desktop gets 422 `url_invalid` and the spec makes no request.
+    method: 'POST',
+    path: '/api/projects/:id/test-request',
+    request: `/api/projects/${SEEDED_PROJECT}/test-request`,
+    body: {
+      url: 'http://www.example.ch/moat-gate.php',
+      route: 'newsletter',
+      body: '{}',
+    },
+    expect: { ...LOCAL_ONLY, desktop: 422 },
+  },
   { method: 'GET', path: '/api/setup', expect: LOCAL_ONLY },
   {
     method: 'PATCH',

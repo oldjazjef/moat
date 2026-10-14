@@ -32,6 +32,7 @@ import {
   systemLocale,
 } from './lib/messages';
 import { KeyCreationSession, writeKeyFile } from './lib/key-creation';
+import { gateTestConfirmation } from './lib/test-confirmation';
 import { PassphraseVault, readKeyFile, SigningSession } from './lib/signing';
 import { SealingSession } from './lib/sealing';
 import { registerKeyDialogIpc, showKeyDialog } from './key-window';
@@ -101,7 +102,11 @@ void app.whenReady().then(start);
 async function start(): Promise<void> {
   const userData = app.getPath('userData');
   try {
-    api = await startApi({ appDir, dataDir: userData });
+    api = await startApi({
+      appDir,
+      dataDir: userData,
+      packaged: app.isPackaged,
+    });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     console.error('[desktop] start failed', error);
@@ -113,6 +118,31 @@ async function start(): Promise<void> {
     app.quit();
     return;
   }
+
+  // «Testen» (T-59): each new address is confirmed here, outside the page.
+  let testLocale = '';
+  const confirmTest = gateTestConfirmation(async (origin, host) => {
+    const text = MESSAGES[pageLocale(testLocale, app.getLocale())].testRequest;
+    const options = {
+      type: 'question' as const,
+      title: text.title,
+      message: text.message(host),
+      detail: text.detail(origin),
+      buttons: [text.send, text.cancel],
+      defaultId: 1,
+      cancelId: 1,
+      noLink: true,
+    };
+    const { response } =
+      mainWindow === null
+        ? await dialog.showMessageBox(options)
+        : await dialog.showMessageBox(mainWindow, options);
+    return response === 0;
+  });
+  api.setGateTestConfirmation((target, locale) => {
+    testLocale = locale;
+    return confirmTest(target);
+  });
 
   // The first builds remembered one folder: move it into the project list once.
   const legacy = readConfig(userData).projectDir;

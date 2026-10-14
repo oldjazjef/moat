@@ -64,6 +64,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       { id: 'key', only: 'desktop' },
       { id: 'project', only: 'desktop' },
       'gate',
+      { id: 'recipe', only: 'desktop' },
       'summary',
     ),
     tips: items('later', 'again'),

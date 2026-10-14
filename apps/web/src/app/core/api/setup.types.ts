@@ -7,6 +7,7 @@ export const SETUP_STEPS = [
   'signingKey',
   'project',
   'gate',
+  'recipe',
   'summary',
 ] as const;
 export type SetupStepId = (typeof SETUP_STEPS)[number];
@@ -26,7 +27,11 @@ export interface SetupView {
   readonly completedAt: string | null;
   readonly complete: boolean;
   readonly missing: readonly SetupStepId[];
-  readonly facts: { readonly projects: number; readonly gates: number };
+  readonly facts: {
+    readonly projects: number;
+    readonly gates: number;
+    readonly routes: number;
+  };
 }
 
 export interface UpdateSetupRequest {

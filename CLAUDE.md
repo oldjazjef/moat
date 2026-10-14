@@ -44,7 +44,11 @@ Four components (ANFORDERUNGEN.md, header):
 > passphrase typed only there, or choose a `.moatkey`), Erstes Projekt (new folder with core
 > `NEW_PROJECT_CONFIG`, or an existing one), Erstes Gate (`POST /api/projects/:id/gates/check`
 > shows the box key fingerprint, `POST …/gates` pins it only with that fingerprint; core
-> `planGate`), Zusammenfassung. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, the wizard's recipe step with a test request, lazy pull, setup mode, trust mode 2. Everything else below is
+> `planGate`), Erstes Recipe (core `RECIPES` + `applyRecipe`, FR-43, as the `applyRecipe` edit;
+> `GET /api/recipes`; seal and sign as in «Gates»; `GET /api/projects/:id/policy` = `suggestPolicy`;
+> «Testen» = `POST /api/projects/:id/test-request` in `apps/api/src/gate-test/`, desktop only, the main
+> process confirms each new address in its own dialog, HTTPS to public addresses pinned after the
+> check, T-59), Zusammenfassung. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, lazy pull, setup mode, trust mode 2. Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
 
