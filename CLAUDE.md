@@ -46,8 +46,9 @@ Four components (ANFORDERUNGEN.md, header):
 > shows the box key fingerprint, `POST …/gates` pins it only with that fingerprint; core
 > `planGate`), Erstes Recipe (core `RECIPES` + `applyRecipe`, FR-43, as the `applyRecipe` edit;
 > `GET /api/recipes`; seal and sign as in «Gates»; `GET /api/projects/:id/policy` = `suggestPolicy`;
-> «Testen» = `POST /api/projects/:id/test-request` in `apps/api/src/gate-test/`, desktop only, HTTPS
-> to public addresses pinned after the check, T-59), Zusammenfassung. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, lazy pull, setup mode, trust mode 2. Everything else below is
+> «Testen» = `POST /api/projects/:id/test-request` in `apps/api/src/gate-test/`, desktop only, the main
+> process confirms each new address in its own dialog, HTTPS to public addresses pinned after the
+> check, T-59), Zusammenfassung. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, lazy pull, setup mode, trust mode 2. Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
 

@@ -54,7 +54,13 @@ export class GateTestController {
     @Body() body: GateTestDto,
   ): Promise<GateAnswer> {
     const result = await this.commands.execute(
-      new TestGateCommand(id, body.url, body.route, body.body),
+      new TestGateCommand(
+        id,
+        body.url,
+        body.route,
+        body.body,
+        body.locale ?? '',
+      ),
     );
     if (result.status === 'not_found') throw new NotFoundException();
     if (result.status === 'refused')

@@ -11,6 +11,7 @@ import {
   type GateAnswer,
   type GateRequest,
 } from '../ports/gate-client.port';
+import { GateTestConfirmationPort } from '../ports/gate-test-confirmation.port';
 import {
   SuggestPolicyHandler,
   SuggestPolicyQuery,
@@ -36,6 +37,15 @@ class FakeClient extends GateClientPort {
   }
 }
 
+class FakeConfirmation extends GateTestConfirmationPort {
+  answer = true;
+  readonly asked: string[] = [];
+  async confirm(target: URL, locale: string): Promise<boolean> {
+    this.asked.push(`${locale} ${target.href}`);
+    return this.answer;
+  }
+}
+
 const env = (loopback: boolean) =>
   ({
     get: () => (loopback ? 'true' : 'false'),
@@ -50,11 +60,19 @@ function setup(config = applyRecipe(BASE, 'hubspot-newsletter')) {
   const id = registry.add('/sites/shop').id;
   const empty = registry.add('/sites/empty').id;
   const client = new FakeClient();
+  const confirmation = new FakeConfirmation();
   return {
     id,
     empty,
     client,
-    test: new TestGateHandler(registry, files, client, env(false)),
+    confirmation,
+    test: new TestGateHandler(
+      registry,
+      files,
+      client,
+      confirmation,
+      env(false),
+    ),
     policy: new SuggestPolicyHandler(registry, files),
   };
 }
@@ -63,7 +81,7 @@ describe('«Testen» through the gate (FR-73, T-59)', () => {
   it("sends the route's method and path with the body to the gate, nothing else", async () => {
     const { id, client, test } = setup();
     const result = await test.execute(
-      new TestGateCommand(id, GATE, 'newsletter', BODY),
+      new TestGateCommand(id, GATE, 'newsletter', BODY, 'de-CH'),
     );
     expect(result).toMatchObject({
       status: 'sent',
@@ -79,23 +97,29 @@ describe('«Testen» through the gate (FR-73, T-59)', () => {
     const { id, empty, client, test } = setup();
     const cases: [TestGateCommand, unknown][] = [
       [
-        new TestGateCommand('missingProject00000000', GATE, 'newsletter', BODY),
+        new TestGateCommand(
+          'missingProject00000000',
+          GATE,
+          'newsletter',
+          BODY,
+          '',
+        ),
         { status: 'not_found' },
       ],
       [
-        new TestGateCommand('../../etc', GATE, 'newsletter', BODY),
+        new TestGateCommand('../../etc', GATE, 'newsletter', BODY, ''),
         { status: 'not_found' },
       ],
       [
-        new TestGateCommand(empty, GATE, 'newsletter', BODY),
+        new TestGateCommand(empty, GATE, 'newsletter', BODY, ''),
         { status: 'refused', code: 'config_missing' },
       ],
       [
-        new TestGateCommand(id, GATE, 'chat', BODY),
+        new TestGateCommand(id, GATE, 'chat', BODY, ''),
         { status: 'refused', code: 'route_unknown' },
       ],
       [
-        new TestGateCommand(id, GATE, '__proto__', BODY),
+        new TestGateCommand(id, GATE, '__proto__', BODY, ''),
         { status: 'refused', code: 'route_unknown' },
       ],
       [
@@ -104,6 +128,7 @@ describe('«Testen» through the gate (FR-73, T-59)', () => {
           'http://www.example.ch/moat-gate.php',
           'newsletter',
           BODY,
+          '',
         ),
         { status: 'refused', code: 'url_invalid' },
       ],
@@ -113,11 +138,12 @@ describe('«Testen» through the gate (FR-73, T-59)', () => {
           'http://127.0.0.1:8080/moat-gate.php',
           'newsletter',
           BODY,
+          '',
         ),
         { status: 'refused', code: 'url_invalid' },
       ],
       [
-        new TestGateCommand(id, GATE, 'newsletter', '{"email":'),
+        new TestGateCommand(id, GATE, 'newsletter', '{"email":', ''),
         { status: 'refused', code: 'body_invalid' },
       ],
     ];
@@ -126,10 +152,22 @@ describe('«Testen» through the gate (FR-73, T-59)', () => {
     expect(client.sent).toEqual([]);
   });
 
+  it('sends nothing the person did not confirm outside the page (T-59)', async () => {
+    const { id, client, confirmation, test } = setup();
+    confirmation.answer = false;
+    expect(
+      await test.execute(
+        new TestGateCommand(id, GATE, 'newsletter', BODY, 'en'),
+      ),
+    ).toEqual({ status: 'refused', code: 'not_confirmed' });
+    expect(confirmation.asked).toEqual([`en ${GATE}/newsletter`]);
+    expect(client.sent).toEqual([]);
+  });
+
   it('refuses a damaged moat.yaml', async () => {
     const { id, client, test } = setup('version: 1\nroutes: [');
     expect(
-      await test.execute(new TestGateCommand(id, GATE, 'newsletter', BODY)),
+      await test.execute(new TestGateCommand(id, GATE, 'newsletter', BODY, '')),
     ).toEqual({ status: 'refused', code: 'config_invalid' });
     expect(client.sent).toEqual([]);
   });

@@ -541,7 +541,8 @@
         "config_invalid": "moat.yaml is not valid. Fix the errors in the “Overview”.",
         "route_unknown": "The route is no longer in the project.",
         "url_invalid": "The address does not fit. It starts with https:// and has nothing after ? or #.",
-        "body_invalid": "The request body is not valid JSON."
+        "body_invalid": "The request body is not valid JSON.",
+        "not_confirmed": "The test request was not sent: the address was not confirmed in Moat's window."
       }
     },
     "summary": {

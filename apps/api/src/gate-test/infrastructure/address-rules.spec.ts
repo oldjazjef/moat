@@ -30,6 +30,12 @@ describe('address rules of «Testen» (T-59, as SEC-41)', () => {
       'fe80::1',
       'ff02::1',
       '2001:db8::1',
+      '::a00:1',
+      '::7f00:1',
+      '::ffff:0:a00:1',
+      'fec0::1',
+      '3fff::1',
+      '4000::1',
       'not-an-address',
     ])
       expect(addressAllowed(address, true), address).toBe(false);

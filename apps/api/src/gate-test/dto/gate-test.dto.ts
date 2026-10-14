@@ -1,4 +1,10 @@
-import { IsString, Matches, MaxLength } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+} from 'class-validator';
 import { MAX_GATE_URL } from '../application/gate-test-target';
 import { MAX_TEST_BODY } from '../application/gate-test.handlers';
 
@@ -17,4 +23,9 @@ export class GateTestDto {
   @IsString()
   @MaxLength(MAX_TEST_BODY)
   body!: string;
+
+  /** The page's language, for the desktop's confirmation dialog. */
+  @IsOptional()
+  @IsIn(['de-CH', 'en'])
+  locale?: 'de-CH' | 'en';
 }

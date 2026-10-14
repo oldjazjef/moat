@@ -394,7 +394,11 @@ export function outcomeOf(answer: GateAnswer): TestOutcome {
                   @switch (result.kind) {
                     @case ('failed') {
                       <p class="text-destructive">
-                        {{ 'setup.recipe.failed.' + result.reason | translate }}
+                        <mt-rich-text
+                          [text]="
+                            'setup.recipe.failed.' + result.reason | translate
+                          "
+                        />
                       </p>
                     }
                     @case ('gate') {
@@ -403,11 +407,18 @@ export function outcomeOf(answer: GateAnswer): TestOutcome {
                           >{{ result.status }} {{ result.code }}</span
                         >
                         ·
-                        {{ 'setup.recipe.codes.' + result.code | translate }}
+                        <mt-rich-text
+                          [text]="
+                            'setup.recipe.codes.' + result.code | translate
+                          "
+                        />
                       </p>
                     }
                     @case ('upstream') {
-                      <p [class.text-destructive]="!result.ok">
+                      <p
+                        [class.text-destructive]="!result.ok"
+                        [class.text-[var(--trust-strong)]]="result.ok"
+                      >
                         {{
                           (result.ok
                             ? 'setup.recipe.passed'
@@ -655,7 +666,10 @@ export class RecipeStep extends SetupStepComponent {
     });
   }
 
-  /** «Testen»: one request through the gate; nothing is stored. */
+  /**
+   * «Testen»: one request through the gate; nothing is stored. Moat Desktop asks in a window of
+   * its own before the first request to an address (T-59).
+   */
   protected async test(recipe: Recipe): Promise<void> {
     const id = this.service.project();
     if (id === null || this.busy()) return;
@@ -665,7 +679,12 @@ export class RecipeStep extends SetupStepComponent {
       const answer = await firstValueFrom(
         this.http.post<GateAnswer>(
           apiUrl(`/projects/${encodeURIComponent(id)}/test-request`),
-          { url: url.trim(), route: recipe.route.name, body },
+          {
+            url: url.trim(),
+            route: recipe.route.name,
+            body,
+            locale: this.locale(),
+          },
         ),
       );
       this.outcome.set(outcomeOf(answer));

@@ -3,9 +3,10 @@ import { BlockList, isIPv4, isIPv6 } from 'node:net';
 /**
  * Which resolved addresses «Testen» may connect to (T-59): public ones, and loopback only in
  * development. Everything else — private, shared, link-local, documentation, benchmark,
- * multicast, reserved, 6to4/NAT64 and IPv4-mapped forms — is refused, so the window cannot be
- * used to reach into the network this computer sits in. Same ranges as the PHP gate's SSRF
- * guard (SEC-41), checked on the address that is then pinned for the connection.
+ * multicast, reserved, 6to4/NAT64 and IPv4-mapped or -compatible forms — is refused, so the
+ * window cannot be used to reach into the network this computer sits in. As the PHP gate's SSRF
+ * guard (SEC-41): IPv6 only inside the global unicast range 2000::/3, minus the special ranges
+ * in it; 6to4 and NAT64 are refused outright rather than checked by their inner IPv4 address.
  */
 // Two lists: BlockList compares IPv4 and IPv4-mapped IPv6 as one, so `::ffff:0:0/96` in a shared
 // list would refuse every IPv4 address.
@@ -37,11 +38,15 @@ for (const [network, prefix] of [
   ['2001::', 23],
   ['2001:db8::', 32],
   ['2002::', 16],
+  ['3fff::', 20],
   ['fc00::', 7],
   ['fe80::', 10],
   ['ff00::', 8],
 ] as const)
   FORBIDDEN_V6.addSubnet(network, prefix, 'ipv6');
+
+const GLOBAL_V6 = new BlockList();
+GLOBAL_V6.addSubnet('2000::', 3, 'ipv6');
 
 const LOOPBACK = new BlockList();
 LOOPBACK.addSubnet('127.0.0.0', 8, 'ipv4');
@@ -57,7 +62,8 @@ export function addressKind(address: string): AddressKind {
   if (isIPv6(address)) {
     const lower = address.toLowerCase();
     if (LOOPBACK.check(lower, 'ipv6')) return 'loopback';
-    // Dotted IPv4-mapped (`::ffff:10.0.0.1`) is refused with every other mapped form above.
+    // Outside 2000::/3: IPv4-mapped, -compatible and -translated forms, site-local, ULA, ….
+    if (!GLOBAL_V6.check(lower, 'ipv6')) return 'forbidden';
     return FORBIDDEN_V6.check(lower, 'ipv6') ? 'forbidden' : 'public';
   }
   return 'forbidden';

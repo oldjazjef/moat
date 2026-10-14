@@ -19,6 +19,7 @@ import { ProjectFilesPort } from '../../project/ports/project-files.port';
 import { ProjectRegistryPort } from '../../project/ports/project-registry.port';
 import { PROJECT_ID } from '../../project/project.types';
 import { GateClientPort, type GateAnswer } from '../ports/gate-client.port';
+import { GateTestConfirmationPort } from '../ports/gate-test-confirmation.port';
 import { gateTestTarget } from './gate-test-target';
 
 /** A test body larger than any recipe's; the gate checks the route's own limit. */
@@ -30,7 +31,9 @@ export type GateTestRefusal =
   | 'config_invalid'
   | 'route_unknown'
   | 'url_invalid'
-  | 'body_invalid';
+  | 'body_invalid'
+  /** The person did not confirm the address in the desktop's own dialog (T-59). */
+  | 'not_confirmed';
 
 export type GateTestResult =
   | { readonly status: 'not_found' }
@@ -56,6 +59,8 @@ export class TestGateCommand extends Command<GateTestResult> {
     readonly url: string,
     readonly route: string,
     readonly body: string,
+    /** The page's language, for the confirmation dialog only. */
+    readonly locale: string,
   ) {
     super();
   }
@@ -90,6 +95,7 @@ export class TestGateHandler implements ICommandHandler<TestGateCommand> {
     private readonly registry: ProjectRegistryPort,
     private readonly files: ProjectFilesPort,
     private readonly client: GateClientPort,
+    private readonly confirmation: GateTestConfirmationPort,
     config: ConfigService<Env, true>,
   ) {
     this.allowLoopback =
@@ -114,6 +120,8 @@ export class TestGateHandler implements ICommandHandler<TestGateCommand> {
     const hasBody = WITH_BODY.has(route.method);
     if (hasBody ? !isJson(command.body) : command.body.trim() !== '')
       return { status: 'refused', code: 'body_invalid' };
+    if (!(await this.confirmation.confirm(url, command.locale)))
+      return { status: 'refused', code: 'not_confirmed' };
     const answer = await this.client.send({
       url,
       method: route.method,

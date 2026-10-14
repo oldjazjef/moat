@@ -57,6 +57,10 @@ interface ApiBundle {
     digest: string,
     value: Uint8Array,
   ): Promise<SealResult>;
+  setGateTestConfirmation(
+    api: ApiHandle,
+    ask: (target: string, locale: string) => Promise<boolean>,
+  ): void;
 }
 
 export interface RunningApi {
@@ -74,6 +78,10 @@ export interface RunningApi {
   ): Promise<{ text: string; key: SigningKeyInfo }>;
   signingKeyInfo(publicKey: string): Promise<SigningKeyInfo | null>;
   projectFolder(id: string): Promise<string | null>;
+  /** «Testen» (T-59): the main process confirms each new address in its own dialog. */
+  setGateTestConfirmation(
+    ask: (target: string, locale: string) => Promise<boolean>,
+  ): void;
   /** In-process only, for the signing dialog (DT-15): the page has no way to sign. */
   prepareBundle(
     id: string,
@@ -133,6 +141,7 @@ export async function startApi(options: {
     createProject: (folder) => api.createProject(running, folder),
     createSigningKey: (passphrase) => api.createSigningKey(passphrase),
     signingKeyInfo: (publicKey) => api.signingKeyInfo(publicKey),
+    setGateTestConfirmation: (ask) => api.setGateTestConfirmation(running, ask),
     projectFolder: (id) => api.projectFolder(running, id),
     prepareBundle: (id, gate, signer) =>
       api.prepareBundle(running, id, gate, signer),

@@ -18,6 +18,8 @@ export const TIMEOUT_MS = 20_000;
 /** More than any gate error or test answer; a larger body is cut off (`truncated`). */
 export const MAX_READ_BYTES = 64 * 1024;
 export const MAX_EXCERPT = 2048;
+/** The names that may reach loopback in development; any other name resolving there may not. */
+const LOOPBACK_NAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
 
 /**
  * «Testen» (FR-73, T-59): one request to the gate, the way the website sends it — no cookies, no
@@ -37,6 +39,8 @@ export class HttpsGateClient extends GateClientPort {
 
   async send(request: GateRequest): Promise<GateAnswer> {
     const host = request.url.hostname.replace(/^\[|\]$/g, '');
+    const loopback =
+      this.allowLoopback && LOOPBACK_NAMES.has(request.url.hostname);
     let addresses: { address: string; family: number }[];
     try {
       addresses = await lookup(host, { all: true, verbatim: true });
@@ -45,9 +49,7 @@ export class HttpsGateClient extends GateClientPort {
     }
     if (
       addresses.length === 0 ||
-      !addresses.every(({ address }) =>
-        addressAllowed(address, this.allowLoopback),
-      )
+      !addresses.every(({ address }) => addressAllowed(address, loopback))
     )
       return { status: 'failed', reason: 'address_forbidden' };
     const pinned = addresses[0] as { address: string; family: number };

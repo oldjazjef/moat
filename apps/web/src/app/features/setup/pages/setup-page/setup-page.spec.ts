@@ -516,6 +516,7 @@ describe('SetupPage (FR-73)', () => {
       url: 'https://www.example.ch/moat-gate.php',
       route: 'newsletter',
       body: RECIPES[0]?.testBody,
+      locale: 'de-CH',
     });
     first.flush({
       status: 'answered',

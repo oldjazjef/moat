@@ -50,4 +50,5 @@ export const GATE_TEST_REFUSALS = [
   'route_unknown',
   'url_invalid',
   'body_invalid',
+  'not_confirmed',
 ] as const;

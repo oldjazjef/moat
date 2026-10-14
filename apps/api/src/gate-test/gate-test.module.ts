@@ -8,6 +8,10 @@ import { GateTestController } from './gate-test.controller';
 import { RecipesController } from './recipes.controller';
 import { HttpsGateClient } from './infrastructure/https-gate-client';
 import { GateClientPort } from './ports/gate-client.port';
+import {
+  GateTestConfirmationPort,
+  MainProcessConfirmation,
+} from './ports/gate-test-confirmation.port';
 
 @Module({
   imports: [CqrsModule],
@@ -16,6 +20,8 @@ import { GateClientPort } from './ports/gate-client.port';
     TestGateHandler,
     SuggestPolicyHandler,
     { provide: GateClientPort, useClass: HttpsGateClient },
+    MainProcessConfirmation,
+    { provide: GateTestConfirmationPort, useExisting: MainProcessConfirmation },
   ],
 })
 export class GateTestModule {}
