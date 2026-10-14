@@ -1,6 +1,15 @@
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join } from 'node:path';
+import {
+  closeSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+  writeSync,
+} from 'node:fs';
+import { dirname, join } from 'node:path';
 import type { DeployRefusal, DeployResult } from '../../shared/bridge';
 
 /** The API's in-process answer (apps/api/src/project/application/deploy-package.service.ts). */
@@ -20,7 +29,10 @@ export type PrepareDeployResult =
   | { readonly status: 'not_found' }
   | {
       readonly status: 'refused';
-      readonly code: Exclude<DeployRefusal, 'key_missing'>;
+      readonly code: Exclude<
+        DeployRefusal,
+        'key_missing' | 'gate_changed' | 'bundle_older'
+      >;
     };
 
 export interface DeployTexts {
@@ -33,6 +45,23 @@ export interface DeployFile {
   /** `moat-<gate>-v<version>/<file>` */
   readonly name: string;
   readonly data: Uint8Array;
+}
+
+/**
+ * Against the last package of this gate (T-66): another gate id or a lower version means the
+ * project folder changed under the person (a copied bundle, deleted newer ones); the policy in
+ * such a package must not reach the server. The same version again is fine.
+ */
+export function deployRefusal(
+  pkg: DeployPackage,
+  last: { readonly gateId: string; readonly version: number } | undefined,
+): Extract<DeployResult, { status: 'refused' }> | null {
+  if (last === undefined) return null;
+  if (last.gateId !== pkg.gateId)
+    return { status: 'refused', code: 'gate_changed' };
+  if (pkg.version < last.version)
+    return { status: 'refused', code: 'bundle_older' };
+  return null;
 }
 
 /** `moat-www-v3`: the folder the package's files sit in, in the ZIP and on disk. */
@@ -104,10 +133,23 @@ export function writeDeployFolder(
 export function writeDeployZip(path: string, zip: Uint8Array): WriteResult {
   const temp = join(
     dirname(path),
-    `.${basename(path)}.${randomBytes(6).toString('hex')}.tmp`,
+    `.moat-${randomBytes(6).toString('hex')}.tmp`,
   );
+  let fd: number;
   try {
-    writeFileSync(temp, zip, { flag: 'wx' });
+    fd = openSync(temp, 'wx');
+  } catch {
+    // Not created, so nothing of ours to remove.
+    return { status: 'not_writable' };
+  }
+  try {
+    try {
+      writeSync(fd, zip);
+      // On disk before the rename: a crash never leaves an empty ZIP under the chosen name.
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
     renameSync(temp, path);
     return null;
   } catch {

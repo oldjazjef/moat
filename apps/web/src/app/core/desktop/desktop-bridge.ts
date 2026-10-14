@@ -70,10 +70,17 @@ export type DeployTarget = 'zip' | 'folder';
 
 /**
  * `key_missing`: no signing key chosen (or it cannot be read); `bundle_missing`: nothing signed
- * yet; `bundle_unverified`: the latest bundle is not one this key signed for this gate (T-66).
+ * yet; `bundle_unverified`: the latest bundle is not one this key signed for this gate;
+ * `gate_changed` / `bundle_older`: another gate id or a lower version than the last package of
+ * this gate (T-66).
  */
 export type DeployRefusal =
-  'key_missing' | 'gate_unknown' | 'bundle_missing' | 'bundle_unverified';
+  | 'key_missing'
+  | 'gate_unknown'
+  | 'bundle_missing'
+  | 'bundle_unverified'
+  | 'gate_changed'
+  | 'bundle_older';
 
 export type DeployResult =
   | { status: 'exported'; target: DeployTarget; version: number }

@@ -52,6 +52,8 @@ export const DEPLOY_OUTCOMES = [
   'gate_unknown',
   'bundle_missing',
   'bundle_unverified',
+  'gate_changed',
+  'bundle_older',
   'exists',
   'not_writable',
   'failed',

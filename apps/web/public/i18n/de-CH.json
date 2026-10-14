@@ -222,6 +222,8 @@
       "gate_unknown": "Die Gate-Datei fehlt oder ist beschädigt.",
       "bundle_missing": "Für dieses Gate ist noch kein Bundle signiert.",
       "bundle_unverified": "Das letzte Bundle ist nicht mit deiner Schlüsseldatei für dieses Gate signiert. Moat packt es nicht ein: Signiere eine neue Version.",
+      "gate_changed": "Die Gate-ID in diesem Projekt ist nicht mehr die des letzten Pakets. Moat packt nichts ein: Prüfe die Datei `gates/{{gate}}.json`.",
+      "bundle_older": "Das letzte Bundle in diesem Projekt ist älter als das letzte Paket. Moat packt es nicht ein: Prüfe den Ordner `bundles/{{gate}}` oder signiere eine neue Version.",
       "exists": "Im gewählten Ordner liegt dieses Paket schon. Es wurde nichts überschrieben.",
       "not_writable": "Am gewählten Ort kann Moat nicht schreiben. Es wurde nichts gespeichert.",
       "failed": "Das Paket konnte nicht gespeichert werden."

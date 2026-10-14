@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   type DeployPackage,
   deployFiles,
+  deployRefusal,
   packageName,
   writeDeployFolder,
   writeDeployZip,
@@ -61,6 +62,30 @@ describe('deploy package (DT-05)', () => {
     const en = deployFiles({ ...PKG, locked: true }, MESSAGES.en.deploy);
     expect(en[2]?.name).toBe('moat-www-v3/README.txt');
     expect(text(en[2]?.data ?? new Uint8Array())).toContain('(locks the gate)');
+  });
+
+  it('T-66: refuses another gate id or an older bundle than the last package', () => {
+    expect(deployRefusal(PKG, undefined)).toBeNull();
+    expect(deployRefusal(PKG, { gateId: PKG.gateId, version: 3 })).toBeNull();
+    expect(deployRefusal(PKG, { gateId: PKG.gateId, version: 2 })).toBeNull();
+    expect(deployRefusal(PKG, { gateId: PKG.gateId, version: 4 })).toEqual({
+      status: 'refused',
+      code: 'bundle_older',
+    });
+    expect(
+      deployRefusal(PKG, { gateId: 'BBBBBBBBBBBBBBBBBBBBBB', version: 1 }),
+    ).toEqual({ status: 'refused', code: 'gate_changed' });
+  });
+
+  it('the instructions compare with the gate first and install the policy only if accept needs it', () => {
+    const readme = deployFiles(PKG, MESSAGES['de-CH'].deploy)[2]?.data;
+    const text = Buffer.from(readme ?? new Uint8Array()).toString('utf8');
+    const status = text.indexOf('php moat-gate.php status');
+    const accept = text.indexOf('php moat-gate.php accept');
+    const policy = text.indexOf('php moat-gate.php policy');
+    expect(status).toBeGreaterThan(0);
+    expect(accept).toBeGreaterThan(status);
+    expect(policy).toBeGreaterThan(accept);
   });
 
   it('writes a new folder and never replaces one', () => {

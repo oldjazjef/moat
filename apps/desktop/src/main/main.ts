@@ -36,6 +36,7 @@ import {
 } from './lib/messages';
 import {
   deployFiles,
+  deployRefusal,
   packageName,
   writeDeployFolder,
   writeDeployZip,
@@ -468,7 +469,8 @@ async function deployGate(
   target: DeployTarget,
   text: DesktopMessages,
 ): Promise<DeployResult> {
-  const keyPath = readConfig(app.getPath('userData')).keyFile;
+  const userData = app.getPath('userData');
+  const keyPath = readConfig(userData).keyFile;
   const signer = keyPath === null ? null : readKeyFile(keyPath)?.signer;
   if (signer === null || signer === undefined)
     return { status: 'refused', code: 'key_missing' };
@@ -477,6 +479,9 @@ async function deployGate(
   if (prepared.status === 'refused')
     return { status: 'refused', code: prepared.code };
   const pkg = prepared.package;
+  const key = `${id}/${gate}`;
+  const refused = deployRefusal(pkg, readConfig(userData).deployed[key]);
+  if (refused !== null) return refused;
   const files = deployFiles(pkg, text.deploy);
   let written;
   if (target === 'zip') {
@@ -502,7 +507,14 @@ async function deployGate(
     if (!isFolder(dir)) return { status: 'not_writable' };
     written = writeDeployFolder(dir, files);
   }
-  return written ?? { status: 'exported', target, version: pkg.version };
+  if (written !== null) return written;
+  updateConfig(userData, {
+    deployed: {
+      ...readConfig(userData).deployed,
+      [key]: { gateId: pkg.gateId, version: pkg.version },
+    },
+  });
+  return { status: 'exported', target, version: pkg.version };
 }
 
 /**

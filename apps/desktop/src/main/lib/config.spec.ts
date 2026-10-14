@@ -38,6 +38,7 @@ describe('desktop config', () => {
       projectDir: null,
       keyFile: '/home/me/release.moatkey',
       passphrases: { [KID]: 'c2VhbGVk' },
+      deployed: {},
     });
     if (process.platform !== 'win32')
       expect(statSync(join(dir, CONFIG_FILE)).mode & 0o077).toBe(0);
@@ -54,6 +55,25 @@ describe('desktop config', () => {
       writeFileSync(join(dir, CONFIG_FILE), content);
       expect(readConfig(dir)).toEqual(EMPTY_CONFIG);
     }
+  });
+
+  it('keeps the last deploy package per project and gate, nothing else (T-66)', () => {
+    const id = 'EET8NETuKZO4J4p9vrWNKg';
+    writeFileSync(
+      join(dir, CONFIG_FILE),
+      JSON.stringify({
+        deployed: {
+          [`${id}/www`]: { gateId: KID, version: 3 },
+          [`${id}/../x`]: { gateId: KID, version: 3 },
+          [`${id}/api`]: { gateId: 'short', version: 3 },
+          [`${id}/shop`]: { gateId: KID, version: 0 },
+          __proto__: { gateId: KID, version: 1 },
+        },
+      }),
+    );
+    expect(readConfig(dir).deployed).toEqual({
+      [`${id}/www`]: { gateId: KID, version: 3 },
+    });
   });
 
   it('drops remembered passphrases under a name that is not a key id', () => {
