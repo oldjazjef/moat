@@ -31,6 +31,15 @@ final class GateFixture
     public readonly string $certFile;
     public readonly string $keyFile;
     public readonly string $policy;
+    /**
+     * For bundles the cases publish for the pull (conformance/http/gate-pull.json).
+     *
+     * @var non-empty-string
+     */
+    private string $signer;
+    private string $gateId;
+    private string $boxKey;
+    private \stdClass $config;
 
     /** @param string $casesFile the raw text of conformance/http/gate.json */
     public function __construct(private readonly string $dir, string $casesFile)
@@ -70,6 +79,11 @@ final class GateFixture
             throw new \RuntimeException('install printed no gate id');
         }
         [, $gateId, $boxKey] = $match;
+        $this->signer = $signer;
+        $this->gateId = $gateId;
+        $this->boxKey = $boxKey;
+        $config = $doc->config ?? null;
+        $this->config = $config instanceof \stdClass ? $config : new \stdClass();
         $this->policy = self::encode($doc->policy ?? null);
         file_put_contents($dir . '/policy.json', $this->policy);
         $this->cli($site, ['policy', $dir . '/policy.json']);
@@ -118,11 +132,80 @@ final class GateFixture
         }
     }
 
+    /** Upstream calls other than fetching the published bundle file. */
     public function upstreamCalls(): int
     {
         $log = file_get_contents($this->upstreamLog);
 
-        return $log === false ? 0 : substr_count($log, "\n");
+        return $log === false ? 0 : substr_count($log, "\n") - $this->pulls();
+    }
+
+    /** Fetches of the published bundle file (the lazy pull, DT-11). */
+    public function pulls(): int
+    {
+        $log = file_get_contents($this->upstreamLog);
+
+        return $log === false ? 0 : substr_count($log, 'GET ' . self::PUBLISHED_PATH . "\n");
+    }
+
+    public const PUBLISHED_PATH = '/bundles/gate.json';
+
+    /**
+     * What the fake upstream serves at PUBLISHED_PATH from now on (conformance/http/gate-pull.json):
+     * a bundle signed by the pinned signer (`version`, `routes` added to the config, `enabled`,
+     * `tamper`, `otherGate`), only a `status`, `size` bytes, or `raw` text.
+     *
+     * @param array<string, mixed> $publish
+     */
+    public function publish(array $publish): void
+    {
+        $status = 200;
+        if (isset($publish['status']) && \is_int($publish['status'])) {
+            $status = $publish['status'];
+            $body = '{}';
+        } elseif (isset($publish['size']) && \is_int($publish['size'])) {
+            $body = str_repeat('x', $publish['size']);
+        } elseif (isset($publish['raw']) && \is_string($publish['raw'])) {
+            $body = $publish['raw'];
+        } elseif (isset($publish['version']) && \is_int($publish['version'])) {
+            $config = clone $this->config;
+            $routes = $config->routes instanceof \stdClass ? clone $config->routes : new \stdClass();
+            foreach (\is_array($publish['routes'] ?? null) ? $publish['routes'] : [] as $name => $route) {
+                $routes->{$name} = json_decode(self::encode($route), false, 512, JSON_THROW_ON_ERROR);
+            }
+            $config->routes = $routes;
+            if (isset($publish['enabled']) && \is_bool($publish['enabled'])) {
+                $config->enabled = $publish['enabled'];
+            }
+            $gateId = $this->gateId;
+            $boxKey = Base64Url::decode($this->boxKey);
+            if (($publish['otherGate'] ?? false) === true) {
+                $gateId = Base64Url::encode(random_bytes(16));
+                $boxKey = sodium_crypto_box_publickey(sodium_crypto_box_keypair());
+            }
+            $sealed = [];
+            $sealed['api-token'] = self::seal(explode("\n", $this->secret)[0], $boxKey, $gateId, 'api-token');
+            $body = self::bundle($config, $sealed, $gateId, $this->signer, $publish['version']);
+            if (($publish['tamper'] ?? false) === true) {
+                // One byte of the signed payload changed: the signature no longer fits.
+                $envelope = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+                if (!\is_array($envelope) || !\is_string($envelope['payload'] ?? null)) {
+                    throw new \RuntimeException('publish: not an envelope');
+                }
+                $payload = Base64Url::decode($envelope['payload']);
+                $envelope['payload'] = Base64Url::encode(str_replace('"version":' . $publish['version'], '"version":' . ($publish['version'] + 10), $payload));
+                $body = self::encode($envelope);
+            }
+        } else {
+            throw new \RuntimeException('publish: version, status, size or raw');
+        }
+        file_put_contents(\dirname($this->upstreamLog) . '/published.json', self::encode(['status' => $status, 'body' => $body]));
+    }
+
+    /** Makes the pull interval over: the gate looks again on the next request. */
+    public function setPullDue(): void
+    {
+        (DataDir::locate($this->site) ?? throw new \RuntimeException('no data folder'))->remove('pull');
     }
 
     public function gateLogText(): string

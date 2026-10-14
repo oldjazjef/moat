@@ -85,9 +85,15 @@ final readonly class Gate
         if ($this->policy === null) {
             throw new Rejection(RejectionCode::PolicyInvalid);
         }
-        $active = $this->check(BundleVerifier::verify($bytes, $this->context($this->highestVersion(), $now)), true);
-        $this->data->write(self::BUNDLE, $bytes);
-        $this->data->write(self::STATE, json_encode(['v' => 1, 'highestVersion' => $active->version], JSON_THROW_ON_ERROR) . "\n");
+        // Under the lock the pull also takes: `accept` on the command line and a pull from a
+        // visitor's request never both pass the version check before either has written (SEC-04).
+        $active = $this->data->locked(function () use ($bytes, $now): ActiveBundle {
+            $active = $this->check(BundleVerifier::verify($bytes, $this->context($this->highestVersion(), $now)), true);
+            $this->data->write(self::BUNDLE, $bytes);
+            $this->data->write(self::STATE, json_encode(['v' => 1, 'highestVersion' => $active->version], JSON_THROW_ON_ERROR) . "\n");
+
+            return $active;
+        }, BundlePull::LOCK);
 
         return $active;
     }

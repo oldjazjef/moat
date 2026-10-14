@@ -46,6 +46,26 @@ const prefix = z.string().refine((value) => {
 export const MIN_CONFIG_AGE = 3_600;
 export const MAX_CONFIG_AGE = 10 * 365 * 86_400;
 
+/** DT-11: how often the gate looks for a new bundle at most, in seconds (a minute to a day). */
+export const MIN_PULL_INTERVAL = 60;
+export const MAX_PULL_INTERVAL = 86_400;
+export const MAX_PULL_URL = 2048;
+
+/**
+ * The pull URL (DT-11): `https://host[:port]` as an upstream origin (isOrigin: lower-case DNS
+ * name, no IP literal, no `:443`) plus a path to a file, each segment of unreserved characters
+ * and none `.` or `..` — nothing to normalise, nothing for a parser to read differently.
+ */
+export function isPullUrl(value: string): boolean {
+  if (value.length > MAX_PULL_URL) return false;
+  const match = /^(https:\/\/[^/]+)((?:\/[A-Za-z0-9._~-]+)+)$/.exec(value);
+  if (match === null || !isOrigin(match[1] ?? '')) return false;
+  return (match[2] ?? '')
+    .split('/')
+    .slice(1)
+    .every((segment) => segment !== '.' && segment !== '..');
+}
+
 export const policySchema = z.strictObject({
   v: z.literal(1),
   /**
@@ -99,6 +119,18 @@ export const policySchema = z.strictObject({
     .int()
     .min(MIN_CONFIG_AGE)
     .max(MAX_CONFIG_AGE)
+    .optional(),
+  /**
+   * DT-11, §4.3 of ANFORDERUNGEN.md (lazy pull): where the gate fetches new bundles by itself, at
+   * most every `intervalSeconds`, during a request and without cron. Only here, in the local
+   * policy: no bundle can name or change the place (SEC-10). The place needs no trust — every
+   * bundle fetched goes through the same checks as `accept` (signature, gate id, version, policy).
+   */
+  pull: z
+    .strictObject({
+      url: z.string().refine(isPullUrl),
+      intervalSeconds: z.int().min(MIN_PULL_INTERVAL).max(MAX_PULL_INTERVAL),
+    })
     .optional(),
   /**
    * Local test setups only (the conformance runner, a demo): send these `host[:port]`s to a fixed

@@ -106,6 +106,7 @@ describe('the check from outside in Moat Desktop (DT-07, SEC-49)', () => {
       'Runtime/KillSwitch.php',
       'Hardening/WebFacts.php',
       'Storage/DataDir.php',
+      'Runtime/BundlePull.php',
     ].flatMap((file) =>
       [
         ...readFileSync(path.join(src, file), 'utf8').matchAll(

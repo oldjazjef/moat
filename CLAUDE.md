@@ -21,7 +21,7 @@ Four components (ANFORDERUNGEN.md, header):
 > content-type rules, environments and locks, comment-preserving `moat.yaml` edits); `apps/cli`
 > (`moat keygen|validate|policy suggest|gate add|assign|disable|enable|env add|disable|enable|secret seal|build|version`);
 > `conformance/vectors/` and `conformance/http/`; and `gates/php` as a working gate: single-file
-> build, CLI (`install|trust|policy|accept|status|check|kill|revive`), bundle acceptance (steps 1–10), exact routing,
+> build, CLI (`install|trust|policy|accept|pull|status|check|kill|revive`), bundle acceptance (steps 1–10), exact routing,
 > the cURL upstream client with SSRF guard, origin binding/CORS, rate limits, request quotas per
 > calendar day/month (FR-31: route `quota`, policy `limits.quota`, `quota_exceeded`), token and cost
 > budgets for AI APIs (FR-31: route `budget`, policy `upstreams.<host>.budget`, usage read from the
@@ -31,7 +31,10 @@ Four components (ANFORDERUNGEN.md, header):
 > of a gate or a whole environment (`moat env|gate disable`, `gate_disabled`), the local kill switch
 > (SEC-15: `php moat-gate.php kill|revive [--route=]`, the data file `kill`, `killSwitchOf` in
 > `libs/core/src/gate/`; policy `maxConfigAgeSeconds` → `status` warns, T-23) and the hardening
-> check (`check [--url]`, SEC-49/SEC-49a; `classifyHardening` in `libs/core/src/gate/`)
+> check (`check [--url]`, SEC-49/SEC-49a; `classifyHardening` in `libs/core/src/gate/`), the lazy pull
+> (DT-11, T-64: policy `pull: {url, intervalSeconds}` set only locally, `isPullUrl` in core; due
+> requests fetch once per interval under `pulllock` through the pinned cURL client and hand the
+> bytes to `accept`; data file `pull`, `php moat-gate.php pull`)
 > ([gates/php/README.md](gates/php/README.md)). **Moat Desktop, first surface:** Electron shell
 > with the API in-process (`apps/api`: the project list in `<MOAT_DATA_DIR>/projects.json`,
 > `GET /api/projects`, `GET|DELETE /api/projects/:id`, `POST /api/projects/:id/config/edits` — the closed list of moat.yaml edits: add/lock/unlock environments, lock/unlock and assign gates, add/update/enable/disable/remove routes and add/update/remove upstreams (`setRoute`, `setUpstream` & co. in `libs/core/src/config/edit.ts`), with a `base` hash against lost updates) and the Angular
@@ -52,7 +55,7 @@ Four components (ANFORDERUNGEN.md, header):
 > (`mt-hardening-check`, in the wizard summary and per gate in «Gates») →
 > `POST /api/projects/:id/hardening-check` (same target rules, confirmation and pinned client as
 > «Testen»; probe rules in core `gate/external-probe.ts`); it shows «Unsicher für Secrets» when a
-> data file is readable and no level otherwise. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, lazy pull, setup mode, trust mode 2. Everything else below is
+> data file is readable and no level otherwise. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, setup mode, trust mode 2. Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
 

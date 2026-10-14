@@ -48,7 +48,8 @@ php moat-gate.php policy <policy.json>     # install the local policy (moat poli
                                            # rate limits that always apply (SEC-14)
 php moat-gate.php accept <bundle.json>     # verify (steps 1–10) and activate a bundle
 php moat-gate.php trust --signer=<pk>[,…] [--threshold=n]   # replace the pinned signers
-php moat-gate.php status                   # fingerprints, policy, active bundle, kill switch
+php moat-gate.php pull                     # fetch the bundle from the policy's pull place now (below)
+php moat-gate.php status                   # fingerprints, policy, active bundle, pull, kill switch
 php moat-gate.php kill [--route=<name>]    # switch the gate or one route off at once (below)
 php moat-gate.php revive [--route=<name>]  # and on again (without --route: everything)
 php moat-gate.php check [--url=https://…/moat-gate.php]   # the hardening check (below)
@@ -138,6 +139,35 @@ the active bundle was signed longer ago: a lock that never arrives shows up as a
 changing. It is only a warning; switching off is the kill switch's job. Cases:
 [`conformance/http/gate-kill-switch.json`](../../conformance/http/gate-kill-switch.json),
 [`conformance/vectors/gate/kill-switch.json`](../../conformance/vectors/gate/kill-switch.json).
+
+## Lazy pull (DT-11, T-64)
+
+Without SSH or FTP for every release, the gate can fetch its bundles itself from a static place
+(your own webspace, a bucket). The place is named only in the local policy:
+
+```json
+"pull": { "url": "https://bundles.example.com/moat/www.json", "intervalSeconds": 300 }
+```
+
+The URL is `https://` with a DNS host name (no IP literal, no user, no query, no fragment) and a
+file path of plain segments (`A–Z a–z 0–9 . _ ~ -`, no `.` or `..`); the interval is 60 s to one
+day. When the interval is over, the next request fetches the file once, through the same cURL
+client as upstream calls (address checked and pinned, no redirects, 5 s, at most 1 MiB), and hands
+it to the same checks as `accept`: signature over the received bytes, gate id, a higher version,
+schema, policy. The place does not need to be trustworthy: whatever it serves, the worst outcome
+is that the active bundle stays. The visitor's request is served either way, with the bundle that
+is active after the pull. Concurrent requests fetch at most once per interval: the attempt is
+recorded (data file `pull`, codes only) under the lock `pulllock` before the fetch, and accepting
+(pulled or by `accept`) takes the same lock, so two bundles never pass the version check at once.
+The pull also runs while the kill switch is on, so a fixed bundle can arrive; the kill switch still
+decides what is served.
+
+Publishing a release is then: `moat build`, upload the signed bundle to that URL. A lock
+(`moat gate disable`) travels the same way. `php moat-gate.php pull` fetches at once, whatever the
+interval, and prints what came of it; `status` shows the place and the last attempt, and the log
+gets `pull_<outcome> <code>` when a pulled file was not taken. A place that keeps serving the old
+file holds back new bundles (T-23): against that, the kill switch and `maxConfigAgeSeconds`.
+Cases: [`conformance/http/gate-pull.json`](../../conformance/http/gate-pull.json).
 
 ## Origins and CORS (FR-15)
 

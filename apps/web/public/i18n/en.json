@@ -786,6 +786,7 @@
         "tips": {
           "rollback": "Back to an older configuration? Build it as a new, higher version.",
           "policy": "If a bundle does not fit the local policy, the gate refuses it. You change the policy only on the gate itself.",
+          "pull": "No upload to the gate: if the local policy has a `pull` block with an HTTPS address, the gate fetches the bundle there itself, at most once per interval, and checks it as `accept` does. You then only upload the signed bundle to that address. `php moat-gate.php pull` fetches it at once, `php moat-gate.php status` shows the last attempt.",
           "keychain": "If you like, Moat Desktop remembers the passphrase in your operating system’s keychain. Untick the box the next time you sign and it is deleted there. Without a real keychain, Moat Desktop does not offer this at all."
         }
       },

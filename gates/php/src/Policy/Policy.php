@@ -26,5 +26,7 @@ final readonly class Policy
         public ?string $testCaFile,
         /** SEC-15, T-23: `status` warns when the active bundle is older (seconds); null = no warning. */
         public ?int $maxConfigAgeSeconds = null,
+        /** DT-11: where and how often the gate looks for a new bundle; null = only `accept`. */
+        public ?PolicyPull $pull = null,
     ) {}
 }

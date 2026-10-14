@@ -1,5 +1,5 @@
 {
-  "description": "The local policy (SEC-10 to SEC-14) against a valid compiled config: `{ok: true}`, `policy_violation` (the config goes beyond the policy — the bundle is rejected, SEC-11) or `policy_invalid` (the policy file itself is malformed; the gate serves nothing). Hosts are keyed as `host[:port]`; a path prefix matches the same path or a path continuing at a \"/\" boundary.",
+  "description": "The local policy (SEC-10 to SEC-14) against a valid compiled config: `{ok: true}`, `policy_violation` (the config goes beyond the policy — the bundle is rejected, SEC-11) or `policy_invalid` (the policy file itself is malformed; the gate serves nothing). Hosts are keyed as `host[:port]`; a path prefix matches the same path or a path continuing at a \"/\" boundary. `pull` (optional, DT-11) is the one place the gate fetches new bundles from by itself: `https://host[:port]/path` to a file (lower-case host, path segments of letters, digits, `.`, `_`, `~` and `-` but no `.` or `..` segment, at most 2048 characters), at most every `intervalSeconds` (60 to 86 400).",
   "cases": [
     {
       "name": "within the policy",
@@ -3624,6 +3624,1512 @@
           },
           "caFile": null
         }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull from a static URL every 5 minutes (DT-11)",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/moat/www.json",
+          "intervalSeconds": 300
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "pull from a host with a port",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://cdn.example.ch:8443/b/www.json",
+          "intervalSeconds": 60
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "pull once a day",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/moat/www.json",
+          "intervalSeconds": 86400
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "name": "pull more often than once a minute",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/moat/www.json",
+          "intervalSeconds": 59
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull less often than once a day",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/moat/www.json",
+          "intervalSeconds": 86401
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull over plain HTTP",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "http://bundles.example.ch/moat/www.json",
+          "intervalSeconds": 300
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull URL with credentials",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://user:pw@bundles.example.ch/moat/www.json",
+          "intervalSeconds": 300
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull URL with a query",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/moat/www.json?v=1",
+          "intervalSeconds": 300
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull URL with a fragment",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/moat/www.json#x",
+          "intervalSeconds": 300
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull URL without a file path",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/",
+          "intervalSeconds": 300
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull URL ending in a slash",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/moat/",
+          "intervalSeconds": 300
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull URL with a dot segment",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/moat/../www.json",
+          "intervalSeconds": 300
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull URL with an empty segment",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/moat//www.json",
+          "intervalSeconds": 300
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull URL with an encoded character",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/moat/%2e%2e/www.json",
+          "intervalSeconds": 300
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull URL with a backslash",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch\\@evil.example/www.json",
+          "intervalSeconds": 300
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull URL with an upper-case host",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://Bundles.example.ch/www.json",
+          "intervalSeconds": 300
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull URL too long",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json",
+          "intervalSeconds": 300
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull without an interval",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/moat/www.json"
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull with an unknown field",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/moat/www.json",
+          "intervalSeconds": 300,
+          "header": "x"
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull interval as a duration text",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": {
+          "url": "https://bundles.example.ch/moat/www.json",
+          "intervalSeconds": "5m"
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "policy_invalid"
+      }
+    },
+    {
+      "name": "pull null",
+      "config": {
+        "version": 1,
+        "upstreams": {
+          "hubspot": {
+            "origin": "https://api.hubapi.com",
+            "auth": {
+              "type": "bearer",
+              "secret": "hubspot-token"
+            },
+            "timeoutMs": 10000
+          }
+        },
+        "routes": {
+          "newsletter": {
+            "method": "POST",
+            "path": "/newsletter",
+            "upstream": "hubspot",
+            "upstreamPath": "/crm/v3/objects/contacts",
+            "maxBodyBytes": 16384,
+            "contentTypes": [
+              "application/json"
+            ],
+            "responseContentTypes": [
+              "application/json"
+            ],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "policy": {
+        "v": 1,
+        "upstreams": {
+          "api.hubapi.com": {
+            "pathPrefixes": [
+              "/crm/v3/objects"
+            ],
+            "methods": [
+              "POST"
+            ],
+            "secrets": [
+              "hubspot-token"
+            ]
+          }
+        },
+        "maxBodyBytes": 65536,
+        "maxResponseBytes": 1048576,
+        "maxTimeoutMs": 15000,
+        "limits": {
+          "perIp": {
+            "requests": 30,
+            "windowSeconds": 60
+          },
+          "total": {
+            "requests": 600,
+            "windowSeconds": 60
+          },
+          "maxClients": 10000
+        },
+        "pull": null
       },
       "expect": {
         "ok": false,
