@@ -27,5 +27,23 @@ routes:
     quota:
       requests: 500
       period: day
+    # Only these fields reach HubSpot (FR-13): anything else the form sends is removed, and a
+    # sign-up without a valid e-mail is refused with 400 body_invalid.
+    body:
+      properties:
+        type: object
+        required: true
+        fields:
+          email:
+            type: string
+            required: true
+            format: email
+            maxLength: 254
+          firstname:
+            type: string
+            maxLength: 100
+          lastname:
+            type: string
+            maxLength: 100
     # When the form runs on another site than the gate, list that site (FR-15):
     # origins: ['https://www.example.ch']

@@ -177,7 +177,7 @@ describe('«Testen» through the gate (FR-73, T-59)', () => {
 });
 
 describe('the suggested policy (SEC-14)', () => {
-  it("admits exactly the recipe's upstream path, method and secret", async () => {
+  it("admits exactly the recipe's upstream path, method and secret, and keeps its body check", async () => {
     const { id, policy } = setup();
     const result = await policy.execute(new SuggestPolicyQuery(id));
     expect(result.status).toBe('ok');
@@ -187,6 +187,8 @@ describe('the suggested policy (SEC-14)', () => {
         pathPrefixes: ['/crm/v3/objects/contacts'],
         methods: ['POST'],
         secrets: ['hubspot-token'],
+        // FR-13: the recipe lists its body fields, so a later bundle cannot drop them.
+        requireBody: true,
       },
     });
   });

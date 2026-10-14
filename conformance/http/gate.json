@@ -318,6 +318,38 @@
           "maxOutputTokens": 500,
           "tokens": 500
         }
+      },
+      "signup": {
+        "method": "POST",
+        "path": "/signup",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 1024,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null,
+        "body": {
+          "email": {
+            "type": "string",
+            "required": true,
+            "format": "email",
+            "maxLength": 254
+          },
+          "firstName": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["news", "offers"]
+            },
+            "maxItems": 2
+          }
+        }
       }
     }
   },
@@ -1417,6 +1449,125 @@
           "retry-after": "<any>"
         },
         "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "FR-13: forwards only the listed body fields, as canonical JSON",
+      "request": {
+        "method": "POST",
+        "path": "/signup",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{ \"tags\": [\"news\"], \"email\": \"a@example.com\", \"isAdmin\": true, \"firstName\": \"Eme\", \"properties\": {\"hs_role\": \"owner\"} }"
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "json": {
+          "method": "POST",
+          "path": "/echo",
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"email\":\"a@example.com\",\"firstName\":\"Eme\",\"tags\":[\"news\"]}"
+        }
+      }
+    },
+    {
+      "name": "FR-13: a missing required field is refused before anything is sent",
+      "request": {
+        "method": "POST",
+        "path": "/signup",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"firstName\":\"Eme\"}"
+      },
+      "expect": {
+        "status": 400,
+        "upstreamCalls": 0,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "FR-13: a field of the wrong type is refused",
+      "request": {
+        "method": "POST",
+        "path": "/signup",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"email\":\"a@example.com\",\"firstName\":7}"
+      },
+      "expect": {
+        "status": 400,
+        "upstreamCalls": 0,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "FR-13: a value outside the enum in an array is refused",
+      "request": {
+        "method": "POST",
+        "path": "/signup",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"email\":\"a@example.com\",\"tags\":[\"admin\"]}"
+      },
+      "expect": {
+        "status": 400,
+        "upstreamCalls": 0,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "FR-13: an e-mail with a CRLF is refused",
+      "request": {
+        "method": "POST",
+        "path": "/signup",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"email\":\"a@example.com\\r\\nBcc: b@example.com\"}"
+      },
+      "expect": {
+        "status": 400,
+        "upstreamCalls": 0,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "FR-13: a body that is not JSON is refused",
+      "request": {
+        "method": "POST",
+        "path": "/signup",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "email=a@example.com"
+      },
+      "expect": {
+        "status": 400,
+        "upstreamCalls": 0,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "FR-13: the content type is checked before the body",
+      "request": {
+        "method": "POST",
+        "path": "/signup",
+        "headers": {
+          "Content-Type": "text/plain"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 415,
+        "upstreamCalls": 0,
+        "error": "unsupported_media_type"
       }
     }
   ]

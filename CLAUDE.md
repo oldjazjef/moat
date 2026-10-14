@@ -27,7 +27,9 @@ Four components (ANFORDERUNGEN.md, header):
 > budgets for AI APIs (FR-31: route `budget`, policy `upstreams.<host>.budget`, usage read from the
 > answer in a closed list of formats, bounded requests only (`request_unbounded`: no stream, a
 > `max_tokens` up to `maxOutputTokens`), the estimate charged up front, `budget_exhausted`,
-> `upstream_usage_invalid`), the signed lock
+> `upstream_usage_invalid`), request validation (FR-13: route `body` lists the JSON fields with
+> type and bounds, `libs/core/src/http/body.ts`; unknown fields removed at every level, the canonical
+> JSON forwarded, `body_invalid`; policy `upstreams.<host>.requireBody`), the signed lock
 > of a gate or a whole environment (`moat env|gate disable`, `gate_disabled`), the local kill switch
 > (SEC-15: `php moat-gate.php kill|revive [--route=]`, the data file `kill`, `killSwitchOf` in
 > `libs/core/src/gate/`; policy `maxConfigAgeSeconds` → `status` warns, T-23) and the hardening

@@ -23,6 +23,7 @@ export const REJECTION_CODES = [
   'path_invalid',
   'origin_forbidden',
   'preflight_rejected',
+  'body_invalid',
   'keyfile_invalid',
   'keyfile_locked',
 ] as const;

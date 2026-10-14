@@ -255,6 +255,47 @@ describe('route edits', () => {
     );
   });
 
+  it('FR-13: writes body fields quoted, keeps them when the form leaves them out, removes them with null', () => {
+    const body = {
+      email: {
+        type: 'string' as const,
+        required: true,
+        format: 'email' as const,
+      },
+      plan: { type: 'string' as const, enum: ['yes', '1.0'] },
+    };
+    const added = setRoute(
+      site,
+      'newsletter',
+      { ...newsletter, body },
+      'update',
+    );
+    expect(loadMoatYaml(added).routes['newsletter']?.body).toEqual(body);
+    expect(added).toContain('# Sign-ups from the footer form.');
+    expect(added).toMatch(/enum: \[["']yes["'], ["']1\.0["']\]/);
+    // The route form does not send `body`: an update keeps it as written.
+    const kept = setRoute(added, 'newsletter', newsletter, 'update');
+    expect(kept).toBe(added);
+    expect(
+      setRoute(added, 'newsletter', { ...newsletter, body: null }, 'update'),
+    ).not.toContain('body');
+  });
+
+  it('FR-13: refuses body fields on a GET route', () => {
+    expect(() =>
+      setRoute(
+        site,
+        'newsletter',
+        {
+          ...newsletter,
+          method: 'GET',
+          body: { email: { type: 'string' } },
+        },
+        'update',
+      ),
+    ).toThrow(ConfigEditError);
+  });
+
   it('FR-31: adds, changes and removes a budget, keeping the written amounts', () => {
     const added = setRoute(
       site,

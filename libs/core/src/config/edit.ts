@@ -12,6 +12,7 @@ import {
 import { MoatRejection } from '../errors';
 import { compileConfig } from './compile';
 import { LIMIT_SCOPES, METHODS, NAME, type QuotaPeriod } from './compiled';
+import type { BodyFields } from '../http/body';
 import { parseAmount, type UsageFormat } from '../http/budget';
 import type { MoatConfig } from './schema';
 import { parseDuration, parseSize } from './units';
@@ -233,6 +234,11 @@ export interface RouteInput {
       readonly outputPerMillion: string;
     };
   };
+  /**
+   * FR-13: the fields of the JSON body. Absent = left as written (the route form does not edit
+   * them), null = the key is removed, fields = written as given.
+   */
+  readonly body?: BodyFields | null;
 }
 
 /** Same value as written, so the author's spelling ("10m" vs "600s") is kept. */
@@ -317,6 +323,31 @@ function setList(doc: Document, path: string[], values: readonly string[]) {
     seq.items.push(scalar);
   }
   setIn(doc, path, seq);
+}
+
+/**
+ * Plain data as YAML nodes: block maps and lists, every string quoted (CLAUDE.md, YAML standards:
+ * an enum value "yes" or "1.0" stays a string), numbers and booleans as they are.
+ */
+function dataNode(doc: Document, value: unknown): unknown {
+  if (typeof value === 'string') {
+    const scalar = new Scalar(value);
+    scalar.type = quoteStyle(doc);
+    return scalar;
+  }
+  if (Array.isArray(value)) {
+    const seq = new YAMLSeq();
+    seq.flow = value.every((item) => typeof item !== 'object');
+    for (const item of value) seq.items.push(dataNode(doc, item));
+    return seq;
+  }
+  if (value !== null && typeof value === 'object') {
+    const map = new YAMLMap();
+    for (const [key, item] of Object.entries(value))
+      map.set(key, dataNode(doc, item));
+    return map;
+  }
+  return new Scalar(value);
 }
 
 /** Every secret the upstreams use: what a bundle of this config must carry. */
@@ -475,6 +506,12 @@ export function setRoute(
   if (input.origins === undefined || input.origins.length === 0)
     deleteIn(doc, at('origins'));
   else setList(doc, at('origins'), input.origins);
+  if (input.body === null) deleteIn(doc, at('body'));
+  else if (
+    input.body !== undefined &&
+    JSON.stringify(config.routes[route]?.body) !== JSON.stringify(input.body)
+  )
+    setIn(doc, at('body'), dataNode(doc, input.body));
   return checkedEntry(doc, 'routes', route);
 }
 

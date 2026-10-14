@@ -52,6 +52,23 @@ export const RECIPES: Readonly<Record<RecipeId, Recipe>> = {
         maxBodySize: '4KiB',
         rateLimit: { requests: 5, window: '10m' },
         quota: { requests: 500, period: 'day' },
+        // FR-13: HubSpot gets a contact with these properties and nothing else.
+        body: {
+          properties: {
+            type: 'object',
+            required: true,
+            fields: {
+              email: {
+                type: 'string',
+                required: true,
+                format: 'email',
+                maxLength: 254,
+              },
+              firstname: { type: 'string', maxLength: 100 },
+              lastname: { type: 'string', maxLength: 100 },
+            },
+          },
+        },
       },
     },
     secret: 'hubspot-token',
@@ -89,6 +106,34 @@ export const RECIPES: Readonly<Record<RecipeId, Recipe>> = {
             limit: '5.00',
             inputPerMillion: '2.50',
             outputPerMillion: '10.00',
+          },
+        },
+        // FR-13: one model, a bounded answer, a short conversation of plain text — no tools,
+        // no stream, no other parameters.
+        body: {
+          model: { type: 'string', required: true, enum: ['gpt-4o-mini'] },
+          max_tokens: {
+            type: 'integer',
+            required: true,
+            minimum: 1,
+            maximum: 4000,
+          },
+          messages: {
+            type: 'array',
+            required: true,
+            minItems: 1,
+            maxItems: 20,
+            items: {
+              type: 'object',
+              fields: {
+                role: {
+                  type: 'string',
+                  required: true,
+                  enum: ['user', 'assistant'],
+                },
+                content: { type: 'string', required: true, maxLength: 4000 },
+              },
+            },
           },
         },
       },

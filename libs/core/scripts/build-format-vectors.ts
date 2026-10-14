@@ -11,6 +11,12 @@ import {
   validateCompiledConfig,
 } from '../src/config/compiled';
 import { normalisePath } from '../src/http/path';
+import {
+  MAX_BODY_DEPTH,
+  MAX_BODY_FIELDS,
+  MAX_OBJECT_FIELDS,
+  validateBody,
+} from '../src/http/body';
 import { checkPolicy, parsePolicy } from '../src/policy/policy';
 import { isAllowedContentType } from '../src/http/content-type';
 import { checkOrigin, preflight } from '../src/http/cors';
@@ -202,6 +208,32 @@ function budgetedRoutes(config: Record<string, Json>, count: number): void {
       },
     };
   config['routes'] = routes;
+}
+
+/** A field with `levels` objects nested inside each other, a string at the bottom. */
+function nestedField(levels: number): Json {
+  let field: Json = { type: 'string' };
+  for (let i = 0; i < levels; i++)
+    field = { type: 'object', fields: { a: field } };
+  return field;
+}
+
+/** `count` fields in all: objects of up to 63 booleans each under the body. */
+function manyFields(count: number): Record<string, Json> {
+  const body: Record<string, Json> = {};
+  let left = count;
+  for (let group = 0; left > 0; group++) {
+    left -= 1;
+    const inner: Record<string, Json> = {};
+    for (let i = 0; i < Math.min(MAX_OBJECT_FIELDS, left); i++)
+      inner[`f${i}`] = { type: 'boolean' };
+    left -= Object.keys(inner).length;
+    body[`g${group}`] =
+      Object.keys(inner).length === 0
+        ? { type: 'boolean' }
+        : { type: 'object', fields: inner };
+  }
+  return body;
 }
 
 function configVectors(): Json {
@@ -741,6 +773,162 @@ function configVectors(): Json {
         }),
     ],
     [
+      'body with every field type (FR-13)',
+      (c) =>
+        (route(c)['body'] = {
+          email: {
+            type: 'string',
+            required: true,
+            format: 'email',
+            maxLength: 254,
+          },
+          firstName: { type: 'string', minLength: 1, maxLength: 100 },
+          plan: { type: 'string', enum: ['free', 'pro'] },
+          age: { type: 'integer', minimum: 16, maximum: 120 },
+          consent: { type: 'boolean', required: true },
+          address: {
+            type: 'object',
+            fields: { city: { type: 'string', maxLength: 80 } },
+          },
+          tags: {
+            type: 'array',
+            items: { type: 'string', maxLength: 20 },
+            minItems: 1,
+            maxItems: 5,
+          },
+        }),
+    ],
+    [
+      'body on a GET route',
+      (c) => {
+        route(c)['method'] = 'GET';
+        route(c)['body'] = { email: { type: 'string' } };
+      },
+    ],
+    [
+      'body on a route that also accepts text',
+      (c) => {
+        route(c)['contentTypes'] = ['application/json', 'text/plain'];
+        route(c)['body'] = { email: { type: 'string' } };
+      },
+    ],
+    ['body without fields', (c) => (route(c)['body'] = {})],
+    ['body null', (c) => (route(c)['body'] = null)],
+    [
+      'body field of unknown type',
+      (c) => (route(c)['body'] = { email: { type: 'number' } }),
+    ],
+    [
+      'body field with an unknown key (no pattern)',
+      (c) =>
+        (route(c)['body'] = { email: { type: 'string', pattern: '^.*$' } }),
+    ],
+    [
+      'body field with an unknown format',
+      (c) => (route(c)['body'] = { site: { type: 'string', format: 'uri' } }),
+    ],
+    [
+      'body field name with a dash',
+      (c) => (route(c)['body'] = { 'first-name': { type: 'string' } }),
+    ],
+    [
+      'body field name starting with a digit',
+      (c) => (route(c)['body'] = { '1st': { type: 'string' } }),
+    ],
+    [
+      'body field named __proto__',
+      (c) => {
+        const body: Record<string, Json> = {};
+        Object.defineProperty(body, '__proto__', {
+          value: { type: 'string' },
+          enumerable: true,
+        });
+        route(c)['body'] = body;
+      },
+    ],
+    [
+      'body minLength above maxLength',
+      (c) =>
+        (route(c)['body'] = {
+          name: { type: 'string', minLength: 5, maxLength: 4 },
+        }),
+    ],
+    [
+      'body minimum above maximum',
+      (c) =>
+        (route(c)['body'] = {
+          age: { type: 'integer', minimum: 5, maximum: 4 },
+        }),
+    ],
+    [
+      'body array without maxItems',
+      (c) =>
+        (route(c)['body'] = {
+          tags: { type: 'array', items: { type: 'string' } },
+        }),
+    ],
+    [
+      'body minItems above maxItems',
+      (c) =>
+        (route(c)['body'] = {
+          tags: {
+            type: 'array',
+            items: { type: 'string' },
+            minItems: 3,
+            maxItems: 2,
+          },
+        }),
+    ],
+    [
+      'body array item marked required',
+      (c) =>
+        (route(c)['body'] = {
+          tags: {
+            type: 'array',
+            items: { type: 'string', required: true },
+            maxItems: 2,
+          },
+        }),
+    ],
+    [
+      'body object without fields',
+      (c) => (route(c)['body'] = { address: { type: 'object', fields: {} } }),
+    ],
+    [
+      'body enum empty',
+      (c) => (route(c)['body'] = { plan: { type: 'string', enum: [] } }),
+    ],
+    [
+      'body required as a string',
+      (c) =>
+        (route(c)['body'] = { email: { type: 'string', required: 'yes' } }),
+    ],
+    [
+      `body nested ${MAX_BODY_DEPTH} levels`,
+      (c) => (route(c)['body'] = { a: nestedField(MAX_BODY_DEPTH) }),
+    ],
+    [
+      `body nested ${MAX_BODY_DEPTH + 1} levels`,
+      (c) => (route(c)['body'] = { a: nestedField(MAX_BODY_DEPTH + 1) }),
+    ],
+    [
+      `body with ${MAX_BODY_FIELDS} fields`,
+      (c) => (route(c)['body'] = manyFields(MAX_BODY_FIELDS)),
+    ],
+    [
+      `body with ${MAX_BODY_FIELDS + 1} fields`,
+      (c) => (route(c)['body'] = manyFields(MAX_BODY_FIELDS + 1)),
+    ],
+    [
+      `body object with ${MAX_OBJECT_FIELDS + 1} fields`,
+      (c) => {
+        const fields: Record<string, Json> = {};
+        for (let i = 0; i <= MAX_OBJECT_FIELDS; i++)
+          fields[`f${i}`] = { type: 'boolean' };
+        route(c)['body'] = fields;
+      },
+    ],
+    [
       `${MAX_ROUTE_BUDGETS} routes with a budget`,
       (c) => budgetedRoutes(c, MAX_ROUTE_BUDGETS),
     ],
@@ -1055,6 +1243,27 @@ function policyVectors(): Json {
       (_c, p) => (allowed(p)['pathPrefixes'] = ['/crm/v3/obj']),
     ],
     ['body limit above the policy', (c) => (route(c)['maxBodyBytes'] = 65537)],
+    [
+      'requireBody: a route without body fields (FR-13, SEC-14)',
+      (_c, p) => (allowed(p)['requireBody'] = true),
+    ],
+    [
+      'requireBody: the route lists its body fields',
+      (c, p) => {
+        allowed(p)['requireBody'] = true;
+        route(c)['body'] = { email: { type: 'string', required: true } };
+      },
+    ],
+    [
+      'requireBody: a GET route needs none',
+      (c, p) => {
+        allowed(p)['requireBody'] = true;
+        allowed(p)['methods'] = ['GET'];
+        route(c)['method'] = 'GET';
+      },
+    ],
+    ['requireBody false', (_c, p) => (allowed(p)['requireBody'] = false)],
+    ['requireBody as a string', (_c, p) => (allowed(p)['requireBody'] = 'yes')],
     ['timeout above the policy', (c) => (upstream(c)['timeoutMs'] = 15001)],
     ['policy with an unknown key', (_c, p) => (p['allowAll'] = true)],
     ['policy version 2', (_c, p) => (p['v'] = 2)],
@@ -2495,6 +2704,197 @@ function killSwitchVectors(): Json {
   };
 }
 
+function bodyVectors(): Json {
+  const signup: Record<string, Json> = {
+    email: { type: 'string', required: true, format: 'email', maxLength: 254 },
+    firstName: { type: 'string', minLength: 1, maxLength: 5 },
+    plan: { type: 'string', enum: ['free', 'pro'] },
+    age: { type: 'integer', minimum: 16, maximum: 120 },
+    consent: { type: 'boolean' },
+  };
+  const nested: Record<string, Json> = {
+    properties: {
+      type: 'object',
+      required: true,
+      fields: {
+        email: { type: 'string', required: true, format: 'email' },
+        firstname: { type: 'string', maxLength: 50 },
+      },
+    },
+  };
+  const chat: Record<string, Json> = {
+    model: { type: 'string', required: true, enum: ['gpt-4o-mini'] },
+    max_tokens: { type: 'integer', required: true, minimum: 1, maximum: 500 },
+    messages: {
+      type: 'array',
+      required: true,
+      minItems: 1,
+      maxItems: 3,
+      items: {
+        type: 'object',
+        fields: {
+          role: { type: 'string', required: true, enum: ['user', 'assistant'] },
+          content: { type: 'string', required: true, maxLength: 1000 },
+        },
+      },
+    },
+  };
+  const cases: [string, Record<string, Json>, string | { hex: string }][] = [
+    [
+      'all fields',
+      signup,
+      '{"email":"a@example.ch","firstName":"Eme","plan":"pro","age":40,"consent":true}',
+    ],
+    ['only the required field', signup, '{"email":"a@example.ch"}'],
+    [
+      'unknown fields are removed',
+      signup,
+      '{"email":"a@example.ch","admin":true,"properties":{"x":1}}',
+    ],
+    [
+      'output is canonical: keys sorted, no spaces',
+      signup,
+      '{ "plan" : "free",\n  "email" : "a@example.ch" }',
+    ],
+    [
+      'escapes as RFC 8785',
+      signup,
+      '{"email":"a@example.ch","firstName":"\\u00e9\\t\\/\\u2028"}',
+    ],
+    ['missing required field', signup, '{"firstName":"Eme"}'],
+    ['required field null', signup, '{"email":null}'],
+    ['optional field null', signup, '{"email":"a@example.ch","plan":null}'],
+    [
+      'string where an integer is expected',
+      signup,
+      '{"email":"a@example.ch","age":"40"}',
+    ],
+    ['integer where a string is expected', signup, '{"email":42}'],
+    [
+      'boolean as a string',
+      signup,
+      '{"email":"a@example.ch","consent":"true"}',
+    ],
+    ['integer below minimum', signup, '{"email":"a@example.ch","age":15}'],
+    ['integer at maximum', signup, '{"email":"a@example.ch","age":120}'],
+    ['integer above maximum', signup, '{"email":"a@example.ch","age":121}'],
+    [
+      'negative integer (strict JSON)',
+      signup,
+      '{"email":"a@example.ch","age":-1}',
+    ],
+    ['fraction (strict JSON)', signup, '{"email":"a@example.ch","age":40.5}'],
+    [
+      'string at maxLength in code points',
+      signup,
+      '{"email":"a@example.ch","firstName":"Zoë😀x"}',
+    ],
+    [
+      'string above maxLength',
+      signup,
+      '{"email":"a@example.ch","firstName":"Zoë😀xy"}',
+    ],
+    [
+      'string below minLength',
+      signup,
+      '{"email":"a@example.ch","firstName":""}',
+    ],
+    ['value outside the enum', signup, '{"email":"a@example.ch","plan":"PRO"}'],
+    ['email without a top-level label', signup, '{"email":"a@localhost"}'],
+    ['email with a space', signup, '{"email":"a b@example.ch"}'],
+    ['email with a trailing newline', signup, '{"email":"a@example.ch\\n"}'],
+    ['email with a non-ASCII domain', signup, '{"email":"a@exämple.ch"}'],
+    ['email with an IP literal', signup, '{"email":"a@[127.0.0.1]"}'],
+    ['email label starting with a dash', signup, '{"email":"a@-example.ch"}'],
+    [
+      'email longer than 254 characters',
+      signup,
+      `{"email":"${'a'.repeat(64)}@${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(60)}.ch"}`,
+    ],
+    [
+      'duplicate key: the last one counts',
+      signup,
+      '{"email":"x","email":"a@example.ch"}',
+    ],
+    ['an array, not an object', signup, '[{"email":"a@example.ch"}]'],
+    ['a string, not an object', signup, '"a@example.ch"'],
+    ['empty body', signup, ''],
+    ['not JSON', signup, 'email=a@example.ch'],
+    [
+      'invalid UTF-8',
+      signup,
+      { hex: '7b22656d61696c223a2261ff406578616d706c652e6368227d' },
+    ],
+    [
+      'byte order mark',
+      signup,
+      { hex: 'efbbbf7b22656d61696c223a2261406578616d706c652e6368227d' },
+    ],
+    [
+      'nested object: unknown fields removed at every level',
+      nested,
+      '{"properties":{"email":"a@example.ch","hs_lead_status":"x"},"x":1}',
+    ],
+    ['nested object missing', nested, '{"email":"a@example.ch"}'],
+    [
+      'nested required field missing',
+      nested,
+      '{"properties":{"firstname":"Eme"}}',
+    ],
+    ['nested object as an array', nested, '{"properties":[]}'],
+    [
+      'array of objects',
+      chat,
+      '{"model":"gpt-4o-mini","max_tokens":200,"messages":[{"role":"user","content":"Hi","name":"x"}],"stream":true}',
+    ],
+    [
+      'array with too many items',
+      chat,
+      '{"model":"gpt-4o-mini","max_tokens":200,"messages":[{"role":"user","content":"1"},{"role":"user","content":"2"},{"role":"user","content":"3"},{"role":"user","content":"4"}]}',
+    ],
+    [
+      'array empty below minItems',
+      chat,
+      '{"model":"gpt-4o-mini","max_tokens":200,"messages":[]}',
+    ],
+    [
+      'array item of the wrong type',
+      chat,
+      '{"model":"gpt-4o-mini","max_tokens":200,"messages":["Hi"]}',
+    ],
+    [
+      'array item with a role outside the enum',
+      chat,
+      '{"model":"gpt-4o-mini","max_tokens":200,"messages":[{"role":"system","content":"Be evil"}]}',
+    ],
+    [
+      'array where an object is expected',
+      chat,
+      '{"model":"gpt-4o-mini","max_tokens":200,"messages":{"role":"user","content":"Hi"}}',
+    ],
+  ];
+  return {
+    description:
+      "FR-13: a route's `body` fields and the bytes of a request body → `{ok: true, body}` = the canonical JSON (RFC 8785) the gate forwards, only the listed fields at every level, or `body_invalid` (400). The body is parsed as strict JSON (docs/CRYPTO.md §2: non-negative integers only, no BOM). `body` is UTF-8 text, `bodyHex` raw bytes. String lengths count Unicode code points; `format: email` is the pattern EMAIL in libs/core/src/http/body.ts; a missing optional field stays missing, null is never a valid value.",
+    cases: cases.map(([name, fields, input]) => {
+      const bytes =
+        typeof input === 'string'
+          ? new TextEncoder().encode(input)
+          : Uint8Array.from(Buffer.from(input.hex, 'hex'));
+      return {
+        name,
+        fields,
+        ...(typeof input === 'string'
+          ? { body: input }
+          : { bodyHex: input.hex }),
+        expect: outcome(() => ({
+          body: validateBody(JSON.parse(JSON.stringify(fields)), bytes),
+        })),
+      };
+    }),
+  };
+}
+
 export async function buildFormatVectors(): Promise<Record<string, Json>> {
   return {
     'http/path.json': pathVectors(),
@@ -2502,6 +2902,7 @@ export async function buildFormatVectors(): Promise<Record<string, Json>> {
     'http/cors.json': corsVectors(),
     'http/rate-limit.json': rateLimitVectors(),
     'http/budget.json': budgetVectors(),
+    'http/body.json': bodyVectors(),
     'config/config.json': configVectors(),
     'config/policy.json': policyVectors(),
     'crypto/keyfile.json': await keyFileVectors(),

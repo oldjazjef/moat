@@ -14,6 +14,7 @@ import { parseStrictJson, type JsonValue } from './json/strict-json';
 import { openSecret } from './secrets/seal';
 import { normalisePath } from './http/path';
 import { isAllowedContentType } from './http/content-type';
+import { validateBody, type BodyFields } from './http/body';
 import { checkOrigin, preflight } from './http/cors';
 import {
   clientKey,
@@ -121,6 +122,7 @@ describe('conformance vectors', () => {
       'http/cors.json',
       'http/rate-limit.json',
       'http/budget.json',
+      'http/body.json',
       'gate/hardening.json',
       'gate/kill-switch.json',
       '../http/gate.json',
@@ -334,6 +336,28 @@ describe('conformance vectors', () => {
     it.each(cases)('$name', ({ header, allowed, expect: expected }) => {
       expect(isAllowedContentType(header, allowed)).toBe(expected.ok);
     });
+  });
+
+  describe('http/body.json', () => {
+    const { cases } = load<{
+      cases: {
+        name: string;
+        fields: BodyFields;
+        body?: string;
+        bodyHex?: string;
+        expect: Expect;
+      }[];
+    }>('http/body.json');
+    it.each(cases)(
+      '$name',
+      async ({ fields, body, bodyHex, expect: wanted }) => {
+        const bytes = body === undefined ? fromHex(bodyHex ?? '') : utf8(body);
+        const result = await outcome(() => validateBody(fields, bytes));
+        expect(result.ok ? { ok: true, body: result.value } : result).toEqual(
+          wanted,
+        );
+      },
+    );
   });
 
   describe('http/cors.json', () => {

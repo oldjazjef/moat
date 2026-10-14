@@ -10,6 +10,7 @@ import {
   NAME,
   JSON_TYPE,
   QUOTA_PERIODS,
+  BODY_METHODS,
   type CompiledConfig,
 } from '../config/compiled';
 import { reject } from '../errors';
@@ -91,6 +92,11 @@ export const policySchema = z.strictObject({
           tokens: z.int().min(1).max(MAX_BUDGET_TOKENS),
         })
         .optional(),
+      /**
+       * FR-13, SEC-14: every POST, PUT and PATCH route to this host must list its body fields, so
+       * a bundle cannot drop the validation and pass any body on with the host's secret.
+       */
+      requireBody: z.boolean().optional(),
     }),
   ),
   maxBodyBytes: z.int().min(0).max(MAX_BODY_BYTES),
@@ -213,6 +219,12 @@ export function checkPolicy(config: CompiledConfig, policy: Policy): void {
       reject('policy_violation');
     }
     if (route.maxBodyBytes > policy.maxBodyBytes) reject('policy_violation');
+    if (
+      allowed.requireBody === true &&
+      BODY_METHODS.includes(route.method) &&
+      route.body === undefined
+    )
+      reject('policy_violation');
     if (allowed.budget !== undefined) {
       // Every answer from a host with a budget must be countable, in the policy's format.
       if (!route.responseContentTypes.every((type) => type === JSON_TYPE))
@@ -330,6 +342,20 @@ export function suggestPolicy(config: CompiledConfig): Policy {
   }
   for (const [key, budget] of hostBudgets(config))
     if (upstreams[key] !== undefined) upstreams[key].budget = budget;
+  for (const [key, entry] of Object.entries(upstreams)) {
+    const sending = Object.values(config.routes).filter(
+      (route) =>
+        BODY_METHODS.includes(route.method) &&
+        config.upstreams[route.upstream] !== undefined &&
+        hostKey(config.upstreams[route.upstream]?.origin ?? '') === key,
+    );
+    // FR-13: once every route that sends a body to the host checks it, keep it that way.
+    if (
+      sending.length > 0 &&
+      sending.every((route) => route.body !== undefined)
+    )
+      entry.requireBody = true;
+  }
   const routes = Object.values(config.routes);
   const policy: Policy = {
     v: 1,

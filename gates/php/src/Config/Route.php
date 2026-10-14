@@ -10,6 +10,7 @@ final readonly class Route
      * @param list<string> $contentTypes
      * @param list<string> $responseContentTypes
      * @param list<string> $origins browser origins allowed cross-origin (FR-15); empty = none
+     * @param array<string, BodyField>|null $body
      */
     public function __construct(
         public string $name,
@@ -27,5 +28,7 @@ final readonly class Route
         public ?Quota $quota = null,
         /** FR-31 for AI APIs: tokens and/or cost per period, counted from the answers; null = none. */
         public ?Budget $budget = null,
+        /** FR-13: the fields of the JSON body the gate forwards; null = the body as received. */
+        public ?array $body = null,
     ) {}
 }

@@ -69,6 +69,9 @@ export function compileConfig(
       ...(route.budget === undefined
         ? {}
         : { budget: JSON.parse(JSON.stringify(route.budget)) as JsonValue }),
+      ...(route.body === undefined
+        ? {}
+        : { body: JSON.parse(JSON.stringify(route.body)) as JsonValue }),
     };
   }
   const locked = gate !== undefined && !gateLockState(config, gate).enabled;

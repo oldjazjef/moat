@@ -59,7 +59,26 @@ export interface CompiledRoute {
   readonly quota?: Quota;
   /** FR-31: a budget for an AI API; absent = none. */
   readonly budget?: Budget;
+  /** FR-13: the fields of the JSON body the gate forwards; absent = the body as received. */
+  readonly body?: BodyFields;
 }
+
+/** FR-13: a body field (libs/core/src/http/body.ts). */
+export interface BodyField {
+  readonly type: 'string' | 'integer' | 'boolean' | 'object' | 'array';
+  readonly required?: boolean;
+  readonly minLength?: number;
+  readonly maxLength?: number;
+  readonly enum?: readonly string[];
+  readonly format?: 'email';
+  readonly minimum?: number;
+  readonly maximum?: number;
+  readonly fields?: BodyFields;
+  readonly items?: BodyField;
+  readonly minItems?: number;
+  readonly maxItems?: number;
+}
+export type BodyFields = Readonly<Record<string, BodyField>>;
 
 export interface CompiledUpstream {
   readonly origin: string;
@@ -204,6 +223,8 @@ export interface RouteDefinition {
   };
   readonly quota?: Quota;
   readonly budget?: Budget;
+  /** FR-13: not edited by the route form; absent = left as written. */
+  readonly body?: BodyFields | null;
 }
 
 /** An upstream as moat.yaml writes it (UpstreamInput in libs/core/src/config/edit.ts). */

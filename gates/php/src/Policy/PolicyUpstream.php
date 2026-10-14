@@ -20,5 +20,7 @@ final readonly class PolicyUpstream
         public array $secrets,
         /** FR-31, SEC-14: tokens per period for everything sent to this host (no cost); null = none. */
         public ?Budget $budget = null,
+        /** FR-13, SEC-14: every POST, PUT and PATCH route to this host must list its body fields. */
+        public bool $requireBody = false,
     ) {}
 }

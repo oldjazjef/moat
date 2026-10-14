@@ -94,6 +94,32 @@ describe('RoutesPage', () => {
     );
   });
 
+  it('FR-13: says which body fields the gate checks, or that it forwards the body unchecked', async () => {
+    const unchecked = await openProjectTab('routes', RoutesPage, PROJECT);
+    expect(text(unchecked.el, '[data-body-unchecked]')).toBe(
+      'Body ungeprüft weitergeleitet',
+    );
+    TestBed.resetTestingModule();
+    const withBody = JSON.parse(JSON.stringify(PROJECT)) as ProjectView;
+    const config = withBody.project?.config;
+    if (config?.status !== 'valid') throw new Error('fixture');
+    Object.assign(config.config.routes['newsletter'] ?? {}, {
+      body: {
+        properties: {
+          type: 'object',
+          required: true,
+          fields: { email: { type: 'string', required: true } },
+        },
+        consent: { type: 'boolean' },
+      },
+    });
+    const { el } = await openProjectTab('routes', RoutesPage, withBody);
+    expect(text(el, '[data-body-fields]')).toBe(
+      'Geprüfte Felder: properties, consent',
+    );
+    expect(el.querySelector('[data-body-unchecked]')).toBeNull();
+  });
+
   it('FR-31: shows a route quota and sets one from the form', async () => {
     const withQuota = JSON.parse(JSON.stringify(PROJECT)) as ProjectView;
     const config = withQuota.project?.config;

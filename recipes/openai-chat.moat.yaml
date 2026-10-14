@@ -39,5 +39,33 @@ routes:
         # Example prices in USD per million tokens: use your model's current prices.
         inputPerMillion: '2.50'
         outputPerMillion: '10.00'
+    # Only these fields reach OpenAI (FR-13): one model, a bounded answer, a short conversation
+    # of plain text. `stream`, tools and every other parameter are removed.
+    body:
+      model:
+        type: string
+        required: true
+        enum: ['gpt-4o-mini']
+      max_tokens:
+        type: integer
+        required: true
+        minimum: 1
+        maximum: 4000
+      messages:
+        type: array
+        required: true
+        minItems: 1
+        maxItems: 20
+        items:
+          type: object
+          fields:
+            role:
+              type: string
+              required: true
+              enum: ['user', 'assistant']
+            content:
+              type: string
+              required: true
+              maxLength: 4000
     # When the chat runs on another site than the gate, list that site (FR-15):
     # origins: ['https://www.example.ch']

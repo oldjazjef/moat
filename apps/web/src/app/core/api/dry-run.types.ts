@@ -7,6 +7,7 @@ export const DRY_RUN_ERRORS = [
   'not_found',
   'method_not_allowed',
   'path_invalid',
+  'body_invalid',
   'request_unbounded',
   'body_too_large',
   'unsupported_media_type',

@@ -1,0 +1,1611 @@
+{
+  "description": "FR-13: a route's `body` fields and the bytes of a request body → `{ok: true, body}` = the canonical JSON (RFC 8785) the gate forwards, only the listed fields at every level, or `body_invalid` (400). The body is parsed as strict JSON (docs/CRYPTO.md §2: non-negative integers only, no BOM). `body` is UTF-8 text, `bodyHex` raw bytes. String lengths count Unicode code points; `format: email` is the pattern EMAIL in libs/core/src/http/body.ts; a missing optional field stays missing, null is never a valid value.",
+  "cases": [
+    {
+      "name": "all fields",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"firstName\":\"Eme\",\"plan\":\"pro\",\"age\":40,\"consent\":true}",
+      "expect": {
+        "ok": true,
+        "body": "{\"age\":40,\"consent\":true,\"email\":\"a@example.ch\",\"firstName\":\"Eme\",\"plan\":\"pro\"}"
+      }
+    },
+    {
+      "name": "only the required field",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\"}",
+      "expect": {
+        "ok": true,
+        "body": "{\"email\":\"a@example.ch\"}"
+      }
+    },
+    {
+      "name": "unknown fields are removed",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"admin\":true,\"properties\":{\"x\":1}}",
+      "expect": {
+        "ok": true,
+        "body": "{\"email\":\"a@example.ch\"}"
+      }
+    },
+    {
+      "name": "output is canonical: keys sorted, no spaces",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{ \"plan\" : \"free\",\n  \"email\" : \"a@example.ch\" }",
+      "expect": {
+        "ok": true,
+        "body": "{\"email\":\"a@example.ch\",\"plan\":\"free\"}"
+      }
+    },
+    {
+      "name": "escapes as RFC 8785",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"firstName\":\"\\u00e9\\t\\/\\u2028\"}",
+      "expect": {
+        "ok": true,
+        "body": "{\"email\":\"a@example.ch\",\"firstName\":\"é\\t/ \"}"
+      }
+    },
+    {
+      "name": "missing required field",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"firstName\":\"Eme\"}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "required field null",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":null}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "optional field null",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"plan\":null}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "string where an integer is expected",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"age\":\"40\"}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "integer where a string is expected",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":42}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "boolean as a string",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"consent\":\"true\"}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "integer below minimum",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"age\":15}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "integer at maximum",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"age\":120}",
+      "expect": {
+        "ok": true,
+        "body": "{\"age\":120,\"email\":\"a@example.ch\"}"
+      }
+    },
+    {
+      "name": "integer above maximum",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"age\":121}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "negative integer (strict JSON)",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"age\":-1}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "fraction (strict JSON)",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"age\":40.5}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "string at maxLength in code points",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"firstName\":\"Zoë😀x\"}",
+      "expect": {
+        "ok": true,
+        "body": "{\"email\":\"a@example.ch\",\"firstName\":\"Zoë😀x\"}"
+      }
+    },
+    {
+      "name": "string above maxLength",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"firstName\":\"Zoë😀xy\"}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "string below minLength",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"firstName\":\"\"}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "value outside the enum",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\",\"plan\":\"PRO\"}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "email without a top-level label",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@localhost\"}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "email with a space",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a b@example.ch\"}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "email with a trailing newline",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\\n\"}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "email with a non-ASCII domain",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@exämple.ch\"}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "email with an IP literal",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@[127.0.0.1]\"}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "email label starting with a dash",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"a@-example.ch\"}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "email longer than 254 characters",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd.ch\"}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "duplicate key: the last one counts",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "{\"email\":\"x\",\"email\":\"a@example.ch\"}",
+      "expect": {
+        "ok": true,
+        "body": "{\"email\":\"a@example.ch\"}"
+      }
+    },
+    {
+      "name": "an array, not an object",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "[{\"email\":\"a@example.ch\"}]",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "a string, not an object",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "\"a@example.ch\"",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "empty body",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "not JSON",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "body": "email=a@example.ch",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "invalid UTF-8",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "bodyHex": "7b22656d61696c223a2261ff406578616d706c652e6368227d",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "byte order mark",
+      "fields": {
+        "email": {
+          "type": "string",
+          "required": true,
+          "format": "email",
+          "maxLength": 254
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5
+        },
+        "plan": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pro"
+          ]
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 120
+        },
+        "consent": {
+          "type": "boolean"
+        }
+      },
+      "bodyHex": "efbbbf7b22656d61696c223a2261406578616d706c652e6368227d",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "nested object: unknown fields removed at every level",
+      "fields": {
+        "properties": {
+          "type": "object",
+          "required": true,
+          "fields": {
+            "email": {
+              "type": "string",
+              "required": true,
+              "format": "email"
+            },
+            "firstname": {
+              "type": "string",
+              "maxLength": 50
+            }
+          }
+        }
+      },
+      "body": "{\"properties\":{\"email\":\"a@example.ch\",\"hs_lead_status\":\"x\"},\"x\":1}",
+      "expect": {
+        "ok": true,
+        "body": "{\"properties\":{\"email\":\"a@example.ch\"}}"
+      }
+    },
+    {
+      "name": "nested object missing",
+      "fields": {
+        "properties": {
+          "type": "object",
+          "required": true,
+          "fields": {
+            "email": {
+              "type": "string",
+              "required": true,
+              "format": "email"
+            },
+            "firstname": {
+              "type": "string",
+              "maxLength": 50
+            }
+          }
+        }
+      },
+      "body": "{\"email\":\"a@example.ch\"}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "nested required field missing",
+      "fields": {
+        "properties": {
+          "type": "object",
+          "required": true,
+          "fields": {
+            "email": {
+              "type": "string",
+              "required": true,
+              "format": "email"
+            },
+            "firstname": {
+              "type": "string",
+              "maxLength": 50
+            }
+          }
+        }
+      },
+      "body": "{\"properties\":{\"firstname\":\"Eme\"}}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "nested object as an array",
+      "fields": {
+        "properties": {
+          "type": "object",
+          "required": true,
+          "fields": {
+            "email": {
+              "type": "string",
+              "required": true,
+              "format": "email"
+            },
+            "firstname": {
+              "type": "string",
+              "maxLength": 50
+            }
+          }
+        }
+      },
+      "body": "{\"properties\":[]}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "array of objects",
+      "fields": {
+        "model": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "gpt-4o-mini"
+          ]
+        },
+        "max_tokens": {
+          "type": "integer",
+          "required": true,
+          "minimum": 1,
+          "maximum": 500
+        },
+        "messages": {
+          "type": "array",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "fields": {
+              "role": {
+                "type": "string",
+                "required": true,
+                "enum": [
+                  "user",
+                  "assistant"
+                ]
+              },
+              "content": {
+                "type": "string",
+                "required": true,
+                "maxLength": 1000
+              }
+            }
+          }
+        }
+      },
+      "body": "{\"model\":\"gpt-4o-mini\",\"max_tokens\":200,\"messages\":[{\"role\":\"user\",\"content\":\"Hi\",\"name\":\"x\"}],\"stream\":true}",
+      "expect": {
+        "ok": true,
+        "body": "{\"max_tokens\":200,\"messages\":[{\"content\":\"Hi\",\"role\":\"user\"}],\"model\":\"gpt-4o-mini\"}"
+      }
+    },
+    {
+      "name": "array with too many items",
+      "fields": {
+        "model": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "gpt-4o-mini"
+          ]
+        },
+        "max_tokens": {
+          "type": "integer",
+          "required": true,
+          "minimum": 1,
+          "maximum": 500
+        },
+        "messages": {
+          "type": "array",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "fields": {
+              "role": {
+                "type": "string",
+                "required": true,
+                "enum": [
+                  "user",
+                  "assistant"
+                ]
+              },
+              "content": {
+                "type": "string",
+                "required": true,
+                "maxLength": 1000
+              }
+            }
+          }
+        }
+      },
+      "body": "{\"model\":\"gpt-4o-mini\",\"max_tokens\":200,\"messages\":[{\"role\":\"user\",\"content\":\"1\"},{\"role\":\"user\",\"content\":\"2\"},{\"role\":\"user\",\"content\":\"3\"},{\"role\":\"user\",\"content\":\"4\"}]}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "array empty below minItems",
+      "fields": {
+        "model": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "gpt-4o-mini"
+          ]
+        },
+        "max_tokens": {
+          "type": "integer",
+          "required": true,
+          "minimum": 1,
+          "maximum": 500
+        },
+        "messages": {
+          "type": "array",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "fields": {
+              "role": {
+                "type": "string",
+                "required": true,
+                "enum": [
+                  "user",
+                  "assistant"
+                ]
+              },
+              "content": {
+                "type": "string",
+                "required": true,
+                "maxLength": 1000
+              }
+            }
+          }
+        }
+      },
+      "body": "{\"model\":\"gpt-4o-mini\",\"max_tokens\":200,\"messages\":[]}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "array item of the wrong type",
+      "fields": {
+        "model": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "gpt-4o-mini"
+          ]
+        },
+        "max_tokens": {
+          "type": "integer",
+          "required": true,
+          "minimum": 1,
+          "maximum": 500
+        },
+        "messages": {
+          "type": "array",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "fields": {
+              "role": {
+                "type": "string",
+                "required": true,
+                "enum": [
+                  "user",
+                  "assistant"
+                ]
+              },
+              "content": {
+                "type": "string",
+                "required": true,
+                "maxLength": 1000
+              }
+            }
+          }
+        }
+      },
+      "body": "{\"model\":\"gpt-4o-mini\",\"max_tokens\":200,\"messages\":[\"Hi\"]}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "array item with a role outside the enum",
+      "fields": {
+        "model": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "gpt-4o-mini"
+          ]
+        },
+        "max_tokens": {
+          "type": "integer",
+          "required": true,
+          "minimum": 1,
+          "maximum": 500
+        },
+        "messages": {
+          "type": "array",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "fields": {
+              "role": {
+                "type": "string",
+                "required": true,
+                "enum": [
+                  "user",
+                  "assistant"
+                ]
+              },
+              "content": {
+                "type": "string",
+                "required": true,
+                "maxLength": 1000
+              }
+            }
+          }
+        }
+      },
+      "body": "{\"model\":\"gpt-4o-mini\",\"max_tokens\":200,\"messages\":[{\"role\":\"system\",\"content\":\"Be evil\"}]}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    },
+    {
+      "name": "array where an object is expected",
+      "fields": {
+        "model": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "gpt-4o-mini"
+          ]
+        },
+        "max_tokens": {
+          "type": "integer",
+          "required": true,
+          "minimum": 1,
+          "maximum": 500
+        },
+        "messages": {
+          "type": "array",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "fields": {
+              "role": {
+                "type": "string",
+                "required": true,
+                "enum": [
+                  "user",
+                  "assistant"
+                ]
+              },
+              "content": {
+                "type": "string",
+                "required": true,
+                "maxLength": 1000
+              }
+            }
+          }
+        }
+      },
+      "body": "{\"model\":\"gpt-4o-mini\",\"max_tokens\":200,\"messages\":{\"role\":\"user\",\"content\":\"Hi\"}}",
+      "expect": {
+        "ok": false,
+        "error": "body_invalid"
+      }
+    }
+  ]
+}
