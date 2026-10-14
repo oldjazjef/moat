@@ -9,8 +9,10 @@ use Moat\Gate\Hardening\WebFacts;
 use Moat\Gate\Http\GateError;
 use Moat\Gate\Http\Request;
 use Moat\Gate\Http\Response;
+use Moat\Gate\Runtime\BundlePull;
 use Moat\Gate\Runtime\Gate;
 use Moat\Gate\Runtime\NotConfigured;
+use Moat\Gate\Runtime\PullOutcome;
 use Moat\Gate\Runtime\RequestHandler;
 use Moat\Gate\Storage\DataDir;
 
@@ -66,6 +68,7 @@ final class Kernel
         }
         try {
             $gate = Gate::open($gateDir);
+            self::pull($gate);
             $bundle = $gate->active(time());
         } catch (NotConfigured) {
             self::log(null, 'gate_not_configured');
@@ -74,6 +77,24 @@ final class Kernel
             return;
         }
         RequestHandler::handle(Request::fromServer($_SERVER), $bundle, $gate, time())->send();
+    }
+
+    /**
+     * The lazy pull (DT-11) before the active bundle is read, so a bundle it accepts serves this
+     * request. Never stops the request: anything that goes wrong is logged as a code.
+     */
+    private static function pull(Gate $gate): void
+    {
+        try {
+            $record = BundlePull::ifDue($gate, time());
+        } catch (\Throwable $error) {
+            self::log($error, 'pull_failed');
+
+            return;
+        }
+        if ($record !== null && $record->outcome !== PullOutcome::Accepted && $record->outcome !== PullOutcome::Unchanged) {
+            self::log(null, 'pull_' . ($record->outcome?->value ?? 'unknown') . ($record->reason === null ? '' : ' ' . $record->reason));
+        }
     }
 
     private static function missingExtension(): ?string

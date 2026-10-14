@@ -64,6 +64,15 @@ for (;;) {
         );
     } elseif ($path === '/usage') {
         $answer = '{"id":"chatcmpl-1","usage":{"prompt_tokens":60,"completion_tokens":40,"total_tokens":100}}';
+    } elseif ($path === '/bundles/gate.json') {
+        // What the lazy pull fetches (conformance/http/gate-pull.json), as the runner published it.
+        $published = json_decode((string) file_get_contents(dirname($logFile) . '/published.json'), true);
+        $status = is_array($published) && is_int($published['status'] ?? null) ? $published['status'] : 404;
+        $answer = is_array($published) && is_string($published['body'] ?? null) ? $published['body'] : '{}';
+        $type = 'application/octet-stream';
+        if ($status === 302) {
+            $extra[] = 'Location: https://upstream.test/bundles/other.json';
+        }
     } elseif ($path === '/no-usage') {
         $answer = '{"id":"chatcmpl-2"}';
     } elseif ($path === '/redirect') {

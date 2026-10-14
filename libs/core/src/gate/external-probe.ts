@@ -22,6 +22,8 @@ export const DATA_FILES = [
   'kill',
   'killlock',
   'webfacts',
+  'pull',
+  'pulllock',
 ] as const;
 
 /** `moat-data-<hex>`: the random name `php moat-gate.php install` printed. */

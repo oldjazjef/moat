@@ -22,10 +22,13 @@ use Moat\Gate\Json\StrictJson;
 use Moat\Gate\Policy\PolicyCheck;
 use Moat\Gate\Rejection;
 use Moat\Gate\Runtime\BudgetStore;
+use Moat\Gate\Runtime\BundlePull;
 use Moat\Gate\Runtime\Gate;
 use Moat\Gate\Runtime\Identity;
 use Moat\Gate\Runtime\KillSwitch;
 use Moat\Gate\Runtime\NotConfigured;
+use Moat\Gate\Runtime\PullOutcome;
+use Moat\Gate\Runtime\PullRecord;
 use Moat\Gate\Runtime\Trust;
 use Moat\Gate\Storage\DataDir;
 use Moat\Gate\Storage\Files;
@@ -38,6 +41,7 @@ use Moat\Gate\Storage\Files;
  *   php moat-gate.php trust --signer=<public key>[,<public key>…] [--threshold=1]
  *   php moat-gate.php policy <policy.json>
  *   php moat-gate.php accept <bundle.json>
+ *   php moat-gate.php pull
  *   php moat-gate.php status
  *   php moat-gate.php kill [--route=<name>]
  *   php moat-gate.php revive [--route=<name>]
@@ -45,7 +49,7 @@ use Moat\Gate\Storage\Files;
  */
 final class Cli
 {
-    private const USAGE = "usage: php moat-gate.php install|trust|policy|accept|status|check|kill|revive (see the gate README)\n";
+    private const USAGE = "usage: php moat-gate.php install|trust|policy|accept|pull|status|check|kill|revive (see the gate README)\n";
 
     /** @param list<string> $argv */
     public static function main(string $gateDir, array $argv): int
@@ -58,6 +62,7 @@ final class Cli
                 'trust' => self::trust($gateDir, $options),
                 'policy' => self::policy($gateDir, $args),
                 'accept' => self::accept($gateDir, $args),
+                'pull' => self::pull($gateDir),
                 'status' => self::status($gateDir),
                 'check' => self::check($gateDir, $args, $options),
                 'kill' => self::kill($gateDir, $args, $options, true),
@@ -145,6 +150,31 @@ final class Cli
         }
 
         return 0;
+    }
+
+    /** The lazy pull (DT-11) right now, whatever the interval says, with what came of it. */
+    private static function pull(string $gateDir): int
+    {
+        $gate = Gate::open($gateDir);
+        if ($gate->policy?->pull === null) {
+            throw new UsageError('the local policy has no "pull" block: nothing to pull from');
+        }
+        $record = BundlePull::now($gate, time()) ?? throw new \RuntimeException('no pull');
+        self::out('Pulled ' . $gate->policy->pull->url() . ': ' . self::pullText($record));
+
+        return $record->outcome === PullOutcome::Accepted || $record->outcome === PullOutcome::Unchanged ? 0 : 1;
+    }
+
+    private static function pullText(PullRecord $record): string
+    {
+        return match ($record->outcome) {
+            PullOutcome::Accepted => 'accepted version ' . $record->version . '.',
+            PullOutcome::Unchanged => 'unchanged, the active bundle is the same file.',
+            PullOutcome::Rejected => 'rejected (' . $record->reason . '), the active bundle stays.',
+            PullOutcome::HttpStatus => 'the place answered ' . $record->reason . ', the active bundle stays.',
+            PullOutcome::Failed => 'no usable answer (' . $record->reason . '), the active bundle stays.',
+            null => 'still running or interrupted.',
+        };
     }
 
     /**
@@ -245,6 +275,11 @@ final class Cli
             }
         } catch (NotConfigured) {
             self::out('Bundle:     none active (missing, or no longer valid for the current trust and policy)');
+        }
+        if ($gate->policy?->pull !== null) {
+            $record = PullRecord::read($gate->data);
+            self::out('Pull:       ' . $gate->policy->pull->url() . ' at most every ' . $gate->policy->pull->intervalSeconds . ' s; '
+                . ($record === null ? 'not tried yet' : 'last ' . gmdate('Y-m-d H:i', $record->attemptedAt) . ' UTC, ' . self::pullText($record)));
         }
         $switch = KillSwitch::read($gate->data);
         self::out(self::killText($switch));

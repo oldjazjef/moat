@@ -1,0 +1,422 @@
+{
+  "description": "Lazy pull (DT-11, ANFORDERUNGEN.md §4.3): the local policy names the one place the gate fetches new bundles from (`pull.url`), checked at most every `intervalSeconds`, during a request and without cron. The place needs no trust: a fetched bundle goes through every check of `accept` (signature, gate id, version, schema, policy), and anything else (no answer, a redirect, an error status, too large, not a bundle, a rejected bundle) leaves the active bundle as it is; the request is served either way. Same runner and fake upstream as gate.json; the fake also serves the published file at `/bundles/gate.json`. Before a case the runner sets what it serves when the case has `publish`: `{version, routes?, enabled?, tamper?, otherGate?}` = a bundle signed by the pinned signer with `config` plus these routes (and `enabled`), its signature broken (`tamper`) or made for another gate (`otherGate`); `{status}` = only that status; `{size}` = that many bytes; `{raw}` = exactly this text. It stays published for the next cases. `pullDue: true` makes the interval over (the runner removes the gate's pull record), otherwise the last pull was just now. `pulls` counts the fetches of the published file, `upstreamCalls` the other upstream calls.",
+  "config": {
+    "version": 1,
+    "enabled": true,
+    "upstreams": {
+      "fake": {
+        "origin": "https://upstream.test:{port}",
+        "auth": {
+          "type": "bearer",
+          "secret": "api-token"
+        },
+        "timeoutMs": 5000
+      }
+    },
+    "routes": {
+      "newsletter": {
+        "method": "POST",
+        "path": "/newsletter",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 1024,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": ["https://www.example.ch"],
+        "rateLimit": null
+      },
+      "status": {
+        "method": "GET",
+        "path": "/status",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
+      }
+    }
+  },
+  "policy": {
+    "v": 1,
+    "upstreams": {
+      "upstream.test:{port}": {
+        "pathPrefixes": ["/echo"],
+        "methods": ["GET", "POST"],
+        "secrets": ["api-token"]
+      }
+    },
+    "maxBodyBytes": 1024,
+    "maxResponseBytes": 65536,
+    "maxTimeoutMs": 5000,
+    "limits": {
+      "perIp": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "total": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "maxClients": 5000
+    },
+    "testing": {
+      "resolve": {
+        "upstream.test:{port}": "127.0.0.1"
+      },
+      "caFile": "{caFile}"
+    },
+    "pull": {
+      "url": "https://upstream.test:{port}/bundles/gate.json",
+      "intervalSeconds": 60
+    }
+  },
+  "secrets": {
+    "api-token": "TEST-ONLY-planted-secret-7f3a9c"
+  },
+  "cases": [
+    {
+      "name": "nothing published yet: the gate serves its accepted bundle and looked once",
+      "publish": {
+        "status": 404
+      },
+      "pullDue": true,
+      "request": {
+        "method": "GET",
+        "path": "/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "pulls": 1
+      }
+    },
+    {
+      "name": "within the interval the gate does not look again, so a new version is not there yet",
+      "publish": {
+        "version": 2,
+        "routes": {
+          "hello": {
+            "method": "GET",
+            "path": "/hello",
+            "upstream": "fake",
+            "upstreamPath": "/echo",
+            "maxBodyBytes": 0,
+            "contentTypes": ["application/json"],
+            "responseContentTypes": ["application/json"],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "request": {
+        "method": "GET",
+        "path": "/hello",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0,
+        "pulls": 0
+      }
+    },
+    {
+      "name": "once the interval is over, the next request fetches version 2 and is served by it",
+      "pullDue": true,
+      "request": {
+        "method": "GET",
+        "path": "/hello",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "pulls": 1
+      }
+    },
+    {
+      "name": "the same file again changes nothing",
+      "pullDue": true,
+      "request": {
+        "method": "GET",
+        "path": "/hello",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "pulls": 1
+      }
+    },
+    {
+      "name": "an older version (rollback) is ignored, version 2 stays (SEC-04)",
+      "publish": {
+        "version": 1
+      },
+      "pullDue": true,
+      "request": {
+        "method": "GET",
+        "path": "/hello",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "pulls": 1
+      }
+    },
+    {
+      "name": "a bundle with a broken signature is ignored (SEC-01)",
+      "publish": {
+        "version": 3,
+        "routes": {
+          "three": {
+            "method": "GET",
+            "path": "/three",
+            "upstream": "fake",
+            "upstreamPath": "/echo",
+            "maxBodyBytes": 0,
+            "contentTypes": ["application/json"],
+            "responseContentTypes": ["application/json"],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        },
+        "tamper": true
+      },
+      "pullDue": true,
+      "request": {
+        "method": "GET",
+        "path": "/three",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0,
+        "pulls": 1
+      }
+    },
+    {
+      "name": "a bundle for another gate is ignored (SEC-07)",
+      "publish": {
+        "version": 3,
+        "routes": {
+          "three": {
+            "method": "GET",
+            "path": "/three",
+            "upstream": "fake",
+            "upstreamPath": "/echo",
+            "maxBodyBytes": 0,
+            "contentTypes": ["application/json"],
+            "responseContentTypes": ["application/json"],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        },
+        "otherGate": true
+      },
+      "pullDue": true,
+      "request": {
+        "method": "GET",
+        "path": "/three",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0,
+        "pulls": 1
+      }
+    },
+    {
+      "name": "a bundle beyond the local policy is ignored (SEC-11)",
+      "publish": {
+        "version": 3,
+        "routes": {
+          "three": {
+            "method": "GET",
+            "path": "/three",
+            "upstream": "fake",
+            "upstreamPath": "/usage",
+            "maxBodyBytes": 0,
+            "contentTypes": ["application/json"],
+            "responseContentTypes": ["application/json"],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "pullDue": true,
+      "request": {
+        "method": "GET",
+        "path": "/three",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0,
+        "pulls": 1
+      }
+    },
+    {
+      "name": "a redirect is not followed and changes nothing (SEC-43)",
+      "publish": {
+        "status": 302
+      },
+      "pullDue": true,
+      "request": {
+        "method": "GET",
+        "path": "/hello",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "pulls": 1
+      }
+    },
+    {
+      "name": "a server error changes nothing",
+      "publish": {
+        "status": 500
+      },
+      "pullDue": true,
+      "request": {
+        "method": "GET",
+        "path": "/hello",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "pulls": 1
+      }
+    },
+    {
+      "name": "a file above the bundle size limit is cut off and ignored",
+      "publish": {
+        "size": 1048577
+      },
+      "pullDue": true,
+      "request": {
+        "method": "GET",
+        "path": "/hello",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "pulls": 1
+      }
+    },
+    {
+      "name": "a file that is no bundle is ignored",
+      "publish": {
+        "raw": "<html>not a bundle</html>"
+      },
+      "pullDue": true,
+      "request": {
+        "method": "GET",
+        "path": "/hello",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "pulls": 1
+      }
+    },
+    {
+      "name": "a signed lock arrives by pull: every request is refused, nothing forwarded",
+      "publish": {
+        "version": 3,
+        "enabled": false
+      },
+      "pullDue": true,
+      "request": {
+        "method": "GET",
+        "path": "/hello",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 503,
+        "error": "gate_disabled",
+        "upstreamCalls": 0,
+        "pulls": 1
+      }
+    },
+    {
+      "name": "and a later signed unlock opens it again",
+      "publish": {
+        "version": 4,
+        "routes": {
+          "three": {
+            "method": "GET",
+            "path": "/three",
+            "upstream": "fake",
+            "upstreamPath": "/echo",
+            "maxBodyBytes": 0,
+            "contentTypes": ["application/json"],
+            "responseContentTypes": ["application/json"],
+            "enabled": true,
+            "origins": [],
+            "rateLimit": null
+          }
+        }
+      },
+      "pullDue": true,
+      "request": {
+        "method": "GET",
+        "path": "/three",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "pulls": 1
+      }
+    },
+    {
+      "name": "the bundle from the pull is served without looking again",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/newsletter",
+        "headers": {
+          "Origin": "https://www.example.ch",
+          "Access-Control-Request-Method": "POST"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 204,
+        "upstreamCalls": 0,
+        "pulls": 0
+      }
+    }
+  ]
+}

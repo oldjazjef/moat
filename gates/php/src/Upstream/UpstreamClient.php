@@ -21,6 +21,8 @@ final class UpstreamClient
 
     public const PROBE_TIMEOUT_MS = 10000;
     public const PROBE_MAX_BYTES = 64 * 1024;
+    /** DT-11: a pull holds up one request at most this long. */
+    public const PULL_TIMEOUT_MS = 5000;
 
     public static function send(UpstreamRequest $request, Policy $policy): UpstreamResponse
     {
@@ -83,6 +85,38 @@ final class UpstreamClient
         }
         if ((!$received->tooLarge && ($ok === false || $errno !== 0)) || $status < 100 || $status > 599) {
             return null;
+        }
+
+        return [$status, $received->body];
+    }
+
+    /**
+     * A GET of the lazy pull (DT-11): the same address pinning, TLS and protocol rules as send(),
+     * no redirect followed, at most `$maxBytes` (a larger file is a failure, not cut to fit) and
+     * PULL_TIMEOUT_MS. Any status comes back; the caller decides. The body is not trusted:
+     * BundleVerifier checks it like any bundle.
+     *
+     * @return array{int, string}|GateError status and body, or why nothing usable came back
+     */
+    public static function fetch(string $host, int $port, string $path, int $maxBytes, ?Policy $policy): array|GateError
+    {
+        $received = new Received();
+        try {
+            [$ok, $errno, $status] = self::exchange($host, $port, $path, 'GET', ['Expect:', 'Accept: application/json'], '', self::PULL_TIMEOUT_MS, $maxBytes, $policy, $received);
+        } catch (Failure $failure) {
+            return $failure->error;
+        }
+        if ($received->tooLarge) {
+            return GateError::UpstreamTooLarge;
+        }
+        if (!$ok || $errno !== 0) {
+            return $errno === CURLE_OPERATION_TIMEDOUT ? GateError::UpstreamTimeout : GateError::UpstreamUnreachable;
+        }
+        if ($status >= 300 && $status < 400) {
+            return GateError::UpstreamRedirect;
+        }
+        if ($status < 200 || $status > 599) {
+            return GateError::UpstreamUnreachable;
         }
 
         return [$status, $received->body];

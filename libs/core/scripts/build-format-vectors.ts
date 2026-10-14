@@ -1341,10 +1341,169 @@ function policyVectors(): Json {
         };
       },
     ],
+    [
+      'pull from a static URL every 5 minutes (DT-11)',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://bundles.example.ch/moat/www.json',
+          intervalSeconds: 300,
+        }),
+    ],
+    [
+      'pull from a host with a port',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://cdn.example.ch:8443/b/www.json',
+          intervalSeconds: 60,
+        }),
+    ],
+    [
+      'pull once a day',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://bundles.example.ch/moat/www.json',
+          intervalSeconds: 86_400,
+        }),
+    ],
+    [
+      'pull more often than once a minute',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://bundles.example.ch/moat/www.json',
+          intervalSeconds: 59,
+        }),
+    ],
+    [
+      'pull less often than once a day',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://bundles.example.ch/moat/www.json',
+          intervalSeconds: 86_401,
+        }),
+    ],
+    [
+      'pull over plain HTTP',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'http://bundles.example.ch/moat/www.json',
+          intervalSeconds: 300,
+        }),
+    ],
+    [
+      'pull URL with credentials',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://user:pw@bundles.example.ch/moat/www.json',
+          intervalSeconds: 300,
+        }),
+    ],
+    [
+      'pull URL with a query',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://bundles.example.ch/moat/www.json?v=1',
+          intervalSeconds: 300,
+        }),
+    ],
+    [
+      'pull URL with a fragment',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://bundles.example.ch/moat/www.json#x',
+          intervalSeconds: 300,
+        }),
+    ],
+    [
+      'pull URL without a file path',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://bundles.example.ch/',
+          intervalSeconds: 300,
+        }),
+    ],
+    [
+      'pull URL ending in a slash',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://bundles.example.ch/moat/',
+          intervalSeconds: 300,
+        }),
+    ],
+    [
+      'pull URL with a dot segment',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://bundles.example.ch/moat/../www.json',
+          intervalSeconds: 300,
+        }),
+    ],
+    [
+      'pull URL with an empty segment',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://bundles.example.ch/moat//www.json',
+          intervalSeconds: 300,
+        }),
+    ],
+    [
+      'pull URL with an encoded character',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://bundles.example.ch/moat/%2e%2e/www.json',
+          intervalSeconds: 300,
+        }),
+    ],
+    [
+      'pull URL with a backslash',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://bundles.example.ch\\@evil.example/www.json',
+          intervalSeconds: 300,
+        }),
+    ],
+    [
+      'pull URL with an upper-case host',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://Bundles.example.ch/www.json',
+          intervalSeconds: 300,
+        }),
+    ],
+    [
+      'pull URL too long',
+      (_c, p) =>
+        (p['pull'] = {
+          url: `https://bundles.example.ch/${'a'.repeat(2030)}.json`,
+          intervalSeconds: 300,
+        }),
+    ],
+    [
+      'pull without an interval',
+      (_c, p) =>
+        (p['pull'] = { url: 'https://bundles.example.ch/moat/www.json' }),
+    ],
+    [
+      'pull with an unknown field',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://bundles.example.ch/moat/www.json',
+          intervalSeconds: 300,
+          header: 'x',
+        }),
+    ],
+    [
+      'pull interval as a duration text',
+      (_c, p) =>
+        (p['pull'] = {
+          url: 'https://bundles.example.ch/moat/www.json',
+          intervalSeconds: '5m',
+        }),
+    ],
+    ['pull null', (_c, p) => (p['pull'] = null)],
   ];
   return {
     description:
-      'The local policy (SEC-10 to SEC-14) against a valid compiled config: `{ok: true}`, `policy_violation` (the config goes beyond the policy — the bundle is rejected, SEC-11) or `policy_invalid` (the policy file itself is malformed; the gate serves nothing). Hosts are keyed as `host[:port]`; a path prefix matches the same path or a path continuing at a "/" boundary.',
+      'The local policy (SEC-10 to SEC-14) against a valid compiled config: `{ok: true}`, `policy_violation` (the config goes beyond the policy — the bundle is rejected, SEC-11) or `policy_invalid` (the policy file itself is malformed; the gate serves nothing). Hosts are keyed as `host[:port]`; a path prefix matches the same path or a path continuing at a "/" boundary. `pull` (optional, DT-11) is the one place the gate fetches new bundles from by itself: `https://host[:port]/path` to a file (lower-case host, path segments of letters, digits, `.`, `_`, `~` and `-` but no `.` or `..` segment, at most 2048 characters), at most every `intervalSeconds` (60 to 86 400).',
     cases: cases.map(([name, mutate]) => {
       const config = baseConfig();
       const policy = basePolicy();

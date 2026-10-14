@@ -41,7 +41,7 @@ final class GateTest extends TestCase
     {
         $data = DataDir::locate($this->dir);
         if ($data !== null) {
-            foreach (['.htaccess', 'web.config', 'index.php', 'identity.php', 'trust.php', 'policy.php', 'bundle.php', 'state.php'] as $file) {
+            foreach (['.htaccess', 'web.config', 'index.php', 'identity.php', 'trust.php', 'policy.php', 'bundle.php', 'state.php', 'pulllock.php'] as $file) {
                 if (is_file($data->path . '/' . $file)) {
                     unlink($data->path . '/' . $file);
                 }

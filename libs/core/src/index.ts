@@ -100,6 +100,9 @@ export {
   suggestPolicy,
   matchesPrefix,
   DEFAULT_LIMITS,
+  isPullUrl,
+  MIN_PULL_INTERVAL,
+  MAX_PULL_INTERVAL,
   type Policy,
 } from './policy/policy';
 export {

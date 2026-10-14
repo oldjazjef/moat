@@ -34,7 +34,8 @@ final class PolicyCheck
         }
         $testing = $value->has('testing');
         $hasMaxAge = $value->has('maxConfigAgeSeconds');
-        if (!$value->hasExactKeys('v', 'upstreams', 'maxBodyBytes', 'maxResponseBytes', 'maxTimeoutMs', 'limits', ...($testing ? ['testing'] : []), ...($hasMaxAge ? ['maxConfigAgeSeconds'] : []))) {
+        $hasPull = $value->has('pull');
+        if (!$value->hasExactKeys('v', 'upstreams', 'maxBodyBytes', 'maxResponseBytes', 'maxTimeoutMs', 'limits', ...($testing ? ['testing'] : []), ...($hasMaxAge ? ['maxConfigAgeSeconds'] : []), ...($hasPull ? ['pull'] : []))) {
             self::invalid();
         }
         $maxAge = null;
@@ -63,7 +64,45 @@ final class PolicyCheck
         $limits = self::limits($value->get('limits'));
         [$resolve, $caFile] = $testing ? self::testing($value->get('testing')) : [[], null];
 
-        return new Policy($allowed, $maxBodyBytes, $maxResponseBytes, $maxTimeoutMs, $limits, $testing, $resolve, $caFile, $maxAge);
+        $pull = $hasPull ? self::pull($value->get('pull')) : null;
+
+        return new Policy($allowed, $maxBodyBytes, $maxResponseBytes, $maxTimeoutMs, $limits, $testing, $resolve, $caFile, $maxAge, $pull);
+    }
+
+    /**
+     * `https://host[:port]/path`: the origin as an upstream's (lower-case DNS name, no IP literal,
+     * no `:443`), the path segments of unreserved characters and none `.` or `..` (isPullUrl in
+     * libs/core).
+     */
+    private static function pull(mixed $value): PolicyPull
+    {
+        if (!$value instanceof JsonObject || !$value->hasExactKeys('url', 'intervalSeconds')) {
+            self::invalid();
+        }
+        $url = $value->get('url');
+        $interval = $value->get('intervalSeconds');
+        if (
+            !\is_string($url) || \strlen($url) > PolicyPull::MAX_URL
+            || !\is_int($interval) || !ConfigValidator::intIn($interval, PolicyPull::MIN_INTERVAL, PolicyPull::MAX_INTERVAL)
+            || preg_match('#^(https://[^/]+)((?:/[A-Za-z0-9._~-]+)+)$#D', $url, $match) !== 1
+            || !ConfigValidator::isOrigin($match[1])
+        ) {
+            self::invalid();
+        }
+        foreach (\array_slice(explode('/', $match[2]), 1) as $segment) {
+            if ($segment === '.' || $segment === '..') {
+                self::invalid();
+            }
+        }
+        $authority = substr($match[1], \strlen('https://'));
+        $colon = strrpos($authority, ':');
+
+        return new PolicyPull(
+            $colon === false ? $authority : substr($authority, 0, $colon),
+            $colon === false ? 443 : (int) substr($authority, $colon + 1),
+            $match[2],
+            $interval,
+        );
     }
 
     /** Throws `policy_violation` unless every upstream, route and limit lies within the policy. */

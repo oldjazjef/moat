@@ -54,7 +54,14 @@ abstract class HttpConformanceCase extends TestCase
         if (\array_key_exists('killFile', $case)) {
             $gate->setKillFile($case['killFile'] === null ? null : Vectors::map($case['killFile']));
         }
+        if (isset($case['publish'])) {
+            $gate->publish(Vectors::map($case['publish']));
+        }
+        if (($case['pullDue'] ?? false) === true) {
+            $gate->setPullDue();
+        }
         $before = $gate->upstreamCalls();
+        $pullsBefore = $gate->pulls();
 
         [$status, $headers, $body] = self::send($gate->baseUrl, $request);
 
@@ -73,6 +80,9 @@ abstract class HttpConformanceCase extends TestCase
             }
         }
         self::assertSame(Vectors::int($expect['upstreamCalls']), $gate->upstreamCalls() - $before, 'upstream calls');
+        if (isset($expect['pulls'])) {
+            self::assertSame(Vectors::int($expect['pulls']), $gate->pulls() - $pullsBefore, 'pulls');
+        }
         foreach (explode("\n", $gate->secret) as $secret) {
             self::assertStringNotContainsString($secret, $body . implode("\n", $headers));
         }

@@ -786,6 +786,7 @@
         "tips": {
           "rollback": "Zurück zu einer älteren Konfiguration? Baue sie als neue, höhere Version.",
           "policy": "Passt ein Bundle nicht zur lokalen Policy, lehnt das Gate es ab. Die Policy änderst du nur am Gate selbst.",
+          "pull": "Ohne Upload aufs Gate: Steht in der lokalen Policy ein `pull`-Block mit einer HTTPS-Adresse, holt das Gate das Bundle dort selbst ab, höchstens einmal pro Intervall, und prüft es wie bei `accept`. Du lädst das signierte Bundle dann nur an diese Adresse hoch. Mit `php moat-gate.php pull` holt es sofort, `php moat-gate.php status` zeigt den letzten Versuch.",
           "keychain": "Auf Wunsch merkt sich Moat Desktop die Passphrase im Schlüsselbund deines Betriebssystems. Nimmst du das Häkchen beim nächsten Signieren weg, wird sie dort gelöscht. Ohne echten Schlüsselbund bietet Moat Desktop das gar nicht an."
         }
       },
