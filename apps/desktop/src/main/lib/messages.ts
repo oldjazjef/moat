@@ -5,6 +5,7 @@
 import type { KeyDialogTexts } from '../../shared/key-dialog';
 import type { DeployPackage, DeployTexts } from './deploy';
 import type { SealDialogTexts } from '../../shared/seal-dialog';
+import type { SftpDialogTexts } from '../../shared/sftp-dialog';
 import type { SignDialogTexts } from '../../shared/sign-dialog';
 
 export type DesktopLocale = 'de-CH' | 'en';
@@ -58,6 +59,9 @@ export interface DesktopMessages {
     };
     readonly chooseFolder: { readonly title: string; readonly button: string };
   };
+  /** The SFTP window (DT-05) and its file dialog for a private key. */
+  readonly sftpDialog: SftpDialogTexts;
+  readonly sftpKey: { readonly title: string; readonly button: string };
   readonly menu: {
     readonly file: string;
     readonly edit: string;
@@ -246,6 +250,67 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
         button: 'Hier ablegen',
       },
     },
+    sftpDialog: {
+      title: 'Per SFTP hochladen',
+      intro:
+        'Moat Desktop legt das Paket als neuen Ordner auf deinem Server ab. Es ersetzt dort nichts und führt keinen Befehl aus. Danach aktivierst du das Bundle wie in der Anleitung im Paket.',
+      project: 'Projekt',
+      gate: 'Gate',
+      version: 'Version',
+      files: 'Dateien',
+      host: 'Server',
+      port: 'Port',
+      username: 'Benutzer',
+      remoteDir: 'Ordner auf dem Server',
+      remoteDirHint:
+        'Relativ zu deinem Login-Ordner oder absolut, etwa moat-uploads. Der Ordner muss es schon geben, am besten ausserhalb des Web-Ordners.',
+      auth: 'Anmeldung',
+      authPassword: 'Passwort',
+      authKey: 'SSH-Schlüssel',
+      keyFile: 'Schlüsseldatei',
+      noKeyFile: 'Noch keine gewählt',
+      chooseKey: 'Schlüsseldatei wählen…',
+      password: 'Passwort',
+      passphrase: 'Passphrase des Schlüssels (leer, wenn er keine hat)',
+      secretRemembered:
+        'Im Schlüsselbund gespeichert. Leer lassen, um es zu verwenden.',
+      remember: 'Im Schlüsselbund merken',
+      pinned: 'Host-Key bestätigt:',
+      upload: 'Hochladen',
+      forget: 'Ziel entfernen',
+      cancel: 'Abbrechen',
+      hostKeyTitle: 'Host-Key des Servers prüfen',
+      hostKeyIntro:
+        'Moat Desktop verbindet sich zum ersten Mal mit diesem Server. Er hat sich mit diesem Schlüssel ausgewiesen:',
+      hostKeyHint:
+        'Vergleiche ihn mit dem Fingerprint, den dein Hoster nennt, oder mit ssh-keyscan auf einem Rechner, dem du vertraust. Erst nach deiner Bestätigung sendet Moat Benutzer, Passwort und Dateien. Moat merkt sich den Schlüssel und bricht ab, wenn der Server später einen anderen zeigt.',
+      trust: 'Schlüssel stimmt, hochladen',
+      notices: {
+        target_invalid:
+          'Prüfe Server, Port, Benutzer und Ordner. Der Ordner darf nur Buchstaben, Ziffern und . _ ~ - enthalten, ohne . oder .. als Teil.',
+        key_missing: 'Wähle zuerst die Schlüsseldatei.',
+        key_unreadable: 'Die Schlüsseldatei kann nicht gelesen werden.',
+        secret_missing: 'Gib das Passwort ein.',
+        connect_failed:
+          'Der Server ist nicht erreichbar oder hat die Verbindung beendet.',
+        auth_failed:
+          'Die Anmeldung wurde abgelehnt. Prüfe Benutzer und Passwort oder Schlüssel.',
+        hostkey_changed:
+          'Der Server zeigt einen anderen Host-Key als beim letzten Mal. Moat hat nichts gesendet. Frag deinen Hoster, ob der Schlüssel gewechselt hat. Nur dann entfernst du das Ziel und bestätigst den neuen Schlüssel.',
+        exists:
+          'Auf dem Server liegt schon ein Ordner mit dem Namen dieses Pakets. Es wurde nichts überschrieben.',
+        partial:
+          'Das Hochladen brach mittendrin ab. Der Paketordner auf dem Server ist unvollständig: Lösche ihn, bevor du es noch einmal versuchst.',
+        upload_failed:
+          'Hochladen hat nicht geklappt. Gibt es den Ordner auf dem Server, und darfst du dort schreiben?',
+        forgotten:
+          'Das Ziel ist entfernt. Beim nächsten Hochladen bestätigst du den Host-Key neu.',
+      },
+    },
+    sftpKey: {
+      title: 'SSH-Schlüssel wählen',
+      button: 'Diesen Schlüssel verwenden',
+    },
     menu: {
       file: 'Datei',
       edit: 'Bearbeiten',
@@ -427,6 +492,62 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
         button: 'Put it here',
       },
     },
+    sftpDialog: {
+      title: 'Upload via SFTP',
+      intro:
+        'Moat Desktop puts the package on your server as a new folder. It replaces nothing there and runs no command. Then you activate the bundle as the instructions in the package say.',
+      project: 'Project',
+      gate: 'Gate',
+      version: 'Version',
+      files: 'Files',
+      host: 'Server',
+      port: 'Port',
+      username: 'User',
+      remoteDir: 'Folder on the server',
+      remoteDirHint:
+        'Relative to your login folder or absolute, e.g. moat-uploads. The folder must exist already, preferably outside the web root.',
+      auth: 'Sign in with',
+      authPassword: 'Password',
+      authKey: 'SSH key',
+      keyFile: 'Key file',
+      noKeyFile: 'None chosen yet',
+      chooseKey: 'Choose key file…',
+      password: 'Password',
+      passphrase: 'The key’s passphrase (empty if it has none)',
+      secretRemembered: 'Saved in the keychain. Leave empty to use it.',
+      remember: 'Remember in the keychain',
+      pinned: 'Host key confirmed:',
+      upload: 'Upload',
+      forget: 'Remove target',
+      cancel: 'Cancel',
+      hostKeyTitle: 'Check the server’s host key',
+      hostKeyIntro:
+        'Moat Desktop connects to this server for the first time. It identified itself with this key:',
+      hostKeyHint:
+        'Compare it with the fingerprint your hoster gives, or with ssh-keyscan on a computer you trust. Only after you confirm does Moat send user, password and files. Moat remembers the key and stops if the server later shows another.',
+      trust: 'Key matches, upload',
+      notices: {
+        target_invalid:
+          'Check server, port, user and folder. The folder may hold only letters, digits and . _ ~ -, with no . or .. as a part.',
+        key_missing: 'Choose the key file first.',
+        key_unreadable: 'The key file cannot be read.',
+        secret_missing: 'Enter the password.',
+        connect_failed:
+          'The server cannot be reached or closed the connection.',
+        auth_failed: 'Sign-in was refused. Check user and password or key.',
+        hostkey_changed:
+          'The server shows another host key than last time. Moat sent nothing. Ask your hoster whether the key changed. Only then remove the target and confirm the new key.',
+        exists:
+          "A folder with this package's name is on the server already. Nothing was replaced.",
+        partial:
+          'The upload stopped halfway. The package folder on the server is incomplete: delete it before you try again.',
+        upload_failed:
+          'The upload did not work. Does the folder exist on the server, and may you write there?',
+        forgotten:
+          'The target is removed. On the next upload you confirm the host key again.',
+      },
+    },
+    sftpKey: { title: 'Choose SSH key', button: 'Use this key' },
     menu: { file: 'File', edit: 'Edit', view: 'View', quit: 'Quit' },
   },
 };

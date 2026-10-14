@@ -1,5 +1,12 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
+import {
+  SFTP_HOST,
+  SFTP_HOST_KEY,
+  SFTP_USER,
+  type SftpTarget,
+  isRemoteDir,
+} from './sftp';
 
 /** `<userData>/config.json`: what the desktop remembers between starts. */
 export const CONFIG_FILE = 'config.json';
@@ -25,6 +32,11 @@ export interface DesktopConfig {
    * project folder, so a changed folder cannot pass off another gate's or an older bundle.
    */
   readonly deployed: Readonly<Record<string, DeployedPackage>>;
+  /**
+   * The SFTP target per `<projectId>/<gate>` (DT-05): host, user, folder, the pinned host key,
+   * and the password or passphrase only as keychain ciphertext (DT-04).
+   */
+  readonly sftpTargets: Readonly<Record<string, SftpTarget>>;
 }
 
 export interface DeployedPackage {
@@ -37,6 +49,7 @@ export const EMPTY_CONFIG: DesktopConfig = {
   keyFile: null,
   passphrases: {},
   deployed: {},
+  sftpTargets: {},
 };
 
 const DEPLOYED_KEY = /^[A-Za-z0-9_-]{22}\/[a-z][a-z0-9-]{0,62}$/;
@@ -75,11 +88,20 @@ export function readConfig(userData: string): DesktopConfig {
           };
       }
     }
+    const sftpTargets: Record<string, SftpTarget> = {};
+    const targets = value['sftpTargets'];
+    if (isRecord(targets)) {
+      for (const [key, entry] of Object.entries(targets)) {
+        const target = DEPLOYED_KEY.test(key) ? sftpTargetOf(entry) : null;
+        if (target !== null) sftpTargets[key] = target;
+      }
+    }
     return {
       projectDir: absolute(value['projectDir']),
       keyFile: absolute(value['keyFile']),
       passphrases,
       deployed,
+      sftpTargets,
     };
   } catch {
     return EMPTY_CONFIG;
@@ -103,6 +125,43 @@ export function writeConfig(userData: string, config: DesktopConfig): void {
   const temp = `${target}.tmp-${process.pid}`;
   writeFileSync(temp, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
   renameSync(temp, target);
+}
+
+/** A stored SFTP target as the SFTP window writes it; anything else is dropped. */
+function sftpTargetOf(value: unknown): SftpTarget | null {
+  if (!isRecord(value)) return null;
+  const { host, port, username, remoteDir, auth, keyFile, hostKey, secret } =
+    value;
+  if (
+    typeof host !== 'string' ||
+    !SFTP_HOST.test(host) ||
+    typeof port !== 'number' ||
+    !Number.isInteger(port) ||
+    port < 1 ||
+    port > 65535 ||
+    typeof username !== 'string' ||
+    !SFTP_USER.test(username) ||
+    typeof remoteDir !== 'string' ||
+    !(remoteDir === '.' || (remoteDir !== '' && isRemoteDir(remoteDir))) ||
+    (auth !== 'password' && auth !== 'key') ||
+    !(keyFile === null || absolute(keyFile) !== null) ||
+    !(
+      hostKey === null ||
+      (typeof hostKey === 'string' && SFTP_HOST_KEY.test(hostKey))
+    ) ||
+    !(secret === null || (typeof secret === 'string' && secret !== ''))
+  )
+    return null;
+  return {
+    host,
+    port,
+    username,
+    remoteDir,
+    auth,
+    keyFile: keyFile === null ? null : absolute(keyFile),
+    hostKey: hostKey as string | null,
+    secret: secret as string | null,
+  };
 }
 
 function absolute(value: unknown): string | null {

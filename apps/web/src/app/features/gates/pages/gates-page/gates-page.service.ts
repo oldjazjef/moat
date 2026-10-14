@@ -48,6 +48,7 @@ export const SIGN_OUTCOMES = [
 export const DEPLOY_OUTCOMES = [
   'exported_zip',
   'exported_folder',
+  'exported_sftp',
   'key_missing',
   'gate_unknown',
   'bundle_missing',

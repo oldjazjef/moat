@@ -39,6 +39,7 @@ describe('desktop config', () => {
       keyFile: '/home/me/release.moatkey',
       passphrases: { [KID]: 'c2VhbGVk' },
       deployed: {},
+      sftpTargets: {},
     });
     if (process.platform !== 'win32')
       expect(statSync(join(dir, CONFIG_FILE)).mode & 0o077).toBe(0);
@@ -74,6 +75,33 @@ describe('desktop config', () => {
     expect(readConfig(dir).deployed).toEqual({
       [`${id}/www`]: { gateId: KID, version: 3 },
     });
+  });
+
+  it('keeps a valid SFTP target per project and gate, never a damaged one (DT-05)', () => {
+    const id = 'EET8NETuKZO4J4p9vrWNKg';
+    const target = {
+      host: 'sftp.example.ch',
+      port: 22,
+      username: 'eme',
+      remoteDir: 'moat-uploads',
+      auth: 'password',
+      keyFile: null,
+      hostKey: `ssh-ed25519 SHA256:${'k'.repeat(43)}`,
+      secret: 'c2VhbGVk',
+    };
+    writeFileSync(
+      join(dir, CONFIG_FILE),
+      JSON.stringify({
+        sftpTargets: {
+          [`${id}/www`]: target,
+          [`${id}/a`]: { ...target, remoteDir: '../x' },
+          [`${id}/b`]: { ...target, hostKey: 'MD5:xx' },
+          [`${id}/c`]: { ...target, keyFile: 'relative/key' },
+          [`${id}/d`]: { ...target, port: 0 },
+        },
+      }),
+    );
+    expect(readConfig(dir).sftpTargets).toEqual({ [`${id}/www`]: target });
   });
 
   it('drops remembered passphrases under a name that is not a key id', () => {

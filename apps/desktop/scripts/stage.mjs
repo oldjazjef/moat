@@ -6,7 +6,8 @@
  *   main.js, preload.js   the main process + preload, bundled here with esbuild
  *   sign-preload.js,      the signing (DT-15) and seal dialogs: their preloads and static pages
  *   seal-preload.js,      and the key window (FR-73)
- *   key-preload.js, dialogs/
+ *   key-preload.js,       and the SFTP window (DT-05)
+ *   sftp-preload.js, dialogs/
  *   api/main.js           the NestJS API as a library (`nx run api:build`)
  *   web/                  the Angular build (`nx run web:build:desktop`), served via app://
  *   package.json          name/version/main + the API's runtime dependencies
@@ -73,13 +74,23 @@ await esbuild.build({
       repoRoot,
       'apps/desktop/src/preload/key-preload.ts',
     ),
+    'sftp-preload': path.join(
+      repoRoot,
+      'apps/desktop/src/preload/sftp-preload.ts',
+    ),
   },
   outdir: out,
   bundle: true,
   platform: 'node',
   target: 'node22',
   format: 'cjs',
-  external: ['electron'],
+  // ssh2 (SFTP deploy) tries these optional native modules in try/catch and falls back to Node's
+  // own crypto; they are never built (pnpm-workspace.yaml allowBuilds), so leave them out.
+  external: [
+    'electron',
+    'cpu-features',
+    './crypto/build/Release/sshcrypto.node',
+  ],
   sourcemap: true,
   logLevel: 'warning',
 });

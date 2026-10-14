@@ -161,3 +161,39 @@ button:disabled {
 [hidden] {
   display: none !important;
 }
+
+input[type='text'],
+select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 6em;
+  gap: 8px;
+}
+
+.grid label,
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#files {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.hostkey {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+}
