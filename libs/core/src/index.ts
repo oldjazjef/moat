@@ -129,6 +129,28 @@ export {
   type DeployPlanErrorCode,
 } from './storage/deploy-plan';
 export {
+  hasForbiddenKey,
+  ImportPlanError,
+  IMPORT_ZIP_LIMITS,
+  MAX_IMPORT_BUNDLE_BYTES,
+  MAX_PACKAGE_ENTRIES,
+  packageBundleName,
+  planImport,
+  zipBundle,
+  type ImportPlan,
+  type ImportPlanErrorCode,
+  type ImportSource,
+  type PackageEntry,
+} from './storage/import-plan';
+export {
+  readZip,
+  ZipReadError,
+  type Inflate,
+  type ZipContents,
+  type ZipReadErrorCode,
+  type ZipReadLimits,
+} from './package/unzip';
+export {
   crc32,
   storedZip,
   MAX_ZIP_ENTRIES,

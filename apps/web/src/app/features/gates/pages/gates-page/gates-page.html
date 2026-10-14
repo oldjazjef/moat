@@ -270,6 +270,53 @@
         </p>
         } }
       </div>
+      } @if (service.canImport) {
+      <div data-gate-import>
+        <div class="mb-1 flex items-center gap-1">
+          <h3 class="text-sm font-medium">{{ 'gates.import' | translate }}</h3>
+          <mt-help-link section="release" />
+        </div>
+        <p class="text-muted-foreground mb-3 text-sm">
+          {{ 'gates.importIntro' | translate }}
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            hlmBtn
+            variant="outline"
+            size="sm"
+            type="button"
+            data-import-file
+            [disabled]="service.importing() !== null || service.signing() !== null || service.deploying() !== null"
+            (click)="service.importBundle(gate, 'file')"
+          >
+            {{ 'gates.importFile' | translate }}
+          </button>
+          <button
+            hlmBtn
+            variant="outline"
+            size="sm"
+            type="button"
+            data-import-folder
+            [disabled]="service.importing() !== null || service.signing() !== null || service.deploying() !== null"
+            (click)="service.importBundle(gate, 'folder')"
+          >
+            {{ 'gates.importFolder' | translate }}
+          </button>
+        </div>
+        @if (service.imported(); as imported) { @if (imported.gate ===
+        gate.name) {
+        <p
+          class="mt-2 text-sm"
+          data-import-outcome
+          [class.text-destructive]="imported.result.status !== 'imported'"
+          role="status"
+        >
+          <mt-rich-text
+            [text]="service.importText(imported.result) | translate: service.importParams(imported.result, gate.name)"
+          />
+        </p>
+        } }
+      </div>
       } @if (service.canCheck && resource.id(); as project) {
       <div data-gate-hardening>
         <div class="mb-1 flex items-center gap-1">

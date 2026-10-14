@@ -23,6 +23,9 @@ import {
   type DeployResult,
   type DeployTarget,
   GATE_NAME,
+  IMPORT_FROM,
+  type ImportFrom,
+  type ImportResult,
   IPC,
   PROJECT_ID,
   type ProjectAddResult,
@@ -47,6 +50,13 @@ import {
   writeDeployFolder,
   writeDeployZip,
 } from './lib/deploy';
+import {
+  importOutcome,
+  listPackageFolder,
+  MAX_IMPORT_FILE_BYTES,
+  readImportFile,
+  readPackageFile,
+} from './lib/import';
 import { KeyCreationSession, writeKeyFile } from './lib/key-creation';
 import { gitRunner, runGitDeploy } from './lib/git-deploy';
 import { readPrivateKey, SftpSession } from './lib/sftp';
@@ -465,6 +475,97 @@ function registerIpc(): void {
         return { status: 'failed' };
       }
     },
+  );
+  // FR-45: the page asks to import a bundle into a gate; what is chosen in the main process's own
+  // dialog, read here with limits, checked in core as the gate would (DT-17).
+  ipcMain.handle(
+    IPC.gateImport,
+    async (
+      event,
+      id: unknown,
+      gate: unknown,
+      from: unknown,
+      locale: unknown,
+    ): Promise<ImportResult> => {
+      if (!fromApp(event) || mainWindow === null || api === null)
+        return { status: 'failed' };
+      if (typeof id !== 'string' || !PROJECT_ID.test(id))
+        return { status: 'failed' };
+      if (typeof gate !== 'string' || !GATE_NAME.test(gate))
+        return { status: 'failed' };
+      if (!IMPORT_FROM.includes(from as ImportFrom))
+        return { status: 'failed' };
+      const text = MESSAGES[pageLocale(locale, app.getLocale())];
+      try {
+        return await importGate(
+          mainWindow,
+          api,
+          id,
+          gate,
+          from as ImportFrom,
+          text,
+        );
+      } catch (error) {
+        // Never a message to the page: it could name paths (SEC-46).
+        console.error('[desktop] import failed', error);
+        return { status: 'failed' };
+      }
+    },
+  );
+}
+
+/**
+ * Imports a bundle file, a deploy package ZIP or folder into the gate (FR-45): only a bundle
+ * signed with the desktop's own key, for this gate, above its latest bundle (DT-17, T-50).
+ */
+async function importGate(
+  parent: BrowserWindow,
+  running: RunningApi,
+  id: string,
+  gate: string,
+  from: ImportFrom,
+  text: DesktopMessages,
+): Promise<ImportResult> {
+  const keyPath = readConfig(app.getPath('userData')).keyFile;
+  const signer = keyPath === null ? null : readKeyFile(keyPath)?.signer;
+  if (signer === null || signer === undefined)
+    return { status: 'refused', code: 'key_missing' };
+  const dialogText = text.importBundle;
+  if (from === 'file') {
+    const picked = await dialog.showOpenDialog(parent, {
+      title: dialogText.chooseFile.title,
+      buttonLabel: dialogText.chooseFile.button,
+      defaultPath: app.getPath('documents'),
+      properties: ['openFile'],
+      filters: [
+        { name: dialogText.chooseFile.filter, extensions: ['json', 'zip'] },
+      ],
+    });
+    const file = picked.filePaths[0];
+    if (picked.canceled || file === undefined) return { status: 'cancelled' };
+    const bytes = readImportFile(file, MAX_IMPORT_FILE_BYTES);
+    if (bytes === null) return { status: 'refused', code: 'unreadable' };
+    if (bytes === 'too_large') return { status: 'refused', code: 'too_large' };
+    return importOutcome(
+      await running.importBundle(id, gate, signer, { kind: 'file', bytes }),
+    );
+  }
+  const picked = await dialog.showOpenDialog(parent, {
+    title: dialogText.chooseFolder.title,
+    buttonLabel: dialogText.chooseFolder.button,
+    defaultPath: app.getPath('documents'),
+    properties: ['openDirectory'],
+  });
+  const dir = picked.filePaths[0];
+  if (picked.canceled || dir === undefined) return { status: 'cancelled' };
+  const entries = listPackageFolder(dir);
+  if (entries === null) return { status: 'refused', code: 'unreadable' };
+  return importOutcome(
+    await running.importBundle(id, gate, signer, {
+      kind: 'folder',
+      entries,
+      read: (name) => readPackageFile(dir, name),
+    }),
   );
 }
 

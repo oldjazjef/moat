@@ -239,6 +239,25 @@
       "not_writable": "Moat cannot write to the chosen place. Nothing was saved.",
       "git_failed": "Git could not commit the package. Are `user.name` and `user.email` set, and is no merge or rebase in progress? Moat removed the folder again.",
       "failed": "The package could not be saved."
+    },
+    "import": "Import",
+    "importIntro": "Takes a signed bundle into this project, for example a deploy package from another computer. Moat accepts only a bundle signed with your key file for this gate, with a higher version than the latest one. It does not take the policy in the package.",
+    "importFile": "Import bundle",
+    "importFolder": "Import package folder",
+    "importResult": {
+      "imported": "Version {{version}} is imported. It is now the latest bundle of this gate.",
+      "key_missing": "Moat Desktop has no readable key file. Choose it when signing.",
+      "gate_unknown": "The gate file is missing or damaged.",
+      "unreadable": "The chosen file or folder cannot be read. Moat reads only ordinary files, no links.",
+      "too_large": "The chosen file is too big for a bundle or a deploy package.",
+      "package_invalid": "This is not a deploy package as Moat saves it. Expected are `bundle-v<n>.json` and at most `policy.json`, `LIESMICH.txt` or `README.txt`, without links, subfolders or unsafe paths.",
+      "bundle_invalid": "The file is not a valid bundle. Nothing was taken over.",
+      "signature_invalid": "The bundle is not signed with your key file, or it was changed. Nothing was taken over.",
+      "gate_mismatch": "The bundle is signed for another gate. Nothing was taken over.",
+      "version_not_newer": "The bundle is not newer than the latest bundle of this gate. Nothing was taken over.",
+      "config_invalid": "The configuration in the bundle is not valid. Nothing was taken over.",
+      "not_writable": "The folder `bundles/{{gate}}` cannot be written. Nothing was taken over.",
+      "failed": "The import did not work."
     }
   },
   "routes": {
@@ -835,6 +854,7 @@
           "package": "Under “Gates”, “Save as ZIP” or “Put into a folder” saves a deploy package: the latest signed bundle unchanged, the matching `policy.json` and instructions (`README.txt`) with the commands and the checksum. You choose where in Moat Desktop’s dialog. Moat packs only a bundle signed with your key file for this gate.",
           "sftp": "Under “Gates”, “Upload via SFTP” puts the same package on your server as a new folder. You enter server, user, folder and password or SSH key in Moat Desktop’s window, never in the app page. The first time it shows the server’s host key: compare it with the one your hoster gives. Only then does Moat send user, password and files. If the server later shows another key, Moat stops. Moat replaces nothing on the server and runs no command there: you start `accept` yourself.",
           "git": "If your hoster deploys from a Git repository, “Deliver via Git” under “Gates” puts the package as a new folder into your local working copy, commits only that folder and pushes it to the upstream of the checked-out branch. You choose the folder the first time; after that you confirm branch and remote every time. Moat uses your installed Git with your credentials but runs none of the repository’s hooks, and does not deliver into a repository whose own config starts programs. If the branch has commits that are not pushed yet, push them yourself first: Moat sends only the package. If the push fails, the commit stays and you push it yourself.",
+          "import": "Under “Gates”, “Import bundle” takes a signed bundle (`bundle-v<n>.json`) or a deploy package ZIP into the project, “Import package folder” the folder of a package. That way you work on several computers with the same key file, without the Cloud. Moat checks it as the gate does: the signature of your key file, the gate id, a higher version than the latest bundle and a valid configuration. Only the bundle is taken over, byte for byte. The `policy.json` in the package stays out: the policy belongs to the gate.",
           "build": "In the CLI, build the bundle with `moat build <gate> --key <file>.moatkey`. It is then saved under `bundles`.",
           "deploy": "Upload the bundle file to the server.",
           "accept": "Activate it there with `php moat-gate.php accept <bundle>.json`. Under “Gates” you see the version built last."

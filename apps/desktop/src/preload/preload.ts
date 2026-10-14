@@ -45,6 +45,14 @@ const bridge: DesktopBridge = {
         String(target),
         String(locale),
       ),
+    import: (projectId: string, gate: string, from: string, locale: string) =>
+      ipcRenderer.invoke(
+        IPC.gateImport,
+        String(projectId),
+        String(gate),
+        String(from),
+        String(locale),
+      ),
   },
 };
 
