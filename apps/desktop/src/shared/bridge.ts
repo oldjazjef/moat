@@ -11,6 +11,7 @@ export const IPC = {
   projectReveal: 'moat:project:reveal',
   bundleSign: 'moat:bundle:sign',
   secretSeal: 'moat:secret:seal',
+  gateDeploy: 'moat:gate:deploy',
 } as const;
 
 /** A project id as the API hands it out (22 characters base64url). */
@@ -81,6 +82,27 @@ export type SecretSealResult =
   | { status: 'not_writable' }
   | { status: 'failed' };
 
+/** Where a deploy package goes (DT-05): a ZIP file, or a new folder inside a chosen one. */
+export type DeployTarget = 'zip' | 'folder';
+export const DEPLOY_TARGETS: readonly DeployTarget[] = ['zip', 'folder'];
+
+/**
+ * `key_missing`: no signing key chosen (or it cannot be read); `bundle_missing`: nothing signed
+ * yet; `bundle_unverified`: the latest bundle is not one this key signed for this gate (T-66).
+ */
+export type DeployRefusal =
+  'key_missing' | 'gate_unknown' | 'bundle_missing' | 'bundle_unverified';
+
+export type DeployResult =
+  | { status: 'exported'; target: DeployTarget; version: number }
+  | { status: 'cancelled' }
+  | { status: 'refused'; code: DeployRefusal }
+  /** A folder of the package's name is there already; nothing was written. */
+  | { status: 'exists' }
+  /** The chosen place could not be written; nothing was left behind. */
+  | { status: 'not_writable' }
+  | { status: 'failed' };
+
 export interface DesktopBridge {
   readonly platform: string;
   readonly project: {
@@ -128,5 +150,18 @@ export interface DesktopBridge {
       name: string,
       locale: string,
     ): Promise<SecretSealResult>;
+  };
+  readonly gate: {
+    /**
+     * Saves the gate's deploy package (DT-05): the latest bundle signed with the desktop's key,
+     * its policy and how to install them, as a ZIP or a new folder, where the person chooses in
+     * the main process's dialog. The page never learns the path, only the outcome.
+     */
+    deploy(
+      projectId: string,
+      gate: string,
+      target: DeployTarget,
+      locale: string,
+    ): Promise<DeployResult>;
   };
 }

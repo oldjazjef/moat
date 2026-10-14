@@ -36,6 +36,16 @@ const bridge: DesktopBridge = {
         String(locale),
       ),
   },
+  gate: {
+    deploy: (projectId: string, gate: string, target: string, locale: string) =>
+      ipcRenderer.invoke(
+        IPC.gateDeploy,
+        String(projectId),
+        String(gate),
+        String(target),
+        String(locale),
+      ),
+  },
 };
 
 contextBridge.exposeInMainWorld('moatDesktop', bridge);

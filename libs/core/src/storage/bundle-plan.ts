@@ -157,7 +157,8 @@ export async function planBundle(
   };
 }
 
-function readGateId(storage: StoragePort, gate: string): string {
+/** The gate id pinned in `gates/<gate>.json`; BundlePlanError `gate_unknown` when there is none. */
+export function readGateId(storage: StoragePort, gate: string): string {
   const file = parseJson(storage.read(`gates/${gate}.json`));
   if (
     !isRecord(file) ||

@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { desktopApiEnv } from './lib/api-env';
 import type { SigningKeyInfo } from '../shared/bridge';
+import type { PrepareDeployResult } from './lib/deploy';
 import type { PrepareSealResult, SealResult } from './lib/sealing';
 import type { PlanSigner, PrepareResult, SignResult } from './lib/signing';
 
@@ -61,6 +62,13 @@ interface ApiBundle {
     api: ApiHandle,
     ask: (target: string, locale: string) => Promise<boolean>,
   ): void;
+  prepareDeploy(
+    api: ApiHandle,
+    id: string,
+    gate: string,
+    signer: PlanSigner,
+  ): Promise<PrepareDeployResult>;
+  zipFiles(entries: readonly { name: string; data: Uint8Array }[]): Uint8Array;
 }
 
 export interface RunningApi {
@@ -108,6 +116,13 @@ export interface RunningApi {
     digest: string,
     value: Uint8Array,
   ): Promise<SealResult>;
+  /** In-process only (DT-05): the main process asks where the package goes and writes it. */
+  prepareDeploy(
+    id: string,
+    gate: string,
+    signer: PlanSigner,
+  ): Promise<PrepareDeployResult>;
+  zipFiles(entries: readonly { name: string; data: Uint8Array }[]): Uint8Array;
   close(): Promise<void>;
 }
 
@@ -150,6 +165,9 @@ export async function startApi(options: {
     prepareSeal: (id, gate, name) => api.prepareSeal(running, id, gate, name),
     sealSecret: (id, gate, name, digest, value) =>
       api.sealSecret(running, id, gate, name, digest, value),
+    prepareDeploy: (id, gate, signer) =>
+      api.prepareDeploy(running, id, gate, signer),
+    zipFiles: (entries) => api.zipFiles(entries),
     close: () => running.app.close(),
   };
 }

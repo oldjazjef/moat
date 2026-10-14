@@ -209,7 +209,23 @@
       "failed": "Sealing did not work. Nothing was saved."
     },
     "hardening": "Hardening",
-    "hardeningIntro": "Checks whether the gate's files can be read from the internet. Only the gate itself, on your server, determines the hardening level."
+    "hardeningIntro": "Checks whether the gate's files can be read from the internet. Only the gate itself, on your server, determines the hardening level.",
+    "deploy": "Deploy",
+    "deployIntro": "Saves version {{version}} together with the policy and instructions as a package you upload to the server. Moat packs only a bundle signed with your key file.",
+    "deployNoBundle": "Sign a bundle first, then you can save it as a package.",
+    "deployZip": "Save as ZIP",
+    "deployFolder": "Put into a folder",
+    "deployResult": {
+      "exported_zip": "The package with version {{version}} is saved as a ZIP. The instructions inside are in `README.txt`.",
+      "exported_folder": "The package with version {{version}} is in the new folder `moat-{{gate}}-v{{version}}`. The instructions inside are in `README.txt`.",
+      "key_missing": "Moat Desktop has no readable key file. Choose it when signing.",
+      "gate_unknown": "The gate file is missing or damaged.",
+      "bundle_missing": "No bundle is signed for this gate yet.",
+      "bundle_unverified": "The latest bundle is not signed with your key file for this gate. Moat does not pack it: sign a new version.",
+      "exists": "This package is in the chosen folder already. Nothing was replaced.",
+      "not_writable": "Moat cannot write to the chosen place. Nothing was saved.",
+      "failed": "The package could not be saved."
+    }
   },
   "routes": {
     "subtitle": "What the gate forwards, and to whom",
@@ -802,6 +818,7 @@
         "where": "Project › Gates › Latest bundle",
         "steps": {
           "sign": "Under “Gates”, click “Sign bundle” on the gate. A separate Moat Desktop window shows what changes since the last bundle. The first time, choose your key file (`.moatkey`), then enter the passphrase and confirm. The bundle is then saved under `bundles`.",
+          "package": "Under “Gates”, “Save as ZIP” or “Put into a folder” saves a deploy package: the latest signed bundle unchanged, the matching `policy.json` and instructions (`README.txt`) with the commands and the checksum. You choose where in Moat Desktop’s dialog. Moat packs only a bundle signed with your key file for this gate.",
           "build": "In the CLI, build the bundle with `moat build <gate> --key <file>.moatkey`. It is then saved under `bundles`.",
           "deploy": "Upload the bundle file to the server.",
           "accept": "Activate it there with `php moat-gate.php accept <bundle>.json`. Under “Gates” you see the version built last."
