@@ -30,6 +30,7 @@ import {
   PROJECT_ID,
   type ProjectAddResult,
   type ProjectCreateResult,
+  type RequestLogResult,
   type SecretSealResult,
   type SigningKeyInfo,
   type SigningKeyResult,
@@ -58,6 +59,7 @@ import {
   readPackageFile,
 } from './lib/import';
 import { KeyCreationSession, writeKeyFile } from './lib/key-creation';
+import { logOutcome, MAX_LOG_FILES, readLogFiles } from './lib/request-log';
 import { gitRunner, runGitDeploy } from './lib/git-deploy';
 import { readPrivateKey, SftpSession } from './lib/sftp';
 import { uploadPackage } from './lib/sftp-client';
@@ -512,6 +514,47 @@ function registerIpc(): void {
       } catch (error) {
         // Never a message to the page: it could name paths (SEC-46).
         console.error('[desktop] import failed', error);
+        return { status: 'failed' };
+      }
+    },
+  );
+  // FR-50, DT-12: the page asks to show a gate's request log; the files are chosen in the main
+  // process's own dialog and read here with limits, parsed in core. The page never names a path.
+  ipcMain.handle(
+    IPC.gateLog,
+    async (
+      event,
+      id: unknown,
+      gate: unknown,
+      locale: unknown,
+    ): Promise<RequestLogResult> => {
+      if (!fromApp(event) || mainWindow === null || api === null)
+        return { status: 'failed' };
+      if (typeof id !== 'string' || !PROJECT_ID.test(id))
+        return { status: 'failed' };
+      if (typeof gate !== 'string' || !GATE_NAME.test(gate))
+        return { status: 'failed' };
+      const text = MESSAGES[pageLocale(locale, app.getLocale())].requestLog;
+      try {
+        const picked = await dialog.showOpenDialog(mainWindow, {
+          title: text.title,
+          buttonLabel: text.button,
+          defaultPath: app.getPath('downloads'),
+          properties: ['openFile', 'multiSelections'],
+          filters: [
+            { name: text.filter, extensions: ['php', 'txt', 'log', 'jsonl'] },
+          ],
+        });
+        if (picked.canceled || picked.filePaths.length === 0)
+          return { status: 'cancelled' };
+        if (picked.filePaths.length > MAX_LOG_FILES)
+          return { status: 'refused', code: 'unreadable' };
+        const read = readLogFiles(picked.filePaths);
+        if ('refused' in read) return { status: 'refused', code: read.refused };
+        return logOutcome(api.readRequestLog(read.texts));
+      } catch (error) {
+        // Never a message to the page: it could name paths (SEC-46).
+        console.error('[desktop] reading the log failed', error);
         return { status: 'failed' };
       }
     },

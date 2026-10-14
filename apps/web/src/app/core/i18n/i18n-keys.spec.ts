@@ -16,6 +16,7 @@ import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './locales';
 import {
   DEPLOY_OUTCOMES,
   IMPORT_OUTCOMES,
+  LOG_OUTCOMES,
   SEAL_OUTCOMES,
   SIGN_OUTCOMES,
 } from '../../features/gates/pages/gates-page/gates-page.service';
@@ -71,6 +72,7 @@ const DYNAMIC_KEYS = [
   ...SEAL_OUTCOMES.map((outcome) => `gates.sealResult.${outcome}`),
   ...DEPLOY_OUTCOMES.map((outcome) => `gates.deployResult.${outcome}`),
   ...IMPORT_OUTCOMES.map((outcome) => `gates.importResult.${outcome}`),
+  ...LOG_OUTCOMES.map((outcome) => `gates.logResult.${outcome}`),
   ...SETUP_STEPS.flatMap((step) => [
     `setup.steps.${step}.title`,
     `setup.steps.${step}.intro`,

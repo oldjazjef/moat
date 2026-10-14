@@ -34,6 +34,10 @@ import {
 } from './project/application/bundle-import.service';
 import { MainProcessConfirmation } from './gate-test/ports/gate-test-confirmation.port';
 import { ProjectService } from './project/project.service';
+import {
+  requestLogView,
+  type RequestLogViewResult,
+} from './gate-log/request-log-view';
 
 export {
   bootstrap,
@@ -225,6 +229,19 @@ export function importBundle(
   input: ImportInput,
 ): Promise<BundleImportResult> {
   return api.app.get(BundleImportService).import(id, gate, signer, input);
+}
+
+export type {
+  RequestLogView,
+  RequestLogViewResult,
+} from './gate-log/request-log-view';
+
+/**
+ * A gate's request log (FR-50, DT-12) from the text of the files the person chose in the main
+ * process's dialog: summary and newest entries, read with core parseRequestLog. Never HTTP.
+ */
+export function readRequestLog(texts: readonly string[]): RequestLogViewResult {
+  return requestLogView(texts);
 }
 
 /**

@@ -328,6 +328,113 @@
         </p>
         } }
       </div>
+      } @if (service.canReadLog) {
+      <div data-gate-log>
+        <div class="mb-1 flex items-center gap-1">
+          <h3 class="text-sm font-medium">{{ 'gates.log' | translate }}</h3>
+          <mt-help-link section="log" />
+        </div>
+        <p class="text-muted-foreground mb-3 text-sm">
+          <mt-rich-text [text]="'gates.logIntro' | translate" />
+        </p>
+        <button
+          hlmBtn
+          variant="outline"
+          size="sm"
+          type="button"
+          data-log-read
+          [disabled]="service.readingLog() !== null"
+          (click)="service.readLog(gate)"
+        >
+          {{ 'gates.logRead' | translate }}
+        </button>
+        @if (service.logRead(); as read) { @if (read.gate === gate.name) { @if
+        (read.result.status === 'read') { @let log = read.result.log;
+        <p class="mt-3 text-sm" data-log-summary role="status">
+          {{ 'gates.logSummary' | translate: { requests: log.requests, errors:
+          log.errors, clients: log.clients, from: service.logTime(log.from), to:
+          service.logTime(log.to) } }} @if (log.skipped > 0) { {{
+          'gates.logSkipped' | translate: { count: log.skipped } }} }
+        </p>
+        <div class="mt-2 overflow-x-auto">
+          <table hlmTable data-log-routes>
+            <thead hlmTHead>
+              <tr hlmTr>
+                <th hlmTh>{{ 'gates.logColumns.route' | translate }}</th>
+                <th hlmTh>{{ 'gates.logColumns.requests' | translate }}</th>
+                <th hlmTh>{{ 'gates.logColumns.errors' | translate }}</th>
+                <th hlmTh>{{ 'gates.logColumns.median' | translate }}</th>
+                <th hlmTh>{{ 'gates.logColumns.slowest' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody hlmTBody>
+              @for (row of log.routes; track row.route) {
+              <tr hlmTr>
+                <td hlmTd class="font-mono">
+                  {{ row.route ?? ('gates.logNoRoute' | translate) }}
+                </td>
+                <td hlmTd>{{ row.requests }}</td>
+                <td hlmTd>{{ row.errors }}</td>
+                <td hlmTd>
+                  {{ 'gates.logMs' | translate: { ms: row.p50Ms } }}
+                </td>
+                <td hlmTd>
+                  {{ 'gates.logMs' | translate: { ms: row.p95Ms } }}
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (log.codes.length > 0) {
+        <p class="mt-2 text-sm" data-log-codes>
+          {{ 'gates.logCodes' | translate }} @for (code of log.codes; track
+          code.code) {
+          <span class="font-mono">{{ code.code }}</span> ({{ code.count }}){{
+          $last ? '' : ', ' }} }
+        </p>
+        }
+        <details class="mt-2 text-sm" data-log-recent>
+          <summary class="cursor-pointer">
+            {{ 'gates.logRecent' | translate: { count: log.recent.length } }}
+          </summary>
+          <div class="mt-2 max-h-80 overflow-auto">
+            <table hlmTable>
+              <thead hlmTHead>
+                <tr hlmTr>
+                  <th hlmTh>{{ 'gates.logColumns.time' | translate }}</th>
+                  <th hlmTh>{{ 'gates.logColumns.route' | translate }}</th>
+                  <th hlmTh>{{ 'gates.logColumns.method' | translate }}</th>
+                  <th hlmTh>{{ 'gates.logColumns.status' | translate }}</th>
+                  <th hlmTh>{{ 'gates.logColumns.code' | translate }}</th>
+                  <th hlmTh>{{ 'gates.logColumns.duration' | translate }}</th>
+                  <th hlmTh>{{ 'gates.logColumns.client' | translate }}</th>
+                </tr>
+              </thead>
+              <tbody hlmTBody>
+                @for (entry of log.recent; track $index) {
+                <tr hlmTr>
+                  <td hlmTd>{{ service.logTime(entry.t) }}</td>
+                  <td hlmTd class="font-mono">{{ entry.route ?? '–' }}</td>
+                  <td hlmTd>{{ entry.method }}</td>
+                  <td hlmTd>{{ entry.status }}</td>
+                  <td hlmTd class="font-mono">{{ entry.error ?? '' }}</td>
+                  <td hlmTd>
+                    {{ 'gates.logMs' | translate: { ms: entry.ms } }}
+                  </td>
+                  <td hlmTd class="font-mono">{{ entry.client }}</td>
+                </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </details>
+        } @else {
+        <p class="text-destructive mt-2 text-sm" data-log-outcome role="status">
+          <mt-rich-text [text]="service.logText(read.result) | translate" />
+        </p>
+        } } }
+      </div>
       } @if (service.canCheck && resource.id(); as project) {
       <div data-gate-hardening>
         <div class="mb-1 flex items-center gap-1">

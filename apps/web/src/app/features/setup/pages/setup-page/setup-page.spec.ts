@@ -99,7 +99,7 @@ function bridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge {
     secret: {
       seal: vi.fn().mockResolvedValue({ status: 'sealed', secretVersion: 3 }),
     },
-    gate: { deploy: vi.fn(), import: vi.fn() },
+    gate: { deploy: vi.fn(), import: vi.fn(), log: vi.fn() },
     ...overrides,
   };
 }

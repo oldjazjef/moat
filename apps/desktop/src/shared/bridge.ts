@@ -13,6 +13,7 @@ export const IPC = {
   secretSeal: 'moat:secret:seal',
   gateDeploy: 'moat:gate:deploy',
   gateImport: 'moat:gate:import',
+  gateLog: 'moat:gate:log',
 } as const;
 
 /** A project id as the API hands it out (22 characters base64url). */
@@ -162,6 +163,53 @@ export type ImportResult =
   | { status: 'not_writable' }
   | { status: 'failed' };
 
+/** One line of a gate's request log (FR-50): never a path, a body or an address. */
+export interface RequestLogLine {
+  /** Unix seconds. */
+  t: number;
+  route: string | null;
+  method: string;
+  status: number;
+  /** The gate's error code; null when the upstream answered. */
+  error: string | null;
+  ms: number;
+  /** The same for one client on one UTC day. */
+  client: string;
+}
+
+/** «Log ansehen» (DT-12): the summary of the files the person chose, and the newest lines. */
+export interface RequestLogView {
+  requests: number;
+  errors: number;
+  clients: number;
+  from: number | null;
+  to: number | null;
+  codes: { code: string; count: number }[];
+  routes: {
+    route: string | null;
+    requests: number;
+    errors: number;
+    p50Ms: number;
+    p95Ms: number;
+  }[];
+  /** Newest first, at most 200. */
+  recent: RequestLogLine[];
+  /** Lines that were no log entry. */
+  skipped: number;
+}
+
+/**
+ * `unreadable` / `too_large`: a chosen file cannot be read or is too big; `no_entries`: nothing
+ * in them is a line of a gate's request log.
+ */
+export type RequestLogRefusal = 'unreadable' | 'too_large' | 'no_entries';
+
+export type RequestLogResult =
+  | { status: 'read'; log: RequestLogView }
+  | { status: 'cancelled' }
+  | { status: 'refused'; code: RequestLogRefusal }
+  | { status: 'failed' };
+
 export interface DesktopBridge {
   readonly platform: string;
   readonly project: {
@@ -233,5 +281,15 @@ export interface DesktopBridge {
       from: ImportFrom,
       locale: string,
     ): Promise<ImportResult>;
+    /**
+     * «Log ansehen» (FR-50, DT-12): the main process's dialog chooses the gate's log files
+     * (`log.php`, `logold.php`) or what `php moat-gate.php log` printed; the page gets the
+     * summary and the newest lines, never a path.
+     */
+    log(
+      projectId: string,
+      gate: string,
+      locale: string,
+    ): Promise<RequestLogResult>;
   };
 }

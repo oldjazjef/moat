@@ -8,6 +8,7 @@ import {
   desktopBridge,
   type ImportFrom,
   type ImportResult,
+  type RequestLogResult,
   type SecretSealResult,
 } from '../../../../core/desktop/desktop-bridge';
 import type { RowAction } from '../../../../shared/components/row-actions';
@@ -89,6 +90,14 @@ export const IMPORT_OUTCOMES = [
   'failed',
 ] as const;
 
+/** Every log refusal with a text (`gates.logResult.<code>`). */
+export const LOG_OUTCOMES = [
+  'unreadable',
+  'too_large',
+  'no_entries',
+  'failed',
+] as const;
+
 export type ValidGate = Extract<GateState, { status: 'valid' }>;
 
 /**
@@ -127,6 +136,14 @@ export class GatesPageService {
   readonly imported = signal<{
     readonly gate: string;
     readonly result: Exclude<ImportResult, { status: 'cancelled' }>;
+  } | null>(null);
+  /** Only Moat Desktop reads a gate's log files (which: its own dialog, DT-12). */
+  readonly canReadLog = this.bridge !== null;
+  /** The gate whose log dialog is open. */
+  readonly readingLog = signal<string | null>(null);
+  readonly logRead = signal<{
+    readonly gate: string;
+    readonly result: Exclude<RequestLogResult, { status: 'cancelled' }>;
   } | null>(null);
   /** `<gate>/<secret>` whose seal window is open. */
   readonly sealing = signal<string | null>(null);
@@ -315,6 +332,47 @@ export class GatesPageService {
     return result.status === 'imported'
       ? { gate, version: result.version }
       : { gate };
+  }
+
+  /**
+   * «Log ansehen» (FR-50, DT-12): the gate's log files chosen in the desktop's dialog; the page
+   * gets the summary and the newest lines, never a path.
+   */
+  async readLog(gate: ValidGate): Promise<void> {
+    if (this.bridge === null || this.readingLog() !== null) return;
+    this.readingLog.set(gate.name);
+    let result: RequestLogResult;
+    try {
+      result = await this.bridge.gate.log(
+        this.resource.id(),
+        gate.name,
+        this.translate.getCurrentLang() ?? '',
+      );
+    } catch {
+      result = { status: 'failed' };
+    } finally {
+      this.readingLog.set(null);
+    }
+    if (result.status === 'cancelled') return;
+    this.logRead.set({ gate: gate.name, result });
+  }
+
+  /** The i18n key of a log refusal (`gates.logResult.*`). */
+  logText(
+    result: Exclude<RequestLogResult, { status: 'cancelled' | 'read' }>,
+  ): string {
+    return result.status === 'refused'
+      ? `gates.logResult.${result.code}`
+      : `gates.logResult.${result.status}`;
+  }
+
+  /** Unix seconds as local date and time, in the page's language. */
+  logTime(seconds: number | null): string {
+    if (seconds === null) return '';
+    return new Date(seconds * 1000).toLocaleString(
+      this.translate.getCurrentLang() || undefined,
+      { dateStyle: 'short', timeStyle: 'medium' },
+    );
   }
 
   /** What the config uses and what is sealed, by name; names only (SEC-31). */

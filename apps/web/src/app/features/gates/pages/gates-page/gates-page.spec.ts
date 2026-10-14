@@ -5,6 +5,7 @@ import type {
   BundleSignResult,
   DeployResult,
   ImportResult,
+  RequestLogResult,
   SecretSealResult,
 } from '../../../../core/desktop/desktop-bridge';
 import {
@@ -257,7 +258,7 @@ describe('GatesPage', () => {
         key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
         bundle: { sign },
         secret: { seal: vi.fn() },
-        gate: { deploy: vi.fn(), import: vi.fn() },
+        gate: { deploy: vi.fn(), import: vi.fn(), log: vi.fn() },
       };
       return sign;
     };
@@ -338,7 +339,7 @@ describe('GatesPage', () => {
         key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
         bundle: { sign: vi.fn() },
         secret: { seal },
-        gate: { deploy: vi.fn(), import: vi.fn() },
+        gate: { deploy: vi.fn(), import: vi.fn(), log: vi.fn() },
       };
       return seal;
     };
@@ -395,7 +396,7 @@ describe('GatesPage', () => {
         key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
         bundle: { sign: vi.fn() },
         secret: { seal: vi.fn() },
-        gate: { deploy, import: vi.fn() },
+        gate: { deploy, import: vi.fn(), log: vi.fn() },
       };
       return deploy;
     };
@@ -560,7 +561,7 @@ describe('GatesPage', () => {
         key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
         bundle: { sign: vi.fn() },
         secret: { seal: vi.fn() },
-        gate: { deploy: vi.fn(), import: importBundle },
+        gate: { deploy: vi.fn(), import: importBundle, log: vi.fn() },
       };
       return importBundle;
     };
@@ -629,6 +630,106 @@ describe('GatesPage', () => {
         button.click();
         await settle(harness);
         expect(text(el, '[data-import-outcome]')).toContain(expected);
+      }
+    });
+  });
+
+  describe('request log in Moat Desktop (FR-50, DT-12)', () => {
+    afterEach(() => delete window.moatDesktop);
+
+    const desktop = (result: RequestLogResult) => {
+      const log = vi.fn().mockResolvedValue(result);
+      window.moatDesktop = {
+        platform: 'linux',
+        project: { add: vi.fn(), create: vi.fn(), reveal: vi.fn() },
+        key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
+        bundle: { sign: vi.fn() },
+        secret: { seal: vi.fn() },
+        gate: { deploy: vi.fn(), import: vi.fn(), log },
+      };
+      return log;
+    };
+    const entry = {
+      t: 1_792_000_000,
+      route: 'newsletter',
+      method: 'POST',
+      status: 429,
+      error: 'rate_limited',
+      ms: 3,
+      client: '0123456789abcdef',
+    };
+
+    it('offers no log in a browser', async () => {
+      const { el } = await openProjectTab('gates', GatesPage, PROJECT);
+      expect(el.querySelector('[data-gate-log]')).toBeNull();
+    });
+
+    it('asks the shell by ids only and shows requests, errors and latency per route', async () => {
+      const log = desktop({
+        status: 'read',
+        log: {
+          requests: 12,
+          errors: 2,
+          clients: 3,
+          from: 1_792_000_000,
+          to: 1_792_000_600,
+          codes: [{ code: 'rate_limited', count: 2 }],
+          routes: [
+            {
+              route: 'newsletter',
+              requests: 11,
+              errors: 1,
+              p50Ms: 180,
+              p95Ms: 420,
+            },
+            { route: null, requests: 1, errors: 1, p50Ms: 0, p95Ms: 0 },
+          ],
+          recent: [entry],
+          skipped: 1,
+        },
+      });
+      const { el, harness } = await openProjectTab('gates', GatesPage, PROJECT);
+      const button = el.querySelector('[data-log-read]') as HTMLButtonElement;
+      expect(button.textContent?.trim()).toBe('Log ansehen');
+      button.click();
+      await settle(harness);
+      expect(log).toHaveBeenCalledWith(PROJECT.id, 'site', 'de-CH');
+      expect(text(el, '[data-log-summary]')).toContain('12 Anfragen von');
+      expect(text(el, '[data-log-summary]')).toContain(
+        '1 Zeilen waren keine Log-Einträge.',
+      );
+      const rows = [...el.querySelectorAll('[data-log-routes] tbody tr')].map(
+        (row) =>
+          [...row.querySelectorAll('td')]
+            .map((cell) => cell.textContent?.trim())
+            .join(' | '),
+      );
+      expect(rows).toEqual([
+        'newsletter | 11 | 1 | 180 ms | 420 ms',
+        '(keine Route) | 1 | 1 | 0 ms | 0 ms',
+      ]);
+      expect(text(el, '[data-log-codes]')).toContain('rate_limited (2)');
+      expect(text(el, '[data-log-recent]')).toContain('0123456789abcdef');
+    });
+
+    it('says nothing on cancel and why the files are no log', async () => {
+      const log = desktop({ status: 'cancelled' });
+      const { el, harness } = await openProjectTab('gates', GatesPage, PROJECT);
+      const button = el.querySelector('[data-log-read]') as HTMLButtonElement;
+      button.click();
+      await settle(harness);
+      expect(el.querySelector('[data-log-outcome]')).toBeNull();
+      const refusals: [RequestLogResult, string][] = [
+        [{ status: 'refused', code: 'no_entries' }, 'keine Zeile'],
+        [{ status: 'refused', code: 'too_large' }, 'grösser als ein Log'],
+        [{ status: 'refused', code: 'unreadable' }, 'liessen sich nicht lesen'],
+        [{ status: 'failed' }, 'nicht anzeigen'],
+      ];
+      for (const [result, expected] of refusals) {
+        log.mockResolvedValue(result);
+        button.click();
+        await settle(harness);
+        expect(text(el, '[data-log-outcome]')).toContain(expected);
       }
     });
   });

@@ -260,6 +260,34 @@
       "config_invalid": "Die Konfiguration im Bundle ist nicht gültig. Nichts wurde übernommen.",
       "not_writable": "Der Ordner `bundles/{{gate}}` lässt sich nicht schreiben. Nichts wurde übernommen.",
       "failed": "Der Import hat nicht geklappt."
+    },
+    "log": "Anfrage-Log",
+    "logIntro": "Das Gate schreibt zu jeder Anfrage eine Zeile: Zeit, Route, Methode, Status, Fehlercode, Dauer und eine Kennung des Besuchers, die jeden Tag wechselt. Pfade, Inhalte und Adressen schreibt es nie. Hol die Dateien `log.php` und `logold.php` aus dem Datenordner des Gates (per SFTP oder FTP) oder speichere, was `php moat-gate.php log` ausgibt, und öffne sie hier.",
+    "logRead": "Log ansehen",
+    "logSummary": "{{requests}} Anfragen von {{from}} bis {{to}}, davon {{errors}} mit Fehler, von {{clients}} Besuchern.",
+    "logSkipped": "{{count}} Zeilen waren keine Log-Einträge.",
+    "logNoRoute": "(keine Route)",
+    "logMs": "{{ms}} ms",
+    "logCodes": "Fehlercodes:",
+    "logRecent": "Die neuesten {{count}} Anfragen",
+    "logColumns": {
+      "route": "Route",
+      "requests": "Anfragen",
+      "errors": "Fehler",
+      "median": "Median",
+      "slowest": "95 %",
+      "time": "Zeit",
+      "method": "Methode",
+      "status": "Status",
+      "code": "Code",
+      "duration": "Dauer",
+      "client": "Besucher"
+    },
+    "logResult": {
+      "unreadable": "Die Dateien liessen sich nicht lesen. Wähle höchstens zwei normale Dateien, `log.php` und `logold.php`.",
+      "too_large": "Die Dateien sind grösser als ein Log des Gates.",
+      "no_entries": "In den Dateien steht keine Zeile aus dem Anfrage-Log eines Gates.",
+      "failed": "Das Log liess sich nicht anzeigen."
     }
   },
   "routes": {
@@ -933,6 +961,21 @@
           "status": "`php moat-gate.php status` zeigt, was der Kill-Switch gerade abschaltet.",
           "closed": "Steht in `kill.php` etwas, das das Gate nicht versteht, schaltet es lieber das ganze Gate ab.",
           "age": "Setzt du in der lokalen Policy `maxConfigAgeSeconds`, warnt `status`, wenn das aktive Bundle älter ist. So merkst du, wenn eine Sperre aus dem Projekt nie ankommt."
+        }
+      },
+      "log": {
+        "title": "Anfrage-Log",
+        "purpose": "Das Anfrage-Log zeigt, wie oft deine Routen aufgerufen werden, wie oft sie Fehler liefern und wie lange sie brauchen. Es liegt auf deinem Server, nicht in einer Cloud.",
+        "where": "Projekt › Gates › Anfrage-Log",
+        "steps": {
+          "write": "Das Gate schreibt nach jeder Anfrage eine Zeile in `log.php` im Datenordner: Zeit, Route, Methode, Status, Fehlercode des Gates, Dauer und eine Besucherkennung, die jeden Tag wechselt.",
+          "fetch": "Hol das Log ab: entweder `php moat-gate.php log > log.txt` auf dem Server, oder lade `log.php` und `logold.php` aus dem Datenordner per SFTP oder FTP herunter.",
+          "view": "Klick unter «Gates» beim Gate auf «Log ansehen» und wähle die Dateien. Moat zeigt Anfragen, Fehler und Dauer pro Route und die neuesten Anfragen.",
+          "size": "Wird `log.php` grösser als `logMaxBytes` der lokalen Policy (Standard 256 KiB), wird sie zu `logold.php` und ein neues Log beginnt. `\"logMaxBytes\": 0` schaltet das Log ab."
+        },
+        "tips": {
+          "privacy": "Pfade, Query-Parameter, Inhalte und IP-Adressen stehen nie im Log. Die Besucherkennung ist ein Hash mit einem Schlüssel, der den Server nie verlässt, und gilt nur einen Tag.",
+          "cloud": "Live-Dashboards und Alarme gibt es erst mit Moat Cloud. Ohne Cloud holst du das Log ab, wenn du es brauchst."
         }
       },
       "privacy": {

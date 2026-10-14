@@ -42,7 +42,7 @@ describe('ProjectWorkspace', () => {
       key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
       bundle: { sign: vi.fn() },
       secret: { seal: vi.fn() },
-      gate: { deploy: vi.fn(), import: vi.fn() },
+      gate: { deploy: vi.fn(), import: vi.fn(), log: vi.fn() },
     };
     const { el } = await openProjectTab('overview', OverviewPage, PROJECT);
     click(el, '[data-reveal]');

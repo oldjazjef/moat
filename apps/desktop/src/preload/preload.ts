@@ -53,6 +53,13 @@ const bridge: DesktopBridge = {
         String(from),
         String(locale),
       ),
+    log: (projectId: string, gate: string, locale: string) =>
+      ipcRenderer.invoke(
+        IPC.gateLog,
+        String(projectId),
+        String(gate),
+        String(locale),
+      ),
   },
 };
 

@@ -81,6 +81,12 @@ export interface DesktopMessages {
   readonly sftpDialog: SftpDialogTexts;
   readonly sftpKey: { readonly title: string; readonly button: string };
   /** Import (FR-45): a bundle file or package ZIP, or a package folder. */
+  /** «Log ansehen» (DT-12): the dialog that chooses a gate's log files. */
+  readonly requestLog: {
+    readonly title: string;
+    readonly button: string;
+    readonly filter: string;
+  };
   readonly importBundle: {
     readonly chooseFile: {
       readonly title: string;
@@ -355,6 +361,11 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
     sftpKey: {
       title: 'SSH-Schlüssel wählen',
       button: 'Diesen Schlüssel verwenden',
+    },
+    requestLog: {
+      title: 'Log-Dateien des Gates wählen (log.php, logold.php)',
+      button: 'Öffnen',
+      filter: 'Log des Gates',
     },
     importBundle: {
       chooseFile: {
@@ -679,6 +690,11 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       },
     },
     sftpKey: { title: 'Choose SSH key', button: 'Use this key' },
+    requestLog: {
+      title: "Choose the gate's log files (log.php, logold.php)",
+      button: 'Open',
+      filter: 'Gate log',
+    },
     importBundle: {
       chooseFile: {
         title: 'Import bundle or deploy package',

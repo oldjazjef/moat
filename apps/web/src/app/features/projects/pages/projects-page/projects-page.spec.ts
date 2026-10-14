@@ -82,7 +82,7 @@ describe('ProjectsPage', () => {
       key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
       bundle: { sign: vi.fn() },
       secret: { seal: vi.fn() },
-      gate: { deploy: vi.fn(), import: vi.fn() },
+      gate: { deploy: vi.fn(), import: vi.fn(), log: vi.fn() },
     };
     const { el, harness } = await open([]);
     (el.querySelector('[data-add-project]') as HTMLButtonElement).click();
@@ -99,7 +99,7 @@ describe('ProjectsPage', () => {
       key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
       bundle: { sign: vi.fn() },
       secret: { seal: vi.fn() },
-      gate: { deploy: vi.fn(), import: vi.fn() },
+      gate: { deploy: vi.fn(), import: vi.fn(), log: vi.fn() },
     };
     const { el, harness } = await open([]);
     (el.querySelector('[data-add-project]') as HTMLButtonElement).click();

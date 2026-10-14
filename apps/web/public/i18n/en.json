@@ -260,6 +260,34 @@
       "config_invalid": "The configuration in the bundle is not valid. Nothing was taken over.",
       "not_writable": "The folder `bundles/{{gate}}` cannot be written. Nothing was taken over.",
       "failed": "The import did not work."
+    },
+    "log": "Request log",
+    "logIntro": "The gate writes one line per request: time, route, method, status, error code, duration and a visitor id that changes every day. It never writes paths, contents or addresses. Fetch the files `log.php` and `logold.php` from the gate’s data folder (by SFTP or FTP) or save what `php moat-gate.php log` prints, and open them here.",
+    "logRead": "View log",
+    "logSummary": "{{requests}} requests from {{from}} to {{to}}, {{errors}} of them with an error, from {{clients}} visitors.",
+    "logSkipped": "{{count}} lines were not log entries.",
+    "logNoRoute": "(no route)",
+    "logMs": "{{ms}} ms",
+    "logCodes": "Error codes:",
+    "logRecent": "The newest {{count}} requests",
+    "logColumns": {
+      "route": "Route",
+      "requests": "Requests",
+      "errors": "Errors",
+      "median": "Median",
+      "slowest": "95 %",
+      "time": "Time",
+      "method": "Method",
+      "status": "Status",
+      "code": "Code",
+      "duration": "Duration",
+      "client": "Visitor"
+    },
+    "logResult": {
+      "unreadable": "The files could not be read. Choose at most two regular files, `log.php` and `logold.php`.",
+      "too_large": "The files are larger than a gate’s log.",
+      "no_entries": "The files hold no line of a gate’s request log.",
+      "failed": "The log could not be shown."
     }
   },
   "routes": {
@@ -933,6 +961,21 @@
           "status": "`php moat-gate.php status` shows what the kill switch currently turns off.",
           "closed": "If `kill.php` holds something the gate does not understand, it turns the whole gate off rather than guess.",
           "age": "Set `maxConfigAgeSeconds` in the local policy and `status` warns when the active bundle is older. That way you notice when a lock from the project never arrives."
+        }
+      },
+      "log": {
+        "title": "Request log",
+        "purpose": "The request log shows how often your routes are called, how often they fail and how long they take. It stays on your server, not in a cloud.",
+        "where": "Project › Gates › Request log",
+        "steps": {
+          "write": "After every request the gate writes one line to `log.php` in its data folder: time, route, method, status, the gate’s error code, duration and a visitor id that changes every day.",
+          "fetch": "Fetch the log: either `php moat-gate.php log > log.txt` on the server, or download `log.php` and `logold.php` from the data folder by SFTP or FTP.",
+          "view": "Under “Gates”, click “View log” at the gate and choose the files. Moat shows requests, errors and duration per route and the newest requests.",
+          "size": "When `log.php` grows beyond the local policy’s `logMaxBytes` (default 256 KiB), it becomes `logold.php` and a new log starts. `\"logMaxBytes\": 0` turns the log off."
+        },
+        "tips": {
+          "privacy": "Paths, query parameters, contents and IP addresses are never in the log. The visitor id is a hash with a key that never leaves the server, and it lasts one day.",
+          "cloud": "Live dashboards and alerts come only with Moat Cloud. Without it, you fetch the log when you need it."
         }
       },
       "privacy": {

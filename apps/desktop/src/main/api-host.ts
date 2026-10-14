@@ -4,6 +4,7 @@ import { desktopApiEnv } from './lib/api-env';
 import type { SigningKeyInfo } from '../shared/bridge';
 import type { PrepareDeployResult } from './lib/deploy';
 import type { BundleImportResult, ImportInput } from './lib/import';
+import type { RequestLogApiResult } from './lib/request-log';
 import type { PrepareSealResult, SealResult } from './lib/sealing';
 import type { PlanSigner, PrepareResult, SignResult } from './lib/signing';
 
@@ -77,6 +78,7 @@ interface ApiBundle {
     signer: PlanSigner,
     input: ImportInput,
   ): Promise<BundleImportResult>;
+  readRequestLog(texts: readonly string[]): RequestLogApiResult;
 }
 
 export interface RunningApi {
@@ -138,6 +140,8 @@ export interface RunningApi {
     signer: PlanSigner,
     input: ImportInput,
   ): Promise<BundleImportResult>;
+  /** In-process only (DT-12): the text of the log files the person chose in its own dialog. */
+  readRequestLog(texts: readonly string[]): RequestLogApiResult;
   close(): Promise<void>;
 }
 
@@ -185,6 +189,7 @@ export async function startApi(options: {
     zipFiles: (entries) => api.zipFiles(entries),
     importBundle: (id, gate, signer, input) =>
       api.importBundle(running, id, gate, signer, input),
+    readRequestLog: (texts) => api.readRequestLog(texts),
     close: () => running.app.close(),
   };
 }
