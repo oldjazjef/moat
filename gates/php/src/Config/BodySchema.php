@@ -40,17 +40,17 @@ final class BodySchema
         if (!$value instanceof JsonObject) {
             self::fail();
         }
-        $members = $value->members();
-        if ($members === [] || \count($members) > self::MAX_OBJECT_FIELDS) {
+        // keys(), not the members' array keys: PHP turns a key such as "1" into an integer.
+        $names = $value->keys();
+        if ($names === [] || \count($names) > self::MAX_OBJECT_FIELDS) {
             self::fail();
         }
         $fields = [];
-        foreach ($members as $name => $member) {
-            $name = (string) $name;
+        foreach ($names as $name) {
             if (preg_match(self::FIELD_NAME, $name) !== 1 || $name === '__proto__') {
                 self::fail();
             }
-            $fields[$name] = self::field($member, $depth, false, $count);
+            $fields[$name] = self::field($value->get($name), $depth, false, $count);
         }
 
         return $fields;
