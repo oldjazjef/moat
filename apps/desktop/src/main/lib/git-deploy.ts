@@ -22,8 +22,9 @@ export const GIT_TIMEOUT_MS = 60_000;
 
 /**
  * `git` as the person would run it in that folder, with their own config and credentials, but
- * never running code from the repository: hooks and the fsmonitor are switched off on the
- * command line (which wins over the repository's config), and git never prompts on a terminal.
+ * never running code from the repository: hooks, the fsmonitor and the `ext::` transport are
+ * switched off on the command line (which wins over the repository's config), git never prompts
+ * on a terminal, and `inspectGitTarget` refuses a repository whose own config starts programs.
  */
 export function gitRunner(noHooksDir: string): GitRunner {
   return (cwd, args) =>
@@ -35,6 +36,8 @@ export function gitRunner(noHooksDir: string): GitRunner {
           `core.hooksPath=${noHooksDir}`,
           '-c',
           'core.fsmonitor=false',
+          '-c',
+          'protocol.ext.allow=never',
           ...args,
         ],
         {
@@ -66,7 +69,11 @@ export type GitRefusal =
   /** The branch has no upstream on a remote to push to. */
   | 'no_upstream'
   /** `.gitignore` would keep the package out of the commit. */
-  | 'ignored';
+  | 'ignored'
+  /** The repository's own config would start programs (filters, credential helpers, …). */
+  | 'unsafe_config'
+  /** The branch has commits that are not on the upstream yet: the push would send them too. */
+  | 'ahead';
 
 /** Where the package goes: the branch and the remote branch it is pushed to. */
 export interface GitTarget {
@@ -74,11 +81,65 @@ export interface GitTarget {
   readonly remote: string;
   /** `refs/heads/…` on the remote. */
   readonly merge: string;
+  /** Where the push really goes (`git remote get-url --push`), without any user or password. */
+  readonly url: string;
 }
 
 /** Remote names as `git remote add` takes them; never one that reads as an option. */
 const REMOTE = /^[A-Za-z0-9_][A-Za-z0-9._/-]{0,99}$/;
 const MERGE = /^refs\/heads\/[A-Za-z0-9_][A-Za-z0-9._/-]{0,199}$/;
+
+/**
+ * Config keys that make git start a program or fetch config from elsewhere. Set by the
+ * repository itself (scope `local` or `worktree`), they could come from whoever handed over the
+ * folder (T-68): such a repository is refused. The person's own (global, system) config counts as
+ * theirs, like any `git push` they run.
+ */
+const UNSAFE_KEYS = [
+  /^filter\./,
+  /^credential\./,
+  /^gpg\./,
+  /^include\./,
+  /^includeif\./,
+  /^url\./,
+  /^protocol\./,
+  /^remote\.[^\n]*\.(?:receivepack|uploadpack|vcs|proxy)$/,
+  /^core\.(?:sshcommand|askpass|gitproxy|alternaterefscommand)$/,
+  /^commit\.gpgsign$/,
+  /^tag\.gpgsign$/,
+];
+
+/** Keys the repository's own config sets that would start a program (see UNSAFE_KEYS). */
+export function unsafeConfigKeys(list: string): string[] {
+  const unsafe: string[] = [];
+  for (const line of list.split('\n')) {
+    const tab = line.indexOf('\t');
+    if (tab === -1) continue;
+    const scope = line.slice(0, tab);
+    const key =
+      line
+        .slice(tab + 1)
+        .split('=')[0]
+        ?.toLowerCase() ?? '';
+    if (
+      (scope === 'local' || scope === 'worktree') &&
+      UNSAFE_KEYS.some((pattern) => pattern.test(key))
+    )
+      unsafe.push(key);
+  }
+  return unsafe;
+}
+
+/** A remote URL to show: `user:password@` removed, control characters refused. */
+export function shownUrl(url: string): string | null {
+  const trimmed = url.trim();
+  if (
+    trimmed === '' ||
+    [...trimmed].some((char) => char.charCodeAt(0) < 0x20 || char === '\u007f')
+  )
+    return null;
+  return trimmed.replace(/^([A-Za-z][A-Za-z0-9+.-]*:\/\/)[^/@]*@/, '$1');
+}
 
 /** The package's folder name, as `deployFiles` writes it. */
 function folderOf(files: readonly DeployFile[]): string | null {
@@ -89,8 +150,9 @@ function folderOf(files: readonly DeployFile[]): string | null {
 const literal = (path: string) => `:(literal)${path}`;
 
 /**
- * Checks, without writing anything, that `dir` is in a Git working copy on a branch with an
- * upstream, and that the package's files would not be ignored there.
+ * Checks, without writing anything, that `dir` is in a Git working copy whose own config starts
+ * no program, on a branch with an upstream that has all its commits already, and that the
+ * package's files would not be ignored there.
  */
 export async function inspectGitTarget(
   git: GitRunner,
@@ -100,6 +162,14 @@ export async function inspectGitTarget(
   const inside = await git(dir, ['rev-parse', '--is-inside-work-tree']);
   if (inside.code !== 0 || inside.stdout.trim() !== 'true')
     return { refused: 'not_a_repo' };
+  const config = await git(dir, [
+    'config',
+    '--list',
+    '--show-scope',
+    '--includes',
+  ]);
+  if (config.code !== 0 || unsafeConfigKeys(config.stdout).length > 0)
+    return { refused: 'unsafe_config' };
   const head = await git(dir, ['symbolic-ref', '-q', '--short', 'HEAD']);
   const branch = head.stdout.trim();
   if (head.code !== 0 || branch === '') return { refused: 'detached' };
@@ -112,6 +182,13 @@ export async function inspectGitTarget(
   // '.' is a local branch as upstream: nothing would reach a server.
   if (!REMOTE.test(remote) || remote === '.' || !MERGE.test(merge))
     return { refused: 'no_upstream' };
+  const pushUrl = await git(dir, ['remote', 'get-url', '--push', remote]);
+  const url = shownUrl(pushUrl.stdout);
+  if (pushUrl.code !== 0 || url === null) return { refused: 'no_upstream' };
+  // Only Moat's commit may leave with the push, never the person's unpushed work.
+  const ahead = await git(dir, ['rev-list', '--count', '@{upstream}..HEAD']);
+  if (ahead.code !== 0) return { refused: 'no_upstream' };
+  if (ahead.stdout.trim() !== '0') return { refused: 'ahead' };
   const folder = folderOf(files);
   if (folder === null) return { refused: 'not_a_repo' };
   for (const file of files) {
@@ -124,7 +201,7 @@ export async function inspectGitTarget(
     ]);
     if (ignored.code === 0) return { refused: 'ignored' };
   }
-  return { branch, remote, merge };
+  return { branch, remote, merge, url };
 }
 
 export type GitDeployResult =
@@ -162,6 +239,11 @@ export async function deployToGit(
 ): Promise<GitDeployResult> {
   const folder = folderOf(files);
   if (folder === null) return { status: 'not_writable' };
+  // Tracked under that name already (perhaps not on disk: sparse checkout, skip-worktree).
+  const tracked = await git(dir, ['ls-files', '--', literal(folder)]);
+  if (tracked.code !== 0) return { status: 'git_failed' };
+  if (tracked.stdout.trim() !== '') return { status: 'exists' };
+  const before = await git(dir, ['rev-parse', '--verify', '-q', 'HEAD']);
   const written = writeDeployFolder(dir, files);
   if (written !== null) return written;
   const added = await git(dir, ['add', '--', literal(folder)]);
@@ -178,6 +260,10 @@ export async function deployToGit(
         ])
       : added;
   if (committed.code !== 0) {
+    // Killed after the commit was written (timeout): it is there, so nothing is undone.
+    const after = await git(dir, ['rev-parse', '--verify', '-q', 'HEAD']);
+    if (after.stdout.trim() !== before.stdout.trim())
+      return { status: 'committed' };
     await git(dir, [
       'rm',
       '-r',

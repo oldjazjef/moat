@@ -68,7 +68,7 @@ export interface DesktopMessages {
         readonly title: string;
         /** {package}, {folder} */
         readonly message: string;
-        /** {branch}, {remote}, {remoteBranch} */
+        /** {branch}, {remote}, {remoteBranch}, {url} */
         readonly detail: string;
         readonly push: string;
         readonly other: string;
@@ -275,7 +275,7 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
           title: 'Per Git ausliefern',
           message: 'Paket {package} nach {folder} committen und pushen?',
           detail:
-            'Moat legt das Paket als neuen Ordner an, committet nur diesen Ordner auf den Branch {branch} und pusht ihn nach {remote} ({remoteBranch}). Deine anderen Änderungen bleiben, wie sie sind. Hooks des Repositorys führt Moat nicht aus.',
+            'Moat legt das Paket als neuen Ordner an, committet nur diesen Ordner auf den Branch {branch} und pusht ihn nach {remote} ({remoteBranch}): {url}. Deine anderen Änderungen bleiben ungepusht in deiner Arbeitskopie. Hooks des Repositorys führt Moat nicht aus.',
           push: 'Committen und pushen',
           other: 'Anderen Ordner wählen',
           cancel: 'Abbrechen',

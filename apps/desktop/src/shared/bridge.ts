@@ -110,7 +110,9 @@ export type DeployRefusal =
   | 'git_not_a_repo'
   | 'git_detached'
   | 'git_no_upstream'
-  | 'git_ignored';
+  | 'git_ignored'
+  | 'git_unsafe_config'
+  | 'git_ahead';
 
 export type DeployResult =
   | { status: 'exported'; target: DeployTarget; version: number }

@@ -27,6 +27,8 @@ import {
   gitRunner,
   inspectGitTarget,
   runGitDeploy,
+  shownUrl,
+  unsafeConfigKeys,
 } from './git-deploy';
 
 const PKG: DeployPackage = {
@@ -141,6 +143,7 @@ describe('deploy to Git (DT-05, T-68) against real repositories', () => {
       branch: 'main',
       remote: 'origin',
       merge: 'refs/heads/main',
+      url: bare,
     });
     expect(
       await deployToGit(git, work, target as GitTarget, PKG, FILES),
@@ -161,6 +164,95 @@ describe('deploy to Git (DT-05, T-68) against real repositories', () => {
     expect(sh(work, 'status', '--porcelain')).toBe(
       'M  index.html\n?? notes.txt',
     );
+  });
+
+  it('refuses a repository whose own config starts programs, before anything runs (T-68)', async () => {
+    const { work } = clone();
+    const marker = join(root, 'filter-ran');
+    writeFileSync(join(work, '.gitattributes'), '* filter=evil\n');
+    sh(work, 'config', 'filter.evil.clean', `touch '${marker}'; cat`);
+    expect(await inspectGitTarget(git, work, FILES)).toEqual({
+      refused: 'unsafe_config',
+    });
+    expect(existsSync(marker)).toBe(false);
+    // The control: a plain `git add` in that repository runs the filter.
+    sh(work, 'add', '.gitattributes');
+    expect(existsSync(marker)).toBe(true);
+  });
+
+  it('names the keys that start programs, only from the repository itself', () => {
+    expect(
+      unsafeConfigKeys(
+        [
+          'global\tcredential.helper=osxkeychain',
+          'local\tcore.bare=false',
+          'local\tremote.origin.url=git@example.ch:shop.git',
+          'local\tFilter.lfs.clean=git-lfs clean -- %f',
+          'local\tremote.origin.receivepack=sh -c id',
+          'worktree\tcore.sshCommand=ssh -i x',
+          'local\tinclude.path=../other',
+          'local\tcommit.gpgsign=true',
+        ].join('\n'),
+      ),
+    ).toEqual([
+      'filter.lfs.clean',
+      'remote.origin.receivepack',
+      'core.sshcommand',
+      'include.path',
+      'commit.gpgsign',
+    ]);
+  });
+
+  it('shows the push address without user or password', () => {
+    expect(shownUrl('https://eme:ghp_TEST-ONLY@example.ch/shop.git\n')).toBe(
+      'https://example.ch/shop.git',
+    );
+    expect(shownUrl('git@example.ch:shop.git')).toBe('git@example.ch:shop.git');
+    expect(shownUrl('https://example.ch/\u001b[2Jx')).toBeNull();
+  });
+
+  it('refuses a branch with unpushed commits: the push would send them too', async () => {
+    const { work } = clone();
+    writeFileSync(join(work, 'draft.html'), 'draft');
+    sh(work, 'add', 'draft.html');
+    sh(work, 'commit', '-q', '-m', 'not yet');
+    expect(await inspectGitTarget(git, work, FILES)).toEqual({
+      refused: 'ahead',
+    });
+  });
+
+  it('writes nothing when the folder name is tracked already (sparse or skip-worktree)', async () => {
+    const { work } = clone();
+    mkdirSync(join(work, 'moat-www-v3'));
+    writeFileSync(join(work, 'moat-www-v3', 'old.txt'), 'old');
+    sh(work, 'add', 'moat-www-v3');
+    sh(work, 'commit', '-q', '-m', 'old');
+    sh(work, 'push', '-q');
+    rmSync(join(work, 'moat-www-v3'), { recursive: true });
+    sh(work, 'update-index', '--skip-worktree', 'moat-www-v3/old.txt');
+    const target = (await inspectGitTarget(git, work, FILES)) as GitTarget;
+    expect(await deployToGit(git, work, target, PKG, FILES)).toEqual({
+      status: 'exists',
+    });
+    expect(existsSync(join(work, 'moat-www-v3'))).toBe(false);
+  });
+
+  it('a commit killed after it was written is kept, never undone', async () => {
+    const { work } = clone();
+    const target = (await inspectGitTarget(git, work, FILES)) as GitTarget;
+    const killed: GitRunner = async (cwd, args) => {
+      const output = await git(cwd, args);
+      if (args.includes('commit')) return { code: null, stdout: '' };
+      if (args.includes('push')) return { code: 1, stdout: '' };
+      return output;
+    };
+    expect(await deployToGit(killed, work, target, PKG, FILES)).toEqual({
+      status: 'committed',
+    });
+    expect(sh(work, 'log', '-1', '--format=%s')).toBe(
+      'moat: deploy package www v3',
+    );
+    expect(sh(work, 'status', '--porcelain')).toBe('');
   });
 
   it('never replaces a package folder that is there already', async () => {
@@ -268,6 +360,7 @@ describe('deploy to Git (DT-05, T-68) against real repositories', () => {
       branch: 'main',
       remote: 'origin',
       merge: 'refs/heads/main',
+      url: join(work, '..', 'remote.git'),
     });
     expect(f.stored()).toBe(work);
   });

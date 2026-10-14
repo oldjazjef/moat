@@ -1,4 +1,10 @@
-import { accessSync, constants, realpathSync, statSync } from 'node:fs';
+import {
+  accessSync,
+  constants,
+  mkdirSync,
+  realpathSync,
+  statSync,
+} from 'node:fs';
 import { join, resolve } from 'node:path';
 import {
   app,
@@ -553,8 +559,8 @@ async function deployGate(
         (all, name: string) => values[name] ?? all,
       );
     const result = await runGitDeploy({
-      // A folder that does not exist: no hook of the repository ever runs (T-68).
-      git: gitRunner(join(userData, 'no-git-hooks')),
+      // An empty folder of Moat's own: no hook of the repository ever runs (T-68).
+      git: gitRunner(emptyHooksDir(userData)),
       pkg,
       files,
       stored: () => readConfig(userData).gitTargets[key] ?? null,
@@ -589,6 +595,7 @@ async function deployGate(
             branch: found.branch,
             remote: found.remote,
             remoteBranch: found.merge.slice('refs/heads/'.length),
+            url: found.url,
           }),
           buttons: [git.confirm.push, git.confirm.other, git.confirm.cancel],
           defaultId: 0,
@@ -633,6 +640,13 @@ async function deployGate(
   if (written !== null) return written;
   remember();
   return { status: 'exported', target, version: pkg.version };
+}
+
+/** `<userData>/no-git-hooks`, created empty: git's hooks path for every Git deploy (T-68). */
+function emptyHooksDir(userData: string): string {
+  const dir = join(userData, 'no-git-hooks');
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  return dir;
 }
 
 /**

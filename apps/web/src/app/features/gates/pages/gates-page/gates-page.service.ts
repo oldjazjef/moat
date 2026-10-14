@@ -61,6 +61,8 @@ export const DEPLOY_OUTCOMES = [
   'git_detached',
   'git_no_upstream',
   'git_ignored',
+  'git_unsafe_config',
+  'git_ahead',
   'exists',
   'not_writable',
   'git_failed',
