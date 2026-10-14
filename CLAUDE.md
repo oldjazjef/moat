@@ -55,7 +55,10 @@ Four components (ANFORDERUNGEN.md, header):
 > (`mt-hardening-check`, in the wizard summary and per gate in «Gates») →
 > `POST /api/projects/:id/hardening-check` (same target rules, confirmation and pinned client as
 > «Testen»; probe rules in core `gate/external-probe.ts`); it shows «Unsicher für Secrets» when a
-> data file is readable and no level otherwise. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, setup mode, trust mode 2. Everything else below is
+> data file is readable and no level otherwise. The test console (FR-42): tab «Test-Konsole» →
+> `POST /api/projects/:id/dry-run` → core `planDryRun` + `dryRun` (`gate/dry-run.ts`): the gate's
+> answer to one request from moat.yaml and the suggested policy, nothing sent, the secret as
+> `<SECRET>`; its spec runs every `conformance/http/` case against it. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, setup mode, trust mode 2. Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
 

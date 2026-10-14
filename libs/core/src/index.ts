@@ -185,6 +185,25 @@ export {
   type ExternalProbe,
 } from './gate/external-probe';
 export {
+  dryRun,
+  DRY_RUN_ERRORS,
+  SECRET_PLACEHOLDER,
+  GATE_USER_AGENT,
+  MAX_DRY_RUN_BODY,
+  type DryRunError,
+  type DryRunRequest,
+  type DryRunContext,
+  type DryRunCounter,
+  type DryRunBudget,
+  type DryRunUpstreamCall,
+  type DryRunResult,
+} from './gate/dry-run';
+export {
+  planDryRun,
+  DryRunPlanError,
+  type DryRunPlanErrorCode,
+} from './storage/dry-run-plan';
+export {
   USAGE_FORMATS,
   MAX_USAGE_TOKENS,
   MAX_USAGE_DEPTH,

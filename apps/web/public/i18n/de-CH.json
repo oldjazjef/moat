@@ -52,7 +52,8 @@
       "label": "Bereiche des Projekts",
       "overview": "Übersicht",
       "gates": "Gates",
-      "routes": "Routen"
+      "routes": "Routen",
+      "console": "Test-Konsole"
     },
     "remove": {
       "button": "Aus der Liste entfernen",
@@ -758,6 +759,23 @@
           "quote": "Setze Pfade, URLs und Zeitangaben in Anführungszeichen, zum Beispiel `'10m'`."
         }
       },
+      "console": {
+        "title": "Test-Konsole",
+        "purpose": "Die Test-Konsole zeigt vor dem Signieren, was das Gate mit einer Anfrage tun würde: welche Route sie trifft, ob es sie ablehnt und warum, und welchen Aufruf es an die API schicken würde.",
+        "where": "Projekt › Test-Konsole",
+        "steps": {
+          "open": "Öffne im Projekt den Bereich «Test-Konsole».",
+          "route": "Wähle unter «Von Route ausgehen» eine Route. Methode, Pfad, Origin und Content-Type werden ausgefüllt, du kannst alles ändern.",
+          "gate": "Wähle unter «Gate» ein Gate, damit seine Sperre und seine versiegelten Secrets zählen. Ohne Gate prüft die Konsole nur die Konfiguration.",
+          "check": "Klicke auf «Prüfen».",
+          "read": "Unter «So würde das Gate antworten» steht die Ablehnung mit Code und Grund, oder der Aufruf an die API mit Methode, Adresse, Headern und Inhalt."
+        },
+        "tips": {
+          "nothingSent": "Die Konsole sendet nichts: kein Gate, keine API. Wo das Gate das Secret einsetzt, steht `<SECRET>`.",
+          "policy": "Geprüft wird gegen die Policy, die `moat policy suggest` vorschlägt. Die Policy auf deinem Gate kann davon abweichen, und einen lokalen Kill-Switch sieht die Konsole nicht.",
+          "counters": "Rate Limits, Quoten und Budgets zeigt die Konsole nur als Regel. Wie weit sie schon verbraucht sind, weiss nur das laufende Gate."
+        }
+      },
       "limits": {
         "title": "Limits",
         "purpose": "Rate-Limits schützen deine API vor Skripten, Quoten begrenzen, wie viel eine Route pro Tag oder Monat insgesamt verbraucht, und Budgets, wie viele Tokens oder wie viel Geld eine KI-API kosten darf. Das Gate zählt selbst mit.",
@@ -837,5 +855,64 @@
         }
       }
     }
+  },
+  "console": {
+    "subtitle": "Prüfe eine Anfrage, bevor du signierst: Was würde das Gate mit dieser Konfiguration tun? Es wird nichts gesendet.",
+    "unusable": "Die moat.yaml ist nicht gültig. Die Übersicht zeigt, was fehlt.",
+    "route": "Von Route ausgehen",
+    "routeNone": "Eigene Anfrage",
+    "gate": "Gate",
+    "gateNone": "Nur Konfiguration (alle Secrets versiegelt)",
+    "method": "Methode",
+    "path": "Pfad nach der Gate-Datei",
+    "origin": "Origin (Website)",
+    "originPlaceholder": "https://www.example.ch",
+    "requestMethod": "Angefragte Methode (Preflight)",
+    "contentType": "Content-Type",
+    "body": "Inhalt",
+    "run": "Prüfen",
+    "nothingSent": "Nur Moat rechnet: kein Gate, keine API, kein Secret.",
+    "notices": {
+      "config_missing": "Im Projektordner fehlt die moat.yaml.",
+      "config_invalid": "Die moat.yaml ist nicht gültig. Die Übersicht zeigt, was fehlt.",
+      "gate_unknown": "Dieses Gate kennt das Projekt nicht mehr. Lade das Projekt neu.",
+      "body_too_long": "Der Inhalt ist zu lang. Die Konsole prüft Inhalte bis 32 KiB.",
+      "failed": "Die Prüfung hat nicht geklappt. Versuche es nochmals."
+    },
+    "resultTitle": "So würde das Gate antworten",
+    "notAccepted": "Das Gate würde dieses Bundle gar nicht annehmen ({{code}}): Die Konfiguration geht über die vorgeschlagene Policy hinaus.",
+    "errors": {
+      "not_found": "Keine Route hat genau diesen Pfad.",
+      "method_not_allowed": "Den Pfad gibt es, aber nicht mit dieser Methode.",
+      "path_invalid": "Der Pfad ist ungültig, etwa wegen „..“ oder kodierter Schrägstriche.",
+      "request_unbounded": "Die Route hat ein Budget: Die Anfrage muss ihre Kosten begrenzen (kein Stream, eine Antwort, eine Obergrenze für die Ausgabe bis maxOutputTokens).",
+      "body_too_large": "Der Inhalt ist grösser, als Route oder Policy erlauben.",
+      "unsupported_media_type": "Dieser Content-Type ist für die Route nicht erlaubt.",
+      "origin_forbidden": "Diese Website (Origin) darf die Route nicht aufrufen.",
+      "preflight_rejected": "Der Browser bekäme keine Erlaubnis für diese Anfrage (CORS).",
+      "route_disabled": "Die Route ist ausgeschaltet.",
+      "gate_disabled": "Das Gate ist gesperrt und beantwortet jede Anfrage so.",
+      "gate_not_configured": "Die Route verweist auf einen Upstream, den es nicht gibt.",
+      "secret_unavailable": "Das Secret dieses Upstreams ist für das gewählte Gate nicht versiegelt."
+    },
+    "preflight": "Das Gate beantwortet den Preflight selbst. Der Browser darf die Anfrage danach senden.",
+    "forwarded": "Das Gate würde die Anfrage über die Route {{route}} so weiterleiten:",
+    "secret": "{{placeholder}} ersetzt das Gate durch das versiegelte Secret «{{secret}}». Die Konsole kennt den Wert nicht.",
+    "countersTitle": "Dabei zählt das Gate",
+    "counters": {
+      "perIp": "höchstens {{requests}} Anfragen je Besucher in {{seconds}} s (vorgeschlagene Policy)",
+      "total": "höchstens {{requests}} Anfragen insgesamt in {{seconds}} s (vorgeschlagene Policy)",
+      "route": "höchstens {{requests}} Anfragen in {{seconds}} s (Route)",
+      "quotaPeriod": "höchstens {{requests}} Anfragen pro {{period}} (vorgeschlagene Policy)",
+      "routeQuotaPeriod": "höchstens {{requests}} Anfragen pro {{period}} (Route)"
+    },
+    "periods": {
+      "day": "Tag",
+      "month": "Monat"
+    },
+    "estimate": "Das Budget wird vorab mit {{input}} Bytes Eingabe und {{output}} Tokens Ausgabe belastet.",
+    "gateOnly": "Wie weit diese Zähler schon sind und was die API antwortet, weiss nur das laufende Gate.",
+    "headersTitle": "Header des Gates an den Browser",
+    "policyNote": "Geprüft gegen die Policy, die `moat policy suggest` für dieses Projekt vorschlägt. Die Policy auf deinem Gate kann davon abweichen, und einen lokalen Kill-Switch sieht die Konsole nicht."
   }
 }

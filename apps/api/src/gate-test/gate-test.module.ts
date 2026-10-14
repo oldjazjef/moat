@@ -4,6 +4,7 @@ import {
   SuggestPolicyHandler,
   TestGateHandler,
 } from './application/gate-test.handlers';
+import { DryRunHandler } from './application/dry-run.handler';
 import { HardeningCheckHandler } from './application/hardening-check.handler';
 import { GateTestController } from './gate-test.controller';
 import { RecipesController } from './recipes.controller';
@@ -21,6 +22,7 @@ import {
     TestGateHandler,
     SuggestPolicyHandler,
     HardeningCheckHandler,
+    DryRunHandler,
     { provide: GateClientPort, useClass: HttpsGateClient },
     MainProcessConfirmation,
     { provide: GateTestConfirmationPort, useExisting: MainProcessConfirmation },

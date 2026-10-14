@@ -171,7 +171,7 @@ function readGateId(storage: StoragePort, gate: string): string {
 }
 
 /** The well-formed sealed secrets of a gate; a damaged file counts as not sealed. */
-function readSealed(
+export function readSealed(
   storage: StoragePort,
   gate: string,
 ): Record<string, SealedSecret> {

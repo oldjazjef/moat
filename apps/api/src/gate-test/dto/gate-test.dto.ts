@@ -5,6 +5,7 @@ import {
   Matches,
   MaxLength,
 } from 'class-validator';
+import { MAX_DRY_RUN_BODY, MAX_PATH_LENGTH, METHODS } from '@moat/core';
 import { MAX_GATE_URL } from '../application/gate-test-target';
 import { MAX_TEST_BODY } from '../application/gate-test.handlers';
 
@@ -46,4 +47,40 @@ export class HardeningCheckDto {
   @IsOptional()
   @IsIn(['de-CH', 'en'])
   locale?: 'de-CH' | 'en';
+}
+
+/** `POST /api/projects/:id/dry-run` (FR-42): a request as a client would send it to the gate. */
+export class DryRunDto {
+  /** The gate whose lock and sealed secrets count; null for the config alone. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z][a-z0-9-]{0,62}$/)
+  gate?: string | null;
+
+  @IsIn([...METHODS, 'OPTIONS', 'HEAD'])
+  method!: string;
+
+  /** What follows the gate file in the URL (`/newsletter`). */
+  @IsString()
+  @MaxLength(MAX_PATH_LENGTH + 1024)
+  path!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  origin?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  contentType?: string | null;
+
+  /** `Access-Control-Request-Method` of a preflight. */
+  @IsOptional()
+  @IsIn([...METHODS, 'OPTIONS', 'HEAD'])
+  requestMethod?: string | null;
+
+  @IsString()
+  @MaxLength(MAX_DRY_RUN_BODY)
+  body!: string;
 }

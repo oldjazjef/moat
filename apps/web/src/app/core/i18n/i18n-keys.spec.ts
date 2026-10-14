@@ -29,6 +29,12 @@ import {
 } from '../../features/setup/components/steps/recipe-step';
 import { GATE_FAILURES, RECIPE_IDS } from '../api/recipe.types';
 import { HARDENING_NOTICES } from '../../shared/components/hardening-check';
+import {
+  CONSOLE_COUNTERS,
+  CONSOLE_NOTICES,
+  CONSOLE_PERIODS,
+} from '../../features/console/pages/console-page/console-page.service';
+import { DRY_RUN_ERRORS } from '../api/dry-run.types';
 
 /**
  * Every i18n key the app references exists in every message file, and every text in the files is
@@ -73,6 +79,10 @@ const DYNAMIC_KEYS = [
   ...RECIPE_NOTICES.map((code) => `setup.recipe.notices.${code}`),
   ...GATE_CODES.map((code) => `setup.recipe.codes.${code}`),
   ...HARDENING_NOTICES.map((code) => `hardening.check.notices.${code}`),
+  ...CONSOLE_NOTICES.map((code) => `console.notices.${code}`),
+  ...DRY_RUN_ERRORS.map((code) => `console.errors.${code}`),
+  ...CONSOLE_COUNTERS.map((key) => `console.counters.${key}`),
+  ...CONSOLE_PERIODS.map((period) => `console.periods.${period}`),
   ...GATE_FAILURES.map((reason) => `setup.recipe.failed.${reason}`),
   ...RECIPE_IDS.flatMap((id) => [
     `setup.recipe.recipes.${id}.title`,
