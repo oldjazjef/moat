@@ -151,6 +151,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       { id: 'sign', only: 'desktop' },
       { id: 'package', only: 'desktop' },
       { id: 'sftp', only: 'desktop' },
+      { id: 'git', only: 'desktop' },
       'build',
       'deploy',
       'accept',

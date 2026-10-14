@@ -244,6 +244,17 @@
           >
             {{ 'gates.deploySftp' | translate }}
           </button>
+          <button
+            hlmBtn
+            variant="outline"
+            size="sm"
+            type="button"
+            data-deploy-git
+            [disabled]="gate.latestBundle === 0 || service.deploying() !== null || service.signing() !== null"
+            (click)="service.deploy(gate, 'git')"
+          >
+            {{ 'gates.deployGit' | translate }}
+          </button>
         </div>
         @if (service.deployed(); as deployed) { @if (deployed.gate ===
         gate.name) {

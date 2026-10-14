@@ -49,14 +49,23 @@ export const DEPLOY_OUTCOMES = [
   'exported_zip',
   'exported_folder',
   'exported_sftp',
+  'exported_git',
+  'committed',
   'key_missing',
   'gate_unknown',
   'bundle_missing',
   'bundle_unverified',
   'gate_changed',
   'bundle_older',
+  'git_not_a_repo',
+  'git_detached',
+  'git_no_upstream',
+  'git_ignored',
+  'git_unsafe_config',
+  'git_ahead',
   'exists',
   'not_writable',
+  'git_failed',
   'failed',
 ] as const;
 
@@ -197,7 +206,7 @@ export class GatesPageService {
     return { gate };
   }
 
-  /** The latest bundle as a ZIP or into a folder, where the person chooses in the desktop. */
+  /** The latest bundle as a ZIP, into a folder, over SFTP or Git; where: the desktop's dialogs. */
   async deploy(gate: ValidGate, target: DeployTarget): Promise<void> {
     if (this.bridge === null || this.deploying() !== null) return;
     this.deploying.set(gate.name);
@@ -232,7 +241,7 @@ export class GatesPageService {
     result: Exclude<DeployResult, { status: 'cancelled' }>,
     gate: string,
   ): Record<string, string | number> {
-    return result.status === 'exported'
+    return result.status === 'exported' || result.status === 'committed'
       ? { gate, version: result.version }
       : { gate };
   }
