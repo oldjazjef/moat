@@ -6,8 +6,8 @@
  *   main.js, preload.js   the main process + preload, bundled here with esbuild
  *   sign-preload.js,      the signing (DT-15) and seal dialogs: their preloads and static pages
  *   seal-preload.js,      and the key window (FR-73)
- *   key-preload.js,       and the SFTP window (DT-05)
- *   sftp-preload.js, dialogs/
+ *   key-preload.js,       and the SFTP and FTPS windows (DT-05)
+ *   sftp-preload.js, ftps-preload.js, dialogs/
  *   api/main.js           the NestJS API as a library (`nx run api:build`)
  *   web/                  the Angular build (`nx run web:build:desktop`), served via app://
  *   package.json          name/version/main + the API's runtime dependencies
@@ -77,6 +77,10 @@ await esbuild.build({
     'sftp-preload': path.join(
       repoRoot,
       'apps/desktop/src/preload/sftp-preload.ts',
+    ),
+    'ftps-preload': path.join(
+      repoRoot,
+      'apps/desktop/src/preload/ftps-preload.ts',
     ),
   },
   outdir: out,

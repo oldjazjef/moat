@@ -216,10 +216,12 @@
     "deployZip": "Save as ZIP",
     "deployFolder": "Put into a folder",
     "deploySftp": "Upload via SFTP",
+    "deployFtps": "Upload via FTPS",
     "deployGit": "Deliver via Git",
     "deployResult": {
       "exported_zip": "The package with version {{version}} is saved as a ZIP. The instructions inside are in `README.txt`.",
       "exported_folder": "The package with version {{version}} is in the new folder `moat-{{gate}}-v{{version}}`. The instructions inside are in `README.txt`.",
+      "exported_ftps": "The package with version {{version}} is on the server in the new folder `moat-{{gate}}-v{{version}}`, uploaded encrypted via FTPS. Activate it there as `README.txt` describes.",
       "exported_sftp": "The package with version {{version}} is on the server in the new folder `moat-{{gate}}-v{{version}}`. Activate it there as `README.txt` describes.",
       "exported_git": "The package with version {{version}} is committed and pushed as the new folder `moat-{{gate}}-v{{version}}`. Activate it on the server as `README.txt` describes once it has arrived there.",
       "committed": "The package with version {{version}} is committed, but the push did not work. Push the commit yourself, for example with `git push`.",
@@ -884,6 +886,7 @@
           "sign": "Under “Gates”, click “Sign bundle” on the gate. A separate Moat Desktop window shows what changes since the last bundle. The first time, choose your key file (`.moatkey`), then enter the passphrase and confirm. The bundle is then saved under `bundles`.",
           "package": "Under “Gates”, “Save as ZIP” or “Put into a folder” saves a deploy package: the latest signed bundle unchanged, the matching `policy.json` and instructions (`README.txt`) with the commands and the checksum. You choose where in Moat Desktop’s dialog. Moat packs only a bundle signed with your key file for this gate.",
           "sftp": "Under “Gates”, “Upload via SFTP” puts the same package on your server as a new folder. You enter server, user, folder and password or SSH key in Moat Desktop’s window, never in the app page. The first time it shows the server’s host key: compare it with the one your hoster gives. Only then does Moat send user, password and files. If the server later shows another key, Moat stops. Moat replaces nothing on the server and runs no command there: you start `accept` yourself.",
+          "ftps": "If your hoster offers FTPS but no SFTP, “Upload via FTPS” under “Gates” uploads the same package as a new folder, always over TLS: explicit with `AUTH TLS` (usually port 21) or implicit (usually port 990). You enter server, user, folder and password in Moat Desktop’s window, never in the app page. If no known certificate authority vouches for the server’s certificate, for example because it is self-signed, Moat shows its SHA-256 fingerprint the first time: compare it with the one your hoster gives. Only then does Moat send user, password and files. If the server later shows another certificate, Moat stops. Moat replaces nothing on the server: you start `accept` yourself.",
           "git": "If your hoster deploys from a Git repository, “Deliver via Git” under “Gates” puts the package as a new folder into your local working copy, commits only that folder and pushes it to the upstream of the checked-out branch. You choose the folder the first time; after that you confirm branch and remote every time. Moat uses your installed Git with your credentials but runs none of the repository’s hooks, and does not deliver into a repository whose own config starts programs. If the branch has commits that are not pushed yet, push them yourself first: Moat sends only the package. If the push fails, the commit stays and you push it yourself.",
           "import": "Under “Gates”, “Import bundle” takes a signed bundle (`bundle-v<n>.json`) or a deploy package ZIP into the project, “Import package folder” the folder of a package. That way you work on several computers with the same key file, without the Cloud. Moat checks it as the gate does: the signature of your key file, the gate id, a higher version than the latest bundle and a valid configuration. Only the bundle is taken over, byte for byte. The `policy.json` in the package stays out: the policy belongs to the gate.",
           "build": "In the CLI, build the bundle with `moat build <gate> --key <file>.moatkey`. It is then saved under `bundles`.",
@@ -895,6 +898,7 @@
           "policy": "If a bundle does not fit the local policy, the gate refuses it. You change the policy only on the gate itself.",
           "pull": "No upload to the gate: if the local policy has a `pull` block with an HTTPS address, the gate fetches the bundle there itself, at most once per interval, and checks it as `accept` does. You then only upload the signed bundle to that address. `php moat-gate.php pull` fetches it at once, `php moat-gate.php status` shows the last attempt.",
           "keychain": "If you like, Moat Desktop remembers the passphrase in your operating system’s keychain. Untick the box the next time you sign and it is deleted there. Without a real keychain, Moat Desktop does not offer this at all.",
+          "ftpsPlain": "Moat Desktop never uses unencrypted FTP: if the server offers no TLS, it stops before it sends user or password. The data connections are encrypted too and go only to the server Moat is connected to. As with SFTP, it remembers the password only in the keychain.",
           "sftpKeychain": "Moat Desktop remembers the password or the key’s passphrase only in your operating system’s keychain, and only if you want it to. Without a real keychain it asks every time."
         }
       },

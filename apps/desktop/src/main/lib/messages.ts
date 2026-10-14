@@ -4,6 +4,7 @@
  */
 import type { KeyDialogTexts } from '../../shared/key-dialog';
 import type { DeployPackage, DeployTexts } from './deploy';
+import type { FtpsDialogTexts } from '../../shared/ftps-dialog';
 import type { SealDialogTexts } from '../../shared/seal-dialog';
 import type { SftpDialogTexts } from '../../shared/sftp-dialog';
 import type { SignDialogTexts } from '../../shared/sign-dialog';
@@ -88,6 +89,8 @@ export interface DesktopMessages {
     };
     readonly chooseFolder: { readonly title: string; readonly button: string };
   };
+  /** The FTPS window (DT-05, T-69). */
+  readonly ftpsDialog: FtpsDialogTexts;
   readonly menu: {
     readonly file: string;
     readonly edit: string;
@@ -364,6 +367,65 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
         button: 'Diesen Ordner importieren',
       },
     },
+    ftpsDialog: {
+      title: 'Per FTPS hochladen',
+      intro:
+        'Moat Desktop legt das Paket als neuen Ordner auf deinem Server ab, immer verschlüsselt (FTP über TLS). Es ersetzt dort nichts. Danach aktivierst du das Bundle wie in der Anleitung im Paket.',
+      project: 'Projekt',
+      gate: 'Gate',
+      version: 'Version',
+      files: 'Dateien',
+      host: 'Server',
+      port: 'Port',
+      username: 'Benutzer',
+      remoteDir: 'Ordner auf dem Server',
+      remoteDirHint:
+        'Relativ zu deinem Login-Ordner oder absolut, etwa moat-uploads. Der Ordner muss es schon geben, am besten ausserhalb des Web-Ordners.',
+      mode: 'Verschlüsselung',
+      modeExplicit: 'Explizites FTPS (AUTH TLS, meist Port 21)',
+      modeImplicit: 'Implizites FTPS (meist Port 990)',
+      modeHint:
+        'Unverschlüsseltes FTP bietet Moat nicht an: Spricht der Server kein TLS, bricht Moat ab, bevor es Benutzer oder Passwort sendet.',
+      password: 'Passwort',
+      secretRemembered:
+        'Im Schlüsselbund gespeichert. Leer lassen, um es zu verwenden.',
+      remember: 'Im Schlüsselbund merken',
+      pinned: 'Zertifikat bestätigt:',
+      upload: 'Hochladen',
+      forget: 'Ziel entfernen',
+      cancel: 'Abbrechen',
+      certificateTitle: 'Zertifikat des Servers prüfen',
+      certificateIntro:
+        'Keine bekannte Zertifizierungsstelle bestätigt dieses Zertifikat für diesen Server, etwa weil es selbst signiert ist. Der Server hat sich damit ausgewiesen:',
+      fingerprint: 'SHA-256-Fingerprint',
+      subject: 'Ausgestellt für',
+      issuer: 'Ausgestellt von',
+      validTo: 'Gültig bis',
+      certificateHint:
+        'Vergleiche den Fingerprint mit dem, den dein Hoster nennt, oder mit openssl s_client auf einem Rechner, dem du vertraust. Erst nach deiner Bestätigung sendet Moat Benutzer, Passwort und Dateien. Moat merkt sich das Zertifikat und bricht ab, wenn der Server später ein anderes zeigt.',
+      trust: 'Zertifikat stimmt, hochladen',
+      notices: {
+        target_invalid:
+          'Prüfe Server, Port, Benutzer und Ordner. Der Ordner darf nur Buchstaben, Ziffern und . _ ~ - enthalten, ohne . oder .. als Teil.',
+        secret_missing: 'Gib das Passwort ein.',
+        connect_failed:
+          'Der Server ist nicht erreichbar oder hat die Verbindung beendet.',
+        tls_failed:
+          'Der Server bietet hier kein FTPS an (nur unverschlüsseltes FTP), oder die TLS-Verbindung kam nicht zustande. Moat hat weder Benutzer noch Passwort gesendet. Prüfe Port und Art der Verschlüsselung.',
+        auth_failed:
+          'Die Anmeldung wurde abgelehnt. Prüfe Benutzer und Passwort.',
+        certificate_changed:
+          'Der Server zeigt ein anderes Zertifikat als beim letzten Mal. Moat hat weder Benutzer noch Passwort gesendet. Frag deinen Hoster, ob das Zertifikat gewechselt hat. Nur dann entfernst du das Ziel und bestätigst das neue.',
+        exists:
+          'Auf dem Server liegt schon ein Ordner mit dem Namen dieses Pakets. Es wurde nichts überschrieben.',
+        partial:
+          'Das Hochladen brach mittendrin ab. Der Paketordner auf dem Server ist unvollständig: Lösche ihn, bevor du es noch einmal versuchst.',
+        upload_failed:
+          'Hochladen hat nicht geklappt. Gibt es den Ordner auf dem Server, und darfst du dort schreiben?',
+        forgotten:
+          'Das Ziel ist entfernt. Beim nächsten Hochladen bestätigst du das Zertifikat neu, falls keine Zertifizierungsstelle es bestätigt.',
+      },
+    },
     menu: {
       file: 'Datei',
       edit: 'Bearbeiten',
@@ -626,6 +688,63 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       chooseFolder: {
         title: 'Choose the deploy package folder',
         button: 'Import this folder',
+      },
+    },
+    ftpsDialog: {
+      title: 'Upload via FTPS',
+      intro:
+        'Moat Desktop puts the package on your server as a new folder, always encrypted (FTP over TLS). It replaces nothing there. Then you activate the bundle as the instructions in the package say.',
+      project: 'Project',
+      gate: 'Gate',
+      version: 'Version',
+      files: 'Files',
+      host: 'Server',
+      port: 'Port',
+      username: 'User',
+      remoteDir: 'Folder on the server',
+      remoteDirHint:
+        'Relative to your login folder or absolute, e.g. moat-uploads. The folder must exist already, preferably outside the web root.',
+      mode: 'Encryption',
+      modeExplicit: 'Explicit FTPS (AUTH TLS, usually port 21)',
+      modeImplicit: 'Implicit FTPS (usually port 990)',
+      modeHint:
+        'Moat does not offer unencrypted FTP: if the server speaks no TLS, Moat stops before it sends user or password.',
+      password: 'Password',
+      secretRemembered: 'Saved in the keychain. Leave empty to use it.',
+      remember: 'Remember in the keychain',
+      pinned: 'Certificate confirmed:',
+      upload: 'Upload',
+      forget: 'Remove target',
+      cancel: 'Cancel',
+      certificateTitle: 'Check the server’s certificate',
+      certificateIntro:
+        'No known certificate authority vouches for this certificate for this server, for example because it is self-signed. The server identified itself with it:',
+      fingerprint: 'SHA-256 fingerprint',
+      subject: 'Issued to',
+      issuer: 'Issued by',
+      validTo: 'Valid until',
+      certificateHint:
+        'Compare the fingerprint with the one your hoster gives, or with openssl s_client on a computer you trust. Only after you confirm does Moat send user, password and files. Moat remembers the certificate and stops if the server later shows another.',
+      trust: 'Certificate matches, upload',
+      notices: {
+        target_invalid:
+          'Check server, port, user and folder. The folder may hold only letters, digits and . _ ~ -, with no . or .. as a part.',
+        secret_missing: 'Enter the password.',
+        connect_failed:
+          'The server cannot be reached or closed the connection.',
+        tls_failed:
+          'The server offers no FTPS here (only unencrypted FTP), or the TLS connection failed. Moat sent neither user nor password. Check the port and the kind of encryption.',
+        auth_failed: 'Sign-in was refused. Check user and password.',
+        certificate_changed:
+          'The server shows another certificate than last time. Moat sent neither user nor password. Ask your hoster whether the certificate changed. Only then remove the target and confirm the new one.',
+        exists:
+          "A folder with this package's name is on the server already. Nothing was replaced.",
+        partial:
+          'The upload stopped halfway. The package folder on the server is incomplete: delete it before you try again.',
+        upload_failed:
+          'The upload did not work. Does the folder exist on the server, and may you write there?',
+        forgotten:
+          'The target is removed. On the next upload you confirm the certificate again, unless a certificate authority vouches for it.',
       },
     },
     menu: { file: 'File', edit: 'Edit', view: 'View', quit: 'Quit' },

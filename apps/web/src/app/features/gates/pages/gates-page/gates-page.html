@@ -249,6 +249,17 @@
             variant="outline"
             size="sm"
             type="button"
+            data-deploy-ftps
+            [disabled]="gate.latestBundle === 0 || service.deploying() !== null || service.signing() !== null"
+            (click)="service.deploy(gate, 'ftps')"
+          >
+            {{ 'gates.deployFtps' | translate }}
+          </button>
+          <button
+            hlmBtn
+            variant="outline"
+            size="sm"
+            type="button"
             data-deploy-git
             [disabled]="gate.latestBundle === 0 || service.deploying() !== null || service.signing() !== null"
             (click)="service.deploy(gate, 'git')"
