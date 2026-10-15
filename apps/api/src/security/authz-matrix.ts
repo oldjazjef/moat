@@ -11,8 +11,8 @@ import { createHash } from 'node:crypto';
  *   foreignHost  the right token, but a Host header other than 127.0.0.1:<port> (DNS rebinding, DT-16)
  *   desktop      the desktop shell itself (right token, right Host)
  *
- * The Cloud's identities (accounts, roles, release permission, other tenant = 404, API tokens,
- * gate credentials) join here with its auth.
+ * The Cloud's identities (sessions, roles, release permission, other tenant = 404, CSRF) are in
+ * `authz-matrix-cloud.ts`; API tokens and gate credentials join there with their routes.
  */
 export const IDENTITIES = [
   'noToken',

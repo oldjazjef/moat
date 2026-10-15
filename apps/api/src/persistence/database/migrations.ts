@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import postgresInit from '../../../prisma/postgresql/migrations/20261014120000_init/migration.sql?raw';
+import postgresCloud from '../../../prisma/postgresql/migrations/20261015120000_cloud_accounts/migration.sql?raw';
 import sqliteInit from '../../../prisma/sqlite/migrations/20261014120000_init/migration.sql?raw';
+import sqliteCloud from '../../../prisma/sqlite/migrations/20261015120000_cloud_accounts/migration.sql?raw';
 
 /**
  * The migration histories of `apps/api/prisma/{sqlite,postgresql}/migrations`, bundled into the
@@ -25,8 +27,14 @@ const migration = (name: string, sql: string): Migration => ({
 });
 
 export const MIGRATIONS: Readonly<Record<Dialect, readonly Migration[]>> = {
-  sqlite: [migration('20261014120000_init', sqliteInit)],
-  postgresql: [migration('20261014120000_init', postgresInit)],
+  sqlite: [
+    migration('20261014120000_init', sqliteInit),
+    migration('20261015120000_cloud_accounts', sqliteCloud),
+  ],
+  postgresql: [
+    migration('20261014120000_init', postgresInit),
+    migration('20261015120000_cloud_accounts', postgresCloud),
+  ],
 };
 
 /** The tables Moat's migrations create; any other table makes Moat refuse the database. */
@@ -36,5 +44,14 @@ export const MOAT_TABLES = [
   'sync_gate',
   'sync_secret',
   'sync_bundle',
+  // Moat Cloud (AUTH_MODE=cloud, 20261015120000_cloud_accounts).
+  'account',
+  'account_totp',
+  'recovery_code',
+  'session',
+  'organisation',
+  'membership',
+  'org_project',
+  'rate_limit',
 ] as const;
 export const MIGRATIONS_TABLE = '_prisma_migrations';

@@ -99,3 +99,122 @@ model SyncBundle {
   @@id([project, gate, version])
   @@map("sync_bundle")
 }
+
+// ── Moat Cloud (AUTH_MODE=cloud): accounts, sessions, organisations ──────────────────────────
+// Identifiers are 22 characters of base64url (128 random bits). Nothing in these tables holds a
+// password, a session token, a TOTP secret or a recovery code in the clear: only Argon2id hashes,
+// SHA-256 digests of random tokens, and one AEAD-sealed TOTP secret. Passkeys (WebAuthn) and
+// OIDC identities join later as further tables that point at `account`.
+
+/// A person who can sign in to Moat Cloud.
+model Account {
+  id                String         @id
+  /// Lower-case, trimmed; the sign-in name. Unique.
+  email             String         @unique
+  /// libsodium crypto_pwhash_str (Argon2id, self-describing); never returned or logged.
+  passwordHash      String         @map("password_hash")
+  /// A change revokes every session of the account.
+  passwordChangedAt String         @map("password_changed_at")
+  createdAt         String         @map("created_at")
+  totp              AccountTotp?
+  recoveryCodes     RecoveryCode[]
+  sessions          Session[]
+  memberships       Membership[]
+
+  @@map("account")
+}
+
+/// The TOTP second factor (RFC 6238). Pending until `enabled_at` is set.
+model AccountTotp {
+  accountId    String  @id @map("account_id")
+  /// base64url(nonce ‖ XChaCha20-Poly1305 ciphertext) of the 20-byte secret, AD = account id,
+  /// under the server's MOAT_ACCOUNT_KEY. Never returned after enrolment.
+  sealedSecret String  @map("sealed_secret")
+  /// NULL while the person has not yet confirmed a first code.
+  enabledAt    String? @map("enabled_at")
+  /// The last accepted 30-second step: a code is accepted once (replay).
+  lastStep     Int     @map("last_step")
+  createdAt    String  @map("created_at")
+  account      Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("account_totp")
+}
+
+/// A one-time recovery code, stored as SHA-256 hex of the code (80 random bits).
+model RecoveryCode {
+  id        String  @id
+  accountId String  @map("account_id")
+  codeHash  String  @unique @map("code_hash")
+  usedAt    String? @map("used_at")
+  createdAt String  @map("created_at")
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("recovery_code")
+}
+
+/// A browser session. `id` is SHA-256 hex of the random 256-bit cookie token: a database dump
+/// cannot be turned into a session.
+model Session {
+  id         String  @id
+  accountId  String  @map("account_id")
+  createdAt  String  @map("created_at")
+  lastSeenAt String  @map("last_seen_at")
+  /// Absolute expiry; the idle expiry is checked against `last_seen_at`.
+  expiresAt  String  @map("expires_at")
+  revokedAt  String? @map("revoked_at")
+  account    Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("session")
+}
+
+/// A tenant (SEC-50).
+model Organisation {
+  id          String       @id
+  name        String
+  createdAt   String       @map("created_at")
+  memberships Membership[]
+  projects    OrgProject[]
+
+  @@map("organisation")
+}
+
+/// An account's role in an organisation (SEC-52). `release_granted` is the separate sign/release
+/// permission: only Owner, Admin and Editor can hold it.
+model Membership {
+  organisationId String       @map("organisation_id")
+  accountId      String       @map("account_id")
+  /// owner | admin | editor | viewer | billing
+  role           String
+  releaseGranted Boolean      @map("release_granted")
+  createdAt      String       @map("created_at")
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  account        Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@id([organisationId, accountId])
+  @@index([accountId])
+  @@map("membership")
+}
+
+/// A Cloud project of an organisation (not the Desktop's folder-based project).
+model OrgProject {
+  id             String       @id
+  organisationId String       @map("organisation_id")
+  name           String
+  createdAt      String       @map("created_at")
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@map("org_project")
+}
+
+/// A fixed-window counter for rate limits (login, register). `key` is a SHA-256 hex of
+/// "scope:subject", so no e-mail address or IP sits in the table.
+model RateLimit {
+  key       String @id
+  windowEnd String @map("window_end")
+  count     Int
+
+  @@map("rate_limit")
+}

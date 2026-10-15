@@ -125,7 +125,10 @@ describe.skipIf(process.env['MOAT_TEST_POSTGRES'] === 'off')(
         url,
         'SELECT migration_name FROM _prisma_migrations',
       );
-      expect(applied.rows).toEqual([{ migration_name: '20261014120000_init' }]);
+      expect(applied.rows).toEqual([
+        { migration_name: '20261014120000_init' },
+        { migration_name: '20261015120000_cloud_accounts' },
+      ]);
     });
 
     it('keeps the optimistic locks (DT-13): revision, secret version, bundle key', async (context) => {
