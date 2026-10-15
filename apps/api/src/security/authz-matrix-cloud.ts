@@ -4,6 +4,12 @@
  * app, fails on a route without an entry (or an entry without a route), and checks every cell.
  * The desktop's matrix is `authz-matrix.ts`. Never weaken an expectation to make it pass.
  *
+ * Not listed, by design: `/healthz` and `/readyz` and the dashboard's files. They are plain Express
+ * middleware in front of the router (`cloud-server/`), not API routes: public on purpose (a
+ * container runtime and a load balancer have no session), GET/HEAD only, no input, a fixed body
+ * (`ok` / `ready` / `unavailable`), no data. `cloud-server.spec.ts` attacks them (T-84); anything
+ * under `/api` stays the router's and needs an entry here.
+ *
  * Identities (the spec seeds them, fresh before every cell):
  *
  *   noCookie            no session cookie

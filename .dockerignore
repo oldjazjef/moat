@@ -1,0 +1,24 @@
+# The image build copies the repository into its build stage: nothing local or secret goes along.
+.git
+.claude
+.nx
+.angular
+node_modules
+dist
+coverage
+tmp
+.data
+private
+
+# Secrets and keys (also refused by .githooks/pre-commit)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.moatkey
+deploy/compose/secrets
+deploy/compose/.env
+
+# Not needed to build the Cloud
+gates/php/vendor

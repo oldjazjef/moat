@@ -17,8 +17,13 @@ export default [
     // Persistence: nothing outside src/persistence imports Prisma); features depend on a port.
     files: ['**/*.ts'],
     // `testing/` holds test support (temporary folders for a booted app), never shipped code paths.
+    // The Cloud server's two entries read deployment files, never project data: the dashboard's
+    // build folder (`static-site.ts`) and Docker secret files (`main-cloud.ts`, only named files
+    // from `NAME_FILE` variables the operator set).
     ignores: [
       'src/persistence/**',
+      'src/cloud-server/static-site.ts',
+      'src/main-cloud.ts',
       'prisma/**',
       '**/*.spec.ts',
       'src/**/testing/**',
