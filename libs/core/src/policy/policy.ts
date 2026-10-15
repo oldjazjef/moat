@@ -20,6 +20,7 @@ import {
   USAGE_FORMATS,
   type UsageFormat,
 } from '../http/budget';
+import { CLIENT_FAILURE_LIMIT } from '../http/client';
 import { normalisePath } from '../http/path';
 import { hasProtoKey, type JsonValue } from '../json/strict-json';
 
@@ -306,7 +307,8 @@ export function checkPolicy(config: CompiledConfig, policy: Policy): void {
  * refuses every new client — cannot be reached by flooding. A counter is created only for a
  * request that passes the `total` limit, so per kind of per-IP counter (the policy's, and each
  * route limited per IP) at most `total.requests × (⌈window / total.windowSeconds⌉ + 1)` are alive
- * at once; plus one per route limited as a whole, one per quota (route or policy), plus `total`.
+ * at once; plus one per route limited as a whole, one per quota (route or policy), plus `total`,
+ * plus one more kind of per-client counter when a route checks an API key (failed attempts, T-71).
  */
 export function counterCapacity(
   config: CompiledConfig,
@@ -317,6 +319,10 @@ export function counterCapacity(
     total.requests * (Math.ceil(windowSeconds / total.windowSeconds) + 1);
   let count = 1 + live(perIp.windowSeconds);
   if (policy.limits.quota !== undefined) count += 1;
+  // T-71: one counter per client for failed API key attempts, created only for a request that
+  // passes `total` (the failed request is counted against the policy's limits too).
+  if (Object.values(config.routes).some((route) => route.client?.apiKey))
+    count += live(CLIENT_FAILURE_LIMIT.windowSeconds);
   for (const route of Object.values(config.routes)) {
     if (route.quota !== undefined) count += 1;
     if (route.rateLimit === null) continue;

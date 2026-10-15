@@ -1,5 +1,5 @@
 {
-  "description": "Client protection per route (FR-16), run like gate.json against the same fake upstream. `apiKey`: the caller's header is compared in constant time with a sealed secret. `jwt`: `Authorization: Bearer <JWT>` signed by one of the listed public keys (TEST ONLY keys; EdDSA, ES256, RS256 — the algorithm comes from the key with the token's `kid`, a token whose `alg` differs is refused), with `iss` and `aud` equal to the route's (`aud` may be a list), `exp` required and `nbf` respected, with 60 s leeway. `turnstile`: the token from the header is checked at `verifyUrl` with a POST form `secret=<secret>&response=<token>`; the fake upstream's /turnstile answers {\"success\": true} only for the response `TEST-ONLY-turnstile-pass` and one of the runner's secrets. `honeypot`: a JSON body whose field is present and not \"\" or null is refused. Every failed check answers 401 client_unauthorized and forwards nothing; the API key, JWT and honeypot cost no upstream call, a Turnstile check one.",
+  "description": "Client protection per route (FR-16), run like gate.json against the same fake upstream. `apiKey`: the caller's header is compared in constant time with a sealed secret. `jwt`: `Authorization: Bearer <JWT>` signed by one of the listed public keys (TEST ONLY keys; EdDSA, ES256, RS256 — the algorithm comes from the key with the token's `kid`, a token whose `alg` differs is refused), with `iss` and `aud` equal to the route's (`aud` may be a list), `exp` required and `nbf` respected, with 60 s leeway. `turnstile`: the token from the header is checked at `verifyUrl` with a POST form `secret=<secret>&response=<token>`; the fake upstream's /turnstile answers {\"success\": true} only for the response `TEST-ONLY-turnstile-pass` and one of the runner's secrets. `honeypot`: a JSON body whose field is present and not \"\" or null is refused. Every failed check answers 401 client_unauthorized and forwards nothing; the API key, JWT and honeypot cost no upstream call, a Turnstile check one. Failed `apiKey` attempts (a wrong, missing or malformed key) are counted per client (REMOTE_ADDR, SEC-26): after 5 within 300 s every further request of that client to a route with an API key answers 429 rate_limited with Retry-After before the key is compared, even with the right key (T-71); the failed requests also count against the policy's limits. Cases run in order: three failures happen earlier in this file, the fourth and fifth are below.",
   "config": {
     "version": 1,
     "upstreams": {
@@ -616,6 +616,89 @@
             "authorization": "Bearer <SECRET>"
           }
         }
+      }
+    },
+    {
+      "name": "api key: a fourth wrong key (the third failure is above, T-71)",
+      "request": {
+        "method": "GET",
+        "path": "/key",
+        "headers": {
+          "X-Api-Key": "TEST-ONLY-client-key-000001"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 401,
+        "error": "client_unauthorized",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "api key: a fifth wrong key still answers client_unauthorized",
+      "request": {
+        "method": "GET",
+        "path": "/key",
+        "headers": {
+          "X-Api-Key": "TEST-ONLY-client-key-000002"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 401,
+        "error": "client_unauthorized",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "api key: after 5 failed attempts the right key from the same client is rate_limited, nothing forwarded (T-71, SEC-45)",
+      "request": {
+        "method": "GET",
+        "path": "/key",
+        "headers": {
+          "X-Api-Key": "TEST-ONLY-client-key-31b8e0"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 429,
+        "error": "rate_limited",
+        "headers": {
+          "retry-after": "<any>"
+        },
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "api key: X-Forwarded-For makes no new client (SEC-26)",
+      "request": {
+        "method": "GET",
+        "path": "/key",
+        "headers": {
+          "X-Api-Key": "TEST-ONLY-client-key-31b8e0",
+          "X-Forwarded-For": "198.51.100.9"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 429,
+        "error": "rate_limited",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "api key: routes without an API key are not locked out",
+      "request": {
+        "method": "POST",
+        "path": "/honeypot",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"email\":\"a@example.com\"}"
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1
       }
     }
   ]

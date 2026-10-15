@@ -27,23 +27,32 @@ final class ClientCheck
     public const LEEWAY = 60;
     public const MAX_JWT = 8192;
     private const MAX_TURNSTILE_TOKEN = 2048;
+    /** T-71, SEC-45: failed API key attempts per client before every further one is refused (CLIENT_FAILURE_LIMIT in libs/core). */
+    public const FAILURE_REQUESTS = 5;
+    public const FAILURE_WINDOW_SECONDS = 300;
 
-    /** The API key and the JWT: before the limits, without any call. */
-    public static function credentials(Request $request, ClientProtection $client, ActiveBundle $bundle, Gate $gate, int $now): void
+    /** The API key: before the limits, without any call. Fails with client_unauthorized (counted by the caller, T-71). */
+    public static function apiKey(Request $request, ClientProtection $client, ActiveBundle $bundle, Gate $gate): void
     {
-        if ($client->apiKey !== null) {
-            $given = $request->header($client->apiKey[0]) ?? self::refuse();
-            try {
-                $key = $gate->openSecret($bundle, $client->apiKey[1]);
-            } catch (Rejection) {
-                throw new Failure(GateError::SecretUnavailable);
-            }
-            $same = hash_equals($key, $given);
-            sodium_memzero($key);
-            if (!$same) {
-                self::refuse();
-            }
+        if ($client->apiKey === null) {
+            return;
         }
+        $given = $request->header($client->apiKey[0]) ?? self::refuse();
+        try {
+            $key = $gate->openSecret($bundle, $client->apiKey[1]);
+        } catch (Rejection) {
+            throw new Failure(GateError::SecretUnavailable);
+        }
+        $same = hash_equals($key, $given);
+        sodium_memzero($key);
+        if (!$same) {
+            self::refuse();
+        }
+    }
+
+    /** The JWT: before the limits, without any call. */
+    public static function jwt(Request $request, ClientProtection $client, int $now): void
+    {
         if ($client->jwt !== null && !self::jwtValid($request->header('Authorization'), $client->jwt, $now)) {
             self::refuse();
         }

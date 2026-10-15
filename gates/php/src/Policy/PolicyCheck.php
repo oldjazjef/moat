@@ -14,6 +14,7 @@ use Moat\Gate\Http\PathNormaliser;
 use Moat\Gate\Json\JsonObject;
 use Moat\Gate\Rejection;
 use Moat\Gate\RejectionCode;
+use Moat\Gate\Runtime\ClientCheck;
 use Moat\Gate\Runtime\RequestLog;
 
 /**
@@ -181,6 +182,13 @@ final class PolicyCheck
         $total = $policy->limits->total;
         $live = static fn(int $window): int => $total->requests * (intdiv($window + $total->windowSeconds - 1, $total->windowSeconds) + 1);
         $count = 1 + $live($policy->limits->perIp->windowSeconds) + ($policy->limits->quota !== null ? 1 : 0);
+        // T-71: failed API key attempts, one counter per client (ClientCheck::FAILURE_*).
+        foreach ($config->routes as $route) {
+            if ($route->client?->apiKey !== null) {
+                $count += $live(ClientCheck::FAILURE_WINDOW_SECONDS);
+                break;
+            }
+        }
         foreach ($config->routes as $route) {
             if ($route->quota !== null) {
                 ++$count;

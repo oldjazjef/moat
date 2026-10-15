@@ -87,6 +87,22 @@ final class RateLimiter
     }
 
     /**
+     * Seconds until the counter `$name` has room again, or null while it has (read only, nothing is
+     * counted). T-71: asked before a key is compared, after `hit()` counted the failures.
+     *
+     * @throws \RuntimeException when the store is damaged or cannot be read
+     */
+    public static function exhausted(DataDir $data, string $name, Limit $limit, int $now): ?int
+    {
+        return $data->locked(static function () use ($data, $name, $limit, $now): ?int {
+            [$key, $windows] = self::load($data->read(self::FILE), $now, self::NO_ROUTE_LIMITS);
+            $window = $windows[bin2hex(sodium_crypto_generichash($name, $key, 16))] ?? null;
+
+            return $window !== null && $window[1] >= $limit->requests ? $window[0] - $now : null;
+        });
+    }
+
+    /**
      * The id of a bundle's route limits: every route's name, rate limit and quota. A bundle that
      * changes none of them keeps the route counters running.
      *

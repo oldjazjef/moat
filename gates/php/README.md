@@ -124,7 +124,10 @@ A route's `client` says who may call it; every check that is set must pass, else
 `client_unauthorized`, the same answer for each:
 
 - `apiKey` (`header`, `secret`): the header compared in constant time with a sealed secret. For
-  servers calling the gate, never for a key in a public page. It is no upstream's secret.
+  servers calling the gate, never for a key in a public page. It is no upstream's secret. Failed
+  attempts (wrong, missing or malformed key) are counted per client (`REMOTE_ADDR`) and against the
+  policy's limits: after 5 within 300 s that client gets 429 `rate_limited` before its key is
+  compared, even with the right one (T-71). Only a hash of the client is stored, never a key.
 - `jwt` (`issuer`, `audience`, `keys`): `Authorization: Bearer <JWT>` signed by a listed key
   (`kid`, `alg` EdDSA, ES256 or RS256 ≥ 2048 bits, `spki` as base64url DER). The algorithm is
   the key's; `iss`, `aud` (or a list containing it) and `exp` are required, `nbf` is respected,

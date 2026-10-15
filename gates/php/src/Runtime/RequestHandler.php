@@ -6,6 +6,8 @@ namespace Moat\Gate\Runtime;
 
 use Moat\Gate\Config\AuthType;
 use Moat\Gate\Config\Budget;
+use Moat\Gate\Config\ClientProtection;
+use Moat\Gate\Config\Limit;
 use Moat\Gate\Config\LimitScope;
 use Moat\Gate\Config\Method;
 use Moat\Gate\Config\Route;
@@ -102,7 +104,8 @@ final class RequestHandler
             // FR-16: API key and JWT before the limits; honeypot with the body; Turnstile, which
             // costs a call, only for requests the limits and the body let through.
             if ($matched->client !== null) {
-                ClientCheck::credentials($request, $matched->client, $bundle, $gate, $now);
+                self::apiKey($request, $matched->client, $bundle, $gate, $now);
+                ClientCheck::jwt($request, $matched->client, $now);
             }
             self::limit($request, $matched, $bundle, $gate, $now);
             $payload = self::payload($request, $matched, $bundle);
@@ -117,6 +120,48 @@ final class RequestHandler
             return new Response($response->status, $response->headers + $cors, $response->body);
         } catch (Failure $failure) {
             throw $failure->with($cors);
+        }
+    }
+
+    /**
+     * FR-16, T-71, SEC-45: the API key, with failed attempts counted per client. A client that has
+     * failed `ClientCheck::FAILURE_REQUESTS` times within the window is refused (429 `rate_limited`)
+     * before its key is compared, even when it is the right one. A failure is counted like a
+     * request against the policy's per-IP and total limits too, and keeps the answer
+     * `client_unauthorized`; only the client key is stored, never the key that was tried (SEC-47).
+     */
+    private static function apiKey(Request $request, ClientProtection $client, ActiveBundle $bundle, Gate $gate, int $now): void
+    {
+        if ($client->apiKey === null) {
+            return;
+        }
+        $key = ClientKey::of($request->remoteAddr) ?? throw new Failure(GateError::RateLimitUnavailable);
+        $name = 'apikey-failed ' . $key;
+        $limit = new Limit(ClientCheck::FAILURE_REQUESTS, ClientCheck::FAILURE_WINDOW_SECONDS);
+        try {
+            $wait = RateLimiter::exhausted($gate->data, $name, $limit, $now);
+        } catch (\Exception) {
+            throw new Failure(GateError::RateLimitUnavailable);
+        }
+        if ($wait !== null) {
+            throw new Failure(GateError::RateLimited, ['Retry-After' => (string) max(1, $wait)]);
+        }
+        try {
+            ClientCheck::apiKey($request, $client, $bundle, $gate);
+        } catch (Failure $failure) {
+            if ($failure->error !== GateError::ClientUnauthorized) {
+                throw $failure;
+            }
+            $limits = $bundle->policy->limits;
+            try {
+                $refusal = RateLimiter::hit($gate->data, [['ip ' . $key, $limits->perIp], ['total', $limits->total], [$name, $limit]], $limits->maxClients, $now, RateLimiter::routeLimitsId($bundle->config->routes));
+            } catch (\Exception) {
+                throw new Failure(GateError::RateLimitUnavailable);
+            }
+            if ($refusal !== null) {
+                throw new Failure(GateError::RateLimited, ['Retry-After' => (string) $refusal->retryAfter]);
+            }
+            throw $failure;
         }
     }
 
