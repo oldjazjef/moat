@@ -3,6 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "mt-note-no-test-target": "Deliberate, as in lazy-koins: tests run via `pnpm test` or `pnpm vitest run --project web`.",
+  "mt-note-cloud-build": "build:cloud = the build the Moat Cloud server serves (apps/api cloud-server) into dist/apps/web-cloud: like build:desktop no critical-CSS inlining, because its `onload` attribute would be blocked by the server's CSP (script-src 'self', no inline script).",
   "mt-note-desktop-build": "build:desktop = the build Moat Desktop serves via app:// (apps/desktop), into dist/apps/web-desktop. Production, but without critical-CSS inlining: its `onload` handler would need inline script under the desktop's strict CSP.",
   "prefix": "mt",
   "sourceRoot": "apps/web/src",
@@ -40,6 +41,15 @@
         },
         "desktop": {
           "outputPath": "dist/apps/web-desktop",
+          "outputHashing": "all",
+          "optimization": {
+            "scripts": true,
+            "styles": { "minify": true, "inlineCritical": false },
+            "fonts": true
+          }
+        },
+        "cloud": {
+          "outputPath": "dist/apps/web-cloud",
           "outputHashing": "all",
           "optimization": {
             "scripts": true,

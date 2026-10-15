@@ -46,6 +46,7 @@ export interface CloudHarness {
 export async function startCloudHarness(
   env: Record<string, string> = {},
   logger: LoggerService | false = false,
+  webDir?: string,
 ): Promise<CloudHarness> {
   const folder = mkdtempSync(join(tmpdir(), 'moat-cloud-'));
   Object.assign(process.env, {
@@ -59,7 +60,11 @@ export async function startCloudHarness(
     ...env,
   });
   const { bootstrapCloud } = await import('../../bootstrap-cloud');
-  const api = await bootstrapCloud({ port: 0, logger });
+  const api = await bootstrapCloud({
+    port: 0,
+    logger,
+    ...(webDir === undefined ? {} : { webDir }),
+  });
   const cookieName = sessionCookieName(
     (process.env['MOAT_COOKIE_SECURE'] ?? 'true') === 'true',
   );
