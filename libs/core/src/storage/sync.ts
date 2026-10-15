@@ -11,7 +11,7 @@ import {
   type JsonValue,
 } from '../json/strict-json';
 import { SEALED_SECRET_ALG } from '../secrets/seal';
-import type { PlanSigner } from './bundle-plan';
+import { pinnedSignerOf, type PlanSigner } from './bundle-plan';
 import {
   CONFIG_FILE,
   GATE_ID,
@@ -32,7 +32,9 @@ import type { StoragePort } from './storage-port';
  *                   both sides last agreed on (`base`), otherwise a conflict
  *   gates           written only where missing; a different file is a conflict; a gate is never
  *                   pinned from the database (its box key must be compared first, SEC-32)
- *   sealed secrets  the higher secretVersion wins; the same version with other bytes is a conflict
+ *   sealed secrets  push: the higher secretVersion wins; pull: only a secret that is new here is
+ *                   written (anonymous sealing cannot authenticate it, T-76), an existing file is
+ *                   never replaced; the same version with other bytes is a conflict
  *   bundles         (gate, version) is the key and the lock: a bundle is never replaced, the same
  *                   version signed differently is a conflict, a higher version elsewhere is reported
  *
@@ -97,6 +99,13 @@ export const SYNC_ISSUES = [
   'gate_not_pinned',
   /** The same secret version with other bytes. */
   'secret_conflict',
+  /**
+   * The database has other bytes for a secret that exists here: never overwritten (sealing is
+   * anonymous, so a database writer could have substituted the ciphertext, T-76). Re-seal here.
+   */
+  'secret_unverified',
+  /** A secret that was new here was copied from the database; it is not authenticated (T-76). */
+  'secret_from_database',
   /** The database has a higher version of this secret (pull to get it). */
   'secret_newer_elsewhere',
   /** The same bundle version signed differently on both sides (DT-13). */
@@ -131,7 +140,7 @@ export interface PushPlan {
 export interface PullPlan {
   /** Replaces moat.yaml; null: nothing to write. */
   readonly config: SyncedConfig | null;
-  /** Replace the sealed secret files (a higher version than here). */
+  /** Sealed secret files that do not exist here yet; an existing one is never replaced (T-76). */
   readonly secrets: readonly SecretFile[];
   /** Fetch, verify with verifyPulledBundle, then create (never replace). */
   readonly bundles: readonly BundleRef[];
@@ -325,8 +334,25 @@ export function planPull(
     if (!usable.has(secret.gate) || !NAME_PATTERN.test(secret.name)) continue;
     if (sealedVersionOf(secret.text) !== secret.secretVersion) continue;
     const here = localSecrets.get(`${secret.gate}/${secret.name}`);
-    if (here === undefined || here.secretVersion < secret.secretVersion)
+    if (here === undefined) {
       secrets.push(secret);
+      issues.push(
+        issue(
+          'secret_from_database',
+          secret.gate,
+          secret.name,
+          secret.secretVersion,
+        ),
+      );
+    } else if (here.secretVersion < secret.secretVersion)
+      issues.push(
+        issue(
+          'secret_unverified',
+          secret.gate,
+          secret.name,
+          secret.secretVersion,
+        ),
+      );
     else if (
       here.secretVersion === secret.secretVersion &&
       here.text !== secret.text
@@ -461,9 +487,7 @@ async function bundleSignedBy(
   try {
     const { payload } = await verifyBundle(utf8(text), {
       gateId,
-      signers: [
-        { kid: signer.kid, alg: 'ed25519', publicKey: signer.publicKey },
-      ],
+      signers: [pinnedSignerOf(signer)],
       threshold: 1,
       currentVersion: version - 1,
       now: 0,

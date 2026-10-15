@@ -1,8 +1,20 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import {
+  publicPoint,
+  scalarFrom,
+  signDeterministic,
+} from '../../scripts/p256-test-signer';
 import { buildBundle } from '../bundle/build';
-import type { Ed25519Signer } from '../bundle/bundle';
+import {
+  assembleEnvelope,
+  bundlePayloadBytes,
+  webauthnChallenge,
+  type Ed25519Signer,
+} from '../bundle/bundle';
+import { encodeEcdsaDer, webauthnSignature } from '../crypto/webauthn';
+import { concatBytes, utf8 } from '../encoding/utf8';
 import { keyId } from '../crypto/kid';
 import { sodium } from '../crypto/sodium';
 import { toBase64Url } from '../encoding/base64url';
@@ -143,6 +155,67 @@ describe('sync with a shared backend (DT-03, DT-13)', () => {
     expect(push.bundles).toHaveLength(2);
   });
 
+  it('a trust mode 2 gate: a passkey-signed bundle is read, pushed and verified on pull', async () => {
+    const na = await sodium();
+    const scalar = scalarFrom(utf8('a fixed test-only seed of 32 byte'));
+    const publicKey = publicPoint(scalar);
+    const plan: PlanSigner = {
+      kid: await keyId('webauthn-es256', publicKey),
+      publicKey,
+      passkey: { rpId: 'moat.example.org', origins: ['app://moat'] },
+    };
+    const payloadBytes = bundlePayloadBytes({
+      type: 'moat.bundle',
+      v: 1,
+      gateId: GATE_ID,
+      version: 1,
+      issuedAt: 1,
+      expiresAt: null,
+      config: { version: 1 },
+      secrets: {},
+    });
+    const clientDataJSON = utf8(
+      JSON.stringify({
+        type: 'webauthn.get',
+        challenge: toBase64Url(await webauthnChallenge(payloadBytes)),
+        origin: 'app://moat',
+        crossOrigin: false,
+      }),
+    );
+    const authenticatorData = concatBytes(
+      na.crypto_hash_sha256(utf8('moat.example.org')),
+      new Uint8Array([0x05, 0, 0, 0, 1]),
+    );
+    const signature = encodeEcdsaDer(
+      signDeterministic(
+        na,
+        scalar,
+        concatBytes(authenticatorData, na.crypto_hash_sha256(clientDataJSON)),
+      ),
+    );
+    const text = assembleEnvelope(payloadBytes, [
+      webauthnSignature({
+        kid: plan.kid,
+        authenticatorData,
+        clientDataJSON,
+        signature,
+      }),
+    ]);
+    const files = {
+      'moat.yaml': RECIPE,
+      'gates/site.json': GATE,
+      'bundles/site/1.json': text,
+    };
+    const local = await readLocalProject(folder(files), plan);
+    expect(local.issues).toEqual([]);
+    expect(local.bundles.map((bundle) => bundle.version)).toEqual([1]);
+    const ref = { gate: 'site', version: 1, digest: await sha256Hex(text) };
+    expect(await verifyPulledBundle(text, ref, GATE_ID, plan)).toBe(true);
+    // The ed25519 view of the same person's key does not accept it.
+    const { plan: ed } = await keys();
+    expect(await verifyPulledBundle(text, ref, GATE_ID, ed)).toBe(false);
+  });
+
   it('checks the shapes it lets through', () => {
     expect(gateIdOf(GATE)).toBe(GATE_ID);
     expect(gateIdOf(GATE.replace('"v": 1', '"v": 1, "x": 1'))).toBeNull();
@@ -272,6 +345,39 @@ describe('sync with a shared backend (DT-03, DT-13)', () => {
     expect(
       await verifyPulledBundle(text, must(pull.bundles[0]), GATE_ID, plan),
     ).toBe(true);
+  });
+
+  it('pull: never overwrites an existing sealed secret, a new one is written and listed (T-76)', async () => {
+    const { signer, plan } = await keys();
+    const mine = await readLocalProject(folder(await project(signer, 0)), plan);
+    const remote: RemoteProject = {
+      ...EMPTY,
+      gates: [{ name: 'site', text: GATE }],
+      secrets: [
+        {
+          gate: 'site',
+          name: 'hubspot-token',
+          secretVersion: 2,
+          text: sealed(2, 9),
+        },
+        { gate: 'site', name: 'fresh', secretVersion: 1, text: sealed(1, 8) },
+      ],
+    };
+    const pull = planPull(mine, remote, null);
+    expect(pull.secrets.map((secret) => secret.name)).toEqual(['fresh']);
+    expect(pull.issues).toContainEqual({
+      code: 'secret_unverified',
+      gate: 'site',
+      name: 'hubspot-token',
+      version: 2,
+    });
+    expect(pull.issues).toContainEqual({
+      code: 'secret_from_database',
+      gate: 'site',
+      name: 'fresh',
+      version: 1,
+    });
+    expect(JSON.stringify(pull.issues)).not.toContain(sealed(2, 9));
   });
 
   it('pull: refuses a tampered bundle, another signer, another gate or version', async () => {

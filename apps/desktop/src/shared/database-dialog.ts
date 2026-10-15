@@ -51,6 +51,8 @@ export const DATABASE_ISSUES = [
   'gate_conflict',
   'gate_not_pinned',
   'secret_conflict',
+  'secret_unverified',
+  'secret_from_database',
   'secret_newer_elsewhere',
   'bundle_conflict',
   'bundle_newer_elsewhere',

@@ -1082,7 +1082,7 @@
           "verify": "Click “Check”. Moat recomputes the chain of checksums and tells you from which entry on something no longer fits.",
           "database": "Under “External database”, “Open database” opens a separate Moat Desktop window. There you enter the connection URL of the PostgreSQL database and the project’s name in the database, never in the app page. Except for this computer, Moat requires TLS with a verified certificate.",
           "push": "Backing up copies moat.yaml, the gates’ public files, the sealed secrets and the bundles signed with your key into the database. If Moat’s structure is missing there, Moat creates it.",
-          "pull": "Fetching writes newer files from the database into the project folder. Moat checks every bundle first as the gate does on accept: your key’s signature, gate and version. A gate that is only in the database you add yourself under “Gates” with its fingerprint."
+          "pull": "Fetching writes newer files from the database into the project folder. Moat checks every bundle first as the gate does on accept: your key’s signature, gate and version. A gate that is only in the database you add yourself under “Gates” with its fingerprint. Moat never overwrites a sealed secret that already exists here: if it differs in the database, Moat reports it and keeps your file. A secret that is new here is taken over but not authenticated (whoever can write to the database could have swapped it): seal it again on a machine you trust."
         },
         "tips": {
           "recorded": "The history holds only names, versions, checksums and counts: never a secret, never a passphrase, never a path.",

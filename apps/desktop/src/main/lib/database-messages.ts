@@ -69,6 +69,10 @@ export const DATABASE_MESSAGES: Readonly<
       gate_not_pinned:
         'Gate nur in der Datenbank: erst unter «Gates» mit Fingerprint hinzufügen',
       secret_conflict: 'Dieselbe Secret-Version mit anderem Inhalt',
+      secret_unverified:
+        'Secret in der Datenbank weicht ab: nicht übernommen. Hier neu versiegeln, wenn sie stimmen soll.',
+      secret_from_database:
+        'Secret aus der Datenbank übernommen: nicht beglaubigt. Auf einem Rechner, dem du traust, neu versiegeln.',
       secret_newer_elsewhere: 'Neuere Secret-Version in der Datenbank',
       bundle_conflict: 'Dieselbe Bundle-Version anders signiert',
       bundle_newer_elsewhere: 'Neuere Bundle-Version in der Datenbank',
@@ -137,6 +141,10 @@ export const DATABASE_MESSAGES: Readonly<
       gate_not_pinned:
         'Gate only in the database: add it under “Gates” with its fingerprint first',
       secret_conflict: 'The same secret version with other content',
+      secret_unverified:
+        'The secret in the database differs: not taken over. Seal it again here if it should be the new one.',
+      secret_from_database:
+        'Secret taken from the database: not authenticated. Seal it again on a machine you trust.',
       secret_newer_elsewhere: 'Newer secret version in the database',
       bundle_conflict: 'The same bundle version signed differently',
       bundle_newer_elsewhere: 'Newer bundle version in the database',

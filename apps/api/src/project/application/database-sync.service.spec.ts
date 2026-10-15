@@ -159,7 +159,7 @@ describe('DatabaseSyncService (DT-03, DT-13)', () => {
     });
   });
 
-  it('pulls verified bundles and newer secrets into another desktop', async () => {
+  it('pulls verified bundles and a new secret into another desktop, listed as unauthenticated (T-76)', async () => {
     const db = new InMemorySyncTarget();
     const a = await desktop(db, base());
     await a.sign();
@@ -174,10 +174,48 @@ describe('DatabaseSyncService (DT-03, DT-13)', () => {
       config: false,
       secrets: 1,
       bundles: 2,
-      issues: [],
+      issues: [
+        {
+          code: 'secret_from_database',
+          gate: 'site',
+          name: 'hubspot-token',
+          version: 1,
+        },
+      ],
     });
     expect(b.files['bundles/site/2.json']).toBe(a.files['bundles/site/2.json']);
     expect(b.files['secrets/site/hubspot-token.json']).toBe(SEALED);
+  });
+
+  it('never overwrites a local sealed secret with ciphertext from the database (T-76)', async () => {
+    const db = new InMemorySyncTarget();
+    const a = await desktop(db, base());
+    await a.sync('push');
+    const row = db.project(KEY).secrets.get('site/hubspot-token');
+    if (row === undefined) throw new Error('no secret pushed');
+    const substituted = SEALED.replace(
+      '"secretVersion":1',
+      '"secretVersion":2',
+    );
+    db.project(KEY).secrets.set('site/hubspot-token', {
+      ...row,
+      secretVersion: 2,
+      text: substituted,
+    });
+    const result = await a.sync('pull');
+    expect(result).toMatchObject({
+      status: 'done',
+      secrets: 0,
+      issues: [
+        {
+          code: 'secret_unverified',
+          gate: 'site',
+          name: 'hubspot-token',
+          version: 2,
+        },
+      ],
+    });
+    expect(a.files['secrets/site/hubspot-token.json']).toBe(SEALED);
   });
 
   it('refuses a bundle tampered in the database and writes nothing for it', async () => {
@@ -203,6 +241,12 @@ describe('DatabaseSyncService (DT-03, DT-13)', () => {
       status: 'done',
       bundles: 0,
       issues: [
+        {
+          code: 'secret_from_database',
+          gate: 'site',
+          name: 'hubspot-token',
+          version: 1,
+        },
         { code: 'bundle_unverified', gate: 'site', name: null, version: 1 },
       ],
     });
