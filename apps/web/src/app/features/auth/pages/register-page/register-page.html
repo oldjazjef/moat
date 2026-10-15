@@ -1,0 +1,126 @@
+<mt-auth-frame>
+  @if (service.accepted()) {
+  <section hlmCard data-register-accepted aria-labelledby="register-done">
+    <div hlmCardHeader>
+      <h1 hlmCardTitle id="register-done" class="text-2xl">
+        {{ 'auth.register.acceptedTitle' | translate }}
+      </h1>
+      <p hlmCardDescription>{{ 'auth.register.accepted' | translate }}</p>
+    </div>
+    <div hlmCardFooter>
+      <a hlmBtn routerLink="/login" data-to-login
+        >{{ 'auth.register.toLogin' | translate }}</a
+      >
+    </div>
+  </section>
+  } @else {
+  <form
+    hlmCard
+    data-register-form
+    aria-labelledby="register-title"
+    novalidate
+    [formGroup]="service.form"
+    (submit)="$event.preventDefault(); service.submit()"
+  >
+    <div hlmCardHeader>
+      <h1 hlmCardTitle id="register-title" class="text-2xl">
+        {{ 'auth.register.title' | translate }}
+      </h1>
+      <p hlmCardDescription>{{ 'auth.register.subtitle' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      @if (service.error(); as code) {
+      <p class="mt-note" role="alert" data-register-error>
+        <ng-icon
+          name="lucideTriangleAlert"
+          size="16"
+          aria-hidden="true"
+          class="mt-0.5 shrink-0"
+        />
+        <span>{{ errorKey(code) | translate }}</span>
+      </p>
+      }
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="register-email"
+          >{{ 'auth.fields.email' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="register-email"
+          type="email"
+          autocomplete="username"
+          spellcheck="false"
+          formControlName="email"
+          [attr.aria-invalid]="
+            service.form.controls.email.touched &&
+            service.form.controls.email.invalid
+          "
+        />
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="register-password"
+          >{{ 'auth.fields.choosePassword' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="register-password"
+          type="password"
+          autocomplete="new-password"
+          formControlName="password"
+          aria-describedby="register-password-hint"
+          [attr.aria-invalid]="
+            service.form.controls.password.touched &&
+            service.form.controls.password.invalid
+          "
+        />
+        <p
+          id="register-password-hint"
+          class="text-xs"
+          [class.text-destructive]="
+            service.form.controls.password.touched &&
+            service.form.controls.password.invalid
+          "
+          [class.text-muted-foreground]="
+            !(
+              service.form.controls.password.touched &&
+              service.form.controls.password.invalid
+            )
+          "
+        >
+          {{ 'auth.fields.passwordHint' | translate: { min: min } }}
+        </p>
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="register-repeat"
+          >{{ 'auth.fields.repeatPassword' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="register-repeat"
+          type="password"
+          autocomplete="new-password"
+          formControlName="repeat"
+        />
+        @if (service.mismatch()) {
+        <p class="text-destructive text-xs" role="alert" data-mismatch>
+          {{ 'auth.fields.mismatch' | translate }}
+        </p>
+        }
+      </div>
+    </div>
+    <div hlmCardFooter class="flex flex-wrap items-center gap-3">
+      <button
+        hlmBtn
+        type="submit"
+        data-register-submit
+        [disabled]="service.busy()"
+      >
+        {{ 'auth.register.submit' | translate }}
+      </button>
+      <a hlmBtn variant="link" routerLink="/login" data-to-login
+        >{{ 'auth.register.toLogin' | translate }}</a
+      >
+    </div>
+  </form>
+  }
+</mt-auth-frame>

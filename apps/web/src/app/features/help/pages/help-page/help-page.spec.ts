@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { messages } from '../../../../../testing/page-harness';
-import { HELP_SECTION_IDS } from '../../help-content';
+import { HELP_SECTIONS } from '../../help-content';
 import { HelpPage } from './help-page';
 
 async function open(url: string) {
@@ -39,12 +39,16 @@ describe('HelpPage (FR-71)', () => {
     const toc = [
       ...el.querySelectorAll<HTMLAnchorElement>('[data-help-toc] a'),
     ].map((a) => a.getAttribute('href'));
+    // Moat Desktop: the sections that exist only in the Cloud are left out and not numbered.
+    const ids = HELP_SECTIONS.filter((section) => section.only !== 'cloud').map(
+      (section) => section.id,
+    );
     expect(toc).toEqual([
-      ...HELP_SECTION_IDS.map((id) => `/app/help#${id}`),
+      ...ids.map((id) => `/app/help#${id}`),
       '/app/help#faq',
     ]);
-    expect(sectionIds(el)).toEqual([...HELP_SECTION_IDS, 'faq']);
-    const total = HELP_SECTION_IDS.length;
+    expect(sectionIds(el)).toEqual([...ids, 'faq']);
+    const total = ids.length;
     expect(el.querySelector('#gate [data-help-step]')?.textContent).toContain(
       `Schritt 3 von ${total}`,
     );
@@ -63,6 +67,27 @@ describe('HelpPage (FR-71)', () => {
   it('shows the desktop-only steps marked as such (Moat Desktop runs in local mode)', async () => {
     const { el } = await open('/app/help');
     expect(el.querySelector('#project')?.textContent).toContain('Nur Desktop');
+  });
+
+  it('Moat Cloud shows its own sections first and none of the desktop-only ones', async () => {
+    window.__MT_ENV__ = { authMode: 'cloud' };
+    try {
+      const { el } = await open('/app/help');
+      const ids = sectionIds(el);
+      expect(ids.slice(0, 3)).toEqual(['account', 'organisations', 'setup']);
+      expect(
+        el.querySelector('#account [data-help-step]')?.textContent,
+      ).toContain(`Schritt 1 von ${HELP_SECTIONS.length}`);
+      // «Registrieren» etc. are quoted labels of the Cloud pages; no desktop step is offered.
+      expect(el.querySelector('#project')?.textContent).not.toContain(
+        'Nur Desktop',
+      );
+      expect(
+        el.querySelector('#account [data-help-links] a')?.getAttribute('href'),
+      ).toBe('/app/account');
+    } finally {
+      delete window.__MT_ENV__;
+    }
   });
 
   it('a deep link scrolls to its section, marks it and focuses its heading', async () => {
