@@ -17,6 +17,7 @@ import {
   DEPLOY_OUTCOMES,
   IMPORT_OUTCOMES,
   LOG_OUTCOMES,
+  PASSKEY_NOTICES,
   SEAL_OUTCOMES,
   SIGN_OUTCOMES,
 } from '../../features/gates/pages/gates-page/gates-page.service';
@@ -75,6 +76,7 @@ const DYNAMIC_KEYS = [
   ...USAGE_FORMATS.map((format) => `routes.form.usageFormats.${format}`),
   ...PROJECT_TABS.map((tab) => `projects.tabs.${tab}`),
   ...SIGN_OUTCOMES.map((outcome) => `gates.signResult.${outcome}`),
+  ...PASSKEY_NOTICES.map((notice) => `gates.passkey.notices.${notice}`),
   ...SEAL_OUTCOMES.map((outcome) => `gates.sealResult.${outcome}`),
   ...DEPLOY_OUTCOMES.map((outcome) => `gates.deployResult.${outcome}`),
   ...IMPORT_OUTCOMES.map((outcome) => `gates.importResult.${outcome}`),

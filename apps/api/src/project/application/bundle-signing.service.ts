@@ -1,7 +1,14 @@
 import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import {
+  assembleEnvelope,
   buildBundle,
+  buildBundlePayload,
+  bundlePayloadBytes,
+  pinnedSignerOf,
+  verifyBundle,
+  webauthnChallenge,
+  webauthnSignature,
   BundlePlanError,
   canonicalJson,
   MoatRejection,
@@ -63,7 +70,36 @@ export type SignBundleResult =
       readonly status: 'key_refused';
       readonly code: 'keyfile_locked' | 'keyfile_invalid';
     }
-  | { readonly status: 'not_writable' };
+  | { readonly status: 'not_writable' }
+  /**
+   * Passkey signing (trust mode 2): `cancelled`: no assertion came (the person cancelled, or the
+   * system offered no passkey); `assertion_invalid`: the assertion does not verify as the gate
+   * would verify it against the pinned passkey. Nothing is written in either case.
+   */
+  | {
+      readonly status: 'passkey_refused';
+      readonly code: 'cancelled' | 'assertion_invalid';
+    };
+
+/** What `navigator.credentials.get` returned, as bytes (docs/CRYPTO.md §7.2). */
+export interface PasskeyAssertion {
+  readonly authenticatorData: Uint8Array;
+  readonly clientDataJSON: Uint8Array;
+  readonly signature: Uint8Array;
+}
+
+/**
+ * Asks the passkey to sign `challenge`; null when it did not (cancelled, unavailable). The
+ * main process answers it through its own passkey window, never the page.
+ */
+export type PasskeyAsserter = (
+  challenge: Uint8Array,
+) => Promise<PasskeyAssertion | null>;
+
+/** A planning signer that is a pinned passkey (trust mode 2). */
+export type PasskeyPlanSigner = PlanSigner & {
+  readonly passkey: NonNullable<PlanSigner['passkey']>;
+};
 
 /**
  * Builds and signs a gate's next bundle for Moat Desktop. Called in-process by the main process
@@ -137,6 +173,85 @@ export class BundleSigningService {
     } finally {
       signer.secretKey.fill(0);
     }
+  }
+
+  /**
+   * Trust mode 2 (docs/CRYPTO.md §7): the same bundle as `sign`, but the signature is a WebAuthn
+   * assertion over `webauthnChallenge(payloadBytes)`. The payload is built first (its time is
+   * fixed), the passkey signs its challenge through `assert`, and the envelope is verified here
+   * exactly as the gate verifies it — against the pinned passkey, rpId and origins, challenge,
+   * UP/UV and signature — before anything is written. A project that changed while the person
+   * was at the passkey is not signed (`changed`), and a signature that does not verify writes
+   * nothing (fail closed, SEC-46).
+   */
+  async signWithPasskey(
+    id: string,
+    gate: string,
+    expected: string,
+    signer: PasskeyPlanSigner,
+    assert: PasskeyAsserter,
+    now: number,
+  ): Promise<SignBundleResult> {
+    const opened = await this.plan(id, gate, signer);
+    if (opened.status === 'refused')
+      return { status: 'refused', code: opened.code };
+    if (opened.status !== 'planned') return opened;
+    const { plan, folder } = opened;
+    if (digest(plan) !== expected) return { status: 'changed' };
+
+    const payloadBytes = bundlePayloadBytes(
+      buildBundlePayload({
+        config: plan.source,
+        gate: plan.gate,
+        gateId: plan.gateId,
+        secrets: plan.secrets,
+        version: plan.version,
+        issuedAt: now,
+      }),
+    );
+    const assertion = await assert(await webauthnChallenge(payloadBytes));
+    if (assertion === null)
+      return { status: 'passkey_refused', code: 'cancelled' };
+    const envelope = assembleEnvelope(payloadBytes, [
+      webauthnSignature({ kid: signer.kid, ...assertion }),
+    ]);
+    try {
+      const verified = await verifyBundle(new TextEncoder().encode(envelope), {
+        gateId: plan.gateId,
+        signers: [pinnedSignerOf(signer)],
+        threshold: 1,
+        currentVersion: plan.version - 1,
+        now,
+        expiryEnabled: false,
+      });
+      if (verified.payload.version !== plan.version)
+        return { status: 'passkey_refused', code: 'assertion_invalid' };
+    } catch (error) {
+      if (error instanceof MoatRejection)
+        return { status: 'passkey_refused', code: 'assertion_invalid' };
+      throw error;
+    }
+
+    // The person may have been at the passkey for a while: sign nothing but what they confirmed.
+    const again = await this.plan(id, gate, signer);
+    if (again.status !== 'planned' || digest(again.plan) !== expected)
+      return { status: 'changed' };
+    try {
+      this.files.writeBundle(folder, plan.gate, plan.version, envelope);
+    } catch (error) {
+      if (error instanceof BundleExistsError) return { status: 'changed' };
+      return { status: 'not_writable' };
+    }
+    await this.history.record(id, {
+      kind: 'bundle_signed',
+      details: {
+        gate: plan.gate,
+        version: plan.version,
+        sha256: createHash('sha256').update(envelope, 'utf8').digest('hex'),
+        kid: signer.kid,
+      },
+    });
+    return { status: 'signed', version: plan.version, kid: signer.kid };
   }
 
   private async signOpened(

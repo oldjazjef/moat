@@ -27,12 +27,14 @@ export const GATE_ID = /^[A-Za-z0-9_-]{22}$/;
 export const MAX_LISTED = 500;
 
 /**
- * The trust mode of a gate fed from this project (§2.9). Moat Desktop and the CLI only ever
- * produce bundles signed with a key file, and a gate accepts those only after pinning that key,
- * so a gate of a project folder is always "Signiert" (FR-46, DT-01). Mode 2 joins once passkey
- * signing exists; this is never a stronger claim than what the gate enforces (§1.5).
+ * The trust mode of a gate fed from this project (§2.9). Moat Desktop and the CLI produce bundles
+ * signed with a key file ("Signiert", mode 1), and a gate accepts those only after pinning that
+ * key, so `readProject` reports "signed" for every gate (FR-46, DT-01). "passkey" (mode 2,
+ * "Signiert mit Passkey") is what Moat Desktop reports for a gate the person set to sign with
+ * the passkey (its own, local setting, never a project file or Cloud data) — never a stronger
+ * claim than what the gate enforces (§1.5). Neither value can be lowered by data from outside.
  */
-export type TrustMode = 'signed';
+export type TrustMode = 'signed' | 'passkey';
 
 export type ConfigState =
   | { readonly status: 'missing' }

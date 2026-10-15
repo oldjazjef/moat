@@ -10,6 +10,7 @@ import {
 } from './sftp';
 import type { FtpsTarget } from './ftps';
 import { FTPS_FINGERPRINT } from './ftps-client';
+import { passkeyRecordOf, type PasskeyRecord } from './passkey';
 
 /** `<userData>/config.json`: what the desktop remembers between starts. */
 export const CONFIG_FILE = 'config.json';
@@ -63,6 +64,17 @@ export interface DesktopConfig {
    * only as keychain ciphertext (DT-04), or not at all.
    */
   readonly databaseTargets: Readonly<Record<string, DatabaseTarget>>;
+
+  /**
+   * The passkey of trust mode 2 (docs/CRYPTO.md §7): its credential id and public key, nothing
+   * secret — the private key never leaves the authenticator.
+   */
+  readonly passkey: PasskeyRecord | null;
+  /**
+   * The gates (`<projectId>/<gate>`) the person set to sign with the passkey, because the gate
+   * pins it (trust mode 2). A local setting; nothing from a project or the Cloud sets it.
+   */
+  readonly passkeyGates: readonly string[];
 }
 
 export interface DeployedPackage {
@@ -80,6 +92,8 @@ export const EMPTY_CONFIG: DesktopConfig = {
   gitTargets: {},
   ftpsTargets: {},
   databaseTargets: {},
+  passkey: null,
+  passkeyGates: [],
 };
 
 const PROJECT_KEY = /^[A-Za-z0-9_-]{22}$/;
@@ -151,6 +165,14 @@ export function readConfig(userData: string): DesktopConfig {
         if (target !== null) databaseTargets[id] = target;
       }
     }
+    const passkeyGates: string[] = [];
+    const marked = value['passkeyGates'];
+    if (Array.isArray(marked)) {
+      for (const key of marked) {
+        if (typeof key === 'string' && DEPLOYED_KEY.test(key))
+          passkeyGates.push(key);
+      }
+    }
     return {
       projectDir: absolute(value['projectDir']),
       keyFile: absolute(value['keyFile']),
@@ -165,6 +187,8 @@ export function readConfig(userData: string): DesktopConfig {
       gitTargets,
       ftpsTargets,
       databaseTargets,
+      passkey: passkeyRecordOf(value['passkey']),
+      passkeyGates: [...new Set(passkeyGates)].sort(),
     };
   } catch {
     return EMPTY_CONFIG;

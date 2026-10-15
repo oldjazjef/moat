@@ -115,9 +115,15 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       'keygen',
       { id: 'keyDesktop', only: 'desktop' },
       'trust',
+      { id: 'passkeyDesktop', only: 'desktop' },
+      { id: 'passkeyGate', only: 'desktop' },
       'badge',
     ),
-    tips: items('passphrase', { id: 'desktopOnly', only: 'desktop' }),
+    tips: items(
+      'passphrase',
+      { id: 'desktopOnly', only: 'desktop' },
+      { id: 'passkeyHonest', only: 'desktop' },
+    ),
     links: [PROJECTS],
   },
   {

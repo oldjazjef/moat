@@ -81,6 +81,11 @@
         "label": "Signed",
         "short": "You approve every change with your key file.",
         "ifHacked": "… an attacker cannot change anything. In the browser this holds only partly; full guarantee with Moat Desktop or the CLI."
+      },
+      "passkey": {
+        "label": "Signed with passkey",
+        "short": "You approve every change with a passkey or security key.",
+        "ifHacked": "as “Signed”, and your key cannot be stolen as well."
       }
     }
   },
@@ -300,6 +305,31 @@
       "too_large": "The files are larger than a gate’s log.",
       "no_entries": "The files hold no line of a gate’s request log.",
       "failed": "The log could not be shown."
+    },
+    "passkey": {
+      "title": "Passkey",
+      "intro": "Instead of a key file, a passkey can approve your bundles (trust mode 2). The private key never leaves the passkey; Moat stores only the public key.",
+      "honesty": "Moat Desktop can use a passkey only when your operating system offers one. Otherwise the window says none is available, and the mode stays off.",
+      "none": "No passkey created yet.",
+      "fingerprint": "Fingerprint",
+      "rpId": "Relying party ID",
+      "origin": "Origin",
+      "trustCommand": "Pin on the gate (existing gate)",
+      "installCommand": "At installation (new gate)",
+      "enroll": "Create passkey",
+      "created": "Passkey created. Pin it on the gate now and compare the fingerprint.",
+      "gatesTitle": "Gates with passkey",
+      "gatesHint": "Switch a gate only after you have pinned the passkey there with the command. Moat Desktop cannot see what the gate has pinned: a wrong mode only makes the gate reject the bundle.",
+      "use": "Sign with passkey",
+      "useKey": "Sign with key file",
+      "stateOn": "signs with passkey (mode 2)",
+      "stateOff": "signs with key file (mode 1)",
+      "notices": {
+        "unavailable": "This system offers Moat Desktop no passkey. Trust mode 2 is not possible here; use a key file (mode 1).",
+        "cancelled": "No passkey was created.",
+        "failed": "The passkey could not be created.",
+        "set_failed": "The gate could not be switched. Create a passkey first."
+      }
     }
   },
   "routes": {
@@ -871,17 +901,20 @@
       },
       "trust": {
         "title": "Trust mode",
-        "purpose": "The trust mode decides who may approve changes to a gate. Moat Desktop always uses “Signed”: the gate accepts only bundles signed with your key file.",
+        "purpose": "The trust mode decides who may approve changes to a gate. Moat Desktop uses “Signed” (key file) or “Signed with passkey”: the gate accepts only bundles signed with the key or passkey it has pinned.",
         "where": "Project › Overview › Trust mode and Gates",
         "steps": {
           "keygen": "Create a key file once with `moat keygen <file>.moatkey` and choose a good passphrase.",
           "keyDesktop": "In Moat Desktop you create the key under “Setup” › “Signing key” with “Create a new key”.",
           "trust": "Give the gate the public key when you install it (--signer). You can change it only on the gate itself, with `php moat-gate.php trust`.",
+          "passkeyDesktop": "For “Signed with passkey” click “Create passkey” under “Gates” in the “Passkey” section. A window of Moat Desktop of its own asks your operating system for a passkey and shows the fingerprint and the command.",
+          "passkeyGate": "Run the command `php moat-gate.php trust --passkey=…` on the gate and compare the fingerprint. Then switch on “Sign with passkey” for the gate.",
           "badge": "Next to each gate you see its trust mode, with the sentence on what an attacker could do if Moat Cloud were hacked."
         },
         "tips": {
           "passphrase": "Keep the key file outside the project folder and back it up. Without it you cannot sign bundles any more.",
-          "desktopOnly": "Moat Desktop works without the Cloud: you approve every change yourself with your key file."
+          "desktopOnly": "Moat Desktop works without the Cloud: you approve every change yourself with your key file.",
+          "passkeyHonest": "Moat Desktop has no passkey interface of its own and uses only what your system offers. If there is no passkey (on Linux, for example) the window says so and you stay with the key file."
         }
       },
       "secrets": {

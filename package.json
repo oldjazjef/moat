@@ -28,6 +28,7 @@
     "schema": "node scripts/regenerate.mjs schema",
     "build": "nx run-many -t build",
     "start:desktop": "nx run desktop:start",
+    "e2e:desktop-passkey": "node apps/desktop/scripts/passkey-e2e.mjs",
     "moat": "node dist/apps/cli/moat.cjs"
   },
   "devDependencies": {

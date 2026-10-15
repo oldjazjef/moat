@@ -219,6 +219,12 @@ Der Schlüssel verlässt den Authenticator nie, wie in den Anforderungen verspro
   - `app://<name>` mit `<name>` nach `^[a-z][a-z0-9-]{0,62}$` (so nennt sich der Origin der
     Desktop-App, z. B. `app://moat`).
     Doppelte Origins sind ungültig.
+  - **Moat Desktop** (gemessen mit Electron 42): Chromium lässt WebAuthn auf `app://…` nicht zu
+    (`SecurityError`, nur HTTPS-Origins oder `localhost`). Der Desktop führt die Zeremonie
+    deshalb in einem eigenen Fenster auf `https://passkey.moat.invalid` aus, das der Hauptprozess
+    selbst beantwortet (T-77). Dazu gehört `--rp-id=passkey.moat.invalid
+--origin=https://passkey.moat.invalid`. `app://moat` bleibt gültige Grammatik für andere
+    Clients, der Desktop benutzt ihn nicht.
 - Modus 2 kennt **nur** `webauthn-es256`-Signer, Modus 0 und 1 **nur** `ed25519`-Signer: Der
   Modus sagt, welcher Algorithmus gilt, gemischt wird nie. Ein Signer mit dem falschen `alg`
   oder mit den Schlüsseln der anderen Form macht die ganze Trust-Datei ungültig

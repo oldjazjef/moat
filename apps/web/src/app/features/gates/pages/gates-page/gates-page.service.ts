@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import type { GateState } from '../../../../core/api/project.types';
+import type { GateState, TrustMode } from '../../../../core/api/project.types';
 import {
   type BundleSignResult,
   type DeployResult,
@@ -8,6 +8,7 @@ import {
   desktopBridge,
   type ImportFrom,
   type ImportResult,
+  type PasskeyStatus,
   type RequestLogResult,
   type SecretSealResult,
   type SigningKeyInfo,
@@ -99,6 +100,15 @@ export const LOG_OUTCOMES = [
   'failed',
 ] as const;
 
+/** Why a passkey could not be created or a gate not switched (`gates.passkey.notices.<code>`). */
+export const PASSKEY_NOTICES = [
+  'unavailable',
+  'cancelled',
+  'failed',
+  'set_failed',
+] as const;
+export type PasskeyNotice = (typeof PASSKEY_NOTICES)[number];
+
 export type ValidGate = Extract<GateState, { status: 'valid' }>;
 
 /**
@@ -168,8 +178,80 @@ export class GatesPageService {
     readonly result: Exclude<BundleSignResult, { status: 'cancelled' }>;
   } | null>(null);
 
+  /** Trust mode 2 (docs/CRYPTO.md §7): only Moat Desktop has a passkey window. */
+  readonly canPasskey = this.bridge?.passkey !== undefined;
+  /** The passkey and the gates of this project set to sign with it; null until read. */
+  readonly passkey = signal<PasskeyStatus | null>(null);
+  readonly passkeyBusy = signal(false);
+  readonly passkeyNotice = signal<PasskeyNotice | null>(null);
+  /** The passkey was created just now: say what to do next. */
+  readonly passkeyCreated = signal(false);
+
   constructor() {
     void this.loadRotation();
+    void this.loadPasskey();
+  }
+
+  /**
+   * The mode the badge shows: "passkey" only for a gate the person set to sign with the passkey
+   * (a local setting of Moat Desktop), never anything a project file or the Cloud says (§1.5).
+   */
+  trustModeOf(gate: ValidGate): TrustMode {
+    return this.passkey()?.gates.includes(gate.name) === true
+      ? 'passkey'
+      : gate.trustMode;
+  }
+
+  private async loadPasskey(): Promise<void> {
+    if (this.bridge?.passkey === undefined) return;
+    try {
+      this.passkey.set(await this.bridge.passkey.status(this.resource.id()));
+    } catch {
+      this.passkey.set({ passkey: null, gates: [] });
+    }
+  }
+
+  /** «Passkey anlegen»: the main process's passkey window; the page learns the outcome only. */
+  async enrollPasskey(): Promise<void> {
+    if (this.bridge?.passkey === undefined || this.passkeyBusy()) return;
+    this.passkeyBusy.set(true);
+    this.passkeyNotice.set(null);
+    this.passkeyCreated.set(false);
+    try {
+      const result = await this.bridge.passkey.enroll(
+        this.translate.getCurrentLang() ?? '',
+      );
+      if (result.status === 'created') {
+        this.passkeyCreated.set(true);
+        await this.loadPasskey();
+      } else {
+        this.passkeyNotice.set(result.status);
+      }
+    } catch {
+      this.passkeyNotice.set('failed');
+    } finally {
+      this.passkeyBusy.set(false);
+    }
+  }
+
+  /** Marks a gate as signing with the passkey (it pins it), or back with the key file. */
+  async usePasskey(gate: ValidGate, on: boolean): Promise<void> {
+    if (this.bridge?.passkey === undefined || this.passkeyBusy()) return;
+    this.passkeyBusy.set(true);
+    this.passkeyNotice.set(null);
+    try {
+      const done = await this.bridge.passkey.use(
+        this.resource.id(),
+        gate.name,
+        on,
+      );
+      if (!done) this.passkeyNotice.set('set_failed');
+      await this.loadPasskey();
+    } catch {
+      this.passkeyNotice.set('set_failed');
+    } finally {
+      this.passkeyBusy.set(false);
+    }
   }
 
   private async loadRotation(): Promise<void> {

@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!-- No script on this page: its preload renders the view with textContent and calls
+         navigator.credentials. The page is served from the passkey origin (T-77). -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="dialog.css" />
+    <title>Moat</title>
+  </head>
+  <body>
+    <form id="form" hidden>
+      <h1 id="title"></h1>
+      <p id="intro" class="muted"></p>
+      <p id="honesty" class="muted small"></p>
+      <dl class="facts">
+        <dt id="rpid-label"></dt>
+        <dd id="rpid" class="code"></dd>
+        <dt id="origin-label"></dt>
+        <dd id="origin" class="code"></dd>
+      </dl>
+      <p id="replaces" class="warning" hidden></p>
+      <p id="notice" class="error" role="alert" hidden></p>
+      <section id="done" hidden>
+        <h2 id="done-title"></h2>
+        <p id="done-intro" class="muted"></p>
+        <dl class="facts">
+          <dt id="fingerprint-label"></dt>
+          <dd id="fingerprint" class="code"></dd>
+          <dt id="publickey-label"></dt>
+          <dd id="publickey" class="code"></dd>
+          <dt id="trust-label"></dt>
+          <dd id="trust" class="code"></dd>
+          <dt id="install-label"></dt>
+          <dd id="install" class="code"></dd>
+        </dl>
+        <p id="compare" class="muted small"></p>
+      </section>
+      <div class="buttons">
+        <button id="cancel" type="button" class="secondary"></button>
+        <button id="create" type="submit"></button>
+      </div>
+    </form>
+  </body>
+</html>

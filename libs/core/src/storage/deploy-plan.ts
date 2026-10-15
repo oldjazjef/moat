@@ -2,7 +2,12 @@ import { verifyBundle } from '../bundle/bundle';
 import { validateCompiledConfig } from '../config/compiled';
 import { MoatRejection } from '../errors';
 import { suggestPolicy, type Policy } from '../policy/policy';
-import { BundlePlanError, readGateId, type PlanSigner } from './bundle-plan';
+import {
+  BundlePlanError,
+  pinnedSignerOf,
+  readGateId,
+  type PlanSigner,
+} from './bundle-plan';
 import { latestBundle, NAME_PATTERN } from './project';
 import type { StoragePort } from './storage-port';
 
@@ -56,9 +61,7 @@ export async function planDeploy(
   try {
     const { payload } = await verifyBundle(new TextEncoder().encode(text), {
       gateId,
-      signers: [
-        { kid: signer.kid, alg: 'ed25519', publicKey: signer.publicKey },
-      ],
+      signers: [pinnedSignerOf(signer)],
       threshold: 1,
       currentVersion: version - 1,
       now: 0,

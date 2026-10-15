@@ -5,6 +5,7 @@ import type {
   BundleSignResult,
   DeployResult,
   ImportResult,
+  PasskeyEnrollResult,
   RequestLogResult,
   SecretSealResult,
 } from '../../../../core/desktop/desktop-bridge';
@@ -831,6 +832,99 @@ describe('GatesPage', () => {
       done.click();
       await settle(harness);
       expect(rotationDone).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('passkey in Moat Desktop (trust mode 2)', () => {
+    afterEach(() => delete window.moatDesktop);
+
+    const POINT = 'P'.repeat(87);
+    const INFO = {
+      kid: 'k'.repeat(22),
+      publicKey: POINT,
+      fingerprint: 'MOAT-PASS',
+      rpId: 'passkey.moat.invalid',
+      origin: 'https://passkey.moat.invalid',
+      trustCommand: `php moat-gate.php trust --passkey=${POINT} --rp-id=passkey.moat.invalid --origin=https://passkey.moat.invalid`,
+      installCommand: `php moat-gate.php install --passkey=${POINT} --rp-id=passkey.moat.invalid --origin=https://passkey.moat.invalid`,
+    };
+    const desktop = (
+      status: { passkey: typeof INFO | null; gates: string[] },
+      enroll: PasskeyEnrollResult = { status: 'cancelled' },
+    ) => {
+      const bridge = {
+        status: vi.fn().mockResolvedValue(status),
+        enroll: vi.fn().mockResolvedValue(enroll),
+        use: vi.fn().mockResolvedValue(true),
+      };
+      window.moatDesktop = {
+        platform: 'linux',
+        project: { add: vi.fn(), create: vi.fn(), reveal: vi.fn() },
+        key: {
+          status: vi.fn().mockResolvedValue({ status: 'none' }),
+          choose: vi.fn(),
+          create: vi.fn(),
+          rotationDone: vi.fn(),
+        },
+        bundle: { sign: vi.fn() },
+        secret: { seal: vi.fn() },
+        gate: { deploy: vi.fn(), import: vi.fn(), log: vi.fn() },
+        passkey: bridge,
+      };
+      return bridge;
+    };
+
+    it('shows nothing in a browser', async () => {
+      const { el } = await openProjectTab('gates', GatesPage, PROJECT);
+      expect(el.querySelector('[data-passkey]')).toBeNull();
+    });
+
+    it('says plainly that there is no passkey yet, and what the system answered when asked for one', async () => {
+      const bridge = desktop(
+        { passkey: null, gates: [] },
+        { status: 'unavailable' },
+      );
+      const { el, harness } = await openProjectTab('gates', GatesPage, PROJECT);
+      expect(text(el, '[data-passkey-none]')).toBe(
+        'Noch kein Passkey angelegt.',
+      );
+      expect(el.querySelector('[data-passkey-gate]')).toBeNull();
+      (el.querySelector('[data-passkey-enroll]') as HTMLButtonElement).click();
+      await settle(harness);
+      expect(bridge.enroll).toHaveBeenCalledWith('de-CH');
+      expect(text(el, '[data-passkey-notice]')).toContain(
+        'kein Passkey zur Verfügung',
+      );
+      expect(el.querySelector('[data-passkey-created]')).toBeNull();
+    });
+
+    it('shows the passkey with its fingerprint and the command for the gate', async () => {
+      desktop({ passkey: INFO, gates: [] });
+      const { el } = await openProjectTab('gates', GatesPage, PROJECT);
+      expect(text(el, '[data-passkey-fingerprint]')).toBe('MOAT-PASS');
+      expect(text(el, '[data-passkey-trust]')).toBe(INFO.trustCommand);
+      expect(text(el, '[data-passkey-install]')).toBe(INFO.installCommand);
+      // Not switched on: the gate is still "Signiert".
+      expect(text(el, '[data-trust-mode]')).toBe('Signiert');
+    });
+
+    it('switches a gate to the passkey by ids only, and the badge follows', async () => {
+      const bridge = desktop({ passkey: INFO, gates: [] });
+      const { el, harness } = await openProjectTab('gates', GatesPage, PROJECT);
+      (el.querySelector('[data-passkey-use]') as HTMLButtonElement).click();
+      await settle(harness);
+      expect(bridge.use).toHaveBeenCalledWith(PROJECT.id, 'site', true);
+
+      TestBed.resetTestingModule();
+      const on = desktop({ passkey: INFO, gates: ['site'] });
+      const again = await openProjectTab('gates', GatesPage, PROJECT);
+      expect(text(again.el, '[data-trust-mode]')).toBe('Signiert mit Passkey');
+      expect(text(again.el, '[data-passkey-state]')).toContain('Modus 2');
+      (
+        again.el.querySelector('[data-passkey-use]') as HTMLButtonElement
+      ).click();
+      await settle(again.harness);
+      expect(on.use).toHaveBeenCalledWith(PROJECT.id, 'site', false);
     });
   });
 });

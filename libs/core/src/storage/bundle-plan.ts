@@ -1,5 +1,6 @@
 import { usedSecrets } from '../config/secrets';
-import { verifyBundle } from '../bundle/bundle';
+import { verifyBundle, type PinnedSigner } from '../bundle/bundle';
+import { WEBAUTHN_ALG } from '../crypto/webauthn';
 import { canonicalJson } from '../canonical/jcs';
 import { compileConfig } from '../config/compile';
 import type { CompiledConfig } from '../config/compiled';
@@ -47,10 +48,31 @@ export interface FieldChange {
 
 /** Longer values are cut (the dialog shows them, the digest covers them in full). */
 export const MAX_FIELD_TEXT = 200;
-/** The signer whose earlier bundles count for the comparison. */
+/**
+ * The signer whose earlier bundles count for the comparison (and which verifies a bundle on
+ * import and deploy). Ed25519 by default; with `passkey` it is a pinned WebAuthn ES256 passkey
+ * (trust mode 2, docs/CRYPTO.md §7.1) — `publicKey` is then the 65-byte point.
+ */
 export interface PlanSigner {
   readonly kid: string;
   readonly publicKey: Uint8Array;
+  readonly passkey?: {
+    readonly rpId: string;
+    readonly origins: readonly string[];
+  };
+}
+
+/** The pinned key a gate would hold for this signer (what verifyBundle checks against). */
+export function pinnedSignerOf(signer: PlanSigner): PinnedSigner {
+  return signer.passkey === undefined
+    ? { kid: signer.kid, alg: 'ed25519', publicKey: signer.publicKey }
+    : {
+        kid: signer.kid,
+        alg: WEBAUTHN_ALG,
+        publicKey: signer.publicKey,
+        rpId: signer.passkey.rpId,
+        origins: signer.passkey.origins,
+      };
 }
 
 export interface BundlePlan {
@@ -208,9 +230,7 @@ async function readPayload(
   try {
     ({ payload } = await verifyBundle(new TextEncoder().encode(text), {
       gateId,
-      signers: [
-        { kid: signer.kid, alg: 'ed25519', publicKey: signer.publicKey },
-      ],
+      signers: [pinnedSignerOf(signer)],
       threshold: 1,
       currentVersion: version - 1,
       now: 0,

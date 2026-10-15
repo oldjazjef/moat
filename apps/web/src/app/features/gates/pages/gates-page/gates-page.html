@@ -60,6 +60,105 @@
     </div>
   </div>
 </section>
+} @if (service.canPasskey) {
+<section hlmCard class="mb-6" data-passkey>
+  <div hlmCardHeader>
+    <div class="flex items-center justify-between gap-3">
+      <h2 hlmCardTitle class="text-base">
+        {{ 'gates.passkey.title' | translate }}
+      </h2>
+      <mt-help-link section="trust" />
+    </div>
+  </div>
+  <div hlmCardContent class="flex flex-col gap-3 text-sm">
+    <p>{{ 'gates.passkey.intro' | translate }}</p>
+    <p class="text-muted-foreground">
+      {{ 'gates.passkey.honesty' | translate }}
+    </p>
+    @if (service.passkey(); as status) { @if (status.passkey; as passkey) {
+    <dl class="mt-facts" data-passkey-ready>
+      <dt>{{ 'gates.passkey.fingerprint' | translate }}</dt>
+      <dd class="mt-code" data-passkey-fingerprint>
+        {{ passkey.fingerprint }}
+      </dd>
+      <dt>{{ 'gates.passkey.rpId' | translate }}</dt>
+      <dd class="mt-code">{{ passkey.rpId }}</dd>
+      <dt>{{ 'gates.passkey.origin' | translate }}</dt>
+      <dd class="mt-code">{{ passkey.origin }}</dd>
+      <dt>{{ 'gates.passkey.trustCommand' | translate }}</dt>
+      <dd class="mt-code break-all" data-passkey-trust>
+        {{ passkey.trustCommand }}
+      </dd>
+      <dt>{{ 'gates.passkey.installCommand' | translate }}</dt>
+      <dd class="mt-code break-all" data-passkey-install>
+        {{ passkey.installCommand }}
+      </dd>
+    </dl>
+    } @else {
+    <p class="text-muted-foreground" data-passkey-none>
+      {{ 'gates.passkey.none' | translate }}
+    </p>
+    } } @if (service.passkeyCreated()) {
+    <p data-passkey-created role="status">
+      {{ 'gates.passkey.created' | translate }}
+    </p>
+    } @if (service.passkeyNotice(); as notice) {
+    <p class="text-destructive" role="alert" data-passkey-notice>
+      {{ 'gates.passkey.notices.' + notice | translate }}
+    </p>
+    }
+    <div>
+      <button
+        hlmBtn
+        size="sm"
+        type="button"
+        data-passkey-enroll
+        [variant]="service.passkey()?.passkey ? 'outline' : 'default'"
+        [disabled]="service.passkeyBusy()"
+        (click)="service.enrollPasskey()"
+      >
+        {{ 'gates.passkey.enroll' | translate }}
+      </button>
+    </div>
+    @if (service.passkey()?.passkey) {
+    <div>
+      <h3 class="mb-1 text-sm font-medium">
+        {{ 'gates.passkey.gatesTitle' | translate }}
+      </h3>
+      <p class="text-muted-foreground mb-2 text-xs">
+        {{ 'gates.passkey.gatesHint' | translate }}
+      </p>
+      <ul class="divide-border divide-y rounded-md border">
+        @for (gate of service.valid(); track gate.name) {
+        <li
+          class="flex flex-wrap items-center gap-3 px-3 py-2"
+          data-passkey-gate
+          [attr.data-gate-name]="gate.name"
+        >
+          <span class="mt-code">{{ gate.name }}</span>
+          <span class="text-muted-foreground flex-1" data-passkey-state>
+            {{ (service.trustModeOf(gate) === 'passkey' ?
+            'gates.passkey.stateOn' : 'gates.passkey.stateOff') | translate }}
+          </span>
+          <button
+            hlmBtn
+            variant="outline"
+            size="sm"
+            type="button"
+            data-passkey-use
+            [disabled]="service.passkeyBusy()"
+            (click)="service.usePasskey(gate, service.trustModeOf(gate) !== 'passkey')"
+          >
+            {{ (service.trustModeOf(gate) === 'passkey' ? 'gates.passkey.useKey'
+            : 'gates.passkey.use') | translate }}
+          </button>
+        </li>
+        }
+      </ul>
+    </div>
+    }
+  </div>
+</section>
 } @if (resource.gates().length === 0) {
 <p class="mt-note" data-no-gates>
   <mt-rich-text [text]="'gates.empty' | translate" />
@@ -80,7 +179,7 @@
         </h2>
         <div class="flex flex-wrap items-center gap-2">
           <mt-lock-badge [locked]="gate.lock?.enabled === false" />
-          <mt-trust-mode-badge [mode]="gate.trustMode" />
+          <mt-trust-mode-badge [mode]="service.trustModeOf(gate)" />
         </div>
       </div>
     </div>

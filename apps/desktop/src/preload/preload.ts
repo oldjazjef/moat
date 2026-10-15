@@ -62,6 +62,19 @@ const bridge: DesktopBridge = {
         String(locale),
       ),
   },
+  passkey: {
+    status: (projectId: string) =>
+      ipcRenderer.invoke(IPC.passkeyStatus, String(projectId)),
+    enroll: (locale: string) =>
+      ipcRenderer.invoke(IPC.passkeyEnroll, String(locale)),
+    use: (projectId: string, gate: string, on: boolean) =>
+      ipcRenderer.invoke(
+        IPC.passkeyUse,
+        String(projectId),
+        String(gate),
+        on === true,
+      ),
+  },
   database: {
     open: (projectId: string, locale: string) =>
       ipcRenderer.invoke(IPC.databaseOpen, String(projectId), String(locale)),

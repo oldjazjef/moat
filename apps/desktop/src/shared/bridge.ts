@@ -16,6 +16,9 @@ export const IPC = {
   gateImport: 'moat:gate:import',
   gateLog: 'moat:gate:log',
   databaseOpen: 'moat:database:open',
+  passkeyStatus: 'moat:passkey:status',
+  passkeyEnroll: 'moat:passkey:enroll',
+  passkeyUse: 'moat:passkey:use',
 } as const;
 
 /** A project id as the API hands it out (22 characters base64url). */
@@ -232,6 +235,37 @@ export type DatabaseResult =
   | { status: 'cancelled' }
   | { status: 'failed' };
 
+/**
+ * Trust mode 2 (docs/CRYPTO.md §7): the desktop's passkey, public data only. The private key
+ * never leaves the authenticator; the challenge and the credential never reach the page.
+ */
+export interface PasskeyInfo {
+  kid: string;
+  /** base64url, the 65-byte P-256 point: `--passkey=<publicKey>`. */
+  publicKey: string;
+  /** `MOAT-…`, what the gate prints as "Passkey". */
+  fingerprint: string;
+  rpId: string;
+  origin: string;
+  /** `php moat-gate.php trust --passkey=… --rp-id=… --origin=…` */
+  trustCommand: string;
+  /** The same for a new gate (`install`). */
+  installCommand: string;
+}
+
+export interface PasskeyStatus {
+  passkey: PasskeyInfo | null;
+  /** The gates of the project the person set to sign with the passkey (mode 2), sorted. */
+  gates: string[];
+}
+
+export type PasskeyEnrollResult =
+  | { status: 'created'; passkey: PasskeyInfo }
+  | { status: 'cancelled' }
+  /** The system offers Moat Desktop no passkey: mode 2 is not possible here (no pretending). */
+  | { status: 'unavailable' }
+  | { status: 'failed' };
+
 export interface DesktopBridge {
   readonly platform: string;
   readonly project: {
@@ -315,6 +349,17 @@ export interface DesktopBridge {
       gate: string,
       locale: string,
     ): Promise<RequestLogResult>;
+  };
+  /**
+   * Trust mode 2, «Signiert mit Passkey». `enroll` opens the main process's passkey window;
+   * `use` marks a gate as signing with the passkey (or back with the key file) — the person says
+   * the gate pins it, and the gate enforces it, not the desktop. The page learns public data and
+   * outcomes only.
+   */
+  readonly passkey: {
+    status(projectId: string): Promise<PasskeyStatus>;
+    enroll(locale: string): Promise<PasskeyEnrollResult>;
+    use(projectId: string, gate: string, on: boolean): Promise<boolean>;
   };
   /**
    * Opens the main process's database window for the project (DT-03): the connection string is

@@ -7,6 +7,10 @@ import type { DeployPackage, DeployTexts } from './deploy';
 import type { FtpsDialogTexts } from '../../shared/ftps-dialog';
 import type { SealDialogTexts } from '../../shared/seal-dialog';
 import type { SftpDialogTexts } from '../../shared/sftp-dialog';
+import type {
+  PasskeyEnrollTexts,
+  PasskeySignTexts,
+} from '../../shared/passkey-dialog';
 import type { SignDialogTexts } from '../../shared/sign-dialog';
 
 export type DesktopLocale = 'de-CH' | 'en';
@@ -42,6 +46,9 @@ export interface DesktopMessages {
     readonly filter: string;
   };
   readonly signDialog: SignDialogTexts;
+  /** Trust mode 2: «Passkey anlegen» and signing with the passkey. */
+  readonly passkeyDialog: PasskeyEnrollTexts;
+  readonly passkeySignDialog: PasskeySignTexts;
   readonly sealDialog: SealDialogTexts;
   /** «Testen» (T-59): the address of the first test request, confirmed outside the page. */
   readonly testRequest: {
@@ -219,6 +226,81 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
         key_unreadable: 'Die Schlüsseldatei kann nicht gelesen werden.',
         key_missing: 'Wähle zuerst eine Schlüsseldatei.',
         passphrase_missing: 'Gib die Passphrase ein.',
+      },
+    },
+    passkeyDialog: {
+      title: 'Passkey anlegen',
+      intro:
+        'Moat legt auf diesem Gerät einen Passkey an. Er gibt künftig deine Bundles frei (Vertrauensmodus 2, „Signiert mit Passkey“). Der private Schlüssel verlässt den Passkey nie; Moat speichert nur den öffentlichen Schlüssel.',
+      honesty:
+        'Moat Desktop hat keine eigene Passkey-Oberfläche. Es klappt nur, wenn dein Betriebssystem Chromium einen Passkey anbietet (zum Beispiel Windows Hello). Sonst meldet dieses Fenster, dass keiner verfügbar ist, und Modus 2 bleibt aus.',
+      rpId: 'Relying-Party-ID',
+      origin: 'Origin',
+      replaces:
+        'Es gibt schon einen Passkey. Der neue ersetzt ihn: Gates, die den alten gepinnt haben, nehmen deine Bundles nicht mehr an, bis du den neuen am Gate pinnst.',
+      create: 'Passkey anlegen',
+      cancel: 'Abbrechen',
+      close: 'Schliessen',
+      doneTitle: 'Passkey angelegt',
+      doneIntro:
+        'Pinne den Passkey jetzt am Gate, auf dem Server. Vergleiche vorher den Fingerprint, den das Gate ausgibt, mit diesem.',
+      fingerprint: 'Fingerprint',
+      publicKey: 'Öffentlicher Schlüssel',
+      trustCommand: 'Befehl für ein bestehendes Gate',
+      installCommand: 'Befehl für ein neues Gate',
+      compare:
+        'Der Befehl pinnt den Passkey als einzigen Signer. Den Modus wechseln kannst du nur am Gate selbst.',
+      notices: {
+        cancelled:
+          'Der Passkey wurde nicht angelegt (abgebrochen oder Zeit abgelaufen).',
+        unavailable:
+          'Auf diesem System steht Moat Desktop kein Passkey zur Verfügung. Vertrauensmodus 2 ist hier nicht möglich; nutze eine Schlüsseldatei (Modus 1).',
+        failed: 'Das System hat keinen Passkey geliefert.',
+        invalid:
+          'Der Passkey passt nicht zu dem, was Moat angefordert hat. Er wurde nicht gespeichert.',
+        not_writable: 'Die Einstellungen konnten nicht gespeichert werden.',
+      },
+    },
+    passkeySignDialog: {
+      title: 'Bundle mit Passkey signieren',
+      intro:
+        'Prüfe, was das neue Bundle ändert. Erst nach deiner Bestätigung am Passkey wird es signiert und im Projektordner abgelegt. Der Passkey signiert genau dieses Bundle.',
+      project: 'Projekt',
+      gate: 'Gate',
+      version: 'Version',
+      firstVersion: 'erstes Bundle',
+      changes: 'Änderungen gegenüber dem letzten Bundle',
+      noChanges:
+        'Keine Änderungen. Das Bundle enthält dasselbe wie das letzte.',
+      kinds: {
+        route: 'Route',
+        upstream: 'Upstream',
+        secret: 'Secret',
+        lock: 'Sperre',
+      },
+      change: { added: 'neu', removed: 'entfernt', changed: 'geändert' },
+      lockAdded: 'sperrt das Gate',
+      lockRemoved: 'hebt die Sperre auf',
+      lockedWarning:
+        'Dieses Bundle sperrt das Gate: Sobald es angenommen ist, beantwortet das Gate keine Anfrage mehr.',
+      unverified:
+        'Das letzte Bundle ist nicht mit diesem Passkey signiert. Darum ist hier alles als neu aufgeführt: Prüfe jeden Eintrag.',
+      unset: '(nicht gesetzt)',
+      passkey: 'Passkey',
+      sign: 'Mit Passkey signieren',
+      signing: 'Warte auf den Passkey …',
+      cancel: 'Abbrechen',
+      notices: {
+        changed:
+          'Das Projekt hat sich geändert, während dieser Dialog offen war. Prüfe die Änderungen noch einmal.',
+        cancelled:
+          'Der Passkey hat nicht signiert (abgebrochen oder Zeit abgelaufen). Es wurde nichts gespeichert.',
+        unavailable:
+          'Auf diesem System steht Moat Desktop kein Passkey zur Verfügung. Es wurde nichts gespeichert.',
+        failed:
+          'Das System hat keine Signatur geliefert. Es wurde nichts gespeichert.',
+        assertion_invalid:
+          'Die Signatur gehört nicht zum gepinnten Passkey oder zu diesem Bundle. Es wurde nichts gespeichert.',
       },
     },
     startFailed: {
@@ -552,6 +634,78 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
         key_unreadable: 'The key file cannot be read.',
         key_missing: 'Choose a key file first.',
         passphrase_missing: 'Enter the passphrase.',
+      },
+    },
+    passkeyDialog: {
+      title: 'Create passkey',
+      intro:
+        'Moat creates a passkey on this device. From now on it approves your bundles (trust mode 2, “Signed with passkey”). The private key never leaves the passkey; Moat stores only the public key.',
+      honesty:
+        'Moat Desktop has no passkey interface of its own. It works only when your operating system offers Chromium a passkey (for example Windows Hello). Otherwise this window says none is available, and mode 2 stays off.',
+      rpId: 'Relying party ID',
+      origin: 'Origin',
+      replaces:
+        'A passkey exists already. The new one replaces it: gates that pinned the old one no longer accept your bundles until you pin the new one on the gate.',
+      create: 'Create passkey',
+      cancel: 'Cancel',
+      close: 'Close',
+      doneTitle: 'Passkey created',
+      doneIntro:
+        'Pin the passkey on the gate, on the server, now. First compare the fingerprint the gate prints with this one.',
+      fingerprint: 'Fingerprint',
+      publicKey: 'Public key',
+      trustCommand: 'Command for an existing gate',
+      installCommand: 'Command for a new gate',
+      compare:
+        'The command pins the passkey as the only signer. You can change the mode only on the gate itself.',
+      notices: {
+        cancelled: 'No passkey was created (cancelled or timed out).',
+        unavailable:
+          'This system offers Moat Desktop no passkey. Trust mode 2 is not possible here; use a key file (mode 1).',
+        failed: 'The system did not return a passkey.',
+        invalid:
+          'The passkey does not match what Moat asked for. It was not stored.',
+        not_writable: 'The settings could not be saved.',
+      },
+    },
+    passkeySignDialog: {
+      title: 'Sign bundle with passkey',
+      intro:
+        'Check what the new bundle changes. Only after you confirm at the passkey is it signed and saved in the project folder. The passkey signs exactly this bundle.',
+      project: 'Project',
+      gate: 'Gate',
+      version: 'Version',
+      firstVersion: 'first bundle',
+      changes: 'Changes since the last bundle',
+      noChanges: 'No changes. The bundle holds the same as the last one.',
+      kinds: {
+        route: 'Route',
+        upstream: 'Upstream',
+        secret: 'Secret',
+        lock: 'Lock',
+      },
+      change: { added: 'new', removed: 'removed', changed: 'changed' },
+      lockAdded: 'locks the gate',
+      lockRemoved: 'lifts the lock',
+      lockedWarning:
+        'This bundle locks the gate: once it is accepted, the gate answers no request.',
+      unverified:
+        'The latest bundle is not signed with this passkey, so everything is listed as new: check every entry.',
+      unset: '(not set)',
+      passkey: 'Passkey',
+      sign: 'Sign with passkey',
+      signing: 'Waiting for the passkey …',
+      cancel: 'Cancel',
+      notices: {
+        changed:
+          'The project changed while this dialog was open. Check the changes again.',
+        cancelled:
+          'The passkey did not sign (cancelled or timed out). Nothing was saved.',
+        unavailable:
+          'This system offers Moat Desktop no passkey. Nothing was saved.',
+        failed: 'The system returned no signature. Nothing was saved.',
+        assertion_invalid:
+          'The signature does not belong to the pinned passkey or to this bundle. Nothing was saved.',
       },
     },
     startFailed: {

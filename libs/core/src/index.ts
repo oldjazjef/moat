@@ -40,6 +40,8 @@ export {
   encodeEcdsaDer,
   isRpId,
   isPasskeyOrigin,
+  isPasskeyPoint,
+  PASSKEY_POINT_LENGTH,
   WEBAUTHN_ALG,
   type PinnedPasskeySigner,
   type WebauthnSignatureEntry,
@@ -136,7 +138,11 @@ export {
   KEYFILE_WRITE_MIN,
   type KeyFile,
 } from './crypto/keyfile';
-export { buildBundle, type BuildBundleInput } from './bundle/build';
+export {
+  buildBundle,
+  buildBundlePayload,
+  type BuildBundleInput,
+} from './bundle/build';
 export type { StoragePort } from './storage/storage-port';
 export {
   BundlePlanError,
@@ -146,6 +152,7 @@ export {
   type BundlePlanErrorCode,
   type FieldChange,
   type PlanSigner,
+  pinnedSignerOf,
 } from './storage/bundle-plan';
 export {
   DeployPlanError,

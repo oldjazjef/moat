@@ -10,13 +10,18 @@ import {
   type DeployTargetKind,
   fingerprint,
   fromBase64UrlLength,
+  isPasskeyPoint,
   keyId,
+  PASSKEY_POINT_LENGTH,
+  WEBAUTHN_ALG,
   storedZip,
   type ZipEntry,
 } from '@moat/core';
 import type { RunningApi } from './bootstrap';
 import {
   BundleSigningService,
+  type PasskeyAsserter,
+  type PasskeyPlanSigner,
   type PrepareBundleResult,
   type SignBundleResult,
 } from './project/application/bundle-signing.service';
@@ -121,6 +126,28 @@ export async function signingKeyInfo(
   };
 }
 
+/**
+ * Key id and fingerprint of a passkey's public key, the 65-byte uncompressed P-256 point as
+ * base64url (87 characters); null when it is not one (shape only — the curve check is the
+ * enrollment's, desktop/src/main/lib/passkey.ts).
+ */
+export async function passkeyKeyInfo(
+  point: string,
+): Promise<{ kid: string; publicKey: string; fingerprint: string } | null> {
+  let bytes: Uint8Array;
+  try {
+    bytes = fromBase64UrlLength(point, PASSKEY_POINT_LENGTH);
+  } catch {
+    return null;
+  }
+  if (!isPasskeyPoint(bytes)) return null;
+  return {
+    kid: await keyId(WEBAUTHN_ALG, bytes),
+    publicKey: point,
+    fingerprint: await fingerprint(WEBAUTHN_ALG, bytes),
+  };
+}
+
 /** The folder of a listed project (for "Im Ordner zeigen"), or null for an unknown id. */
 export async function projectFolder(
   api: RunningApi,
@@ -164,6 +191,32 @@ export function signBundle(
   return api.app
     .get(BundleSigningService)
     .sign(id, gate, digest, keyFile, passphrase, Math.floor(Date.now() / 1000));
+}
+
+/**
+ * Trust mode 2: signs the bundle the person confirmed with their passkey. `assert` gets the
+ * WebAuthn challenge (`webauthnChallenge` of the payload) and asks the passkey in the main
+ * process's own window; the result is verified as the gate would before `bundles/<gate>/<n>.json`
+ * is written. In-process only, like signBundle: the page has no way to sign.
+ */
+export function signBundleWithPasskey(
+  api: RunningApi,
+  id: string,
+  gate: string,
+  digest: string,
+  signer: PasskeyPlanSigner,
+  assert: PasskeyAsserter,
+): Promise<SignBundleResult> {
+  return api.app
+    .get(BundleSigningService)
+    .signWithPasskey(
+      id,
+      gate,
+      digest,
+      signer,
+      assert,
+      Math.floor(Date.now() / 1000),
+    );
 }
 
 export type {

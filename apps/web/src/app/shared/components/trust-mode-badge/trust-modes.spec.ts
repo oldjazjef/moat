@@ -31,7 +31,7 @@ function row(intern: string): string[] {
     .map((cell) => cell.trim());
 }
 
-const INTERN = { signed: 'Modus 1' } as const;
+const INTERN = { signed: 'Modus 1', passkey: 'Modus 2' } as const;
 
 describe('trust mode wording (§2.9, SEC-58)', () => {
   for (const mode of TRUST_MODES) {

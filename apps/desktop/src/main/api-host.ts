@@ -8,6 +8,8 @@ import type { RequestLogApiResult } from './lib/request-log';
 import type { SyncAnswer } from './lib/database';
 import type { PrepareSealResult, SealResult } from './lib/sealing';
 import type { PlanSigner, PrepareResult, SignResult } from './lib/signing';
+import type { PasskeyPlanSigner } from './lib/passkey';
+import type { Assertion } from './lib/passkey-signing';
 
 interface ApiHandle {
   app: { close(): Promise<void> };
@@ -46,6 +48,17 @@ interface ApiBundle {
     digest: string,
     keyFile: string,
     passphrase: string,
+  ): Promise<SignResult>;
+  passkeyKeyInfo(
+    point: string,
+  ): Promise<{ kid: string; publicKey: string; fingerprint: string } | null>;
+  signBundleWithPasskey(
+    api: ApiHandle,
+    id: string,
+    gate: string,
+    digest: string,
+    signer: PasskeyPlanSigner,
+    assert: (challenge: Uint8Array) => Promise<Assertion | null>,
   ): Promise<SignResult>;
   prepareSeal(
     api: ApiHandle,
@@ -139,6 +152,22 @@ export interface RunningApi {
     keyFile: string,
     passphrase: string,
   ): Promise<SignResult>;
+  /** The key id and fingerprint of a passkey's public key (trust mode 2); null: not a point. */
+  passkeyKeyInfo(
+    point: string,
+  ): Promise<{ kid: string; publicKey: string; fingerprint: string } | null>;
+  /**
+   * In-process only (trust mode 2): signs the confirmed bundle with the passkey; `assert` asks
+   * it in the main process's own window. Written only when the assertion verifies as the gate
+   * would verify it.
+   */
+  signBundleWithPasskey(
+    id: string,
+    gate: string,
+    digest: string,
+    signer: PasskeyPlanSigner,
+    assert: (challenge: Uint8Array) => Promise<Assertion | null>,
+  ): Promise<SignResult>;
   /** In-process only, for the seal window: the page never sees a secret's value. */
   prepareSeal(
     id: string,
@@ -221,6 +250,9 @@ export async function startApi(options: {
       api.prepareBundle(running, id, gate, signer),
     signBundle: (id, gate, digest, keyFile, passphrase) =>
       api.signBundle(running, id, gate, digest, keyFile, passphrase),
+    passkeyKeyInfo: (point) => api.passkeyKeyInfo(point),
+    signBundleWithPasskey: (id, gate, digest, signer, assert) =>
+      api.signBundleWithPasskey(running, id, gate, digest, signer, assert),
     prepareSeal: (id, gate, name) => api.prepareSeal(running, id, gate, name),
     sealSecret: (id, gate, name, digest, value) =>
       api.sealSecret(running, id, gate, name, digest, value),

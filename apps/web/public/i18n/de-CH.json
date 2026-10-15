@@ -81,6 +81,11 @@
         "label": "Signiert",
         "short": "Du gibst jede Änderung mit deiner Schlüsseldatei frei.",
         "ifHacked": "… kann ein Angreifer nichts ändern. Im Browser gilt das nur eingeschränkt, volle Garantie mit Moat Desktop oder CLI."
+      },
+      "passkey": {
+        "label": "Signiert mit Passkey",
+        "short": "Du gibst jede Änderung mit Passkey oder Sicherheitsschlüssel frei.",
+        "ifHacked": "wie „Signiert“, zusätzlich kann dein Schlüssel nicht gestohlen werden."
       }
     }
   },
@@ -300,6 +305,31 @@
       "too_large": "Die Dateien sind grösser als ein Log des Gates.",
       "no_entries": "In den Dateien steht keine Zeile aus dem Anfrage-Log eines Gates.",
       "failed": "Das Log liess sich nicht anzeigen."
+    },
+    "passkey": {
+      "title": "Passkey",
+      "intro": "Statt einer Schlüsseldatei kann ein Passkey deine Bundles freigeben (Vertrauensmodus 2). Der private Schlüssel verlässt den Passkey nie; Moat speichert nur den öffentlichen Schlüssel.",
+      "honesty": "Moat Desktop kann einen Passkey nur nutzen, wenn dein Betriebssystem ihn anbietet. Sonst meldet das Fenster, dass keiner verfügbar ist, und der Modus bleibt aus.",
+      "none": "Noch kein Passkey angelegt.",
+      "fingerprint": "Fingerprint",
+      "rpId": "Relying-Party-ID",
+      "origin": "Origin",
+      "trustCommand": "Am Gate festlegen (bestehendes Gate)",
+      "installCommand": "Bei der Installation (neues Gate)",
+      "enroll": "Passkey anlegen",
+      "created": "Passkey angelegt. Lege ihn jetzt am Gate fest und vergleiche den Fingerprint.",
+      "gatesTitle": "Gates mit Passkey",
+      "gatesHint": "Schalte ein Gate erst um, wenn du den Passkey dort mit dem Befehl festgelegt hast. Moat Desktop sieht nicht, was das Gate festgelegt hat: Ein falscher Modus führt nur dazu, dass das Gate das Bundle ablehnt.",
+      "use": "Mit Passkey signieren",
+      "useKey": "Mit Schlüsseldatei signieren",
+      "stateOn": "signiert mit Passkey (Modus 2)",
+      "stateOff": "signiert mit Schlüsseldatei (Modus 1)",
+      "notices": {
+        "unavailable": "Auf diesem System steht Moat Desktop kein Passkey zur Verfügung. Vertrauensmodus 2 ist hier nicht möglich; nutze eine Schlüsseldatei (Modus 1).",
+        "cancelled": "Es wurde kein Passkey angelegt.",
+        "failed": "Der Passkey konnte nicht angelegt werden.",
+        "set_failed": "Das Gate liess sich nicht umstellen. Lege zuerst einen Passkey an."
+      }
     }
   },
   "routes": {
@@ -871,17 +901,20 @@
       },
       "trust": {
         "title": "Vertrauensmodus",
-        "purpose": "Der Vertrauensmodus legt fest, wer Änderungen an einem Gate freigeben darf. In Moat Desktop gilt immer «Signiert»: Das Gate nimmt nur Bundles an, die mit deiner Schlüsseldatei signiert sind.",
+        "purpose": "Der Vertrauensmodus legt fest, wer Änderungen an einem Gate freigeben darf. In Moat Desktop gilt «Signiert» (Schlüsseldatei) oder «Signiert mit Passkey»: Das Gate nimmt nur Bundles an, die mit dem festgelegten Schlüssel oder Passkey signiert sind.",
         "where": "Projekt › Übersicht › Vertrauensmodus und Gates",
         "steps": {
           "keygen": "Erzeuge einmal eine Schlüsseldatei mit `moat keygen <datei>.moatkey` und wähle eine gute Passphrase.",
           "keyDesktop": "In Moat Desktop erstellst du den Schlüssel unter «Einrichtung» › «Signaturschlüssel» mit «Neuen Schlüssel erstellen».",
           "trust": "Gib dem Gate bei der Installation den öffentlichen Schlüssel mit (--signer). Wechseln kannst du ihn nur am Gate selbst, mit `php moat-gate.php trust`.",
+          "passkeyDesktop": "Für «Signiert mit Passkey» klickst du unter «Gates» im Abschnitt «Passkey» auf «Passkey anlegen». Ein eigenes Fenster von Moat Desktop fragt dein Betriebssystem nach einem Passkey und zeigt Fingerprint und Befehl.",
+          "passkeyGate": "Führe den Befehl `php moat-gate.php trust --passkey=…` am Gate aus und vergleiche den Fingerprint. Schalte danach beim Gate «Mit Passkey signieren» ein.",
           "badge": "Neben jedem Gate steht der Vertrauensmodus, mit dem Satz, was ein Angreifer könnte, wenn Moat Cloud gehackt würde."
         },
         "tips": {
           "passphrase": "Bewahre die Schlüsseldatei ausserhalb des Projektordners auf und sichere sie. Ohne sie kannst du keine Bundles mehr signieren.",
-          "desktopOnly": "Moat Desktop arbeitet ohne Cloud: Jede Änderung gibst du selbst mit deiner Schlüsseldatei frei."
+          "desktopOnly": "Moat Desktop arbeitet ohne Cloud: Jede Änderung gibst du selbst mit deiner Schlüsseldatei frei.",
+          "passkeyHonest": "Moat Desktop hat keine eigene Passkey-Oberfläche und nutzt nur, was dein System anbietet. Gibt es keinen Passkey (zum Beispiel unter Linux), meldet das Fenster das, und du bleibst bei der Schlüsseldatei."
         }
       },
       "secrets": {

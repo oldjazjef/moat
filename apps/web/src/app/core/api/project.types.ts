@@ -4,7 +4,7 @@
  * `ProjectState` (libs/core/src/storage/project.ts). The web app does not import the core; keep
  * these in step. Never carries a secret or ciphertext.
  */
-export type TrustMode = 'signed';
+export type TrustMode = 'signed' | 'passkey';
 
 export interface ConfigIssue {
   readonly code: string;

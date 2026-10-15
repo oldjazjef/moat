@@ -29,6 +29,8 @@ import {
   type ImportResult,
   IPC,
   PROJECT_ID,
+  type PasskeyEnrollResult,
+  type PasskeyStatus,
   type ProjectAddResult,
   type ProjectCreateResult,
   type RequestLogResult,
@@ -70,8 +72,16 @@ import { uploadPackage as uploadFtpsPackage } from './lib/ftps-client';
 import { registerFtpsDialogIpc, showFtpsDialog } from './ftps-window';
 import { registerSftpDialogIpc, showSftpDialog } from './sftp-window';
 import { gateTestConfirmation } from './lib/test-confirmation';
-import { PassphraseVault, readKeyFile, SigningSession } from './lib/signing';
+import {
+  PassphraseVault,
+  type PlanSigner,
+  readKeyFile,
+  SigningSession,
+} from './lib/signing';
 import { SealingSession } from './lib/sealing';
+import { gateKey, passkeyGatesOf, passkeyPlanSigner } from './lib/passkey';
+import { enrollPasskey, passkeyInfo, signWithPasskey } from './passkey-flow';
+import { registerPasskeyDialogIpc } from './passkey-window';
 import { registerKeyDialogIpc, showKeyDialog } from './key-window';
 import { registerSealDialogIpc, showSealDialog } from './seal-window';
 import { registerSignDialogIpc, showSignDialog } from './sign-window';
@@ -443,6 +453,58 @@ function registerIpc(): void {
     },
   );
   registerSignDialogIpc();
+  // Trust mode 2 (docs/CRYPTO.md §7): the page learns public data and outcomes only; the
+  // challenge, the credential and the assertion stay between the passkey window and this process.
+  ipcMain.handle(
+    IPC.passkeyStatus,
+    async (event, id: unknown): Promise<PasskeyStatus> => {
+      const none = { passkey: null, gates: [] };
+      if (!fromApp(event) || api === null) return none;
+      if (typeof id !== 'string' || !PROJECT_ID.test(id)) return none;
+      const config = readConfig(app.getPath('userData'));
+      const info =
+        config.passkey === null ? null : await passkeyInfo(api, config.passkey);
+      return info === null
+        ? none
+        : { passkey: info, gates: passkeyGatesOf(config.passkeyGates, id) };
+    },
+  );
+  ipcMain.handle(
+    IPC.passkeyEnroll,
+    async (event, locale: unknown): Promise<PasskeyEnrollResult> => {
+      if (!fromApp(event) || mainWindow === null || api === null)
+        return { status: 'failed' };
+      return enrollPasskey(
+        {
+          parent: mainWindow,
+          appDir,
+          userData: app.getPath('userData'),
+          running: api,
+        },
+        MESSAGES[pageLocale(locale, app.getLocale())],
+      );
+    },
+  );
+  ipcMain.handle(
+    IPC.passkeyUse,
+    (event, id: unknown, gate: unknown, on: unknown): boolean => {
+      if (!fromApp(event)) return false;
+      if (typeof id !== 'string' || !PROJECT_ID.test(id)) return false;
+      if (typeof gate !== 'string' || !GATE_NAME.test(gate)) return false;
+      if (typeof on !== 'boolean') return false;
+      const userData = app.getPath('userData');
+      const config = readConfig(userData);
+      const key = gateKey(id, gate);
+      // Only with a passkey to use; turning it off is always possible.
+      if (on && config.passkey === null) return false;
+      const rest = config.passkeyGates.filter((known) => known !== key);
+      updateConfig(userData, {
+        passkeyGates: on ? [...rest, key].sort() : rest,
+      });
+      return true;
+    },
+  );
+  registerPasskeyDialogIpc();
   // The value of a secret is typed only in the main process's seal window, never in the page.
   ipcMain.handle(
     IPC.secretSeal,
@@ -637,10 +699,8 @@ async function importGate(
   from: ImportFrom,
   text: DesktopMessages,
 ): Promise<ImportResult> {
-  const keyPath = readConfig(app.getPath('userData')).keyFile;
-  const signer = keyPath === null ? null : readKeyFile(keyPath)?.signer;
-  if (signer === null || signer === undefined)
-    return { status: 'refused', code: 'key_missing' };
+  const signer = gateSigner(app.getPath('userData'), id, gate);
+  if (signer === null) return { status: 'refused', code: 'key_missing' };
   const dialogText = text.importBundle;
   if (from === 'file') {
     const picked = await dialog.showOpenDialog(parent, {
@@ -693,10 +753,8 @@ async function deployGate(
   text: DesktopMessages,
 ): Promise<DeployResult> {
   const userData = app.getPath('userData');
-  const keyPath = readConfig(userData).keyFile;
-  const signer = keyPath === null ? null : readKeyFile(keyPath)?.signer;
-  if (signer === null || signer === undefined)
-    return { status: 'refused', code: 'key_missing' };
+  const signer = gateSigner(userData, id, gate);
+  if (signer === null) return { status: 'refused', code: 'key_missing' };
   const prepared = await running.prepareDeploy(id, gate, signer);
   if (prepared.status === 'not_found') return { status: 'failed' };
   if (prepared.status === 'refused')
@@ -986,6 +1044,14 @@ async function signBundle(
   text: DesktopMessages,
 ): Promise<BundleSignResult> {
   const userData = app.getPath('userData');
+  // Trust mode 2: a gate the person set to sign with the passkey never asks for the key file.
+  if (readConfig(userData).passkeyGates.includes(gateKey(id, gate)))
+    return signWithPasskey(
+      { parent, appDir, userData, running },
+      id,
+      gate,
+      text,
+    );
   const session = new SigningSession({
     texts: text.signDialog,
     prepare: (signer) => running.prepareBundle(id, gate, signer),
@@ -1019,6 +1085,22 @@ async function signBundle(
     title: text.signDialog.title,
     session,
   });
+}
+
+/** The signer a gate's bundles are made and checked against: its passkey, or the key file. */
+function gateSigner(
+  userData: string,
+  id: string,
+  gate: string,
+): PlanSigner | null {
+  const config = readConfig(userData);
+  if (config.passkeyGates.includes(gateKey(id, gate)))
+    return config.passkey === null ? null : passkeyPlanSigner(config.passkey);
+  return keySigner(config.keyFile);
+}
+
+function keySigner(keyPath: string | null) {
+  return keyPath === null ? null : (readKeyFile(keyPath)?.signer ?? null);
 }
 
 /**

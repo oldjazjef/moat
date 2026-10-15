@@ -5,7 +5,12 @@ import { MoatRejection } from '../errors';
 import { isJsonObject, type JsonValue } from '../json/strict-json';
 import { SEALED_SECRET_ALG } from '../secrets/seal';
 import { readZip, ZipReadError, type Inflate } from '../package/unzip';
-import { BundlePlanError, readGateId, type PlanSigner } from './bundle-plan';
+import {
+  BundlePlanError,
+  pinnedSignerOf,
+  readGateId,
+  type PlanSigner,
+} from './bundle-plan';
 import { latestBundle, NAME_PATTERN } from './project';
 import type { StoragePort } from './storage-port';
 
@@ -221,9 +226,7 @@ export async function planImport(
   try {
     ({ payload } = await verifyBundle(bytes, {
       gateId,
-      signers: [
-        { kid: signer.kid, alg: 'ed25519', publicKey: signer.publicKey },
-      ],
+      signers: [pinnedSignerOf(signer)],
       threshold: 1,
       currentVersion: previousVersion,
       now: 0,
