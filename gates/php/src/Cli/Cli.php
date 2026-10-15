@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Moat\Gate\Cli;
 
 use Moat\Gate\Bundle\BundleVerifier;
+use Moat\Gate\Bundle\PinnedPasskey;
 use Moat\Gate\Bundle\PinnedSigner;
 use Moat\Gate\Config\Budget;
 use Moat\Gate\Config\Limit;
+use Moat\Gate\Crypto\Es256;
 use Moat\Gate\Crypto\KeyAlgorithm;
 use Moat\Gate\Crypto\KeyId;
 use Moat\Gate\Encoding\Base64Url;
@@ -40,7 +42,9 @@ use Moat\Gate\Storage\Files;
  * inbound management endpoint). Trust, policy and identity change only here (SEC-06, SEC-13).
  *
  *   php moat-gate.php install --signer=<public key> [--threshold=1]
+ *   php moat-gate.php install --passkey=<point> --rp-id=<rpId> --origin=<origin>[,…] [--threshold=1]
  *   php moat-gate.php trust --signer=<public key>[,<public key>…] [--threshold=1] [--force]
+ *   php moat-gate.php trust --passkey=<point>[,<point>…] --rp-id=<rpId> --origin=<origin>[,<origin>…] [--threshold=1] [--force]
  *   php moat-gate.php policy <policy.json>
  *   php moat-gate.php accept <bundle.json>
  *   php moat-gate.php pull
@@ -95,16 +99,19 @@ final class Cli
     /** @param array<string, string> $options */
     private static function install(string $gateDir, array $options): int
     {
-        $signers = self::signers($options);
+        // The gate id exists only after install creates it; the keys are checked first so that a
+        // wrong key leaves nothing behind.
+        self::pins($options);
         if (DataDir::locate($gateDir) !== null) {
             throw new UsageError('this gate is already installed');
         }
         $data = DataDir::create($gateDir);
         $identity = Identity::generate();
+        $trust = self::trustFrom($identity->gateId, $options);
         $data->write(Gate::IDENTITY, $identity->encode());
-        $data->write(Gate::TRUST, (new Trust($identity->gateId, 1, self::threshold($options, \count($signers)), $signers))->encode());
+        $data->write(Gate::TRUST, $trust->encode());
         self::out('Installed. Data folder: ' . basename($data->path));
-        self::describe($identity, $signers);
+        self::describe($identity, $trust);
         self::out('');
         self::out('Next: compare the fingerprints, then in the project folder run');
         // `=` form: a base64url value may start with "-" and would read as an option.
@@ -146,30 +153,33 @@ final class Cli
      */
     private static function trust(string $gateDir, array $args, array $options): int
     {
+        $usage = 'usage: php moat-gate.php trust --signer=<public key>[,<public key>…] | --passkey=<point>[,…] --rp-id=<rpId> --origin=<origin>[,…] [--threshold=n] [--force]';
         $force = $args === ['--force'];
         if ($args !== [] && !$force) {
-            throw new UsageError('usage: php moat-gate.php trust --signer=<public key>[,<public key>…] [--threshold=n] [--force]');
+            throw new UsageError($usage);
         }
         $gate = Gate::open($gateDir);
-        $signers = self::signers($options);
-        $next = new Trust($gate->identity->gateId, 1, self::threshold($options, \count($signers)), $signers);
+        $next = self::trustFrom($gate->identity->gateId, $options);
         $before = $gate->data->read(Gate::TRUST);
         $served = self::serves($gateDir);
         $gate->data->write(Gate::TRUST, $next->encode());
         // SEC-08: a rotation pins the old and the new key until a bundle signed with the new one
         // is active. Dropping the key of the active bundle stops the site; only with --force.
+        // A change of the mode is the same case: the keys of the other mode do not count.
         if ($served && !self::serves($gateDir) && !$force) {
             if ($before !== null) {
                 $gate->data->write(Gate::TRUST, $before);
             }
+            $changed = $gate->trust !== null && $gate->trust->mode !== $next->mode;
             fwrite(STDERR, "refused: the active bundle is not signed by these signers, so the gate would serve nothing.\n"
-                . "Rotate in two steps: pin the old and the new key (--signer=<old>,<new>), activate a bundle signed with the new key, then pin the new key alone.\n"
-                . "To stop serving the active bundle anyway, add --force.\n");
+                . ($changed
+                    ? "A change between trust modes pins keys of another algorithm, so the active bundle cannot be verified. Add --force, then accept a bundle signed in the new mode (SEC-06).\n"
+                    : "Rotate in two steps: pin the old and the new key (--signer=<old>,<new>), activate a bundle signed with the new key, then pin the new key alone.\nTo stop serving the active bundle anyway, add --force.\n"));
 
             return 1;
         }
-        self::out('Pinned signers replaced. A bundle not signed by them is no longer served.');
-        self::describe($gate->identity, $signers);
+        self::out($next->mode === 2 ? 'Pinned passkeys replaced (trust mode 2). A bundle not signed by them is no longer served.' : 'Pinned signers replaced. A bundle not signed by them is no longer served.');
+        self::describe($gate->identity, $next);
 
         return 0;
     }
@@ -206,6 +216,7 @@ final class Cli
     {
         $gate = Gate::open($gateDir);
         $bytes = self::readArg($args, 'usage: php moat-gate.php accept <bundle.json>');
+        self::requireExtensions($gate);
         $active = $gate->accept($bytes, time());
         self::out('Accepted bundle version ' . $active->version . ': ' . \count($active->config->routes) . ' route(s).');
         if (!$active->config->enabled) {
@@ -225,6 +236,7 @@ final class Cli
         if ($gate->policy?->pull === null) {
             throw new UsageError('the local policy has no "pull" block: nothing to pull from');
         }
+        self::requireExtensions($gate);
         $record = BundlePull::now($gate, time()) ?? throw new \RuntimeException('no pull');
         self::out('Pulled ' . $gate->policy->pull->url() . ': ' . self::pullText($record));
 
@@ -334,7 +346,7 @@ final class Cli
     private static function status(string $gateDir): int
     {
         $gate = Gate::open($gateDir);
-        self::describe($gate->identity, $gate->trust === null ? [] : $gate->trust->signers);
+        self::describe($gate->identity, $gate->trust);
         self::out('Policy:     ' . ($gate->policy === null ? 'missing — the gate serves nothing' : 'installed' . ($gate->policy->testing ? ' (TESTING block present)' : '')));
         if ($gate->policy !== null) {
             $limits = $gate->policy->limits;
@@ -412,7 +424,8 @@ final class Cli
     /**
      * The hardening check (SEC-49, SEC-49a): the web process's recorded facts, the data folder's
      * permissions, the policy and, with --url, a fetch of the data files from outside. Exit code
-     * 0 for H1, 1 when the gate is unsafe for secrets, 3 when no level could be determined.
+     * 0 for H1, 1 when the gate is unsafe for secrets or unusable (mode 2 without ext-openssl), 3 when
+     * no level could be determined.
      *
      * @param list<string>          $args
      * @param array<string, string> $options
@@ -423,6 +436,10 @@ final class Cli
             throw new UsageError('usage: php moat-gate.php check [--url=https://<site>/<path>/moat-gate.php]');
         }
         $gate = Gate::open($gateDir);
+        $missing = $gate->trust?->missingExtension();
+        if ($missing !== null) {
+            self::out('Extension:     ' . $missing . ' MISSING — trust mode 2 verifies passkeys with it, so the gate refuses service until it is enabled (docs/CRYPTO.md §7.4)');
+        }
         $external = External::NotChecked;
         if (isset($options['url'])) {
             try {
@@ -458,6 +475,10 @@ final class Cli
             self::out('          ' . $finding->advice());
         }
 
+        if ($missing !== null) {
+            return 1;
+        }
+
         return match ($report->level) {
             Level::H1 => 0,
             Level::Unsafe => 1,
@@ -483,14 +504,77 @@ final class Cli
         return $limit->requests . ' requests / ' . $limit->windowSeconds . ' s';
     }
 
-    /** @param list<PinnedSigner> $signers */
-    private static function describe(Identity $identity, array $signers): void
+    private static function describe(Identity $identity, ?Trust $trust): void
     {
         self::out('Gate id:    ' . $identity->gateId);
         self::out('Box key:    ' . KeyId::fingerprint(KeyAlgorithm::X25519, $identity->boxPublicKey));
-        foreach ($signers as $signer) {
-            self::out('Signer:     ' . KeyId::fingerprint(KeyAlgorithm::Ed25519, $signer->publicKey));
+        if ($trust === null) {
+            return;
         }
+        self::out('Trust mode: ' . match ($trust->mode) {
+            0 => '0 (convenient)',
+            1 => '1 (signed)',
+            default => '2 (signed with passkey)',
+        } . ($trust->threshold > 1 ? ', ' . $trust->threshold . ' of ' . \count($trust->signers) . ' signatures' : ''));
+        foreach ($trust->signers as $signer) {
+            if ($signer instanceof PinnedPasskey) {
+                self::out('Passkey:    ' . KeyId::fingerprint($signer->alg, $signer->publicKey) . ' (rpId ' . $signer->rpId . ', origins ' . implode(' ', $signer->origins) . ')');
+            } else {
+                self::out('Signer:     ' . KeyId::fingerprint($signer->alg, $signer->publicKey));
+            }
+        }
+        $missing = $trust->missingExtension();
+        if ($missing !== null) {
+            self::out('WARNING:    PHP extension ' . $missing . ' is MISSING. Trust mode 2 cannot verify a passkey signature without it: the gate refuses service until it is enabled (docs/CRYPTO.md §7.4).');
+        }
+    }
+
+    /** Modes 0/1 refuse nothing here; mode 2 without ext-openssl cannot verify (docs/CRYPTO.md §7.4). */
+    private static function requireExtensions(Gate $gate): void
+    {
+        $missing = $gate->trust?->missingExtension();
+        if ($missing !== null) {
+            throw new \RuntimeException('trust mode 2 needs the PHP extension ' . $missing);
+        }
+    }
+
+    /**
+     * The trust a command line pins: `--signer` is mode 1 (Ed25519), `--passkey` with `--rp-id`
+     * and `--origin` is mode 2 (docs/CRYPTO.md §7.1); never both, the mode says which algorithm.
+     *
+     * @param array<string, string> $options
+     */
+    private static function trustFrom(string $gateId, array $options): Trust
+    {
+        [$mode, $signers, $threshold] = self::pins($options);
+
+        return new Trust($gateId, $mode, $threshold, $signers);
+    }
+
+    /**
+     * @param array<string, string> $options
+     *
+     * @return array{int, list<PinnedSigner|PinnedPasskey>, int} mode, keys, threshold
+     */
+    private static function pins(array $options): array
+    {
+        $passkeys = isset($options['passkey']);
+        if ($passkeys && isset($options['signer'])) {
+            throw new UsageError('--signer (mode 1) and --passkey (mode 2) cannot be combined: the mode decides which algorithm is pinned');
+        }
+        if (!$passkeys && (isset($options['rp-id']) || isset($options['origin']))) {
+            throw new UsageError('--rp-id and --origin belong to --passkey');
+        }
+        $signers = $passkeys ? self::passkeys($options) : self::signers($options);
+        for ($index = 1; $index < \count($signers); $index++) {
+            foreach (\array_slice($signers, 0, $index) as $known) {
+                if ($known->kid === $signers[$index]->kid) {
+                    throw new UsageError('the same key is listed twice');
+                }
+            }
+        }
+
+        return [$passkeys ? 2 : 1, $signers, self::threshold($options, \count($signers))];
     }
 
     /**
@@ -510,6 +594,42 @@ final class Cli
         }
 
         return $signers;
+    }
+
+    /**
+     * `--passkey=<point>[,<point>…] --rp-id=<rpId> --origin=<origin>[,<origin>…]`: every listed
+     * passkey is pinned with the same rpId and origins. The points are base64url of the 65-byte
+     * uncompressed P-256 key; they must lie on the curve, which needs ext-openssl.
+     *
+     * @param array<string, string> $options
+     *
+     * @return list<PinnedPasskey>
+     */
+    private static function passkeys(array $options): array
+    {
+        if (!isset($options['rp-id'], $options['origin'])) {
+            throw new UsageError('--passkey needs --rp-id=<rpId> and --origin=<origin>[,<origin>…]');
+        }
+        if (!\extension_loaded('openssl')) {
+            throw new UsageError('trust mode 2 needs the PHP extension openssl (docs/CRYPTO.md §7.4); nothing was pinned');
+        }
+        $origins = explode(',', $options['origin']);
+        $passkeys = [];
+        foreach (explode(',', $options['passkey'] ?? '') as $key) {
+            try {
+                $point = Base64Url::decodeLength($key, Es256::POINT_BYTES);
+                if (!Es256::isOnCurve($point)) {
+                    throw new UsageError('--passkey is not a point on the P-256 curve');
+                }
+                $passkeys[] = new PinnedPasskey($point, $options['rp-id'], $origins);
+            } catch (Rejection) {
+                throw new UsageError('--passkey needs the 65-byte uncompressed P-256 public key(s), base64url (87 characters each)');
+            } catch (\InvalidArgumentException $error) {
+                throw new UsageError($error->getMessage());
+            }
+        }
+
+        return $passkeys;
     }
 
     /** @param array<string, string> $options */
@@ -547,7 +667,7 @@ final class Cli
         $args = [];
         $options = [];
         foreach ($argv as $arg) {
-            if (preg_match('/^--([a-z]+)=(.*)$/sD', $arg, $match) === 1) {
+            if (preg_match('/^--([a-z][a-z-]*)=(.*)$/sD', $arg, $match) === 1) {
                 $options[$match[1]] = $match[2];
             } else {
                 $args[] = $arg;

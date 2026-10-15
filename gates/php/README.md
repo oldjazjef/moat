@@ -28,7 +28,7 @@ HTTP they answer 404 with an empty body):
 | File           | Content                                                                         |
 | -------------- | ------------------------------------------------------------------------------- |
 | `identity.php` | gate id and the gate's X25519 box key (never leaves the server)                 |
-| `trust.php`    | pinned signers and threshold (docs/CRYPTO.md §8)                                |
+| `trust.php`    | trust mode, pinned signers or passkeys and threshold (docs/CRYPTO.md §7, §8)    |
 | `policy.php`   | the local policy                                                                |
 | `bundle.php`   | the active bundle, exactly as received                                          |
 | `state.php`    | the highest version ever accepted (a deleted bundle reopens no rollback)        |
@@ -51,6 +51,8 @@ php moat-gate.php policy <policy.json>     # install the local policy (moat poli
                                            # rate limits that always apply (SEC-14)
 php moat-gate.php accept <bundle.json>     # verify (steps 1–10) and activate a bundle
 php moat-gate.php trust --signer=<pk>[,…] [--threshold=n] [--force]   # replace the pinned signers (key rotation below)
+php moat-gate.php trust --passkey=<point>[,…] --rp-id=<rpId> --origin=<origin>[,…] [--threshold=n] [--force]
+                                           # pin passkeys, trust mode 2 (below)
 php moat-gate.php pull                     # fetch the bundle from the policy's pull place now (below)
 php moat-gate.php status                   # fingerprints, policy, active bundle, pull, kill switch
 php moat-gate.php kill [--route=<name>]    # switch the gate or one route off at once (below)
@@ -369,6 +371,49 @@ A new signing key replaces the old one in two steps, so the site never stops:
 `trust` refuses a list that would drop the key of the active bundle, because the gate would then
 serve nothing; `--force` does it anyway (a lost or stolen key: the gate stops until a bundle
 signed with the new key arrives). Moat Desktop guides through the steps («Schlüssel wechseln»).
+
+## Trust mode 2, passkeys (docs/CRYPTO.md §7, T-74)
+
+Instead of an Ed25519 key file, the person approves each bundle with a passkey or hardware key
+(WebAuthn, ES256). The private key never leaves the authenticator; the gate verifies the
+assertion itself, so a hacked Moat Cloud still cannot produce a bundle. Pin it on the server:
+
+```bash
+php moat-gate.php trust --passkey=<point>[,<point>…] --rp-id=<rpId> --origin=<origin>[,<origin>…] [--threshold=n] [--force]
+php moat-gate.php install --passkey=… --rp-id=… --origin=…      # the same for a new gate
+```
+
+- `--passkey` is the 65-byte uncompressed P-256 public key (`0x04 ‖ X ‖ Y`) as base64url, 87
+  characters. A comma list pins several keys, all with the same `--rp-id` and `--origin` list;
+  `--threshold` is how many of them must sign (default 1). Moat Desktop shows the value after the
+  passkey is created.
+- `--rp-id` is the relying party id the ceremony runs under (a lower-case DNS name, e.g.
+  `moat.example.org`). `--origin` lists the 1 to 8 exact origins the signing page may run on:
+  `https://<host>[:<port>]` (never the port 443, no trailing slash) or `app://<name>` for the
+  desktop app (`app://moat`). Each is compared byte for byte with the `origin` the browser wrote
+  into the signed `clientDataJSON`.
+- The mode decides the algorithm: `--passkey` pins mode 2 and cannot be combined with `--signer`.
+  Changing between modes replaces the pinned keys, so the active bundle (signed in the other
+  mode) can no longer be verified; `trust` refuses that unless `--force`, and the gate serves
+  nothing until the first bundle signed in the new mode is accepted. Only the server's command
+  line can change the mode (SEC-06): nothing from the Cloud can lower it.
+- A bundle carries per signer `{kid, alg: "webauthn-es256", sig, authenticatorData,
+clientDataJSON}`. The gate checks, in this order and with one generic `signature_invalid` for
+  any failure: the pinned `kid` and `alg`; the strict base64url and the sizes; in
+  `clientDataJSON` `type == "webauthn.get"`, `challenge == SHA-256("moat:bundle:v1\n" ‖ payload)`,
+  `origin` pinned, `crossOrigin` absent or `false`; in `authenticatorData` the `rpIdHash` and the
+  UP and UV flags; strict DER; the ECDSA P-256 signature. The sign counter is not used: replay is
+  stopped by the monotonic bundle version (SEC-04) and the gate id (SEC-07).
+- Mode 2 needs **`ext-openssl`**, only for this mode. `trust --passkey` pins nothing without it;
+  with a mode 2 trust file and no openssl the gate answers `gate_not_configured` and logs
+  `extension_missing`, `status` and `check` print `MISSING` (and `check` exits 1). Modes 0 and 1
+  never need it.
+- `status` and `install` print the passkeys' fingerprints (§3, from the kid of the ES256 key), the
+  rpId and the origins; compare them with what Moat Desktop shows. The setup mode answers the
+  same fingerprints under `signers` and `mode: 2`.
+
+Vectors: [`conformance/vectors/crypto/webauthn.json`](../../conformance/vectors/crypto/webauthn.json)
+and [`trust.json`](../../conformance/vectors/crypto/trust.json).
 
 ## Setup mode (SEC-28, SEC-32, T-73)
 

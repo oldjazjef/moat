@@ -20,13 +20,36 @@ export {
 export {
   signBundle,
   verifyBundle,
+  bundlePayloadBytes,
+  webauthnChallenge,
+  assembleEnvelope,
   MAX_ENVELOPE_BYTES,
   type BundlePayload,
   type Ed25519Signer,
+  type Ed25519SignatureEntry,
+  type PinnedEd25519Signer,
   type PinnedSigner,
+  type SignatureEntry,
   type VerificationContext,
   type VerifiedBundle,
 } from './bundle/bundle';
+export {
+  webauthnSignature,
+  verifyPasskeyEntry,
+  parseEcdsaDer,
+  encodeEcdsaDer,
+  isRpId,
+  isPasskeyOrigin,
+  WEBAUTHN_ALG,
+  type PinnedPasskeySigner,
+  type WebauthnSignatureEntry,
+} from './crypto/webauthn';
+export {
+  parseTrust,
+  encodeTrust,
+  MAX_TRUST_SIGNERS,
+  type TrustFile,
+} from './bundle/trust';
 export {
   sealSecret,
   openSecret,

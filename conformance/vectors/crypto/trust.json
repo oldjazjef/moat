@@ -1,0 +1,545 @@
+{
+  "description": "trust.json (docs/CRYPTO.md §7.1, §8) as a gate parses it: modes 0 and 1 pin only ed25519 signers, mode 2 only webauthn-es256 signers with rpId and origins, never mixed. `trust` is the file text and `gateId` the gate it is read for; a valid file answers mode, threshold and the kids in order, anything else `trust_invalid`. The point of a passkey is not checked against the curve here; that happens when a signature is verified.",
+  "notice": "TEST ONLY — every key in this file is derived from a public label. Never use it anywhere else.",
+  "gateId": "JYHXacXDYS6JrwBlcVuVuw",
+  "cases": [
+    {
+      "name": "mode 1: one Ed25519 signer",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":1,\"threshold\":1,\"signers\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"pk\":\"xLJXeR4WujwL_xeuT72vJ0LAvTeF47XTUwuzO1i1W1Q\"}],\"cloud\":null}",
+      "expect": {
+        "ok": true,
+        "mode": 1,
+        "threshold": 1,
+        "kids": [
+          "g3TWIWKLpCXXHBHfvi3edA"
+        ]
+      }
+    },
+    {
+      "name": "mode 0: one Ed25519 signer",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":0,\"threshold\":1,\"signers\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"pk\":\"xLJXeR4WujwL_xeuT72vJ0LAvTeF47XTUwuzO1i1W1Q\"}],\"cloud\":null}",
+      "expect": {
+        "ok": true,
+        "mode": 0,
+        "threshold": 1,
+        "kids": [
+          "g3TWIWKLpCXXHBHfvi3edA"
+        ]
+      }
+    },
+    {
+      "name": "mode 1: 2 of 2 Ed25519 signers",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":1,\"threshold\":2,\"signers\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"pk\":\"xLJXeR4WujwL_xeuT72vJ0LAvTeF47XTUwuzO1i1W1Q\"},{\"kid\":\"1T0BHyl7H5HEVmFwDcmmdg\",\"alg\":\"ed25519\",\"pk\":\"r4sORh00jqAI_s-n0htk_kgLajOMsoOiIEVfstVLZGI\"}],\"cloud\":null}",
+      "expect": {
+        "ok": true,
+        "mode": 1,
+        "threshold": 2,
+        "kids": [
+          "g3TWIWKLpCXXHBHfvi3edA",
+          "1T0BHyl7H5HEVmFwDcmmdg"
+        ]
+      }
+    },
+    {
+      "name": "mode 2: one passkey",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": true,
+        "mode": 2,
+        "threshold": 1,
+        "kids": [
+          "4qhcj7iG6Q9DTR5W6GRX0w"
+        ]
+      }
+    },
+    {
+      "name": "mode 2: 2 of 2 passkeys",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":2,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"xRE15fg4eiNut4Hd_hiNgQ\",\"alg\":\"webauthn-es256\",\"pk\":\"BHc7Z-4W63aDRxw--sOi9SQh9b8rtw5mqlqhYt7hiTQ4-YdOvwJfZVnedfuZzv8j8SCn3_j-3A42V6wu_jDoS2M\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\",\"https://moat.example.org\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": true,
+        "mode": 2,
+        "threshold": 2,
+        "kids": [
+          "4qhcj7iG6Q9DTR5W6GRX0w",
+          "xRE15fg4eiNut4Hd_hiNgQ"
+        ]
+      }
+    },
+    {
+      "name": "mode 2: a passkey with two origins and a port",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"99OWH2Nx514cTQWWa-f-Pw\",\"alg\":\"webauthn-es256\",\"pk\":\"BDezPi4foa_c2tijXy_6ocohMrg33dPE3WbViuWZ0Mm8okN0JeiyEgS8YCrU-w4dEqXek84FJrnhM9snTf2pUZ8\",\"rpId\":\"other.example.net\",\"origins\":[\"https://other.example.net:8443\",\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": true,
+        "mode": 2,
+        "threshold": 1,
+        "kids": [
+          "99OWH2Nx514cTQWWa-f-Pw"
+        ]
+      }
+    },
+    {
+      "name": "mode 2: eight origins",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://a\",\"app://b\",\"app://c\",\"app://d\",\"app://e\",\"app://f\",\"app://g\",\"app://h\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": true,
+        "mode": 2,
+        "threshold": 1,
+        "kids": [
+          "4qhcj7iG6Q9DTR5W6GRX0w"
+        ]
+      }
+    },
+    {
+      "name": "mode 2: rpId of 253 characters",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": true,
+        "mode": 2,
+        "threshold": 1,
+        "kids": [
+          "4qhcj7iG6Q9DTR5W6GRX0w"
+        ]
+      }
+    },
+    {
+      "name": "mode 2 with an Ed25519 signer",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"pk\":\"xLJXeR4WujwL_xeuT72vJ0LAvTeF47XTUwuzO1i1W1Q\"}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "mode 1 with a passkey signer",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":1,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "mode 0 with a passkey signer",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":0,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "mode 2 mixing a passkey and an Ed25519 signer",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"pk\":\"xLJXeR4WujwL_xeuT72vJ0LAvTeF47XTUwuzO1i1W1Q\"}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "mode 1 mixing an Ed25519 signer and a passkey",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":1,\"threshold\":1,\"signers\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"pk\":\"xLJXeR4WujwL_xeuT72vJ0LAvTeF47XTUwuzO1i1W1Q\"},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "mode 3",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":3,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "format version 2",
+      "trust": "{\"v\":2,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "another gate id",
+      "trust": "{\"v\":1,\"gateId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "cloud key set",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":{\"url\":\"https://cloud.example\",\"kid\":\"x\",\"pk\":\"x\"}}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "no signers",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "17 passkey signers",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "threshold 0",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":0,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "threshold above the number of signers",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":2,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "threshold as a string",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":\"1\",\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "the same passkey twice",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]},{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "the same Ed25519 signer twice",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":1,\"threshold\":1,\"signers\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"pk\":\"xLJXeR4WujwL_xeuT72vJ0LAvTeF47XTUwuzO1i1W1Q\"},{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"pk\":\"xLJXeR4WujwL_xeuT72vJ0LAvTeF47XTUwuzO1i1W1Q\"}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "extra top-level key",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null,\"note\":\"x\"}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "passkey signer without rpId",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "passkey signer without origins",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\"}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "passkey signer with an extra key",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"],\"name\":\"laptop\"}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "Ed25519 signer with rpId and origins",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":1,\"threshold\":1,\"signers\":[{\"kid\":\"g3TWIWKLpCXXHBHfvi3edA\",\"alg\":\"ed25519\",\"pk\":\"xLJXeR4WujwL_xeuT72vJ0LAvTeF47XTUwuzO1i1W1Q\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "passkey kid of another key",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"xRE15fg4eiNut4Hd_hiNgQ\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "passkey kid computed with the ed25519 algorithm",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"Vu6elyfoL447mxRrrvMt9g\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "passkey pk of 64 bytes",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"WBnRoDcBmkJUtD1qDxrLpg\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooA\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "passkey pk with the compressed prefix 0x02",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"7nk00bTxG-LOGuoUoUIj3g\",\"alg\":\"webauthn-es256\",\"pk\":\"Auwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "passkey pk with the prefix 0x05",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"_mbRveHdyksgYsTXes_MrQ\",\"alg\":\"webauthn-es256\",\"pk\":\"Bewo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "passkey pk with padding",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0=\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "alg ES256 instead of webauthn-es256",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"ES256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "rpId in upper case",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"Moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "rpId with a trailing dot",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org.\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "rpId that is an IP address",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"127.0.0.1\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "rpId with a scheme",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"https://moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "rpId with a port",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org:8443\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "rpId with non-ASCII letters",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"bücher.example\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "rpId of 254 characters",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "empty rpId",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "rpId that is not a string",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":1,\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "no origins",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "nine origins",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://a\",\"app://b\",\"app://c\",\"app://d\",\"app://e\",\"app://f\",\"app://g\",\"app://h\",\"app://i\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "origins as a string",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":\"app://moat\"}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "duplicate origins",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\",\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "origin with plain http",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"http://moat.example.org\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "origin with a trailing slash",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"https://moat.example.org/\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "origin with a path",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"https://moat.example.org/app\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "origin with the default port 443",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"https://moat.example.org:443\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "origin with port 65536",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"https://moat.example.org:65536\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "origin with a leading zero in the port",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"https://moat.example.org:08443\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "origin in upper case",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"https://Moat.example.org\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "origin that is an IP address",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"https://127.0.0.1:8443\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "app origin in upper case",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://Moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "app origin with a path",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat/index.html\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "origin of 301 bytes",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "origin that is not a string",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[1]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "not JSON",
+      "trust": "trust",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    },
+    {
+      "name": "a float",
+      "trust": "{\"v\":1,\"gateId\":\"JYHXacXDYS6JrwBlcVuVuw\",\"mode\":2,\"threshold\":1.5,\"signers\":[{\"kid\":\"4qhcj7iG6Q9DTR5W6GRX0w\",\"alg\":\"webauthn-es256\",\"pk\":\"BOwo7M7itFnZDYXw2B6ypkhIJfKvarM3zsd2JO_mO-kOtZibZL9iw5HB9gAO8DkJamnRlNUNaroTSiV3Wm0ooN0\",\"rpId\":\"moat.example.org\",\"origins\":[\"app://moat\"]}],\"cloud\":null}",
+      "expect": {
+        "ok": false,
+        "error": "trust_invalid"
+      }
+    }
+  ]
+}
