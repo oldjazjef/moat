@@ -244,6 +244,7 @@ export class GatesPageService {
         this.resource.id(),
         gate.name,
         on,
+        this.translate.getCurrentLang() ?? '',
       );
       if (!done) this.passkeyNotice.set('set_failed');
       await this.loadPasskey();
@@ -308,7 +309,7 @@ export class GatesPageService {
   async finishRotation(): Promise<void> {
     if (this.bridge === null || !this.rotationReady()) return;
     try {
-      await this.bridge.key.rotationDone();
+      await this.bridge.key.rotationDone(this.translate.getCurrentLang() ?? '');
     } catch {
       // Still open: the panel stays.
     }

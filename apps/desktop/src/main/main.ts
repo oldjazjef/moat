@@ -349,21 +349,24 @@ function registerIpc(): void {
     };
   });
   // SEC-08: the person says every gate now pins the new key alone; the old key is forgotten.
-  ipcMain.handle(IPC.keyRotationDone, async (event): Promise<boolean> => {
-    if (!fromApp(event)) return false;
-    const text = messages().confirmChange;
-    return confirmed(
-      () =>
-        askYesNo(
-          text.keyRotationDone.title,
-          text.keyRotationDone.message,
-          text.keyRotationDone.detail,
-          text.keyRotationDone.confirm,
-          text.cancel,
-        ),
-      () => updateConfig(app.getPath('userData'), { previousKey: null }),
-    );
-  });
+  ipcMain.handle(
+    IPC.keyRotationDone,
+    async (event, locale: unknown): Promise<boolean> => {
+      if (!fromApp(event)) return false;
+      const text = MESSAGES[pageLocale(locale, app.getLocale())].confirmChange;
+      return confirmed(
+        () =>
+          askYesNo(
+            text.keyRotationDone.title,
+            text.keyRotationDone.message,
+            text.keyRotationDone.detail,
+            text.keyRotationDone.confirm,
+            text.cancel,
+          ),
+        () => updateConfig(app.getPath('userData'), { previousKey: null }),
+      );
+    },
+  );
   ipcMain.handle(IPC.keyChoose, async (event): Promise<SigningKeyResult> => {
     if (!fromApp(event) || mainWindow === null || api === null)
       return { status: 'failed' };
@@ -528,6 +531,7 @@ function registerIpc(): void {
       id: unknown,
       gate: unknown,
       on: unknown,
+      locale: unknown,
     ): Promise<boolean> => {
       if (!fromApp(event)) return false;
       if (typeof id !== 'string' || !PROJECT_ID.test(id)) return false;
@@ -544,7 +548,7 @@ function registerIpc(): void {
         config.passkey !== null,
       );
       if (after === null) return false;
-      const text = messages().confirmChange;
+      const text = MESSAGES[pageLocale(locale, app.getLocale())].confirmChange;
       return confirmed(
         () =>
           askYesNo(

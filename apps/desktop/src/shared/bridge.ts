@@ -290,7 +290,7 @@ export interface DesktopBridge {
      */
     create(locale: string): Promise<SigningKeyResult>;
     /** SEC-08: every gate pins the new key alone now; the desktop forgets the old key. */
-    rotationDone(): Promise<boolean>;
+    rotationDone(locale: string): Promise<boolean>;
   };
   readonly bundle: {
     /**
@@ -359,7 +359,12 @@ export interface DesktopBridge {
   readonly passkey: {
     status(projectId: string): Promise<PasskeyStatus>;
     enroll(locale: string): Promise<PasskeyEnrollResult>;
-    use(projectId: string, gate: string, on: boolean): Promise<boolean>;
+    use(
+      projectId: string,
+      gate: string,
+      on: boolean,
+      locale: string,
+    ): Promise<boolean>;
   };
   /**
    * Opens the main process's database window for the project (DT-03): the connection string is
