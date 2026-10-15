@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
+import { DATABASE_KEY, type DatabaseTarget } from './database';
 import {
   SFTP_HOST,
   SFTP_HOST_KEY,
@@ -42,6 +43,11 @@ export interface DesktopConfig {
    * process's folder dialog; the page never learns it.
    */
   readonly gitTargets: Readonly<Record<string, string>>;
+  /**
+   * The external database per project id (DT-03): its key and label, and the connection string
+   * only as keychain ciphertext (DT-04), or not at all.
+   */
+  readonly databaseTargets: Readonly<Record<string, DatabaseTarget>>;
 }
 
 export interface DeployedPackage {
@@ -56,8 +62,10 @@ export const EMPTY_CONFIG: DesktopConfig = {
   deployed: {},
   sftpTargets: {},
   gitTargets: {},
+  databaseTargets: {},
 };
 
+const PROJECT_KEY = /^[A-Za-z0-9_-]{22}$/;
 const DEPLOYED_KEY = /^[A-Za-z0-9_-]{22}\/[a-z][a-z0-9-]{0,62}$/;
 
 /** The stored config; a missing or damaged file is an empty one (the user chooses again). */
@@ -110,6 +118,14 @@ export function readConfig(userData: string): DesktopConfig {
         if (DEPLOYED_KEY.test(key) && dir !== null) gitTargets[key] = dir;
       }
     }
+    const databaseTargets: Record<string, DatabaseTarget> = {};
+    const databases = value['databaseTargets'];
+    if (isRecord(databases)) {
+      for (const [id, entry] of Object.entries(databases)) {
+        const target = PROJECT_KEY.test(id) ? databaseTargetOf(entry) : null;
+        if (target !== null) databaseTargets[id] = target;
+      }
+    }
     return {
       projectDir: absolute(value['projectDir']),
       keyFile: absolute(value['keyFile']),
@@ -117,6 +133,7 @@ export function readConfig(userData: string): DesktopConfig {
       deployed,
       sftpTargets,
       gitTargets,
+      databaseTargets,
     };
   } catch {
     return EMPTY_CONFIG;
@@ -177,6 +194,22 @@ function sftpTargetOf(value: unknown): SftpTarget | null {
     hostKey: hostKey as string | null,
     secret: secret as string | null,
   };
+}
+
+/** A stored database target as the database window writes it; anything else is dropped. */
+function databaseTargetOf(value: unknown): DatabaseTarget | null {
+  if (!isRecord(value)) return null;
+  const { key, label, url } = value;
+  if (
+    typeof key !== 'string' ||
+    !DATABASE_KEY.test(key) ||
+    typeof label !== 'string' ||
+    label.length > 600 ||
+    !label.startsWith('postgresql://') ||
+    !(url === null || (typeof url === 'string' && url !== ''))
+  )
+    return null;
+  return { key, label, url: url as string | null };
 }
 
 function absolute(value: unknown): string | null {

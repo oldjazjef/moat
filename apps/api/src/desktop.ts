@@ -6,6 +6,8 @@
  */
 import {
   createKeyFile,
+  DEPLOY_TARGET_KINDS,
+  type DeployTargetKind,
   fingerprint,
   fromBase64UrlLength,
   keyId,
@@ -28,6 +30,13 @@ import {
   type PrepareDeployResult,
 } from './project/application/deploy-package.service';
 import { MainProcessConfirmation } from './gate-test/ports/gate-test-confirmation.port';
+import {
+  DatabaseSyncService,
+  type DatabaseSyncResult,
+  type SyncDirection,
+} from './project/application/database-sync.service';
+import { HistoryService } from './project/application/history.service';
+import { parseDatabaseUrl } from './persistence/database/database-url';
 import { ProjectService } from './project/project.service';
 
 export {
@@ -211,4 +220,59 @@ export function setGateTestConfirmation(
   ask: (target: string, locale: string) => Promise<boolean>,
 ): void {
   api.app.get(MainProcessConfirmation).register(ask);
+}
+
+export type {
+  DatabaseSyncResult,
+  SyncDirection,
+} from './project/application/database-sync.service';
+
+/**
+ * «Externe Datenbank» (DT-03, DT-13): push the project folder into a PostgreSQL database or pull
+ * the database's newer files into it. Called only by the main process's database window: the
+ * connection string is typed there (or opened from the keychain there) and never reaches the page.
+ */
+export function syncDatabase(
+  api: RunningApi,
+  id: string,
+  input: {
+    url: string;
+    key: string;
+    direction: SyncDirection;
+    signer: { kid: string; publicKey: Uint8Array };
+  },
+): Promise<DatabaseSyncResult> {
+  return api.app.get(DatabaseSyncService).sync(id, input);
+}
+
+/**
+ * What the database window may show of a connection string (never the password), or why Moat
+ * refuses it (`url_invalid`, `tls_required`) before anything connects.
+ */
+export function databaseLabel(
+  url: string,
+):
+  | { status: 'ok'; label: string }
+  | { status: 'refused'; code: 'url_invalid' | 'tls_required' } {
+  const parsed = parseDatabaseUrl(url);
+  return parsed.status === 'ok'
+    ? { status: 'ok', label: parsed.label }
+    : parsed;
+}
+
+/** Records a deploy the main process finished (DT-05) in the project's history, if it has one. */
+export async function recordDeploy(
+  api: RunningApi,
+  id: string,
+  deploy: {
+    gate: string;
+    version: number;
+    target: DeployTargetKind;
+    sha256: string;
+  },
+): Promise<void> {
+  if (!DEPLOY_TARGET_KINDS.includes(deploy.target)) return;
+  await api.app
+    .get(HistoryService)
+    .record(id, { kind: 'deploy', details: { ...deploy } });
 }

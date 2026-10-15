@@ -7,7 +7,13 @@ import { desktopBridge } from '../../../../core/desktop/desktop-bridge';
 import { ProjectResource } from '../../../../core/project/project-resource.service';
 
 /** The workspace's tabs, in order: `projects.tabs.<id>`, route `<base>/<id>`. */
-export const PROJECT_TABS = ['overview', 'gates', 'routes', 'console'] as const;
+export const PROJECT_TABS = [
+  'overview',
+  'gates',
+  'routes',
+  'console',
+  'history',
+] as const;
 
 /**
  * One project's workspace: its header (name, folder, "Neu laden", "Im Ordner zeigen"), the tabs,

@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!-- No script on this page: its preload renders the view with textContent. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="dialog.css" />
+    <title>Moat</title>
+  </head>
+  <body>
+    <form id="form" hidden>
+      <h1 id="title"></h1>
+      <p id="intro" class="muted"></p>
+      <dl class="facts">
+        <dt id="project-label"></dt>
+        <dd id="project"></dd>
+        <div id="target-row">
+          <dt id="target-label"></dt>
+          <dd id="target" class="code"></dd>
+        </div>
+      </dl>
+      <fieldset>
+        <label class="stack">
+          <span id="url-label" class="label"></span>
+          <input
+            id="url"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <span id="url-hint" class="muted small"></span>
+          <span id="url-remembered" class="muted small" hidden></span>
+        </label>
+        <label class="stack">
+          <span id="key-label" class="label"></span>
+          <input id="key" type="text" autocomplete="off" spellcheck="false" />
+          <span id="key-hint" class="muted small"></span>
+        </label>
+        <label id="remember-row" class="check">
+          <input id="remember" type="checkbox" />
+          <span id="remember-label"></span>
+        </label>
+      </fieldset>
+      <p id="notice" class="error" role="alert" hidden></p>
+      <div id="result" role="status" hidden>
+        <h2 id="result-title"></h2>
+        <ul id="result-counts" class="small"></ul>
+        <p id="result-issues-title" class="muted small"></p>
+        <ul id="result-issues" class="small"></ul>
+      </div>
+      <div class="buttons">
+        <button id="forget" type="button" class="secondary"></button>
+        <button id="close" type="button" class="secondary"></button>
+        <button id="pull" type="button" class="secondary"></button>
+        <button id="push" type="submit"></button>
+      </div>
+    </form>
+  </body>
+</html>

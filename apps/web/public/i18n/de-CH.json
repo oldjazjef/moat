@@ -53,7 +53,8 @@
       "overview": "Übersicht",
       "gates": "Gates",
       "routes": "Routen",
-      "console": "Test-Konsole"
+      "console": "Test-Konsole",
+      "history": "Verlauf"
     },
     "remove": {
       "button": "Aus der Liste entfernen",
@@ -880,6 +881,26 @@
           "age": "Setzt du in der lokalen Policy `maxConfigAgeSeconds`, warnt `status`, wenn das aktive Bundle älter ist. So merkst du, wenn eine Sperre aus dem Projekt nie ankommt."
         }
       },
+      "history": {
+        "title": "Verlauf und externe Datenbank",
+        "purpose": "Der Verlauf hält fest, was Moat Desktop in einem Projekt getan hat, und zeigt, ob jemand ihn nachträglich verändert hat. Die externe Datenbank ist eine Sicherung des Projekts, die du mit anderen teilen kannst.",
+        "where": "Projekt › Verlauf",
+        "steps": {
+          "open": "Öffne im Projekt den Bereich «Verlauf».",
+          "enable": "Klicke auf «Verlauf einschalten». Ab dann schreibt Moat Desktop jedes signierte Bundle, jedes versiegelte Secret, jeden Deploy und jede Änderung an moat.yaml in eine eigene SQLite-Datenbank auf diesem Computer. Der Projektordner bleibt, wie er ist.",
+          "verify": "Klicke auf «Prüfen». Moat rechnet die Kette der Prüfsummen nach und sagt dir, ab welchem Eintrag etwas nicht mehr stimmt.",
+          "database": "Unter «Externe Datenbank» öffnet «Datenbank öffnen» ein eigenes Fenster von Moat Desktop. Dort gibst du die Verbindungs-URL der PostgreSQL-Datenbank und den Namen des Projekts in der Datenbank ein, nie in der App-Seite. Ausser für diesen Computer verlangt Moat TLS mit geprüftem Zertifikat.",
+          "push": "Sichern kopiert moat.yaml, die öffentlichen Gate-Dateien, die versiegelten Secrets und die mit deinem Schlüssel signierten Bundles in die Datenbank. Fehlt Moats Struktur dort, legt Moat sie an.",
+          "pull": "Holen schreibt neuere Dateien aus der Datenbank in den Projektordner. Jedes Bundle prüft Moat vorher wie beim Annehmen am Gate: Signatur deines Schlüssels, Gate und Version. Ein Gate, das nur in der Datenbank steht, fügst du selbst unter «Gates» mit seinem Fingerprint hinzu."
+        },
+        "tips": {
+          "recorded": "Im Verlauf stehen nur Namen, Versionen, Prüfsummen und Zähler: nie ein Secret, nie eine Passphrase, nie ein Pfad.",
+          "evidence": "«Prüfen» erkennt einen veränderten, gelöschten oder eingefügten Eintrag. Wer diesen Computer ganz kontrolliert, kann den Verlauf trotzdem neu schreiben: Er ist ein Nachweis, kein Schutz.",
+          "ciphertext": "In die Datenbank kommen Secrets nur versiegelt und Bundles nur signiert. Ein Secret im Klartext, deine Schlüsseldatei oder ihre Passphrase verlassen den Computer nie. Die Verbindungs-URL merkt sich Moat Desktop nur im Schlüsselbund deines Betriebssystems, und nur, wenn du das willst.",
+          "conflicts": "Moat überschreibt nichts, was auf der anderen Seite neuer oder anders ist: eine höhere Bundle-Version, eine andere moat.yaml, eine andere Secret-Version. Das Fenster listet solche Fälle; du entscheidest selbst.",
+          "refused": "Enthält die Datenbank Tabellen, die nicht von Moat sind, oder hat eine neuere Moat-Version sie eingerichtet, ändert Moat nichts daran. Verwende eine eigene, leere Datenbank."
+        }
+      },
       "privacy": {
         "title": "Desktop und Datenschutz",
         "purpose": "Moat Desktop arbeitet nur auf deinem Computer. Es braucht keinen Server und kein Konto.",
@@ -954,5 +975,60 @@
     "gateOnly": "Wie weit diese Zähler schon sind und was die API antwortet, weiss nur das laufende Gate.",
     "headersTitle": "Header des Gates an den Browser",
     "policyNote": "Geprüft gegen die Policy, die `moat policy suggest` für dieses Projekt vorschlägt. Die Policy auf deinem Gate kann davon abweichen, und einen lokalen Kill-Switch sieht die Konsole nicht."
+  },
+  "history": {
+    "subtitle": "Was Moat Desktop in diesem Projekt getan hat: signierte Bundles, versiegelte Secrets, Deploys, Änderungen an moat.yaml und Kopien in die externe Datenbank.",
+    "off": {
+      "title": "Verlauf ist aus",
+      "description": "Eingeschaltet schreibt Moat Desktop jede dieser Aktionen in eine eigene Datenbank auf diesem Computer, verkettet mit Prüfsummen. Nie ein Secret, nie ein Pfad, nie eine Passphrase."
+    },
+    "enable": "Verlauf einschalten",
+    "verify": "Prüfen",
+    "intact": "Der Verlauf ist unverändert: {{entries}} Einträge, die Kette stimmt.",
+    "broken": "Ab Eintrag {{seq}} passt der Verlauf nicht mehr.",
+    "brokenTail": "Am Ende des Verlaufs fehlen Einträge.",
+    "breaks": {
+      "sequence": "Ein Eintrag fehlt oder wurde eingefügt.",
+      "chain": "Ein Eintrag verweist nicht auf den davor.",
+      "hash": "Ein Eintrag wurde nachträglich verändert.",
+      "details": "Ein Eintrag enthält Angaben, die Moat nie schreibt.",
+      "anchor": "Der Verlauf passt nicht zu dem, was Moat sich ausserhalb der Datenbank gemerkt hat."
+    },
+    "evidenceNote": "Prüfen zeigt, ob jemand den Verlauf nachträglich verändert hat. Wer diesen Computer ganz kontrolliert, kann ihn trotzdem neu schreiben.",
+    "columns": {
+      "seq": "Nr.",
+      "at": "Zeit",
+      "event": "Ereignis",
+      "hash": "Prüfsumme"
+    },
+    "kinds": {
+      "history_started": "Verlauf eingeschaltet",
+      "bundle_signed": "Bundle v{{version}} für {{gate}} signiert (SHA-256 {{sha256}}…)",
+      "secret_sealed": "Secret {{name}} für {{gate}} versiegelt (Version {{secretVersion}})",
+      "deploy": "Bundle v{{version}} für {{gate}} als Deploy-Paket ausgeliefert",
+      "config_edited": "moat.yaml geändert ({{op}}): {{before}}… → {{after}}…",
+      "database_pushed": "In die Datenbank gesichert als {{key}}: {{gates}} Gates, {{secrets}} Secrets, {{bundles}} Bundles, {{conflicts}} nicht überschrieben",
+      "database_pulled": "Aus der Datenbank {{key}} geholt: {{gates}} Gates, {{secrets}} Secrets, {{bundles}} Bundles, {{conflicts}} nicht überschrieben"
+    },
+    "targets": {
+      "zip": "ZIP",
+      "folder": "Ordner",
+      "sftp": "SFTP",
+      "git": "Git"
+    },
+    "database": {
+      "title": "Externe Datenbank",
+      "description": "Eine Kopie des Projekts in einer eigenen PostgreSQL-Datenbank: moat.yaml, die öffentlichen Gate-Dateien, versiegelte Secrets und signierte Bundles. Die Verbindung gibst du in einem eigenen Fenster von Moat Desktop ein.",
+      "open": "Datenbank öffnen",
+      "done": {
+        "push": "In die Datenbank gesichert: {{gates}} Gates, {{secrets}} Secrets, {{bundles}} Bundles.",
+        "pull": "Aus der Datenbank geholt: {{gates}} Gates, {{secrets}} Secrets, {{bundles}} Bundles."
+      },
+      "issues": "{{issues}} Mal nichts überschrieben, siehe Fenster.",
+      "failed": "Die Datenbank-Kopie hat nicht geklappt."
+    },
+    "notices": {
+      "failed": "Das hat nicht geklappt. Bitte nochmals."
+    }
   }
 }

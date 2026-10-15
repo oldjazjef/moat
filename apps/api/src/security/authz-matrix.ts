@@ -157,6 +157,27 @@ export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
     },
     expect: LOCAL_ONLY,
   },
+  {
+    // «Verlauf» (DT-03): names, versions and digests only, never a secret or a path.
+    method: 'GET',
+    path: '/api/projects/:id/history',
+    request: `/api/projects/${SEEDED_PROJECT}/history`,
+    expect: LOCAL_ONLY,
+  },
+  {
+    // Switches the local history on (a SQLite file in the data folder); never off.
+    method: 'POST',
+    path: '/api/projects/:id/history',
+    request: `/api/projects/${SEEDED_PROJECT}/history`,
+    expect: LOCAL_ONLY,
+  },
+  {
+    // Checks the hash chain; writes nothing.
+    method: 'POST',
+    path: '/api/projects/:id/history/verify',
+    request: `/api/projects/${SEEDED_PROJECT}/history/verify`,
+    expect: LOCAL_ONLY,
+  },
   { method: 'GET', path: '/api/setup', expect: LOCAL_ONLY },
   {
     method: 'PATCH',

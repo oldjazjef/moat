@@ -53,7 +53,8 @@
       "overview": "Overview",
       "gates": "Gates",
       "routes": "Routes",
-      "console": "Test console"
+      "console": "Test console",
+      "history": "History"
     },
     "remove": {
       "button": "Remove from list",
@@ -880,6 +881,26 @@
           "age": "Set `maxConfigAgeSeconds` in the local policy and `status` warns when the active bundle is older. That way you notice when a lock from the project never arrives."
         }
       },
+      "history": {
+        "title": "History and external database",
+        "purpose": "The history records what Moat Desktop did in a project and shows whether someone changed it afterwards. The external database is a backup of the project you can share with others.",
+        "where": "Project › History",
+        "steps": {
+          "open": "In the project, open “History”.",
+          "enable": "Click “Turn on history”. From then on Moat Desktop writes every signed bundle, every sealed secret, every deploy and every change to moat.yaml into its own SQLite database on this computer. The project folder stays as it is.",
+          "verify": "Click “Check”. Moat recomputes the chain of checksums and tells you from which entry on something no longer fits.",
+          "database": "Under “External database”, “Open database” opens a separate Moat Desktop window. There you enter the connection URL of the PostgreSQL database and the project’s name in the database, never in the app page. Except for this computer, Moat requires TLS with a verified certificate.",
+          "push": "Backing up copies moat.yaml, the gates’ public files, the sealed secrets and the bundles signed with your key into the database. If Moat’s structure is missing there, Moat creates it.",
+          "pull": "Fetching writes newer files from the database into the project folder. Moat checks every bundle first as the gate does on accept: your key’s signature, gate and version. A gate that is only in the database you add yourself under “Gates” with its fingerprint."
+        },
+        "tips": {
+          "recorded": "The history holds only names, versions, checksums and counts: never a secret, never a passphrase, never a path.",
+          "evidence": "“Check” detects a changed, deleted or inserted entry. Whoever fully controls this computer can still rewrite the history: it is evidence, not protection.",
+          "ciphertext": "Secrets go into the database only sealed and bundles only signed. A plaintext secret, your key file or its passphrase never leave the computer. Moat Desktop remembers the connection URL only in your operating system’s keychain, and only if you want it to.",
+          "conflicts": "Moat overwrites nothing that is newer or different on the other side: a higher bundle version, another moat.yaml, another secret version. The window lists such cases; you decide.",
+          "refused": "If the database holds tables that are not Moat’s, or a newer Moat version set it up, Moat changes nothing. Use an empty database of its own."
+        }
+      },
       "privacy": {
         "title": "Desktop and privacy",
         "purpose": "Moat Desktop works only on your computer. It needs no server and no account.",
@@ -954,5 +975,60 @@
     "gateOnly": "How far these counters are and what the API answers, only the running gate knows.",
     "headersTitle": "Headers from the gate to the browser",
     "policyNote": "Checked against the policy `moat policy suggest` proposes for this project. The policy on your gate can differ, and the console does not see a local kill switch."
+  },
+  "history": {
+    "subtitle": "What Moat Desktop did in this project: signed bundles, sealed secrets, deploys, changes to moat.yaml and copies to the external database.",
+    "off": {
+      "title": "History is off",
+      "description": "Once on, Moat Desktop writes each of these actions into its own database on this computer, chained with checksums. Never a secret, never a path, never a passphrase."
+    },
+    "enable": "Turn on history",
+    "verify": "Check",
+    "intact": "The history is unchanged: {{entries}} entries, the chain holds.",
+    "broken": "From entry {{seq}} on the history no longer fits.",
+    "brokenTail": "Entries are missing at the end of the history.",
+    "breaks": {
+      "sequence": "An entry is missing or was inserted.",
+      "chain": "An entry does not point to the one before it.",
+      "hash": "An entry was changed afterwards.",
+      "details": "An entry holds data Moat never writes.",
+      "anchor": "The history does not match what Moat remembered outside the database."
+    },
+    "evidenceNote": "Checking shows whether someone changed the history afterwards. Whoever fully controls this computer can still rewrite it.",
+    "columns": {
+      "seq": "No.",
+      "at": "Time",
+      "event": "Event",
+      "hash": "Checksum"
+    },
+    "kinds": {
+      "history_started": "History turned on",
+      "bundle_signed": "Bundle v{{version}} for {{gate}} signed (SHA-256 {{sha256}}…)",
+      "secret_sealed": "Secret {{name}} for {{gate}} sealed (version {{secretVersion}})",
+      "deploy": "Bundle v{{version}} for {{gate}} delivered as a deploy package",
+      "config_edited": "moat.yaml changed ({{op}}): {{before}}… → {{after}}…",
+      "database_pushed": "Backed up to the database as {{key}}: {{gates}} gates, {{secrets}} secrets, {{bundles}} bundles, {{conflicts}} not overwritten",
+      "database_pulled": "Fetched from the database {{key}}: {{gates}} gates, {{secrets}} secrets, {{bundles}} bundles, {{conflicts}} not overwritten"
+    },
+    "targets": {
+      "zip": "ZIP",
+      "folder": "Folder",
+      "sftp": "SFTP",
+      "git": "Git"
+    },
+    "database": {
+      "title": "External database",
+      "description": "A copy of the project in a PostgreSQL database of its own: moat.yaml, the gates’ public files, sealed secrets and signed bundles. You enter the connection in a separate Moat Desktop window.",
+      "open": "Open database",
+      "done": {
+        "push": "Backed up to the database: {{gates}} gates, {{secrets}} secrets, {{bundles}} bundles.",
+        "pull": "Fetched from the database: {{gates}} gates, {{secrets}} secrets, {{bundles}} bundles."
+      },
+      "issues": "Nothing overwritten {{issues}} times, see the window.",
+      "failed": "The database copy did not work."
+    },
+    "notices": {
+      "failed": "That did not work. Please try again."
+    }
   }
 }

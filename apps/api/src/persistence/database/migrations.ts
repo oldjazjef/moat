@@ -1,0 +1,40 @@
+import { createHash } from 'node:crypto';
+import postgresInit from '../../../prisma/postgresql/migrations/20261014120000_init/migration.sql?raw';
+import sqliteInit from '../../../prisma/sqlite/migrations/20261014120000_init/migration.sql?raw';
+
+/**
+ * The migration histories of `apps/api/prisma/{sqlite,postgresql}/migrations`, bundled into the
+ * API as text (webpack `asset/source`, Vite `?raw`) so Moat Desktop applies them without the
+ * Prisma CLI and its schema-engine binary (as lazy-koins' desktop does). Add each new migration
+ * folder here, in name order; `migrations.spec.ts` fails when a folder is missing.
+ */
+export type Dialect = 'sqlite' | 'postgresql';
+
+export interface Migration {
+  /** The folder name, e.g. `20261014120000_init`. */
+  readonly name: string;
+  readonly sql: string;
+  /** SHA-256 hex of the file, as Prisma records it. */
+  readonly checksum: string;
+}
+
+const migration = (name: string, sql: string): Migration => ({
+  name,
+  sql,
+  checksum: createHash('sha256').update(sql, 'utf8').digest('hex'),
+});
+
+export const MIGRATIONS: Readonly<Record<Dialect, readonly Migration[]>> = {
+  sqlite: [migration('20261014120000_init', sqliteInit)],
+  postgresql: [migration('20261014120000_init', postgresInit)],
+};
+
+/** The tables Moat's migrations create; any other table makes Moat refuse the database. */
+export const MOAT_TABLES = [
+  'history_entry',
+  'sync_project',
+  'sync_gate',
+  'sync_secret',
+  'sync_bundle',
+] as const;
+export const MIGRATIONS_TABLE = '_prisma_migrations';

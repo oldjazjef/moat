@@ -9,6 +9,7 @@ import {
   InMemoryProjectRegistry,
 } from '../testing/in-memory-projects';
 import { SecretSealingService } from './secret-sealing.service';
+import { historyService } from '../testing/in-memory-storage';
 
 const RECIPE = readFileSync(
   resolve(__dirname, '../../../../../recipes/hubspot-newsletter.moat.yaml'),
@@ -40,7 +41,11 @@ async function setup() {
     files,
     box,
     shop: () => files.folders['/sites/shop'] ?? {},
-    service: new SecretSealingService(registry, files),
+    service: new SecretSealingService(
+      registry,
+      files,
+      historyService(registry),
+    ),
   };
 }
 

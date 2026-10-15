@@ -28,6 +28,8 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     include: ['src/**/*.spec.ts'],
+    // Against real databases: `pnpm test:integration` (vitest.integration.config.ts).
+    exclude: ['src/**/*.integration.spec.ts'],
     passWithNoTests: false,
   },
 });

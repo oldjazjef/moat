@@ -5,7 +5,7 @@ import {
   realpathSync,
   statSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import {
   app,
   BrowserWindow,
@@ -19,6 +19,7 @@ import {
 } from 'electron';
 import {
   type BundleSignResult,
+  type DatabaseResult,
   DEPLOY_TARGETS,
   type DeployResult,
   type DeployTarget,
@@ -60,6 +61,12 @@ import { registerSealDialogIpc, showSealDialog } from './seal-window';
 import { registerSignDialogIpc, showSignDialog } from './sign-window';
 import { APP_ORIGIN, isAppUrl } from './lib/web-protocol';
 import { handleAppScheme, registerAppScheme } from './protocol';
+import {
+  registerDatabaseDialogIpc,
+  showDatabaseDialog,
+} from './database-window';
+import { DatabaseSession, defaultDatabaseKey } from './lib/database';
+import { DATABASE_MESSAGES } from './lib/database-messages';
 
 // The packaged app and a dev run (`pnpm start:desktop`) must never share settings.
 if (!app.isPackaged) {
@@ -430,6 +437,28 @@ function registerIpc(): void {
   );
   registerSealDialogIpc();
   registerSftpDialogIpc();
+  // «Externe Datenbank» (DT-03): the connection string is typed only in the database window.
+  ipcMain.handle(
+    IPC.databaseOpen,
+    async (event, id: unknown, locale: unknown): Promise<DatabaseResult> => {
+      if (!fromApp(event) || mainWindow === null || api === null)
+        return { status: 'failed' };
+      if (typeof id !== 'string' || !PROJECT_ID.test(id))
+        return { status: 'failed' };
+      try {
+        return await openDatabase(
+          mainWindow,
+          api,
+          id,
+          pageLocale(locale, app.getLocale()),
+        );
+      } catch {
+        console.error('[desktop] database window failed');
+        return { status: 'failed' };
+      }
+    },
+  );
+  registerDatabaseDialogIpc();
   // DT-05: the page asks for a gate's deploy package; where it goes is chosen in the main
   // process's own dialog, and the page learns only the outcome, never the path.
   ipcMain.handle(
@@ -494,13 +523,23 @@ async function deployGate(
   const refused = deployRefusal(pkg, readConfig(userData).deployed[key]);
   if (refused !== null) return refused;
   const files = deployFiles(pkg, text.deploy);
-  const remember = () =>
+  const remember = () => {
     updateConfig(userData, {
       deployed: {
         ...readConfig(userData).deployed,
         [key]: { gateId: pkg.gateId, version: pkg.version },
       },
     });
+    // «Verlauf» (DT-03): the deploy with its target kind, never the target itself.
+    void running
+      .recordDeploy(id, {
+        gate: pkg.gate,
+        version: pkg.version,
+        target,
+        sha256: pkg.bundleSha256,
+      })
+      .catch(() => undefined);
+  };
   if (target === 'sftp') {
     const result = await showSftpDialog({
       parent,
@@ -640,6 +679,56 @@ async function deployGate(
   if (written !== null) return written;
   remember();
   return { status: 'exported', target, version: pkg.version };
+}
+
+/** The database window of a project (DT-03, DT-13). */
+async function openDatabase(
+  parent: BrowserWindow,
+  running: RunningApi,
+  id: string,
+  locale: 'de-CH' | 'en',
+): Promise<DatabaseResult> {
+  const folder = await running.projectFolder(id);
+  if (folder === null) return { status: 'failed' };
+  const userData = app.getPath('userData');
+  const texts = DATABASE_MESSAGES[locale];
+  const name = basename(folder);
+  const session = new DatabaseSession({
+    texts,
+    project: name,
+    defaultKey: defaultDatabaseKey(name),
+    keychain: {
+      available: keychain.isEncryptionAvailable(),
+      seal: (secret) => keychain.encryptString(secret).toString('base64'),
+      open: (sealed) => {
+        try {
+          return keychain.decryptString(Buffer.from(sealed, 'base64'));
+        } catch {
+          return null;
+        }
+      },
+    },
+    stored: () => readConfig(userData).databaseTargets[id] ?? null,
+    save: (target) =>
+      updateConfig(userData, {
+        databaseTargets: {
+          ...readConfig(userData).databaseTargets,
+          [id]: target,
+        },
+      }),
+    forget: () => {
+      const { [id]: _dropped, ...rest } = readConfig(userData).databaseTargets;
+      updateConfig(userData, { databaseTargets: rest });
+    },
+    label: (url) => running.databaseLabel(url),
+    signer: () => {
+      const keyPath = readConfig(userData).keyFile;
+      return (keyPath === null ? null : readKeyFile(keyPath)?.signer) ?? null;
+    },
+    sync: (url, key, direction, signer) =>
+      running.syncDatabase(id, url, key, direction, signer),
+  });
+  return showDatabaseDialog({ parent, appDir, title: texts.title, session });
 }
 
 /** `<userData>/no-git-hooks`, created empty: git's hooks path for every Git deploy (T-68). */

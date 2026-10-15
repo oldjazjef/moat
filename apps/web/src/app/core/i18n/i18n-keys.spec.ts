@@ -31,6 +31,11 @@ import {
 import { GATE_FAILURES, RECIPE_IDS } from '../api/recipe.types';
 import { HARDENING_NOTICES } from '../../shared/components/hardening-check';
 import {
+  DEPLOY_TARGET_KINDS,
+  HISTORY_BREAKS,
+  HISTORY_KINDS,
+} from '../api/history.types';
+import {
   CONSOLE_COUNTERS,
   CONSOLE_NOTICES,
   CONSOLE_PERIODS,
@@ -85,6 +90,12 @@ const DYNAMIC_KEYS = [
   ...DRY_RUN_ERRORS.map((code) => `console.errors.${code}`),
   ...CONSOLE_COUNTERS.map((key) => `console.counters.${key}`),
   ...CONSOLE_PERIODS.map((period) => `console.periods.${period}`),
+  ...HISTORY_BREAKS.map((reason) => `history.breaks.${reason}`),
+  ...HISTORY_KINDS.map((kind) => `history.kinds.${kind}`),
+  ...DEPLOY_TARGET_KINDS.map((target) => `history.targets.${target}`),
+  'history.database.done.push',
+  'history.database.done.pull',
+  'history.notices.failed',
   ...GATE_FAILURES.map((reason) => `setup.recipe.failed.${reason}`),
   ...RECIPE_IDS.flatMap((id) => [
     `setup.recipe.recipes.${id}.title`,

@@ -14,6 +14,7 @@ import { ListProjectsHandler } from './list-projects.handler';
 import { ListProjectsQuery } from './list-projects.query';
 import { RemoveProjectCommand } from './remove-project.command';
 import { RemoveProjectHandler } from './remove-project.handler';
+import { historyService } from '../testing/in-memory-storage';
 
 const YAML = `version: 1
 upstreams:
@@ -37,7 +38,7 @@ function setup() {
   return {
     registry,
     files,
-    edit: new EditConfigHandler(registry, files),
+    edit: new EditConfigHandler(registry, files, historyService(registry)),
     add: new AddProjectHandler(registry),
     list: new ListProjectsHandler(registry, files),
     get: new GetProjectHandler(registry, files),

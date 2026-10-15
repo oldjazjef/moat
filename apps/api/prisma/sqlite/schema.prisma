@@ -1,0 +1,101 @@
+// Prisma schema of Moat's databases on SQLite (CLAUDE.md, Database; DT-03).
+//
+// Keep it structurally equal to ../postgresql/schema.prisma (database-schemas.spec.ts compares
+// them): the same models, fields, types, keys and maps; only the generator output and the
+// provider differ.
+//
+//  1. snake_case table/column names via @@map/@map, so the SQL reads like SQL.
+//  2. No enums, no DateTime: closed values and timestamps are TEXT that the hand-written CHECK
+//     constraints in the migrations keep honest (ISO-8601 UTC, `Z`).
+//  3. The datasource URL is never in this file: the desktop opens the file itself
+//     (persistence/database), and `prisma migrate diff` works from the schema alone.
+//  4. Nothing in here may ever hold a plaintext secret, a key file or a passphrase (DT-03,
+//     SEC-31): sealed secrets are the ciphertext files as they are on disk, bundles the signed
+//     bytes as they are on disk.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../../src/generated/prisma-sqlite"
+  moduleFormat = "cjs"
+  runtime      = "nodejs"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// The local history of one project (`<MOAT_DATA_DIR>/history/<project id>.db`): append-only,
+/// hash-chained (each row's hash covers the previous row's hash). Triggers refuse UPDATE/DELETE.
+model HistoryEntry {
+  /// 1, 2, 3, … without gaps; written by the API as the previous row's seq + 1.
+  seq      Int    @id
+  /// ISO-8601 UTC with milliseconds and `Z`.
+  at       String
+  /// bundle_signed | secret_sealed | deploy | config_edited | history_started | database_pushed | database_pulled
+  kind     String
+  /// The event's details as canonical JSON (JCS); names, versions, digests and hashes only.
+  details  String
+  /// The previous row's hash; 64 zeros for the first row.
+  prevHash String @map("prev_hash")
+  /// SHA-256 hex over the canonical JSON of {seq, at, kind, details, prev}.
+  hash     String @unique
+
+  @@map("history_entry")
+}
+
+/// A project in an external database (sync and backup target). `key` is the name it was
+/// connected under; several desktops connect to the same key.
+model SyncProject {
+  key        String       @id
+  /// moat.yaml as text (never contains a secret: config schema + lint, SEC-20).
+  configText String       @map("config_text")
+  /// SHA-256 hex of configText.
+  configHash String       @map("config_hash")
+  /// Optimistic lock for moat.yaml (DT-13): +1 on every change of configText.
+  revision   Int
+  updatedAt  String       @map("updated_at")
+  gates      SyncGate[]
+  secrets    SyncSecret[]
+  bundles    SyncBundle[]
+
+  @@map("sync_project")
+}
+
+/// gates/<name>.json: a gate's public identity (gate id and box public key).
+model SyncGate {
+  project String
+  name    String
+  text    String
+  owner   SyncProject @relation(fields: [project], references: [key], onDelete: Cascade)
+
+  @@id([project, name])
+  @@map("sync_gate")
+}
+
+/// secrets/<gate>/<name>.json: a sealed secret, ciphertext only (SEC-31).
+model SyncSecret {
+  project       String
+  gate          String
+  name          String
+  secretVersion Int         @map("secret_version")
+  text          String
+  owner         SyncProject @relation(fields: [project], references: [key], onDelete: Cascade)
+
+  @@id([project, gate, name])
+  @@map("sync_secret")
+}
+
+/// bundles/<gate>/<version>.json: a signed bundle, its exact bytes. Never replaced (a trigger
+/// refuses UPDATE): the primary key is the optimistic lock of DT-13.
+model SyncBundle {
+  project String
+  gate    String
+  version Int
+  /// SHA-256 hex of text.
+  digest  String
+  text    String
+  owner   SyncProject @relation(fields: [project], references: [key], onDelete: Cascade)
+
+  @@id([project, gate, version])
+  @@map("sync_bundle")
+}

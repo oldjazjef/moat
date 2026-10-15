@@ -60,7 +60,7 @@ Four components (ANFORDERUNGEN.md, header):
 > data file is readable and no level otherwise. The test console (FR-42): tab «Test-Konsole» →
 > `POST /api/projects/:id/dry-run` → core `planDryRun` + `dryRun` (`gate/dry-run.ts`): the gate's
 > answer to one request from moat.yaml and the suggested policy, nothing sent, the secret as
-> `<SECRET>`; its spec runs every `conformance/http/` case against it. The deploy package (DT-05, T-66): «Deploy» per gate in «Gates» → «Als ZIP speichern» / «In Ordner ablegen» → IPC `moat:gate:deploy` (ids + target only) → `prepareDeploy` in-process (`DeployPackageService`, core `planDeploy`: the latest bundle verified against the desktop's key, unchanged, + `suggestPolicy` of its config) → the main process's save/folder dialog → `apps/desktop/src/main/lib/deploy.ts` writes a new folder `moat-<gate>-v<n>/` (never replaces) or a stored ZIP (core `package/zip.ts`) with `bundle-v<n>.json`, `policy.json` and `LIESMICH.txt`/`README.txt`. «Per SFTP hochladen» (T-67) opens the main-process SFTP window (`sftp-window.ts`, `lib/sftp.ts` session, `lib/sftp-client.ts` on `ssh2`, no native build): target and password/passphrase typed only there, the host key shown with its type and pinned per host and port on first contact (`ssh-ed25519 SHA256:…`), a failure after `mkdir` reported as `partial`, a changed key refused before sign-in, the package written as a new folder with exclusive creates, SFTP only (no command); targets in `config.json` `sftpTargets`, the secret only as `safeStorage` ciphertext. «Per Git ausliefern» (T-68, `lib/git-deploy.ts`): a folder in a Git working copy (chosen in the main process, remembered in `config.json` `gitTargets`), checked for branch, upstream and `.gitignore`, confirmed in a message box with branch and remote, then the package as a new folder, `git commit --only` of that folder and a push to the upstream; the installed `git` via `execFile` with hooks and fsmonitor off; a failed push answers `committed`. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, setup mode, trust mode 2. Everything else below is
+> `<SECRET>`; its spec runs every `conformance/http/` case against it. The deploy package (DT-05, T-66): «Deploy» per gate in «Gates» → «Als ZIP speichern» / «In Ordner ablegen» → IPC `moat:gate:deploy` (ids + target only) → `prepareDeploy` in-process (`DeployPackageService`, core `planDeploy`: the latest bundle verified against the desktop's key, unchanged, + `suggestPolicy` of its config) → the main process's save/folder dialog → `apps/desktop/src/main/lib/deploy.ts` writes a new folder `moat-<gate>-v<n>/` (never replaces) or a stored ZIP (core `package/zip.ts`) with `bundle-v<n>.json`, `policy.json` and `LIESMICH.txt`/`README.txt`. «Per SFTP hochladen» (T-67) opens the main-process SFTP window (`sftp-window.ts`, `lib/sftp.ts` session, `lib/sftp-client.ts` on `ssh2`, no native build): target and password/passphrase typed only there, the host key shown with its type and pinned per host and port on first contact (`ssh-ed25519 SHA256:…`), a failure after `mkdir` reported as `partial`, a changed key refused before sign-in, the package written as a new folder with exclusive creates, SFTP only (no command); targets in `config.json` `sftpTargets`, the secret only as `safeStorage` ciphertext. «Per Git ausliefern» (T-68, `lib/git-deploy.ts`): a folder in a Git working copy (chosen in the main process, remembered in `config.json` `gitTargets`), checked for branch, upstream and `.gitignore`, confirmed in a message box with branch and remote, then the package as a new folder, `git commit --only` of that folder and a push to the upstream; the installed `git` via `execFile` with hooks and fsmonitor off; a failed push answers `committed`. Storage backends (DT-03): tab «Verlauf» → `GET|POST /api/projects/:id/history` and `…/history/verify` (`HistoryService`, core `storage/history.ts`): opt-in, an append-only, hash-chained SQLite history per project in `<MOAT_DATA_DIR>/history/` (bundle signed, secret sealed, deploy, config edit, database copy), the anchor outside the database, tamper-evident only (T-69); «Externe Datenbank» → IPC `moat:database:open` (id + locale only) → the main-process database window (`database-window.ts`, `lib/database.ts`): a PostgreSQL URL typed only there, verified TLS except for localhost, remembered only as `safeStorage` ciphertext in `config.json` `databaseTargets`; push/pull in-process (`DatabaseSyncService`, core `storage/sync.ts`): moat.yaml, gate files, sealed secrets and signed bundles only, optimistic locks (DT-13), pulled bundles verified like an import, a gate never pinned from the database; Moat migrates an empty database and refuses foreign tables or a newer schema. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, setup mode, trust mode 2, MySQL/MariaDB (DT-03). Everything else below is
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
 
@@ -162,7 +162,8 @@ pnpm check           # THE gate for TS: lint + budget + format + yamllint + test
 pnpm check:gate-php  # THE gate for PHP: composer validate + cs + phpstan + phpunit + conformance
 pnpm check:all       # both — what CI runs
 pnpm test            # all TS unit tests (root Vitest, not via Nx — see Testing)
-pnpm test:integration
+pnpm test:integration # *.integration.spec.ts: SQLite for real, PostgreSQL (see Database)
+pnpm db:generate     # the Prisma clients → apps/api/src/generated/ (run by prepare)
 pnpm test:authz      # the authorization matrix alone (also part of pnpm check)
 pnpm test:dast       # ZAP against a locally started Cloud + gate (needs Docker)
 pnpm conformance     # the conformance suite against libs/core and every gate target present
@@ -393,9 +394,33 @@ in-memory port doubles; a cross-tenant isolation suite covers every endpoint.
 - One Prisma schema per provider (`prisma/sqlite/`, `prisma/postgresql/`) with its own migration
   history; a test keeps them structurally equal. CHECK constraints hand-written in the migration
   SQL, as in lazy-koins (copy them back after a table redefinition).
-- MySQL/MariaDB (DT-03) later, same pattern.
+- MySQL/MariaDB (DT-03) later, same pattern — open: `@prisma/adapter-mariadb` needs the `mariadb`
+  driver (LGPL-2.1), which the MIT rule does not obviously allow. Ask.
 - The desktop's storage choice (DT-03) is a `StoragePort` in core: project folder (default,
   files and Git), SQLite, external DB. **External backends store ciphertext and signed bundles only.**
+
+As built (DT-03):
+
+- **Prisma 7.10** (`prisma-client` generator, CJS) in `apps/api/prisma/{sqlite,postgresql}/`
+  (`schema.prisma`, `prisma.config.ts`, `migrations/`). The clients are generated into
+  `apps/api/src/generated/` (ignored) by `pnpm db:generate`, which `pnpm install` runs
+  (`prepare`). Nothing outside `apps/api/src/persistence/` imports Prisma, `pg` or `node:sqlite`
+  (ESLint).
+- **SQLite without a native module:** `persistence/database/node-sqlite-adapter.ts` is a Prisma
+  driver adapter on Node's built-in `node:sqlite` (works in Node 22 and Electron 42), so there is
+  no better-sqlite3 and no ABI pin. PostgreSQL through `@prisma/adapter-pg` on `pg` (pure JS).
+- **Migrations:** our own migrator (`persistence/database/migrator.ts`, as lazy-koins) applies the
+  bundled migration SQL (`?raw` imports; webpack `asset/source`) in a lock (`BEGIN IMMEDIATE` /
+  `pg_advisory_xact_lock`), records them in `_prisma_migrations`, and refuses foreign tables
+  (`foreign_tables`), a newer schema (`schema_newer`) and a changed one (`schema_damaged`). Never
+  `prisma migrate deploy` at runtime. A new migration: `prisma migrate diff` into both providers'
+  folders, hand-written CHECKs/triggers added to both, `MIGRATIONS` in `migrations.ts` extended.
+- **Tables:** `history_entry` (append-only by trigger), `sync_project`, `sync_gate`, `sync_secret`,
+  `sync_bundle` (no UPDATE); CHECKs refuse anything but sealed secrets and signed bundles.
+- **Tests:** `pnpm test:integration` (`apps/api/vitest.integration.config.ts`,
+  `*.integration.spec.ts`) runs SQLite for real and PostgreSQL from `MOAT_TEST_POSTGRES_URL`, or
+  a throwaway cluster from the local `initdb`/`postgres` (16/17) on a free port
+  (`persistence/database/testing/postgres-cluster.ts`).
 
 ## Auth
 

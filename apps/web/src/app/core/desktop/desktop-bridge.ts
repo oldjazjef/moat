@@ -105,6 +105,25 @@ export type DeployResult =
   | { status: 'git_failed' }
   | { status: 'failed' };
 
+/**
+ * «Externe Datenbank» (DT-03, DT-13): what the page learns of the database window — counts only;
+ * the connection string and the issues' details stay in the window.
+ */
+export type DatabaseResult =
+  | {
+      status: 'done';
+      direction: 'push' | 'pull';
+      /** moat.yaml was written. */
+      config: boolean;
+      gates: number;
+      secrets: number;
+      bundles: number;
+      /** Conflicts and notes the window listed; nothing was overwritten for them. */
+      issues: number;
+    }
+  | { status: 'cancelled' }
+  | { status: 'failed' };
+
 export interface DesktopBridge {
   readonly platform: string;
   readonly project: {
@@ -165,6 +184,14 @@ export interface DesktopBridge {
       target: DeployTarget,
       locale: string,
     ): Promise<DeployResult>;
+  };
+  /**
+   * Opens the main process's database window for the project (DT-03): the connection string is
+   * typed there, never in the page, and the page learns only the counts. Optional only so test
+   * doubles need not stub it; the desktop's preload always provides it.
+   */
+  readonly database?: {
+    open(projectId: string, locale: string): Promise<DatabaseResult>;
   };
 }
 

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { desktopApiEnv } from './lib/api-env';
 import type { SigningKeyInfo } from '../shared/bridge';
 import type { PrepareDeployResult } from './lib/deploy';
+import type { SyncAnswer } from './lib/database';
 import type { PrepareSealResult, SealResult } from './lib/sealing';
 import type { PlanSigner, PrepareResult, SignResult } from './lib/signing';
 
@@ -69,6 +70,31 @@ interface ApiBundle {
     signer: PlanSigner,
   ): Promise<PrepareDeployResult>;
   zipFiles(entries: readonly { name: string; data: Uint8Array }[]): Uint8Array;
+  syncDatabase(
+    api: ApiHandle,
+    id: string,
+    input: {
+      url: string;
+      key: string;
+      direction: 'push' | 'pull';
+      signer: PlanSigner;
+    },
+  ): Promise<SyncAnswer>;
+  databaseLabel(
+    url: string,
+  ):
+    | { status: 'ok'; label: string }
+    | { status: 'refused'; code: 'url_invalid' | 'tls_required' };
+  recordDeploy(
+    api: ApiHandle,
+    id: string,
+    deploy: {
+      gate: string;
+      version: number;
+      target: 'zip' | 'folder' | 'sftp' | 'git';
+      sha256: string;
+    },
+  ): Promise<void>;
 }
 
 export interface RunningApi {
@@ -123,6 +149,20 @@ export interface RunningApi {
     signer: PlanSigner,
   ): Promise<PrepareDeployResult>;
   zipFiles(entries: readonly { name: string; data: Uint8Array }[]): Uint8Array;
+  /** In-process only (DT-03): the connection string comes from the database window. */
+  syncDatabase(
+    id: string,
+    url: string,
+    key: string,
+    direction: 'push' | 'pull',
+    signer: PlanSigner,
+  ): Promise<SyncAnswer>;
+  databaseLabel: ApiBundle['databaseLabel'];
+  /** A finished deploy (DT-05) into the project's history, if it keeps one. */
+  recordDeploy(
+    id: string,
+    deploy: Parameters<ApiBundle['recordDeploy']>[2],
+  ): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -168,6 +208,10 @@ export async function startApi(options: {
     prepareDeploy: (id, gate, signer) =>
       api.prepareDeploy(running, id, gate, signer),
     zipFiles: (entries) => api.zipFiles(entries),
+    syncDatabase: (id, url, key, direction, signer) =>
+      api.syncDatabase(running, id, { url, key, direction, signer }),
+    databaseLabel: (url) => api.databaseLabel(url),
+    recordDeploy: (id, deploy) => api.recordDeploy(running, id, deploy),
     close: () => running.app.close(),
   };
 }
