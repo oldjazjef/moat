@@ -101,6 +101,18 @@ describe('parseDatabaseUrl (TLS required but for this machine)', () => {
     });
   });
 
+  it('answers a malformed percent escape with url_invalid, never a thrown URIError', () => {
+    for (const url of [
+      'postgresql://moat:x@localhost/te%zzam',
+      'postgresql://mo%zzat:x@localhost/team',
+      'postgresql://moat:p%zz@localhost/team',
+    ])
+      expect(parseDatabaseUrl(url)).toEqual({
+        status: 'refused',
+        code: 'url_invalid',
+      });
+  });
+
   it('allows plain connections to this machine only', () => {
     for (const host of ['localhost', '127.0.0.1', '[::1]']) {
       const parsed = parseDatabaseUrl(`postgresql://moat:x@${host}:5432/moat`);

@@ -103,6 +103,7 @@ const UNSAFE_KEYS = [
   /^includeif\./,
   /^url\./,
   /^protocol\./,
+  /^https?\./,
   /^remote\.[^\n]*\.(?:receivepack|uploadpack|vcs|proxy)$/,
   /^core\.(?:sshcommand|askpass|gitproxy|alternaterefscommand)$/,
   /^commit\.gpgsign$/,

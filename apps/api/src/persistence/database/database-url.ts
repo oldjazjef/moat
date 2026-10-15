@@ -49,8 +49,17 @@ export function parseDatabaseUrl(text: string): DatabaseUrl {
   if (host === '' || (!HOST.test(host) && isIP(host) !== 6)) return invalid;
   const port = url.port === '' ? 5432 : Number(url.port);
   if (!Number.isInteger(port) || port < 1 || port > 65535) return invalid;
-  const database = decodeURIComponent(url.pathname.replace(/^\//, ''));
-  const user = decodeURIComponent(url.username);
+  let database: string;
+  let user: string;
+  let password: string;
+  try {
+    database = decodeURIComponent(url.pathname.replace(/^\//, ''));
+    user = decodeURIComponent(url.username);
+    password = decodeURIComponent(url.password);
+  } catch {
+    // A malformed percent escape (`%zz`) is a bad URL, not a crash.
+    return invalid;
+  }
   if (!NAME.test(database) || database.includes('/') || !NAME.test(user))
     return invalid;
   let sslmode: string | null = null;
@@ -71,7 +80,7 @@ export function parseDatabaseUrl(text: string): DatabaseUrl {
       port,
       database,
       user,
-      password: decodeURIComponent(url.password),
+      password,
       // Verified always: rejectUnauthorized + the host name (pg checks it via servername).
       ssl: tls
         ? {
