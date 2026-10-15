@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Moat\Gate\Runtime;
 
+use Moat\Gate\Bundle\PinnedPasskey;
 use Moat\Gate\Bundle\PinnedSigner;
 use Moat\Gate\Crypto\KeyAlgorithm;
 use Moat\Gate\Crypto\KeyId;
@@ -94,9 +95,9 @@ final class SetupMode
             'gateId' => $identity->gateId,
             'boxKey' => Base64Url::encode($identity->boxPublicKey),
             'boxKeyFingerprint' => KeyId::fingerprint(KeyAlgorithm::X25519, $identity->boxPublicKey),
-            'signers' => array_map(static fn(PinnedSigner $signer): array => [
+            'signers' => array_map(static fn(PinnedSigner|PinnedPasskey $signer): array => [
                 'kid' => $signer->kid,
-                'fingerprint' => KeyId::fingerprint(KeyAlgorithm::Ed25519, $signer->publicKey),
+                'fingerprint' => KeyId::fingerprint($signer->alg, $signer->publicKey),
             ], $trust->signers),
             'threshold' => $trust->threshold,
             'mode' => $trust->mode,

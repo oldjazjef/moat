@@ -81,6 +81,14 @@ final class Kernel
         }
         try {
             $gate = Gate::open($gateDir);
+            // docs/CRYPTO.md §7.4: trust mode 2 verifies ECDSA with ext-openssl; without it the
+            // gate serves nothing (a clear log code), it never lets a passkey bundle through.
+            if ($gate->trust?->missingExtension() !== null) {
+                self::log(null, 'extension_missing');
+                Response::error(GateError::GateNotConfigured)->send();
+
+                return;
+            }
             self::pull($gate);
             $bundle = $gate->active(time());
         } catch (NotConfigured) {

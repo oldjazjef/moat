@@ -8,7 +8,7 @@ namespace Moat\Gate\Bundle;
 final readonly class VerificationContext
 {
     /**
-     * @param list<PinnedSigner> $signers   keys of the active trust mode
+     * @param list<PinnedSigner|PinnedPasskey> $signers keys of the active trust mode (one kind, never mixed)
      * @param int                $threshold valid signatures required (at least 1 is enforced)
      * @param int                $currentVersion highest version accepted so far; 0 before the first
      * @param int                $now       seconds since the epoch
