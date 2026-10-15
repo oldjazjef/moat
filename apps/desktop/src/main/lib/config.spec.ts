@@ -34,9 +34,11 @@ describe('desktop config', () => {
   it('keeps the other fields when one changes, readable by this user only', () => {
     updateConfig(dir, { keyFile: '/home/me/release.moatkey' });
     updateConfig(dir, { passphrases: { [KID]: 'c2VhbGVk' } });
+    updateConfig(dir, { previousKey: 'P'.repeat(43) });
     expect(readConfig(dir)).toEqual({
       projectDir: null,
       keyFile: '/home/me/release.moatkey',
+      previousKey: 'P'.repeat(43),
       passphrases: { [KID]: 'c2VhbGVk' },
       deployed: {},
       sftpTargets: {},
@@ -54,6 +56,7 @@ describe('desktop config', () => {
       'null',
       '{"projectDir":"relative/dir","keyFile":"key.moatkey"}',
       '{"projectDir":42,"passphrases":[]}',
+      '{"previousKey":"not a key"}',
     ]) {
       writeFileSync(join(dir, CONFIG_FILE), content);
       expect(readConfig(dir)).toEqual(EMPTY_CONFIG);

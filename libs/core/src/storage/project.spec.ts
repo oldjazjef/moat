@@ -161,7 +161,10 @@ describe('readProject', () => {
             }),
           ),
         ),
-        sigs: [],
+        sigs: [
+          { kid: 'KIDKIDKIDKIDKIDKIDKID0', alg: 'ed25519', sig: 'x' },
+          { kid: '../not-a-kid', alg: 'ed25519', sig: 'x' },
+        ],
       });
     const yaml = RECIPE.replace(
       /^version: 1$/m,
@@ -198,6 +201,7 @@ gates:
     expect(byName['site']).toMatchObject({
       lock: { environment: 'staging', environmentLocked: true, enabled: false },
       latestBundleLocked: true,
+      latestBundleSigners: ['KIDKIDKIDKIDKIDKIDKID0'],
     });
     expect(byName['shop']).toMatchObject({
       lock: { environment: 'production', gateLocked: true, enabled: false },
@@ -206,6 +210,7 @@ gates:
     expect(byName['loose']).toMatchObject({
       lock: { environment: null, enabled: true },
       latestBundleLocked: null,
+      latestBundleSigners: null,
     });
     // A bundle for another gate id says nothing about this gate.
     expect(byName['forged']).toMatchObject({ latestBundleLocked: null });

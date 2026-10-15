@@ -180,6 +180,7 @@ export const PROJECT: ProjectView = {
           enabled: true,
         },
         latestBundleLocked: false,
+        latestBundleSigners: null,
       },
     ],
   },

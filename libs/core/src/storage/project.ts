@@ -84,6 +84,11 @@ export type GateState =
        * bundle or it cannot be read. Read for display only: the gate verifies, not the desktop.
        */
       readonly latestBundleLocked: boolean | null;
+      /**
+       * The key ids in the latest bundle's signatures (SEC-08: which key signed it, for the
+       * rotation guide). Null without a readable bundle. Display only, not verified here.
+       */
+      readonly latestBundleSigners: readonly string[] | null;
     };
 
 export interface ProjectState {
@@ -184,6 +189,8 @@ async function readGate(
     lock: config === null ? null : gateLockState(config, name),
     latestBundleLocked:
       latest === 0 ? null : bundleLocked(storage, name, latest, file['gateId']),
+    latestBundleSigners:
+      latest === 0 ? null : bundleSigners(storage, name, latest),
   };
 }
 
@@ -208,6 +215,23 @@ function bundleLocked(
   )
     return null;
   return payload['config']['enabled'] === false;
+}
+
+/** The `kid`s of a bundle file's signatures; null when it is no envelope. */
+function bundleSigners(
+  storage: StoragePort,
+  gate: string,
+  version: number,
+): string[] | null {
+  const envelope = parseJson(storage.read(`bundles/${gate}/${version}.json`));
+  if (!isRecord(envelope) || !Array.isArray(envelope['sigs'])) return null;
+  return envelope['sigs'].flatMap((entry: unknown) =>
+    isRecord(entry) &&
+    typeof entry['kid'] === 'string' &&
+    /^[A-Za-z0-9_-]{22}$/.test(entry['kid'])
+      ? [entry['kid']]
+      : [],
+  );
 }
 
 function readSecrets(storage: StoragePort, gate: string): SealedSecretInfo[] {

@@ -177,6 +177,8 @@ export type GateState =
       readonly lock: GateLockState | null;
       /** Whether the latest bundle carries the lock; null without a readable bundle. */
       readonly latestBundleLocked: boolean | null;
+      /** Key ids in the latest bundle's signatures (SEC-08); null without a readable bundle. */
+      readonly latestBundleSigners: readonly string[] | null;
     };
 
 export interface ProjectState {

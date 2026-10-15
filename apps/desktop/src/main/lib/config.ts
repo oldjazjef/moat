@@ -15,6 +15,8 @@ export const CONFIG_FILE = 'config.json';
 
 /** A key id as core hands it out (docs/CRYPTO.md §2: 16 bytes, base64url). */
 const KID = /^[A-Za-z0-9_-]{22}$/;
+/** An Ed25519 public key, base64url (32 bytes). */
+const PUBLIC_KEY = /^[A-Za-z0-9_-]{43}$/;
 
 export interface DesktopConfig {
   /**
@@ -24,6 +26,11 @@ export interface DesktopConfig {
   readonly projectDir: string | null;
   /** The `.moatkey` file chosen for signing bundles (the same file the CLI uses). */
   readonly keyFile: string | null;
+  /**
+   * SEC-08: the public key (base64url) of the key used before the current one, while a key
+   * rotation is not finished; the gates still pin it next to the new one. Public only.
+   */
+  readonly previousKey: string | null;
   /**
    * Passphrases the person asked to remember, by the key file's kid: encrypted with Electron
    * `safeStorage` (the OS keychain, DT-04), base64. Never plain text in this file.
@@ -59,6 +66,7 @@ export interface DeployedPackage {
 export const EMPTY_CONFIG: DesktopConfig = {
   projectDir: null,
   keyFile: null,
+  previousKey: null,
   passphrases: {},
   deployed: {},
   sftpTargets: {},
@@ -129,6 +137,11 @@ export function readConfig(userData: string): DesktopConfig {
     return {
       projectDir: absolute(value['projectDir']),
       keyFile: absolute(value['keyFile']),
+      previousKey:
+        typeof value['previousKey'] === 'string' &&
+        PUBLIC_KEY.test(value['previousKey'])
+          ? value['previousKey']
+          : null,
       passphrases,
       deployed,
       sftpTargets,
