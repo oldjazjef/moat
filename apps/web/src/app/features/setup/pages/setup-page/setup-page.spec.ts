@@ -1,4 +1,7 @@
-import { HttpTestingController } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  type TestRequest,
+} from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import type { ProjectSummary } from '../../../../core/api/project.types';
@@ -371,6 +374,177 @@ describe('SetupPage (FR-73)', () => {
       el.querySelector('[data-gate-notice]')?.getAttribute('data-code'),
     ).toBe('rejected');
     expect(el.querySelector<HTMLInputElement>('#gate-id')?.value).toBe('');
+  });
+
+  describe('«Vom Gate abrufen» (SEC-28, T-73)', () => {
+    const gateId = 'g'.repeat(22);
+    const boxKey = 'B'.repeat(42) + 'A';
+    const TOKEN = 'T'.repeat(43);
+    const identity = (fingerprint: string) => ({
+      gateId,
+      boxKey,
+      boxKeyFingerprint: 'MOAT-BOXK-EY00',
+      signers: [{ kid: 'k'.repeat(22), fingerprint }],
+      threshold: 1,
+      mode: 1,
+    });
+    const withKey = () =>
+      (window.moatDesktop = bridge({
+        key: {
+          status: vi
+            .fn()
+            .mockResolvedValue({ status: 'ready', key: KEY, previous: null }),
+          choose: vi.fn(),
+          create: vi.fn(),
+          rotationDone: vi.fn(),
+        },
+      }));
+    const type = (el: HTMLElement, selector: string, value: string) => {
+      const input = field(el, selector);
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    };
+    async function fetchFromGate(
+      el: HTMLElement,
+      harness: { detectChanges(): void },
+    ) {
+      if (el.querySelector('#gate-fetch-url') === null)
+        click(el, '[data-gate-fetch-toggle]');
+      await settle(harness);
+      type(el, '#gate-fetch-url', 'https://www.example.ch/moat-gate.php');
+      type(el, '#gate-fetch-token', TOKEN);
+      click(el, '[data-gate-fetch-run]');
+      await settle(harness);
+      return http().expectOne(`/api/projects/${PROJECT.id}/gates/setup`);
+    }
+
+    it('fills gate id and box key, shows the fingerprints and that the own signer is pinned, and still needs the confirmation', async () => {
+      withKey();
+      const { el, harness } = await open(view('gate'));
+      const request = await fetchFromGate(el, harness);
+      expect(request.request.body).toEqual({
+        url: 'https://www.example.ch/moat-gate.php',
+        token: TOKEN,
+        locale: expect.any(String),
+      });
+      request.flush({ status: 'read', identity: identity(KEY.fingerprint) });
+      await settle(harness);
+      expect(field(el, '#gate-id').value).toBe(gateId);
+      expect(field(el, '#gate-box-key').value).toBe(boxKey);
+      expect(text(el.querySelector('[data-gate-fetch-box]'))).toBe(
+        'MOAT-BOXK-EY00',
+      );
+      expect(
+        [...el.querySelectorAll('[data-gate-fetch-signer]')].map((node) =>
+          text(node),
+        ),
+      ).toEqual([KEY.fingerprint]);
+      expect(
+        el
+          .querySelector('[data-gate-fetch-signer-state]')
+          ?.getAttribute('data-gate-fetch-signer-state'),
+      ).toBe('pinned');
+      expect(text(el.querySelector('[data-gate-fetch-result]'))).toContain(
+        'Dein Signaturschlüssel ist auf dem Gate gepinnt',
+      );
+      // Nothing is pinned yet, and the token is not kept in the form.
+      http().expectNone(`/api/projects/${PROJECT.id}/gates`);
+      expect(field(el, '#gate-fetch-token').value).toBe('');
+
+      click(el, '[data-gate-check]');
+      await settle(harness);
+      expect(
+        http().expectOne(`/api/projects/${PROJECT.id}/gates/check`).request
+          .body,
+      ).toEqual({ name: 'www', gateId, boxKey });
+    });
+
+    it('warns clearly when the own signing key is not pinned on the gate', async () => {
+      withKey();
+      const { el, harness } = await open(view('gate'));
+      (await fetchFromGate(el, harness)).flush({
+        status: 'read',
+        identity: identity('MOAT-OTHE-R000'),
+      });
+      await settle(harness);
+      const state = el.querySelector('[data-gate-fetch-signer-state]');
+      expect(state?.getAttribute('data-gate-fetch-signer-state')).toBe(
+        'missing',
+      );
+      expect(text(state)).toContain('nicht gepinnt');
+      expect(state?.getAttribute('role')).toBe('alert');
+    });
+
+    it('cannot compare without a chosen signing key, and says so', async () => {
+      window.moatDesktop = bridge();
+      const { el, harness } = await open(view('gate'));
+      (await fetchFromGate(el, harness)).flush({
+        status: 'read',
+        identity: identity(KEY.fingerprint),
+      });
+      await settle(harness);
+      expect(
+        el
+          .querySelector('[data-gate-fetch-signer-state]')
+          ?.getAttribute('data-gate-fetch-signer-state'),
+      ).toBe('unknown');
+    });
+
+    it('has a text for every refusal and every reason no answer came', async () => {
+      window.moatDesktop = bridge();
+      const { el, harness } = await open(view('gate'));
+      const shown = async (flush: (r: TestRequest) => void) => {
+        flush(await fetchFromGate(el, harness));
+        await settle(harness);
+        const error = el.querySelector('[data-gate-fetch-error]');
+        return [error?.getAttribute('data-code'), text(error)] as const;
+      };
+      for (const code of [
+        'url_invalid',
+        'not_confirmed',
+        'busy',
+        'setup_off',
+        'answer_invalid',
+      ]) {
+        const [shownCode, message] = await shown((r) =>
+          r.flush({ error: code }, { status: 422, statusText: 'x' }),
+        );
+        expect(shownCode).toBe(code);
+        expect(message).not.toContain('setup.gate.fetch');
+        expect(message.length).toBeGreaterThan(10);
+      }
+      for (const reason of ['address_forbidden', 'tls', 'timeout']) {
+        const [shownCode] = await shown((r) =>
+          r.flush({ status: 'failed', reason }),
+        );
+        expect(shownCode).toBe(reason);
+      }
+      const [unknown] = await shown((r) =>
+        r.flush('x', { status: 500, statusText: 'x' }),
+      );
+      expect(unknown).toBe('failed');
+      expect(field(el, '#gate-id').value).toBe('');
+    });
+
+    it('refuses a token of the wrong shape without a request', async () => {
+      window.moatDesktop = bridge();
+      const { el, harness } = await open(view('gate'));
+      click(el, '[data-gate-fetch-toggle]');
+      await settle(harness);
+      type(el, '#gate-fetch-url', 'https://www.example.ch/moat-gate.php');
+      type(el, '#gate-fetch-token', 'short');
+      click(el, '[data-gate-fetch-run]');
+      await settle(harness);
+      http().expectNone(`/api/projects/${PROJECT.id}/gates/setup`);
+      expect(
+        el.querySelector('[data-gate-fetch-error]')?.getAttribute('data-code'),
+      ).toBe('token_invalid');
+    });
+
+    it('does not exist outside Moat Desktop', async () => {
+      const { el } = await open(view('gate'));
+      expect(el.querySelector('[data-gate-fetch]')).toBeNull();
+    });
   });
 
   it('shows the trust mode only once a gate exists, never a hardening level, and finishes', async () => {

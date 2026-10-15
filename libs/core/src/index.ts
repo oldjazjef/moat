@@ -324,3 +324,15 @@ export {
   type SyncIssue,
   type SyncIssueCode,
 } from './storage/sync';
+export {
+  MAX_SETUP_ANSWER_BYTES,
+  MAX_SETUP_SIGNERS,
+  parseSetupAnswer,
+  SETUP_QUERY,
+  SETUP_TOKEN,
+  SETUP_TOKEN_HEADER,
+  SetupAnswerError,
+  type GateSetupIdentity,
+  type GateSetupSigner,
+  type SetupAnswerErrorCode,
+} from './gate/setup-answer';

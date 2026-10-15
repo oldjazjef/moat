@@ -583,6 +583,37 @@
         "required": "Trage ein Gate ein, oder klicke auf «Später».",
         "rejected": "Nichts wurde gespeichert. Kopiere Gate-ID und Box-Schlüssel noch einmal aus der Ausgabe genau dieses Gates.",
         "noProject": "Wähle zuerst ein Projekt."
+      },
+      "fetch": {
+        "toggle": "Vom Gate abrufen",
+        "intro": "Hast du keinen Zugang zum Server? Das Gate zeigt Gate-ID und Box-Schlüssel nach `install` oder `php moat-gate.php setup` 30 Minuten lang unter seiner Adresse an. Du brauchst dazu das Setup-Token, das der Befehl einmal ausgegeben hat.",
+        "url": "Adresse des Gates",
+        "urlHint": "Die Adresse von `moat-gate.php`, zum Beispiel https://www.example.ch/api/moat-gate.php.",
+        "token": "Setup-Token",
+        "tokenHint": "Das Token wird nur für diese eine Anfrage verwendet und nicht gespeichert.",
+        "run": "Jetzt abrufen",
+        "read": "Vom Gate abgerufen.",
+        "boxFingerprint": "Fingerprint des Box-Schlüssels",
+        "signers": "Auf dem Gate gepinnte Signaturschlüssel",
+        "signerPinned": "Dein Signaturschlüssel ist auf dem Gate gepinnt.",
+        "signerMissing": "Achtung: Dein Signaturschlüssel ist auf dem Gate nicht gepinnt. Das Gate würde deine Bundles ablehnen. Prüfe, ob bei `install` der richtige `--signer` angegeben wurde.",
+        "signerUnknown": "Du hast noch keinen Signaturschlüssel gewählt. Darum kann nicht geprüft werden, ob er auf dem Gate gepinnt ist.",
+        "claim": "Diese Angaben meldet das Gate selbst über HTTPS. Den Fingerprint des Box-Schlüssels berechnet Moat Desktop aus dem Schlüssel neu.",
+        "next": "Gate-ID und Box-Schlüssel sind unten eingetragen. Klicke auf «Prüfen» und bestätige den Fingerprint, bevor das Gate gespeichert wird.",
+        "errors": {
+          "url_invalid": "Das ist nicht die https-Adresse einer Datei `moat-gate.php`. Trage sie ohne Parameter ein.",
+          "token_invalid": "Das Setup-Token hat 43 Zeichen (Buchstaben, Ziffern, - und _). Kopiere es genau so, wie das Gate es ausgegeben hat.",
+          "not_confirmed": "Die Adresse wurde nicht bestätigt. Es wurde nichts gesendet.",
+          "busy": "Es läuft schon eine Anfrage. Warte kurz und versuche es noch einmal.",
+          "setup_off": "Das Gate antwortet nicht mit seiner Identität. Der Setup-Modus ist aus, abgelaufen, oder das Token stimmt nicht. Das Gate sagt nicht, was davon zutrifft. Starte ihn mit `php moat-gate.php setup` neu.",
+          "answer_invalid": "Die Antwort sieht nicht nach der Identität eines Gates aus. Es wurde nichts übernommen.",
+          "address_forbidden": "Diese Adresse führt zu einem nicht erlaubten Ziel (privat oder lokal). Es wurde nichts gesendet.",
+          "not_found": "Der Server dieser Adresse wurde nicht gefunden.",
+          "unreachable": "Der Server ist nicht erreichbar.",
+          "timeout": "Der Server hat nicht rechtzeitig geantwortet.",
+          "tls": "Das Zertifikat des Servers ist nicht gültig für diese Adresse. Es wurde nichts übernommen.",
+          "failed": "Das hat nicht geklappt. Versuche es noch einmal."
+        }
       }
     },
     "recipe": {
@@ -810,12 +841,14 @@
           "install": "Führe auf dem Server `php moat-gate.php install --signer=<öffentlicher Schlüssel>` aus. Das Gate legt einen geschützten Datenordner an und gibt Gate-ID, Box-Schlüssel und Fingerprints aus.",
           "add": "Trage das Gate in deinem Projektordner ein, mit der Zeile `moat gate add`, die das Gate ausgegeben hat.",
           "addDesktop": "In Moat Desktop trägst du das Gate unter «Einrichtung» › «Erstes Gate» ein und vergleichst dort den Fingerprint, bevor es gespeichert wird.",
+          "fetchDesktop": "Hast du keinen Zugang zum Server, klicke unter «Einrichtung» › «Erstes Gate» auf «Vom Gate abrufen». Trage die Adresse von `moat-gate.php` und das Setup-Token ein, das `install` oder `php moat-gate.php setup` einmal ausgegeben hat. Moat Desktop liest Gate-ID und Box-Schlüssel vom Gate, zeigt die Fingerprints und ob dein Signaturschlüssel auf dem Gate gepinnt ist. Gespeichert wird das Gate erst, wenn du den Fingerprint bestätigst.",
           "compare": "Vergleiche den Fingerprint, den das CLI ausgibt, Gruppe für Gruppe mit dem des Gates.",
           "check": "Unter «Gates» siehst du jedes eingetragene Gate mit Gate-ID und Fingerprint."
         },
         "tips": {
           "mismatch": "Weicht eine Gruppe ab, lösche die Gate-Datei und trage das Gate neu ein.",
-          "php": "Das Gate braucht PHP 8.2 oder neuer mit den Erweiterungen sodium, curl, json und hash."
+          "php": "Das Gate braucht PHP 8.2 oder neuer mit den Erweiterungen sodium, curl, json und hash.",
+          "setupMode": "Der Setup-Modus des Gates ist 30 Minuten offen und endet, sobald ein neues Bundle ankommt. Er zeigt nur Öffentliches. Ist er aus, startest du ihn auf dem Server mit `php moat-gate.php setup` neu."
         }
       },
       "hardening": {

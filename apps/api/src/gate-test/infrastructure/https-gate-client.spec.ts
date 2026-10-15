@@ -87,6 +87,27 @@ describe('HttpsGateClient (T-59)', () => {
     expect(seen.headers?.['cookie']).toBeUndefined();
   });
 
+  it('setup (T-73): a GET with the token header and nothing else extra', async () => {
+    const { url, seen } = await fakeGate(() => ({
+      status: 404,
+      body: '{"error":"not_found"}',
+    }));
+    const target = new URL(`${url.origin}/moat-gate.php?moat-setup`);
+    const reply = await new HttpsGateClient(env(true)).setup(
+      target,
+      'T'.repeat(43),
+    );
+    expect(reply).toMatchObject({ status: 'answered', httpStatus: 404 });
+    expect(seen.method).toBe('GET');
+    expect(seen.url).toBe('/moat-gate.php?moat-setup');
+    expect(seen.body).toBe('');
+    expect(seen.headers?.['x-moat-setup-token']).toBe('T'.repeat(43));
+    expect(seen.headers?.['accept-encoding']).toBe('identity');
+    expect(seen.headers?.['origin']).toBeUndefined();
+    expect(seen.headers?.['cookie']).toBeUndefined();
+    expect(seen.headers?.['authorization']).toBeUndefined();
+  });
+
   it('never follows a redirect', async () => {
     const { url } = await fakeGate(() => ({
       status: 302,

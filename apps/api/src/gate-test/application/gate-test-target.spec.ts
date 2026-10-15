@@ -1,5 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { gateTestTarget } from './gate-test-target';
+import { gateSetupTarget, gateTestTarget } from './gate-test-target';
+
+describe('gateSetupTarget (SEC-28, T-73)', () => {
+  it('is the gate file with exactly ?moat-setup', () => {
+    expect(
+      gateSetupTarget('https://www.example.ch/api/moat-gate.php', false)?.href,
+    ).toBe('https://www.example.ch/api/moat-gate.php?moat-setup');
+    expect(gateSetupTarget('http://127.0.0.1:8080/g.php', true)?.href).toBe(
+      'http://127.0.0.1:8080/g.php?moat-setup',
+    );
+  });
+
+  it('refuses a folder, any query or fragment, credentials and plain HTTP', () => {
+    for (const url of [
+      'https://www.example.ch/api/',
+      'https://www.example.ch/',
+      'https://www.example.ch/a.php/b',
+      'https://www.example.ch/a.php?x=1',
+      'https://www.example.ch/a.php?',
+      'https://www.example.ch/a.php#x',
+      'https://u:p@www.example.ch/a.php',
+      'http://www.example.ch/a.php',
+    ])
+      expect(gateSetupTarget(url, false)).toBeNull();
+    expect(gateSetupTarget('http://127.0.0.1:8080/g.php', false)).toBeNull();
+  });
+});
 
 const target = (url: string, loopback = false) =>
   gateTestTarget(url, '/newsletter', loopback)?.href ?? null;

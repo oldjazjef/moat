@@ -4,6 +4,7 @@ import { request as httpsRequest } from 'node:https';
 import type { LookupFunction } from 'node:net';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SETUP_TOKEN_HEADER } from '@moat/core';
 import type { Env } from '../../config/env';
 import {
   GateClientPort,
@@ -67,6 +68,23 @@ export class HttpsGateClient extends GateClientPort {
     };
   }
 
+  /** The setup mode's GET (SEC-28, T-73): the same pinning and limits, plus the token header. */
+  async setup(url: URL, token: string): Promise<ProbeReply> {
+    const raw = await this.resolveAndExchange({
+      url,
+      method: 'GET',
+      body: null,
+      headers: { [SETUP_TOKEN_HEADER]: token },
+    });
+    if (raw.status === 'failed') return raw;
+    return {
+      status: 'answered',
+      httpStatus: raw.httpStatus,
+      contentEncoding: raw.contentEncoding,
+      body: raw.body,
+    };
+  }
+
   private async resolveAndExchange(request: GateRequest): Promise<RawAnswer> {
     const host = request.url.hostname.replace(/^\[|\]$/g, '');
     const loopback =
@@ -120,6 +138,7 @@ export class HttpsGateClient extends GateClientPort {
           lookup: pin,
           agent: false,
           headers: {
+            ...request.headers,
             Accept: 'application/json',
             // The marker must be found in the bytes as they are (DT-07): no compression.
             'Accept-Encoding': 'identity',

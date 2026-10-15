@@ -4,6 +4,8 @@ export interface GateRequest {
   readonly method: string;
   /** JSON text, or null for a method without a body. */
   readonly body: string | null;
+  /** Extra headers; set by the client's own methods only, never by a caller's input. */
+  readonly headers?: Readonly<Record<string, string>>;
 }
 
 export type GateAnswer =
@@ -52,4 +54,10 @@ export type ProbeReply =
 export abstract class GateClientPort {
   abstract send(request: GateRequest): Promise<GateAnswer>;
   abstract probe(url: URL): Promise<ProbeReply>;
+  /**
+   * One GET of the gate's setup mode (SEC-28, T-73): `url` is the gate file with `?moat-setup`,
+   * the token goes in the header `X-Moat-Setup-Token` and nowhere else. The raw body is for the
+   * API to parse and wipe; it is never handed to the page.
+   */
+  abstract setup(url: URL, token: string): Promise<ProbeReply>;
 }
