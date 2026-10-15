@@ -180,8 +180,11 @@ final class ClientCheck
     private static function signatureValid(JwtKey $key, string $input, string $signature): bool
     {
         if ($key->alg === JwtAlg::EdDSA) {
-            return \strlen($signature) === SODIUM_CRYPTO_SIGN_BYTES
-                && sodium_crypto_sign_verify_detached($signature, $input, substr($key->spki, 12));
+            $publicKey = substr($key->spki, 12);
+
+            return $publicKey !== ''
+                && \strlen($signature) === SODIUM_CRYPTO_SIGN_BYTES
+                && sodium_crypto_sign_verify_detached($signature, $input, $publicKey);
         }
         // ES256 and RS256 need ext-openssl; without it nobody gets in, and the host is at fault.
         if (!\extension_loaded('openssl')) {

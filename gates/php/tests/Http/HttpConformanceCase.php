@@ -103,7 +103,7 @@ abstract class HttpConformanceCase extends TestCase
     {
         if (\array_key_exists('log', $expect)) {
             $lines = explode("\n", rtrim($log, "\n"));
-            $last = json_decode((string) end($lines), true, 8, JSON_THROW_ON_ERROR);
+            $last = json_decode(end($lines), true, 8, JSON_THROW_ON_ERROR);
             self::assertIsArray($last, 'log line');
             self::assertSame(['client', 'error', 'method', 'ms', 'route', 'status', 't'], self::sortedKeys($last), 'log keys');
             foreach (Vectors::map($expect['log']) as $key => $value) {

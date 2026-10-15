@@ -27,6 +27,9 @@ final class Es256Test extends TestCase
             $data = random_bytes(40);
             $der = '';
             self::assertTrue(openssl_sign($data, $der, $key, OPENSSL_ALGO_SHA256));
+            if (!\is_string($der)) {
+                self::fail('no signature');
+            }
             self::assertTrue(Es256::isStrictDer($der), bin2hex($der));
             self::assertTrue(Es256::verify($point, $data, $der));
             self::assertFalse(Es256::verify($point, $data . 'x', $der));

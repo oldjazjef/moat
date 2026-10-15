@@ -91,7 +91,11 @@ final class TrustRotationCliTest extends TestCase
             512,
             JSON_THROW_ON_ERROR,
         );
-        file_put_contents($this->dir . '/bundle.json', GateFixture::bundle($config, [], $this->gateId, $signer ?? $this->signer, $version, $issuedAt));
+        $key = $signer ?? $this->signer;
+        if ($key === '') {
+            self::fail('no signing key');
+        }
+        file_put_contents($this->dir . '/bundle.json', GateFixture::bundle($config, [], $this->gateId, $key, $version, $issuedAt));
         [$status, $out] = $this->cli('accept', $this->dir . '/bundle.json');
         self::assertSame(0, $status, $out);
     }

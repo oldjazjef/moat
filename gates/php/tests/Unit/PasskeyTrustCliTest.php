@@ -242,9 +242,6 @@ final class PasskeyTrustCliTest extends TestCase
             512,
             JSON_THROW_ON_ERROR,
         );
-        if (!$config instanceof \stdClass) {
-            self::fail('the config is not an object');
-        }
 
         return $config;
     }
@@ -264,6 +261,9 @@ final class PasskeyTrustCliTest extends TestCase
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
         $der = '';
         self::assertTrue(openssl_sign($authenticatorData . hash('sha256', $clientData, true), $der, $this->passkey, OPENSSL_ALGO_SHA256));
+        if (!\is_string($der)) {
+            self::fail('no signature');
+        }
         $path = $this->dir . '/bundle.json';
         file_put_contents($path, json_encode([
             'moat' => 'bundle',

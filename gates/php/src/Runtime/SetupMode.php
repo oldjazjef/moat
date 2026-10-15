@@ -46,7 +46,7 @@ final class SetupMode
         $token = random_bytes(self::TOKEN_BYTES);
         $text = Base64Url::encode($token);
         sodium_memzero($token);
-        $gate->data->write(self::FILE, (string) json_encode([
+        $gate->data->write(self::FILE, json_encode([
             'v' => 1,
             'tokenHash' => Base64Url::encode(hash('sha256', $text, true)),
             'expiresAt' => $now + self::LIFETIME_SECONDS,
