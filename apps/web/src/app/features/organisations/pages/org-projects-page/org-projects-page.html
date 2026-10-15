@@ -1,0 +1,121 @@
+<mt-page-header
+  [title]="'orgProjects.title' | translate"
+  [subtitle]="service.scope.name()"
+>
+  <mt-help-link section="organisations" />
+</mt-page-header>
+
+<mt-org-tabs [orgId]="orgId()" />
+
+@if (service.scope.entry.error()) {
+<p class="mt-note" role="alert" data-not-found>
+  <ng-icon
+    name="lucideTriangleAlert"
+    size="16"
+    aria-hidden="true"
+    class="mt-0.5 shrink-0"
+  />
+  <span>{{ 'errors.api.not_found' | translate }}</span>
+</p>
+} @else if (service.scope.access()) {
+<div class="flex flex-col gap-6">
+  @if (service.projects.isLoading() && !service.projects.hasValue()) {
+  <p class="text-muted-foreground text-sm" role="status">
+    {{ 'common.loading' | translate }}
+  </p>
+  } @else if (service.projects.error()) {
+  <p class="mt-note" role="alert" data-load-error>
+    <ng-icon
+      name="lucideTriangleAlert"
+      size="16"
+      aria-hidden="true"
+      class="mt-0.5 shrink-0"
+    />
+    <span>{{ 'orgProjects.loadError' | translate }}</span>
+  </p>
+  } @else if (service.projects.hasValue() &&
+  service.projects.value().projects.length > 0) {
+  <div hlmTableContainer class="mt-panel" data-projects>
+    <table hlmTable>
+      <thead hlmTHead>
+        <tr hlmTr>
+          <th hlmTh>{{ 'orgProjects.columns.name' | translate }}</th>
+          <th hlmTh>{{ 'orgProjects.columns.created' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody hlmTBody>
+        @for (project of service.projects.value().projects; track project.id) {
+        <tr hlmTr data-project>
+          <td hlmTd class="font-medium" data-project-name>
+            {{ project.name }}
+          </td>
+          <td hlmTd class="text-muted-foreground">
+            {{ project.createdAt.slice(0, 10) }}
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  } @else if (service.projects.hasValue()) {
+  <p class="text-muted-foreground text-sm" data-no-project>
+    {{ 'orgProjects.empty' | translate }}
+  </p>
+  } @if (service.canCreate()) {
+  <form
+    hlmCard
+    class="max-w-xl"
+    data-project-form
+    aria-labelledby="project-new"
+    novalidate
+    [formGroup]="service.form"
+    (submit)="$event.preventDefault(); service.create()"
+  >
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="project-new">
+        {{ 'orgProjects.new.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'orgProjects.new.description' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      @if (service.error(); as code) {
+      <p class="mt-note" role="alert" data-create-error>
+        <ng-icon
+          name="lucideTriangleAlert"
+          size="16"
+          aria-hidden="true"
+          class="mt-0.5 shrink-0"
+        />
+        <span>{{ errorKey(code) | translate }}</span>
+      </p>
+      }
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="project-name"
+          >{{ 'orgProjects.new.name' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="project-name"
+          autocomplete="off"
+          formControlName="name"
+        />
+      </div>
+    </div>
+    <div hlmCardFooter>
+      <button
+        hlmBtn
+        type="submit"
+        data-project-submit
+        [disabled]="service.busy()"
+      >
+        {{ 'orgProjects.new.submit' | translate }}
+      </button>
+    </div>
+  </form>
+  } @else {
+  <p class="text-muted-foreground text-sm" data-cannot-create>
+    {{ 'orgProjects.cannotCreate' | translate }}
+  </p>
+  }
+</div>
+}

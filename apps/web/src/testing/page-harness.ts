@@ -7,7 +7,11 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, type Routes } from '@angular/router';
+import {
+  provideRouter,
+  type Routes,
+  withComponentInputBinding,
+} from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
   provideTranslateService,
@@ -41,11 +45,13 @@ export async function openPage(
   url: string,
   routes: Routes,
   answers: Readonly<Record<string, unknown>>,
+  /** Runs once the testing module is set up, before the first navigation. */
+  prepare?: () => void,
 ): Promise<{ el: HTMLElement; harness: RouterTestingHarness }> {
   Element.prototype.scrollIntoView = () => undefined;
   TestBed.configureTestingModule({
     providers: [
-      provideRouter(routes),
+      provideRouter(routes, withComponentInputBinding()),
       provideTranslateService(),
       provideHttpClient(),
       provideHttpClientTesting(),
@@ -54,6 +60,7 @@ export async function openPage(
   const translate = TestBed.inject(TranslateService);
   translate.setTranslation('de-CH', messages('de-CH'));
   translate.use('de-CH');
+  prepare?.();
   const harness = await RouterTestingHarness.create();
   await harness.navigateByUrl(url);
   const http = TestBed.inject(HttpTestingController);

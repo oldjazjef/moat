@@ -1,0 +1,313 @@
+<mt-page-header
+  [title]="'account.title' | translate"
+  [subtitle]="service.account()?.email ?? null"
+>
+  <mt-help-link section="account" />
+</mt-page-header>
+
+<div class="flex max-w-2xl flex-col gap-6">
+  <!-- SEC-58: no trust-mode claim here; the guide explains what is in force and what a hacked Cloud could do. -->
+  <div class="mt-note flex-col" data-account-honesty>
+    <p><mt-rich-text [text]="'account.honesty' | translate" /></p>
+    <div>
+      <mt-help-link section="trust" [labelKey]="'account.honestyHelp'" />
+    </div>
+  </div>
+
+  <section hlmCard data-password aria-labelledby="account-password">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="account-password">
+        {{ 'account.password.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'account.password.description' | translate }}</p>
+    </div>
+    <form
+      novalidate
+      [formGroup]="service.passwordForm"
+      (submit)="$event.preventDefault(); service.changePassword()"
+    >
+      <div hlmCardContent class="flex flex-col gap-4">
+        @if (service.errors().password; as code) {
+        <p class="mt-note" role="alert" data-password-error>
+          <ng-icon
+            name="lucideTriangleAlert"
+            size="16"
+            aria-hidden="true"
+            class="mt-0.5 shrink-0"
+          />
+          <span>{{ errorKey(code) | translate }}</span>
+        </p>
+        } @if (service.passwordChanged()) {
+        <p class="mt-note" role="status" data-password-changed>
+          {{ 'account.password.changed' | translate }}
+        </p>
+        }
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="password-current"
+            >{{ 'auth.fields.currentPassword' | translate }}</label
+          >
+          <input
+            hlmInput
+            id="password-current"
+            type="password"
+            autocomplete="current-password"
+            formControlName="current"
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="password-new"
+            >{{ 'auth.fields.newPassword' | translate }}</label
+          >
+          <input
+            hlmInput
+            id="password-new"
+            type="password"
+            autocomplete="new-password"
+            formControlName="next"
+            aria-describedby="password-new-hint"
+          />
+          <p id="password-new-hint" class="text-muted-foreground text-xs">
+            {{ 'auth.fields.passwordHint' | translate: { min: min } }}
+          </p>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="password-repeat"
+            >{{ 'auth.fields.repeatPassword' | translate }}</label
+          >
+          <input
+            hlmInput
+            id="password-repeat"
+            type="password"
+            autocomplete="new-password"
+            formControlName="repeat"
+          />
+          @if (service.passwordMismatch()) {
+          <p class="text-destructive text-xs" role="alert" data-mismatch>
+            {{ 'auth.fields.mismatch' | translate }}
+          </p>
+          }
+        </div>
+        <p class="text-muted-foreground text-xs">
+          {{ 'account.password.effect' | translate }}
+        </p>
+      </div>
+      <div hlmCardFooter>
+        <button
+          hlmBtn
+          type="submit"
+          data-password-submit
+          [disabled]="service.busy() === 'password'"
+        >
+          {{ 'account.password.submit' | translate }}
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section hlmCard data-totp aria-labelledby="account-totp">
+    <div hlmCardHeader>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 hlmCardTitle id="account-totp">
+          {{ 'account.totp.title' | translate }}
+        </h2>
+        @if (service.account()?.totpEnabled) {
+        <span hlmBadge variant="outline" data-totp-state="on"
+          >{{ 'account.totp.on' | translate }}</span
+        >
+        } @else {
+        <span hlmBadge variant="outline" data-totp-state="off"
+          >{{ 'account.totp.off' | translate }}</span
+        >
+        }
+      </div>
+      <p hlmCardDescription>{{ 'account.totp.description' | translate }}</p>
+    </div>
+
+    @if (service.recoveryCodes(); as codes) {
+    <!-- Shown once: the API never says them again. -->
+    <div hlmCardContent class="flex flex-col gap-4" data-recovery-codes>
+      <h3 class="font-medium">{{ 'account.totp.codesTitle' | translate }}</h3>
+      <p class="text-sm">{{ 'account.totp.codesHint' | translate }}</p>
+      <ul class="mt-code grid grid-cols-2 gap-2 select-all">
+        @for (code of codes; track code) {
+        <li data-recovery-code>{{ code }}</li>
+        }
+      </ul>
+      <div>
+        <button
+          hlmBtn
+          type="button"
+          data-codes-saved
+          (click)="service.codesSaved()"
+        >
+          {{ 'account.totp.codesSaved' | translate }}
+        </button>
+      </div>
+    </div>
+    } @else if (service.enrolment(); as enrolment) {
+    <form
+      novalidate
+      [formGroup]="service.confirmForm"
+      (submit)="$event.preventDefault(); service.confirmEnrolment()"
+    >
+      <div hlmCardContent class="flex flex-col gap-4" data-totp-secret>
+        <p class="text-sm">{{ 'account.totp.secretHint' | translate }}</p>
+        <dl class="mt-facts">
+          <dt>{{ 'account.totp.secret' | translate }}</dt>
+          <dd class="mt-code select-all" data-secret>{{ enrolment.secret }}</dd>
+          <dt>{{ 'account.totp.uri' | translate }}</dt>
+          <dd class="mt-code select-all" data-uri>
+            {{ enrolment.otpauthUri }}
+          </dd>
+        </dl>
+        <p class="text-muted-foreground text-xs">
+          {{ 'account.totp.secretOnce' | translate }}
+        </p>
+        @if (service.errors().confirm; as code) {
+        <p class="mt-note" role="alert" data-confirm-error>
+          <ng-icon
+            name="lucideTriangleAlert"
+            size="16"
+            aria-hidden="true"
+            class="mt-0.5 shrink-0"
+          />
+          <span>{{ errorKey(code) | translate }}</span>
+        </p>
+        }
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="totp-confirm"
+            >{{ 'account.totp.confirmLabel' | translate }}</label
+          >
+          <input
+            hlmInput
+            id="totp-confirm"
+            class="mt-code max-w-48"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            spellcheck="false"
+            formControlName="code"
+          />
+        </div>
+      </div>
+      <div hlmCardFooter class="flex flex-wrap gap-3">
+        <button
+          hlmBtn
+          type="submit"
+          data-confirm-submit
+          [disabled]="service.busy() === 'confirm'"
+        >
+          {{ 'account.totp.confirm' | translate }}
+        </button>
+        <button
+          hlmBtn
+          variant="ghost"
+          type="button"
+          data-enrol-cancel
+          (click)="service.cancelEnrolment()"
+        >
+          {{ 'common.cancel' | translate }}
+        </button>
+      </div>
+    </form>
+    } @else if (service.account()?.totpEnabled) {
+    <form
+      novalidate
+      [formGroup]="service.disableForm"
+      (submit)="$event.preventDefault(); service.disable()"
+    >
+      <div hlmCardContent class="flex flex-col gap-4" data-totp-disable>
+        <p class="text-sm">{{ 'account.totp.disableHint' | translate }}</p>
+        @if (service.errors().disable; as code) {
+        <p class="mt-note" role="alert" data-disable-error>
+          <ng-icon
+            name="lucideTriangleAlert"
+            size="16"
+            aria-hidden="true"
+            class="mt-0.5 shrink-0"
+          />
+          <span>{{ errorKey(code) | translate }}</span>
+        </p>
+        }
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="disable-password"
+            >{{ 'auth.fields.currentPassword' | translate }}</label
+          >
+          <input
+            hlmInput
+            id="disable-password"
+            type="password"
+            autocomplete="current-password"
+            formControlName="password"
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="disable-code"
+            >{{ 'auth.fields.code' | translate }}</label
+          >
+          <input
+            hlmInput
+            id="disable-code"
+            class="mt-code max-w-48"
+            autocomplete="one-time-code"
+            spellcheck="false"
+            formControlName="code"
+          />
+        </div>
+      </div>
+      <div hlmCardFooter>
+        <button
+          hlmBtn
+          variant="destructive"
+          type="submit"
+          data-disable-submit
+          [disabled]="service.busy() === 'disable'"
+        >
+          {{ 'account.totp.disable' | translate }}
+        </button>
+      </div>
+    </form>
+    } @else {
+    <form
+      novalidate
+      [formGroup]="service.enrolForm"
+      (submit)="$event.preventDefault(); service.startEnrolment()"
+    >
+      <div hlmCardContent class="flex flex-col gap-4" data-totp-enrol>
+        @if (service.errors().enrol; as code) {
+        <p class="mt-note" role="alert" data-enrol-error>
+          <ng-icon
+            name="lucideTriangleAlert"
+            size="16"
+            aria-hidden="true"
+            class="mt-0.5 shrink-0"
+          />
+          <span>{{ errorKey(code) | translate }}</span>
+        </p>
+        }
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="enrol-password"
+            >{{ 'account.totp.enrolPassword' | translate }}</label
+          >
+          <input
+            hlmInput
+            id="enrol-password"
+            type="password"
+            autocomplete="current-password"
+            formControlName="password"
+          />
+        </div>
+      </div>
+      <div hlmCardFooter>
+        <button
+          hlmBtn
+          type="submit"
+          data-enrol-submit
+          [disabled]="service.busy() === 'enrol'"
+        >
+          {{ 'account.totp.enrol' | translate }}
+        </button>
+      </div>
+    </form>
+    }
+  </section>
+</div>

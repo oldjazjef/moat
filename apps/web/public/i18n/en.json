@@ -1,7 +1,8 @@
 {
   "app": {
     "name": "Moat",
-    "edition": "Desktop"
+    "edition": "Desktop",
+    "editionCloud": "Cloud"
   },
   "nav": {
     "label": "Main navigation",
@@ -11,7 +12,12 @@
     "toggleSidebar": "Show or hide the sidebar",
     "toggleTheme": "Light or dark",
     "toggleLanguage": "Switch language",
-    "otherLanguage": "Deutsch"
+    "otherLanguage": "Deutsch",
+    "organisations": "Organisations",
+    "orgProjects": "Projects",
+    "members": "Members",
+    "account": "Account",
+    "signOut": "Sign out"
   },
   "common": {
     "reload": "Reload",
@@ -825,7 +831,9 @@
     },
     "links": {
       "projects": "Projects",
-      "setup": "Setup"
+      "setup": "Setup",
+      "account": "Account",
+      "organisations": "Organisations"
     },
     "sections": {
       "setup": {
@@ -1104,6 +1112,42 @@
         "tips": {
           "folder": "You can back up the project folder like other files, for example with Git."
         }
+      },
+      "account": {
+        "title": "Account and sign-in",
+        "purpose": "In Moat Cloud you sign in with an e-mail address and a password. The session lives in a cookie that the browser sends back to Moat Cloud only and that no page can read.",
+        "where": "Account, at the bottom of the sidebar",
+        "steps": {
+          "register": "On the page “Register” enter your e-mail address and a password of at least 12 characters. Moat Cloud answers the same whether the address was new or not. Then you sign in.",
+          "login": "Sign in with “Sign in”. If your account has a second factor, Moat Cloud then asks for the code from your authenticator app or a recovery code.",
+          "password": "Change your password under “Account” with “Change password”. Every other session of your account ends; this device stays signed in.",
+          "totp": "Turn on a second factor under “Account” with “Set up two-factor”. Moat Cloud shows the secret and the `otpauth` address once as text; there is no QR code. Enter them in the authenticator app and confirm with a code through “Confirm”.",
+          "codes": "Moat Cloud then shows the recovery codes once. Save them somewhere safe and click “Done”: afterwards they cannot be retrieved.",
+          "signOut": "“Sign out” in the sidebar ends the session on the server, and this browser forgets your account."
+        },
+        "tips": {
+          "trust": "This account sets no trust mode. So far Moat Cloud manages accounts, organisations and project names. There are no gates, secrets or bundles here yet. The section about the trust mode explains the trust mode and the consequences of a hacked Moat Cloud.",
+          "recovery": "A recovery code works once. If you have neither device nor code, Moat Cloud cannot reset the account yet: a password reset is not built yet.",
+          "session": "The session ends after 12 hours without activity and after 14 days at the latest."
+        }
+      },
+      "organisations": {
+        "title": "Organisations, members and projects",
+        "purpose": "An organisation brings projects and the people who work on them together. Each person has a role in it. What they may do is always decided by Moat Cloud, never by the page.",
+        "where": "Organisations, in the sidebar",
+        "steps": {
+          "create": "Under “Organisations” create a new one with “Create organisation”. You become its owner.",
+          "switch": "Click “Switch” in the list: the organisation then appears in the sidebar with “Projects” and “Members”.",
+          "projects": "Under “Projects” you see the organisation's projects. “Create project” adds one if your role allows it.",
+          "members": "Under “Members” add someone by e-mail address with “Add member”, change roles, or remove someone with “Remove” and “Really remove”.",
+          "roles": "The roles are Owner, Administrator, Editor, Viewer and Billing. The role decides what someone may read and change. Moat Cloud refuses what the role does not allow.",
+          "release": "The right to release bundles is separate from the role. Only an owner grants it, and only to owners, administrators and editors. You see the switch only as an owner. Bundles themselves do not exist in Moat Cloud yet."
+        },
+        "tips": {
+          "uniform": "Moat Cloud answers the same when adding, whether the address exists or not. There are no invitations or confirmation e-mails yet: the person needs an account already.",
+          "refusals": "If Moat Cloud refuses a change, the reason is a fixed text, for example that the organisation needs at least one owner.",
+          "projectsLimit": "A project is only a name here so far. Gates, routes and secrets in the Cloud come later. Until then you work with Moat Desktop or the CLI."
+        }
       }
     }
   },
@@ -1224,6 +1268,163 @@
     },
     "notices": {
       "failed": "That did not work. Please try again."
+    }
+  },
+  "errors": {
+    "api": {
+      "invalid_credentials": "The e-mail address or the password is wrong.",
+      "mfa_required": "Enter the code from your authenticator app or a recovery code.",
+      "invalid_code": "The code is wrong. Try the next code from the app or a recovery code.",
+      "rate_limited": "Too many attempts. Wait a moment and try again.",
+      "already_enabled": "The second factor is already on.",
+      "not_pending": "No second-factor setup is under way. Start it again.",
+      "not_enabled": "The second factor is not on.",
+      "email_invalid": "This e-mail address is not valid.",
+      "password_too_short": "The password must be at least 12 characters long.",
+      "password_too_long": "The password is too long (256 characters at most).",
+      "password_unchanged": "The new password must differ from the current one.",
+      "name_invalid": "This name is not possible. It must not be empty or contain control characters.",
+      "last_owner": "The organisation needs at least one owner.",
+      "release_not_applicable": "This role cannot hold the release permission.",
+      "forbidden": "Your role is not allowed to do that.",
+      "unauthenticated": "You are not signed in. Please sign in.",
+      "csrf_invalid": "The session no longer matches. Reload the page and try again.",
+      "origin_invalid": "The request came from an unexpected address and was refused.",
+      "empty_change": "There was nothing to change.",
+      "not_found": "Not found: it does not exist, or you have no access to it.",
+      "network": "Moat Cloud cannot be reached. Check the connection and try again.",
+      "unknown": "That did not work. Try again."
+    }
+  },
+  "roles": {
+    "owner": "Owner",
+    "admin": "Administrator",
+    "editor": "Editor",
+    "viewer": "Viewer",
+    "billing": "Billing"
+  },
+  "auth": {
+    "fields": {
+      "email": "E-mail address",
+      "password": "Password",
+      "choosePassword": "Choose a password",
+      "newPassword": "New password",
+      "currentPassword": "Current password",
+      "repeatPassword": "Repeat password",
+      "passwordHint": "At least {{min}} characters. A long sentence beats a short word with symbols.",
+      "mismatch": "The two passwords are not the same.",
+      "code": "Authenticator app code or recovery code"
+    },
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Sign in to Moat Cloud.",
+      "codeIntro": "Your account has a second factor. Enter the code.",
+      "codeHint": "Six digits from your authenticator app, or one of your recovery codes (each works once).",
+      "submit": "Sign in",
+      "verify": "Check code",
+      "back": "Back",
+      "toRegister": "No account yet? Register"
+    },
+    "register": {
+      "title": "Create an account",
+      "subtitle": "An account for Moat Cloud: an e-mail address and a password.",
+      "submit": "Register",
+      "toLogin": "Already have an account? Sign in",
+      "acceptedTitle": "Request accepted",
+      "accepted": "If the address was free, your account is created now. Moat Cloud does not say whether an address is already in use. Sign in now."
+    }
+  },
+  "account": {
+    "title": "Account",
+    "honesty": "This account manages organisations, members and projects. Moat Cloud has no gates, secrets or bundles yet and therefore sets no trust mode. How the trust modes apply and what a hacked Moat Cloud could do is explained in the help.",
+    "honestyHelp": "Trust modes in the help",
+    "password": {
+      "title": "Change password",
+      "description": "Choose a new password for this account.",
+      "effect": "Every other session of your account ends. This device stays signed in.",
+      "submit": "Change password",
+      "changed": "The password is changed."
+    },
+    "totp": {
+      "title": "Second factor (TOTP)",
+      "description": "Besides the password, signing in asks for a code from an authenticator app.",
+      "on": "On",
+      "off": "Off",
+      "enrolPassword": "Confirm with your password",
+      "enrol": "Set up two-factor",
+      "secretHint": "Enter the secret or the address in your authenticator app. There is no QR code. Then enter a code from the app.",
+      "secret": "Secret",
+      "uri": "Address (otpauth)",
+      "secretOnce": "Moat Cloud shows the secret only now. If you leave the page, you start again with your password.",
+      "confirmLabel": "Code from the app",
+      "confirm": "Confirm",
+      "codesTitle": "Recovery codes",
+      "codesHint": "Save these codes somewhere safe now, for example in a password manager. Each works once if you lose your device. Moat Cloud does not show them again.",
+      "codesSaved": "Done",
+      "disableHint": "To turn it off you need your password and a code from the app or a recovery code.",
+      "disable": "Turn off two-factor"
+    }
+  },
+  "organisations": {
+    "title": "Organisations",
+    "subtitle": "Your teams. Each organisation has its own members and projects.",
+    "loadError": "The organisations could not be read. Reload the page.",
+    "columns": {
+      "name": "Name",
+      "role": "Your role",
+      "release": "Release"
+    },
+    "active": "In the sidebar",
+    "switch": "Switch",
+    "releaseYes": "yes",
+    "releaseNo": "no",
+    "empty": "You do not belong to an organisation yet. Create the first one below.",
+    "new": {
+      "title": "New organisation",
+      "description": "You become its owner.",
+      "name": "Name",
+      "submit": "Create organisation"
+    },
+    "tabs": {
+      "label": "Sections of the organisation",
+      "projects": "Projects",
+      "members": "Members"
+    }
+  },
+  "members": {
+    "title": "Members",
+    "myRole": "Your role: {{role}}",
+    "roleOf": "Role of {{name}}",
+    "columns": {
+      "email": "E-mail address",
+      "role": "Role",
+      "release": "Release"
+    },
+    "releaseYes": "May release",
+    "releaseNo": "May not release",
+    "remove": "Remove",
+    "removeConfirm": "Really remove",
+    "add": {
+      "title": "Add member",
+      "description": "Enter the address of an existing account and choose the role.",
+      "sent": "If an account belongs to this address, it is a member now. Moat Cloud does not say whether the address exists.",
+      "submit": "Add member"
+    }
+  },
+  "orgProjects": {
+    "title": "Projects",
+    "columns": {
+      "name": "Name",
+      "created": "Created on"
+    },
+    "empty": "This organisation has no project yet.",
+    "loadError": "The projects could not be read. Reload the page.",
+    "cannotCreate": "Your role may not create projects.",
+    "new": {
+      "title": "New project",
+      "description": "A project has only a name here for now.",
+      "name": "Name",
+      "submit": "Create project"
     }
   }
 }

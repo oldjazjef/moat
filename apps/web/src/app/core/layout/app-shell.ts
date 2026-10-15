@@ -4,6 +4,7 @@ import {
   computed,
   effect,
   inject,
+  type Signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -13,21 +14,32 @@ import {
   RouterOutlet,
 } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideLanguages, lucideMoon, lucideSun } from '@ng-icons/lucide';
+import {
+  lucideLanguages,
+  lucideLogOut,
+  lucideMoon,
+  lucideSun,
+} from '@ng-icons/lucide';
 import { TranslatePipe } from '@ngx-translate/core';
 import { HlmBadge } from '@moat/ui/badge';
 import { HlmButtonImports } from '@moat/ui/button';
 import { HlmSidebarImports, HlmSidebarService } from '@moat/ui/sidebar';
 import { filter, map } from 'rxjs';
+import { AccountSession } from '../auth/account-session.service';
+import { ActiveOrganisation } from '../auth/active-organisation.service';
+import { isCloud } from '../config/runtime-env';
 import { LanguageService } from '../i18n/language.service';
 import { SetupStateService } from '../setup/setup-state.service';
 import { ThemeService } from '../theme/theme.service';
 import {
+  ACCOUNT_NAV_ITEM,
   HELP_NAV_ITEM,
   isNavActive,
   NAV_ICONS,
   NAV_ITEMS,
   type NavItem,
+  ORGANISATIONS_NAV_ITEM,
+  organisationNavItems,
   SETUP_NAV_ITEM,
 } from './nav-config';
 
@@ -50,13 +62,30 @@ import {
     ...HlmSidebarImports,
   ],
   providers: [
-    provideIcons({ ...NAV_ICONS, lucideLanguages, lucideMoon, lucideSun }),
+    provideIcons({
+      ...NAV_ICONS,
+      lucideLanguages,
+      lucideLogOut,
+      lucideMoon,
+      lucideSun,
+    }),
   ],
   templateUrl: './app-shell.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppShell {
-  protected readonly items = NAV_ITEMS;
+  /** Moat Cloud (accounts, organisations) or Moat Desktop (projects, no sign-in). */
+  protected readonly cloud = isCloud();
+  protected readonly session = inject(AccountSession);
+  private readonly organisation = inject(ActiveOrganisation);
+  protected readonly items: Signal<readonly NavItem[]> = computed(() => {
+    if (!this.cloud) return NAV_ITEMS;
+    const id = this.organisation.id();
+    return id === null
+      ? [ORGANISATIONS_NAV_ITEM]
+      : [ORGANISATIONS_NAV_ITEM, ...organisationNavItems(id)];
+  });
+  protected readonly accountItem = ACCOUNT_NAV_ITEM;
   protected readonly help = HELP_NAV_ITEM;
   protected readonly setupItem = SETUP_NAV_ITEM;
   /** FR-73: while the wizard is not finished, the main navigation is hidden (as lazy-koins). */
@@ -90,6 +119,15 @@ export class AppShell {
 
   protected isActive(item: NavItem): boolean {
     return isNavActive(this.url(), item);
+  }
+
+  protected async signOut(): Promise<void> {
+    try {
+      await this.session.logout();
+    } catch {
+      // The browser forgets the account either way (AccountSession.logout).
+    }
+    await this.router.navigate(['/login']);
   }
 
   protected toggleLanguage(): void {

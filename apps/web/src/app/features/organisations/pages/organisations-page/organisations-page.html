@@ -1,0 +1,124 @@
+<mt-page-header
+  [title]="'organisations.title' | translate"
+  [subtitle]="'organisations.subtitle' | translate"
+>
+  <mt-help-link section="organisations" />
+</mt-page-header>
+
+<div class="flex flex-col gap-6">
+  @if (service.list.isLoading() && !service.list.hasValue()) {
+  <p class="text-muted-foreground text-sm" role="status">
+    {{ 'common.loading' | translate }}
+  </p>
+  } @else if (service.list.error()) {
+  <p class="mt-note" role="alert" data-load-error>
+    <ng-icon
+      name="lucideTriangleAlert"
+      size="16"
+      aria-hidden="true"
+      class="mt-0.5 shrink-0"
+    />
+    <span>{{ 'organisations.loadError' | translate }}</span>
+  </p>
+  } @else if (service.list.hasValue() && service.list.value().length > 0) {
+  <div hlmTableContainer class="mt-panel" data-organisations>
+    <table hlmTable>
+      <thead hlmTHead>
+        <tr hlmTr>
+          <th hlmTh>{{ 'organisations.columns.name' | translate }}</th>
+          <th hlmTh>{{ 'organisations.columns.role' | translate }}</th>
+          <th hlmTh>{{ 'organisations.columns.release' | translate }}</th>
+          <th hlmTh class="mt-actions-cell">
+            <span class="sr-only">{{ 'common.actions' | translate }}</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody hlmTBody>
+        @for (entry of service.list.value(); track entry.organisation.id) {
+        <tr hlmTr data-organisation [attr.data-org-id]="entry.organisation.id">
+          <td hlmTd>
+            <span class="font-medium">{{ entry.organisation.name }}</span>
+            @if (service.active.id() === entry.organisation.id) {
+            <span hlmBadge variant="outline" class="ml-2" data-active
+              >{{ 'organisations.active' | translate }}</span
+            >
+            }
+          </td>
+          <td hlmTd data-role>
+            {{ 'roles.' + entry.access.role | translate }}
+          </td>
+          <td hlmTd data-release>
+            {{ (entry.access.releaseGranted ? 'organisations.releaseYes' :
+            'organisations.releaseNo') | translate }}
+          </td>
+          <td hlmTd class="mt-actions-cell">
+            <mt-row-actions
+              [actions]="openAction"
+              [name]="entry.organisation.name"
+              (run)="service.open(entry.organisation.id)"
+            />
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  } @else if (service.list.hasValue()) {
+  <p class="text-muted-foreground text-sm" data-no-organisation>
+    {{ 'organisations.empty' | translate }}
+  </p>
+  }
+
+  <form
+    hlmCard
+    class="max-w-xl"
+    data-organisation-form
+    aria-labelledby="organisation-new"
+    novalidate
+    [formGroup]="service.form"
+    (submit)="$event.preventDefault(); service.create()"
+  >
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="organisation-new">
+        {{ 'organisations.new.title' | translate }}
+      </h2>
+      <p hlmCardDescription>
+        {{ 'organisations.new.description' | translate }}
+      </p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      @if (service.error(); as code) {
+      <p class="mt-note" role="alert" data-create-error>
+        <ng-icon
+          name="lucideTriangleAlert"
+          size="16"
+          aria-hidden="true"
+          class="mt-0.5 shrink-0"
+        />
+        <span>{{ errorKey(code) | translate }}</span>
+      </p>
+      }
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="organisation-name"
+          >{{ 'organisations.new.name' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="organisation-name"
+          autocomplete="off"
+          formControlName="name"
+        />
+      </div>
+    </div>
+    <div hlmCardFooter>
+      <button
+        hlmBtn
+        type="submit"
+        data-organisation-submit
+        [disabled]="service.busy()"
+      >
+        {{ 'organisations.new.submit' | translate }}
+      </button>
+    </div>
+  </form>
+</div>

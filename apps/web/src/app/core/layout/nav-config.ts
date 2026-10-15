@@ -1,13 +1,18 @@
 import {
+  lucideBuilding2,
   lucideCircleHelp,
   lucideFolderKanban,
   lucideListChecks,
+  lucideUserRound,
+  lucideUsers,
 } from '@ng-icons/lucide';
 
 export interface NavItem {
   readonly path: string;
   readonly labelKey: string;
   readonly icon: string;
+  /** Active only on exactly this path, not below it. */
+  readonly exact?: boolean;
 }
 
 /**
@@ -37,14 +42,46 @@ export const SETUP_NAV_ITEM: NavItem = {
   icon: 'lucideListChecks',
 };
 
+/** Moat Cloud: the list of organisations (switching happens there). */
+export const ORGANISATIONS_NAV_ITEM: NavItem = {
+  path: '/app/organisations',
+  labelKey: 'nav.organisations',
+  icon: 'lucideBuilding2',
+  exact: true,
+};
+
+/** Moat Cloud: the pages of the organisation in use (`/app/organisations/<id>/…`). */
+export function organisationNavItems(orgId: string): readonly NavItem[] {
+  const base = `/app/organisations/${encodeURIComponent(orgId)}`;
+  return [
+    {
+      path: `${base}/projects`,
+      labelKey: 'nav.orgProjects',
+      icon: 'lucideFolderKanban',
+    },
+    { path: `${base}/members`, labelKey: 'nav.members', icon: 'lucideUsers' },
+  ];
+}
+
+/** Moat Cloud: «Konto», in the footer above «Hilfe». */
+export const ACCOUNT_NAV_ITEM: NavItem = {
+  path: '/app/account',
+  labelKey: 'nav.account',
+  icon: 'lucideUserRound',
+};
+
 export const NAV_ICONS = {
+  lucideBuilding2,
   lucideCircleHelp,
   lucideFolderKanban,
   lucideListChecks,
+  lucideUserRound,
+  lucideUsers,
 };
 
 /** Whether a navigation entry is the current one: the URL lies under its path. */
 export function isNavActive(url: string, item: NavItem): boolean {
   const current = url.split(/[?#]/)[0] ?? '';
+  if (item.exact === true) return current === item.path;
   return current === item.path || current.startsWith(`${item.path}/`);
 }

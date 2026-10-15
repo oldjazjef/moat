@@ -62,15 +62,18 @@ export class HelpPageService {
 
   /** The whole guide for this app, numbered. */
   readonly sections = computed<readonly HelpSectionView[]>(() =>
-    HELP_SECTIONS.map((section, index) => ({
-      id: section.id,
-      number: index + 1,
-      steps: section.steps.filter((item) => this.applies(item)),
-      tips: section.tips.filter((item) => this.applies(item)),
-      links: section.links.filter((link) => this.applies(link)),
-    })),
+    HELP_SECTIONS.filter((section) => this.applies(section)).map(
+      (section, index) => ({
+        id: section.id,
+        number: index + 1,
+        steps: section.steps.filter((item) => this.applies(item)),
+        tips: section.tips.filter((item) => this.applies(item)),
+        links: section.links.filter((link) => this.applies(link)),
+      }),
+    ),
   );
-  readonly total = HELP_SECTIONS.length;
+  readonly total = HELP_SECTIONS.filter((section) => this.applies(section))
+    .length;
 
   /** The searchable text of every section and question, in the current language. */
   private readonly texts = computed(() => {
@@ -116,7 +119,7 @@ export class HelpPageService {
   isTarget(id: string | null | undefined): id is string {
     return (
       id === HELP_FAQ_ANCHOR ||
-      HELP_SECTIONS.some((section) => section.id === id)
+      this.sections().some((section) => section.id === id)
     );
   }
 
