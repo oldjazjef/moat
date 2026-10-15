@@ -18,8 +18,7 @@
       <li data-rotation-step="pin-both">
         <p>{{ 'gates.rotation.stepPin' | translate }}</p>
         <code class="mt-code block break-all" data-rotation-command="pin-both"
-          >php moat-gate.php trust --signer={{ rotation.previous.publicKey }},{{
-          rotation.current.publicKey }}</code
+          >{{ service.pinBothCommand() }}</code
         >
       </li>
       <li data-rotation-step="sign">
@@ -38,8 +37,7 @@
       <li data-rotation-step="pin-new">
         <p>{{ 'gates.rotation.stepPinNew' | translate }}</p>
         <code class="mt-code block break-all" data-rotation-command="pin-new"
-          >php moat-gate.php trust --signer={{ rotation.current.publicKey
-          }}</code
+          >{{ service.pinNewCommand() }}</code
         >
       </li>
     </ol>

@@ -44,6 +44,7 @@ describe('desktop config', () => {
       sftpTargets: {},
       gitTargets: {},
       ftpsTargets: {},
+      databaseTargets: {},
     });
     if (process.platform !== 'win32')
       expect(statSync(join(dir, CONFIG_FILE)).mode & 0o077).toBe(0);
@@ -151,6 +152,31 @@ describe('desktop config', () => {
       }),
     );
     expect(readConfig(dir).ftpsTargets).toEqual({ [`${id}/www`]: target });
+  });
+
+  it('keeps a database target per project only with a label and keychain ciphertext (DT-03)', () => {
+    const id = 'EET8NETuKZO4J4p9vrWNKg';
+    const target = {
+      key: 'shop',
+      label: 'postgresql://moat@db.example.ch:5432/moat',
+      url: 'c2VhbGVk',
+    };
+    writeFileSync(
+      join(dir, CONFIG_FILE),
+      JSON.stringify({
+        databaseTargets: {
+          [id]: target,
+          AAAAAAAAAAAAAAAAAAAAAA: { ...target, url: null },
+          BBBBBBBBBBBBBBBBBBBBBB: { ...target, key: '../x' },
+          CCCCCCCCCCCCCCCCCCCCCC: { ...target, label: 'mysql://x' },
+          '../x': target,
+        },
+      }),
+    );
+    expect(readConfig(dir).databaseTargets).toEqual({
+      [id]: target,
+      AAAAAAAAAAAAAAAAAAAAAA: { ...target, url: null },
+    });
   });
 
   it('drops remembered passphrases under a name that is not a key id', () => {

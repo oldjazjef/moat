@@ -12,6 +12,7 @@ import {
 import { ProjectFilesPort } from '../ports/project-files.port';
 import { ProjectRegistryPort } from '../ports/project-registry.port';
 import { PROJECT_ID } from '../project.types';
+import { HistoryService } from './history.service';
 import { projectName } from './project-name';
 
 /** What the seal dialog shows before it asks for the value: never a value, never ciphertext. */
@@ -55,6 +56,7 @@ export class SecretSealingService {
   constructor(
     private readonly registry: ProjectRegistryPort,
     private readonly files: ProjectFilesPort,
+    private readonly history: HistoryService,
   ) {}
 
   async prepare(
@@ -111,6 +113,15 @@ export class SecretSealingService {
       } catch {
         return { status: 'not_writable' };
       }
+      // Name and version only: the value is never recorded (SEC-31).
+      await this.history.record(id, {
+        kind: 'secret_sealed',
+        details: {
+          gate: plan.gate,
+          name: plan.name,
+          secretVersion: plan.nextVersion,
+        },
+      });
       return { status: 'sealed', secretVersion: plan.nextVersion };
     } finally {
       plaintext.fill(0);

@@ -5,6 +5,7 @@ import type { SigningKeyInfo } from '../shared/bridge';
 import type { PrepareDeployResult } from './lib/deploy';
 import type { BundleImportResult, ImportInput } from './lib/import';
 import type { RequestLogApiResult } from './lib/request-log';
+import type { SyncAnswer } from './lib/database';
 import type { PrepareSealResult, SealResult } from './lib/sealing';
 import type { PlanSigner, PrepareResult, SignResult } from './lib/signing';
 
@@ -79,6 +80,31 @@ interface ApiBundle {
     input: ImportInput,
   ): Promise<BundleImportResult>;
   readRequestLog(texts: readonly string[]): RequestLogApiResult;
+  syncDatabase(
+    api: ApiHandle,
+    id: string,
+    input: {
+      url: string;
+      key: string;
+      direction: 'push' | 'pull';
+      signer: PlanSigner;
+    },
+  ): Promise<SyncAnswer>;
+  databaseLabel(
+    url: string,
+  ):
+    | { status: 'ok'; label: string }
+    | { status: 'refused'; code: 'url_invalid' | 'tls_required' };
+  recordDeploy(
+    api: ApiHandle,
+    id: string,
+    deploy: {
+      gate: string;
+      version: number;
+      target: 'zip' | 'folder' | 'sftp' | 'ftps' | 'git';
+      sha256: string;
+    },
+  ): Promise<void>;
 }
 
 export interface RunningApi {
@@ -142,6 +168,20 @@ export interface RunningApi {
   ): Promise<BundleImportResult>;
   /** In-process only (DT-12): the text of the log files the person chose in its own dialog. */
   readRequestLog(texts: readonly string[]): RequestLogApiResult;
+  /** In-process only (DT-03): the connection string comes from the database window. */
+  syncDatabase(
+    id: string,
+    url: string,
+    key: string,
+    direction: 'push' | 'pull',
+    signer: PlanSigner,
+  ): Promise<SyncAnswer>;
+  databaseLabel: ApiBundle['databaseLabel'];
+  /** A finished deploy (DT-05) into the project's history, if it keeps one. */
+  recordDeploy(
+    id: string,
+    deploy: Parameters<ApiBundle['recordDeploy']>[2],
+  ): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -190,6 +230,10 @@ export async function startApi(options: {
     importBundle: (id, gate, signer, input) =>
       api.importBundle(running, id, gate, signer, input),
     readRequestLog: (texts) => api.readRequestLog(texts),
+    syncDatabase: (id, url, key, direction, signer) =>
+      api.syncDatabase(running, id, { url, key, direction, signer }),
+    databaseLabel: (url) => api.databaseLabel(url),
+    recordDeploy: (id, deploy) => api.recordDeploy(running, id, deploy),
     close: () => running.app.close(),
   };
 }

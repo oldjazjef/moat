@@ -39,6 +39,7 @@ export const HELP_SECTION_IDS = [
   'killSwitch',
   'log',
   'keyRotation',
+  'history',
   'privacy',
 ] as const;
 export type HelpSectionId = (typeof HELP_SECTION_IDS)[number];
@@ -203,6 +204,25 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       only: 'desktop',
     }),
     tips: items('refuse', 'local'),
+    links: [PROJECTS],
+  },
+  {
+    id: 'history',
+    steps: items(
+      'open',
+      'enable',
+      'verify',
+      { id: 'database', only: 'desktop' },
+      { id: 'push', only: 'desktop' },
+      { id: 'pull', only: 'desktop' },
+    ),
+    tips: items(
+      'recorded',
+      'evidence',
+      { id: 'ciphertext', only: 'desktop' },
+      { id: 'conflicts', only: 'desktop' },
+      { id: 'refused', only: 'desktop' },
+    ),
     links: [PROJECTS],
   },
   {

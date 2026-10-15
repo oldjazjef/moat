@@ -20,6 +20,7 @@ import {
 } from '../ports/project-files.port';
 import { ProjectRegistryPort } from '../ports/project-registry.port';
 import { PROJECT_ID } from '../project.types';
+import { HistoryService } from './history.service';
 import { projectName } from './project-name';
 
 /** What the signing dialog shows (DT-15): names and counts only, never a secret. */
@@ -75,6 +76,7 @@ export class BundleSigningService {
   constructor(
     private readonly registry: ProjectRegistryPort,
     private readonly files: ProjectFilesPort,
+    private readonly history: HistoryService,
   ) {}
 
   /**
@@ -169,6 +171,15 @@ export class BundleSigningService {
       if (error instanceof BundleExistsError) return { status: 'changed' };
       return { status: 'not_writable' };
     }
+    await this.history.record(id, {
+      kind: 'bundle_signed',
+      details: {
+        gate: plan.gate,
+        version: plan.version,
+        sha256: createHash('sha256').update(envelope, 'utf8').digest('hex'),
+        kid: signer.kid,
+      },
+    });
     return { status: 'signed', version: plan.version, kid: signer.kid };
   }
 

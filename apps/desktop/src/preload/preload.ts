@@ -62,6 +62,10 @@ const bridge: DesktopBridge = {
         String(locale),
       ),
   },
+  database: {
+    open: (projectId: string, locale: string) =>
+      ipcRenderer.invoke(IPC.databaseOpen, String(projectId), String(locale)),
+  },
 };
 
 contextBridge.exposeInMainWorld('moatDesktop', bridge);

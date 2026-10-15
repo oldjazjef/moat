@@ -19,14 +19,14 @@ const click = (el: HTMLElement, selector: string) =>
 describe('ProjectWorkspace', () => {
   afterEach(() => delete window.moatDesktop);
 
-  it('names the project and its folder and offers the four tabs', async () => {
+  it('names the project and its folder and offers the five tabs', async () => {
     const { el } = await openProjectTab('overview', OverviewPage, PROJECT);
     expect(text(el, 'h1')).toBe('example');
     expect(
       [...el.querySelectorAll('[data-tab]')].map((tab) =>
         tab.textContent?.trim(),
       ),
-    ).toEqual(['Übersicht', 'Gates', 'Routen', 'Test-Konsole']);
+    ).toEqual(['Übersicht', 'Gates', 'Routen', 'Test-Konsole', 'Verlauf']);
     expect(
       el.querySelector('[data-tab="overview"]')?.getAttribute('aria-current'),
     ).toBe('page');

@@ -14,6 +14,7 @@ import {
   InMemoryProjectRegistry,
 } from '../testing/in-memory-projects';
 import { BundleSigningService } from './bundle-signing.service';
+import { historyService } from '../testing/in-memory-storage';
 
 const RECIPE = readFileSync(
   resolve(__dirname, '../../../../../recipes/hubspot-newsletter.moat.yaml'),
@@ -64,7 +65,11 @@ async function setup() {
     signer,
     keyFile: JSON.stringify(keyFile),
     keyFileValue: keyFile,
-    service: new BundleSigningService(registry, files),
+    service: new BundleSigningService(
+      registry,
+      files,
+      historyService(registry),
+    ),
   };
 }
 

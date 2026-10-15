@@ -21,3 +21,7 @@ gates/php/.php-cs-fixer.cache
 
 # Agent worktrees
 /.claude/worktrees/
+
+# Prisma Client, generated from apps/api/prisma/*/schema.prisma by `pnpm db:generate` (part of
+# `pnpm install`). Prisma 7 emits TypeScript into the project; still build output.
+apps/api/src/generated

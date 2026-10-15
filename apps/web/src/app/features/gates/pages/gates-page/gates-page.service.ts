@@ -203,6 +203,21 @@ export class GatesPageService {
       this.rotationSigned().length === this.valid().length,
   );
 
+  /** Step 1 on the server: both keys pinned. */
+  readonly pinBothCommand = computed(() => {
+    const rotation = this.rotation();
+    return rotation === null
+      ? ''
+      : `php moat-gate.php trust --signer=${rotation.previous.publicKey},${rotation.current.publicKey}`;
+  });
+  /** Step 3 on the server: the new key alone. */
+  readonly pinNewCommand = computed(() => {
+    const rotation = this.rotation();
+    return rotation === null
+      ? ''
+      : `php moat-gate.php trust --signer=${rotation.current.publicKey}`;
+  });
+
   signedWithNewKey(gate: ValidGate): boolean {
     return this.rotationSigned().includes(gate);
   }

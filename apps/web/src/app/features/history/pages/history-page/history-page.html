@@ -1,0 +1,133 @@
+<div class="mb-6 flex items-center justify-between gap-3">
+  <p class="text-muted-foreground text-sm">
+    {{ 'history.subtitle' | translate }}
+  </p>
+  <mt-help-link section="history" />
+</div>
+
+@if (service.notice(); as code) {
+<p class="text-destructive mb-4 text-sm" role="alert" data-history-notice>
+  {{ 'history.notices.' + code | translate }}
+</p>
+}
+
+<div class="flex flex-col gap-6">
+  @if (service.canUseDatabase) {
+  <section hlmCard aria-labelledby="database-title" data-history-database>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="database-title">
+        {{ 'history.database.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'history.database.description' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-3">
+      <div>
+        <button
+          hlmBtn
+          type="button"
+          variant="outline"
+          data-history-database-open
+          [disabled]="service.busy()"
+          (click)="service.openDatabase()"
+        >
+          {{ 'history.database.open' | translate }}
+        </button>
+      </div>
+      @if (service.database(); as result) { @if (result.status === 'done') {
+      <p class="text-sm" role="status" data-history-database-result>
+        {{ 'history.database.done.' + result.direction | translate: { gates:
+        result.gates, secrets: result.secrets, bundles: result.bundles } }} @if
+        (result.issues > 0) { {{ 'history.database.issues' | translate: {
+        issues: result.issues } }} }
+      </p>
+      } @else {
+      <p
+        class="text-destructive text-sm"
+        role="alert"
+        data-history-database-failed
+      >
+        {{ 'history.database.failed' | translate }}
+      </p>
+      } }
+    </div>
+  </section>
+  } @switch (service.enabled()) { @case (false) {
+  <section hlmCard aria-labelledby="history-off-title" data-history-off>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="history-off-title">
+        {{ 'history.off.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'history.off.description' | translate }}</p>
+    </div>
+    <div hlmCardContent>
+      <button
+        hlmBtn
+        type="button"
+        data-history-enable
+        [disabled]="service.busy()"
+        (click)="service.enable()"
+      >
+        {{ 'history.enable' | translate }}
+      </button>
+    </div>
+  </section>
+  } @case (true) {
+  <div class="flex flex-wrap items-center gap-3">
+    <button
+      hlmBtn
+      type="button"
+      variant="outline"
+      data-history-verify
+      [disabled]="service.busy()"
+      (click)="service.verify()"
+    >
+      {{ 'history.verify' | translate }}
+    </button>
+    @if (service.check(); as check) { @if (check.status === 'intact') {
+    <p class="text-sm" role="status" data-history-intact>
+      {{ 'history.intact' | translate: { entries: check.entries } }}
+    </p>
+    } @else {
+    <p class="text-destructive text-sm" role="alert" data-history-broken>
+      @if (check.seq === null) { {{ 'history.brokenTail' | translate }} } @else
+      { {{ 'history.broken' | translate: { seq: check.seq } }} } {{
+      'history.breaks.' + check.reason | translate }}
+    </p>
+    } }
+  </div>
+  <p class="text-muted-foreground text-xs">
+    {{ 'history.evidenceNote' | translate }}
+  </p>
+  <div hlmTableContainer class="mt-panel">
+    <table hlmTable data-history-table>
+      <thead hlmTHead>
+        <tr hlmTr>
+          <th hlmTh>{{ 'history.columns.seq' | translate }}</th>
+          <th hlmTh>{{ 'history.columns.at' | translate }}</th>
+          <th hlmTh>{{ 'history.columns.event' | translate }}</th>
+          <th hlmTh>{{ 'history.columns.hash' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody hlmTBody>
+        @for (row of service.rows(); track row.seq) {
+        <tr hlmTr data-history-row [attr.data-kind]="row.kind">
+          <td hlmTd class="mt-code">{{ row.seq }}</td>
+          <td hlmTd class="whitespace-nowrap">
+            {{ row.at | date: 'yyyy-MM-dd HH:mm:ss' }}
+          </td>
+          <td hlmTd data-history-event>
+            {{ 'history.kinds.' + row.kind | translate: row.params }} @if
+            (row.target; as target) {
+            <span hlmBadge variant="outline">
+              {{ 'history.targets.' + target | translate }}
+            </span>
+            }
+          </td>
+          <td hlmTd class="mt-code text-xs">{{ row.hash }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  } }
+</div>

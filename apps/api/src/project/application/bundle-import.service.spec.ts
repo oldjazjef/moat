@@ -1,3 +1,4 @@
+import { historyService } from '../testing/in-memory-storage';
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -59,7 +60,11 @@ async function setup() {
   const here = registry.add('/here').id;
   const there = registry.add('/there').id;
   const signer = { kid: keyFile.kid, publicKey: fromBase64Url(keyFile.pk) };
-  const signing = new BundleSigningService(registry, files);
+  const signing = new BundleSigningService(
+    registry,
+    files,
+    historyService(registry),
+  );
   /** Signs the next bundle over there and returns its text. */
   const signThere = async () => {
     const prepared = await signing.prepare(there, 'site', signer);

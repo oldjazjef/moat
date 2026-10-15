@@ -13,6 +13,8 @@ packages:
 #   esbuild            pulled in by vite (vitest) and Angular's bundler (@angular/build)
 #   less               pulled in by @angular/build's stylesheet pipeline
 #   electron           downloads the Electron binary (apps/desktop, `pnpm start:desktop`)
+#   prisma, @prisma/engines  the CLI's schema-engine binary, needed by `prisma migrate diff`
+#                      (authoring migrations, dev only; the app applies them without the CLI)
 #
 # The `false` entries are deliberate: `@nestjs/core` only prints a sponsorship notice,
 # `electron-winstaller` (via electron-builder) is Squirrel.Windows, unused: the desktop app ships NSIS.
@@ -20,6 +22,7 @@ packages:
 # uses ssh2's pure-JS path on Node's own crypto, so the packaged app keeps no native module.
 allowBuilds:
   '@parcel/watcher': true
+  '@prisma/engines': true
   '@swc/core': true
   electron: true
   esbuild: true
@@ -27,6 +30,7 @@ allowBuilds:
   lmdb: true
   msgpackr-extract: true
   nx: true
+  prisma: true
   unrs-resolver: true
   '@nestjs/core': false
   electron-winstaller: false

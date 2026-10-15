@@ -4,6 +4,8 @@ import { AddProjectHandler } from './application/add-project.handler';
 import { CreateProjectHandler } from './application/create-project.handler';
 import { AddGateHandler, CheckGateHandler } from './application/gate.handlers';
 import { BundleSigningService } from './application/bundle-signing.service';
+import { DatabaseSyncService } from './application/database-sync.service';
+import { HistoryService } from './application/history.service';
 import { DeployPackageService } from './application/deploy-package.service';
 import { BundleImportService } from './application/bundle-import.service';
 import { SecretSealingService } from './application/secret-sealing.service';
@@ -31,6 +33,8 @@ import { ProjectService } from './project.service';
     SecretSealingService,
     DeployPackageService,
     BundleImportService,
+    HistoryService,
+    DatabaseSyncService,
   ],
   exports: [
     ProjectService,
@@ -38,6 +42,8 @@ import { ProjectService } from './project.service';
     SecretSealingService,
     DeployPackageService,
     BundleImportService,
+    HistoryService,
+    DatabaseSyncService,
   ],
 })
 export class ProjectModule {}
