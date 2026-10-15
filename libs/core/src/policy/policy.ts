@@ -102,6 +102,12 @@ export const policySchema = z.strictObject({
        * pass any body on with the host's secret.
        */
       requireBody: z.boolean().optional(),
+      /**
+       * FR-16, SEC-14, T-71: every route to this host has client protection (`apiKey`, `jwt` or
+       * `turnstile`; a honeypot alone does not count), so a bundle cannot drop it and open the
+       * host's secret to anyone who finds the route.
+       */
+      requireClient: z.boolean().optional(),
     }),
   ),
   maxBodyBytes: z.int().min(0).max(MAX_BODY_BYTES),
@@ -202,6 +208,17 @@ export function matchesPrefix(path: string, pathPrefix: string): boolean {
   return path.startsWith(base);
 }
 
+/** FR-16: the route checks who calls it — a key, a signed token or a Turnstile token. */
+function protectsClient(route: CompiledConfig['routes'][string]): boolean {
+  const client = route.client;
+  return (
+    client !== undefined &&
+    (client.apiKey !== undefined ||
+      client.jwt !== undefined ||
+      client.turnstile !== undefined)
+  );
+}
+
 /** FR-13: the route forwards no body it has not checked — it lists its fields or takes none. */
 function checksBody(route: CompiledConfig['routes'][string]): boolean {
   return route.body !== undefined || route.maxBodyBytes === 0;
@@ -266,6 +283,8 @@ export function checkPolicy(config: CompiledConfig, policy: Policy): void {
         reject('policy_violation');
     }
     if (allowed.requireBody === true && !checksBody(route))
+      reject('policy_violation');
+    if (allowed.requireClient === true && !protectsClient(route))
       reject('policy_violation');
     if (allowed.budget !== undefined) {
       // Every answer from a host with a budget must be countable, in the policy's format.
@@ -423,6 +442,12 @@ export function suggestPolicy(config: CompiledConfig): Policy {
       toHost.every(checksBody)
     )
       entry.requireBody = true;
+    // FR-16: once every route to the host checks its caller, keep it that way.
+    if (
+      toHost.some((route) => route.client !== undefined) &&
+      toHost.every(protectsClient)
+    )
+      entry.requireClient = true;
   }
   const routes = Object.values(config.routes);
   const policy: Policy = {

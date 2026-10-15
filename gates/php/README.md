@@ -164,6 +164,13 @@ host that has no `body` but takes a body (`policy_violation`), whatever its meth
 needs `maxBodySize: '0B'`. `moat policy suggest` proposes it once every route to the host
 qualifies.
 
+`requireClient: true` under a host in the local policy refuses every bundle with a route to that
+host that has no `client` check of `apiKey`, `jwt` or `turnstile` (a `honeypot` alone does not
+count; `policy_violation`), so a signed or unsigned bundle cannot switch client protection off
+(FR-16, SEC-14). `moat policy suggest` proposes it once every route to the host has one. **Without
+it, mode 0 trusts the Cloud for this:** a bundle from a compromised Moat Cloud could drop a
+route's client protection and open the host's secret to anyone who finds the route.
+
 ## Locked gate
 
 A gate can be locked from the project: on its own (`moat gate disable website`) or with its whole

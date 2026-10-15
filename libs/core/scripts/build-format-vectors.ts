@@ -1787,6 +1787,41 @@ function policyVectors(): Json {
         route(c)['maxBodyBytes'] = 0;
       },
     ],
+    [
+      'requireClient: a route without client protection (FR-16, SEC-14)',
+      (_c, p) => (allowed(p)['requireClient'] = true),
+    ],
+    [
+      'requireClient: the route has a JWT check',
+      (c, p) => {
+        allowed(p)['requireClient'] = true;
+        route(c)['client'] = {
+          jwt: {
+            issuer: 'https://issuer.example',
+            audience: 'site',
+            keys: [
+              {
+                kid: 'a',
+                alg: 'EdDSA',
+                spki: 'MCowBQYDK2VwAyEAp6iQlJNTdlRoWZO5JbEBzdfp2-XhLBebW8flWjbpH1o',
+              },
+            ],
+          },
+        };
+      },
+    ],
+    [
+      'requireClient: a honeypot alone is no client protection',
+      (c, p) => {
+        allowed(p)['requireClient'] = true;
+        route(c)['client'] = { honeypot: { field: 'website' } };
+      },
+    ],
+    ['requireClient false', (_c, p) => (allowed(p)['requireClient'] = false)],
+    [
+      'requireClient as a string',
+      (_c, p) => (allowed(p)['requireClient'] = 'yes'),
+    ],
     ['requireBody false', (_c, p) => (allowed(p)['requireBody'] = false)],
     ['requireBody as a string', (_c, p) => (allowed(p)['requireBody'] = 'yes')],
     ['timeout above the policy', (c) => (upstream(c)['timeoutMs'] = 15001)],

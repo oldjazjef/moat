@@ -153,6 +153,12 @@ final class PolicyCheck
             if ($allowed->requireBody && $route->body === null && $route->maxBodyBytes !== 0) {
                 self::violation();
             }
+            // FR-16, SEC-14, T-71: a bundle cannot drop the client protection of a host that requires
+            // it; a honeypot alone is no protection.
+            $client = $route->client;
+            if ($allowed->requireClient && ($client === null || ($client->apiKey === null && $client->jwt === null && $client->turnstile === null))) {
+                self::violation();
+            }
             // Every answer from a host with a budget must be countable, in the policy's format.
             if ($allowed->budget !== null && (
                 array_diff($route->responseContentTypes, [ConfigValidator::JSON]) !== []
@@ -221,7 +227,7 @@ final class PolicyCheck
 
     private static function upstream(mixed $entry): PolicyUpstream
     {
-        if (!$entry instanceof JsonObject || !$entry->hasExactKeys('pathPrefixes', 'methods', 'secrets', ...($entry->has('budget') ? ['budget'] : []), ...($entry->has('requireBody') ? ['requireBody'] : []))) {
+        if (!$entry instanceof JsonObject || !$entry->hasExactKeys('pathPrefixes', 'methods', 'secrets', ...($entry->has('budget') ? ['budget'] : []), ...($entry->has('requireBody') ? ['requireBody'] : []), ...($entry->has('requireClient') ? ['requireClient'] : []))) {
             self::invalid();
         }
         $prefixes = $entry->get('pathPrefixes');
@@ -260,7 +266,12 @@ final class PolicyCheck
             self::invalid();
         }
 
-        return new PolicyUpstream($pathPrefixes, $allowed, $secrets, $budget, $requireBody);
+        $requireClient = $entry->has('requireClient') ? $entry->get('requireClient') : false;
+        if (!\is_bool($requireClient)) {
+            self::invalid();
+        }
+
+        return new PolicyUpstream($pathPrefixes, $allowed, $secrets, $budget, $requireBody, $requireClient);
     }
 
     private static function isPrefix(string $value): bool
