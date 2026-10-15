@@ -913,7 +913,12 @@ describe('GatesPage', () => {
       const { el, harness } = await openProjectTab('gates', GatesPage, PROJECT);
       (el.querySelector('[data-passkey-use]') as HTMLButtonElement).click();
       await settle(harness);
-      expect(bridge.use).toHaveBeenCalledWith(PROJECT.id, 'site', true);
+      expect(bridge.use).toHaveBeenCalledWith(
+        PROJECT.id,
+        'site',
+        true,
+        'de-CH',
+      );
 
       TestBed.resetTestingModule();
       const on = desktop({ passkey: INFO, gates: ['site'] });
@@ -924,7 +929,7 @@ describe('GatesPage', () => {
         again.el.querySelector('[data-passkey-use]') as HTMLButtonElement
       ).click();
       await settle(again.harness);
-      expect(on.use).toHaveBeenCalledWith(PROJECT.id, 'site', false);
+      expect(on.use).toHaveBeenCalledWith(PROJECT.id, 'site', false, 'de-CH');
     });
   });
 });
