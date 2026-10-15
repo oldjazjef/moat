@@ -21,7 +21,7 @@ Four components (ANFORDERUNGEN.md, header):
 > content-type rules, environments and locks, comment-preserving `moat.yaml` edits); `apps/cli`
 > (`moat keygen|validate|policy suggest|gate add|assign|disable|enable|env add|disable|enable|secret seal|build|version`);
 > `conformance/vectors/` and `conformance/http/`; and `gates/php` as a working gate: single-file
-> build, CLI (`install|trust|policy|accept|pull|status|check|kill|revive`), bundle acceptance (steps 1–10), exact routing,
+> build, CLI (`install|trust|policy|accept|pull|status|check|kill|revive|log`), bundle acceptance (steps 1–10), exact routing,
 > the cURL upstream client with SSRF guard, origin binding/CORS, rate limits, request quotas per
 > calendar day/month (FR-31: route `quota`, policy `limits.quota`, `quota_exceeded`), token and cost
 > budgets for AI APIs (FR-31: route `budget`, policy `upstreams.<host>.budget`, usage read from the
@@ -36,7 +36,7 @@ Four components (ANFORDERUNGEN.md, header):
 > check (`check [--url]`, SEC-49/SEC-49a; `classifyHardening` in `libs/core/src/gate/`), the lazy pull
 > (DT-11, T-64: policy `pull: {url, intervalSeconds}` set only locally, `isPullUrl` in core; due
 > requests fetch once per interval under `pulllock` through the pinned cURL client and hand the
-> bytes to `accept`; data file `pull`, `php moat-gate.php pull`)
+> bytes to `accept`; data file `pull`, `php moat-gate.php pull`), the request log (FR-50, T-72: one JSON line per request in the data file `log` — route name, method, status, gate error code, ms and a daily client hash, never a path, body or address; rolls over to `logold` past policy `logMaxBytes`; `php moat-gate.php log`; core `gate/request-log.ts` parses and summarises), client protection per route (FR-16, T-71: route `client` — `apiKey`, `jwt` EdDSA/ES256/RS256, `turnstile`, `honeypot`, `client_unauthorized`; `http/client.ts`) and upstream sign-in with Basic and OAuth2 client credentials (FR-20, T-70: data file `tokens`)
 > ([gates/php/README.md](gates/php/README.md)). **Moat Desktop, first surface:** Electron shell
 > with the API in-process (`apps/api`: the project list in `<MOAT_DATA_DIR>/projects.json`,
 > `GET /api/projects`, `GET|DELETE /api/projects/:id`, `POST /api/projects/:id/config/edits` — the closed list of moat.yaml edits: add/lock/unlock environments, lock/unlock and assign gates, add/update/enable/disable/remove routes and add/update/remove upstreams (`setRoute`, `setUpstream` & co. in `libs/core/src/config/edit.ts`), with a `base` hash against lost updates) and the Angular
@@ -60,7 +60,7 @@ Four components (ANFORDERUNGEN.md, header):
 > data file is readable and no level otherwise. The test console (FR-42): tab «Test-Konsole» →
 > `POST /api/projects/:id/dry-run` → core `planDryRun` + `dryRun` (`gate/dry-run.ts`): the gate's
 > answer to one request from moat.yaml and the suggested policy, nothing sent, the secret as
-> `<SECRET>`; its spec runs every `conformance/http/` case against it. The deploy package (DT-05, T-66): «Deploy» per gate in «Gates» → «Als ZIP speichern» / «In Ordner ablegen» → IPC `moat:gate:deploy` (ids + target only) → `prepareDeploy` in-process (`DeployPackageService`, core `planDeploy`: the latest bundle verified against the desktop's key, unchanged, + `suggestPolicy` of its config) → the main process's save/folder dialog → `apps/desktop/src/main/lib/deploy.ts` writes a new folder `moat-<gate>-v<n>/` (never replaces) or a stored ZIP (core `package/zip.ts`) with `bundle-v<n>.json`, `policy.json` and `LIESMICH.txt`/`README.txt`. «Per SFTP hochladen» (T-67) opens the main-process SFTP window (`sftp-window.ts`, `lib/sftp.ts` session, `lib/sftp-client.ts` on `ssh2`, no native build): target and password/passphrase typed only there, the host key shown with its type and pinned per host and port on first contact (`ssh-ed25519 SHA256:…`), a failure after `mkdir` reported as `partial`, a changed key refused before sign-in, the package written as a new folder with exclusive creates, SFTP only (no command); targets in `config.json` `sftpTargets`, the secret only as `safeStorage` ciphertext. «Per Git ausliefern» (T-68, `lib/git-deploy.ts`): a folder in a Git working copy (chosen in the main process, remembered in `config.json` `gitTargets`), checked for branch, upstream and `.gitignore`, confirmed in a message box with branch and remote, then the package as a new folder, `git commit --only` of that folder and a push to the upstream; the installed `git` via `execFile` with hooks and fsmonitor off; a failed push answers `committed`. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Not yet: Cloud, setup mode, trust mode 2. Everything else below is
+> `<SECRET>`; its spec runs every `conformance/http/` case against it. The deploy package (DT-05, T-66): «Deploy» per gate in «Gates» → «Als ZIP speichern» / «In Ordner ablegen» → IPC `moat:gate:deploy` (ids + target only) → `prepareDeploy` in-process (`DeployPackageService`, core `planDeploy`: the latest bundle verified against the desktop's key, unchanged, + `suggestPolicy` of its config) → the main process's save/folder dialog → `apps/desktop/src/main/lib/deploy.ts` writes a new folder `moat-<gate>-v<n>/` (never replaces) or a stored ZIP (core `package/zip.ts`) with `bundle-v<n>.json`, `policy.json` and `LIESMICH.txt`/`README.txt`. «Per SFTP hochladen» (T-67) opens the main-process SFTP window (`sftp-window.ts`, `lib/sftp.ts` session, `lib/sftp-client.ts` on `ssh2`, no native build): target and password/passphrase typed only there, the host key shown with its type and pinned per host and port on first contact (`ssh-ed25519 SHA256:…`), a failure after `mkdir` reported as `partial`, a changed key refused before sign-in, the package written as a new folder with exclusive creates, SFTP only (no command); targets in `config.json` `sftpTargets`, the secret only as `safeStorage` ciphertext. «Per FTPS hochladen» (T-69) opens the main-process FTPS window (`ftps-window.ts`, `lib/ftps.ts` session, `lib/ftps-client.ts` on `basic-ftp`, pure JS): explicit (`AUTH TLS`) or implicit FTPS, never plain FTP, `PROT P` required; the certificate checked after the handshake and before `USER` (CA-verified for the host, else exactly the pinned `SHA256:…`, shown with subject/issuer and pinned per host and port on first contact); passive only, data always to the control host (the PASV address ignored) over TLS with the control session or the same certificate; a new folder (`MKD`), each file checked absent before `STOR`, `partial` after `MKD`; targets in `config.json` `ftpsTargets`. Tests run a local FTPS server (`lib/ftps-test-server.ts`, certificate made at run time). «Per Git ausliefern» (T-68, `lib/git-deploy.ts`): a folder in a Git working copy (chosen in the main process, remembered in `config.json` `gitTargets`), checked for branch, upstream and `.gitignore`, confirmed in a message box with branch and remote, then the package as a new folder, `git commit --only` of that folder and a push to the upstream; the installed `git` via `execFile` with hooks and fsmonitor off; a failed push answers `committed`. Import (FR-45, DT-17, T-50): «Bundle importieren» / «Paketordner importieren» per gate in «Gates» → IPC `moat:gate:import` (ids + `file`|`folder` only) → the main process's file/folder dialog, `lib/import.ts` reads regular files only (no link, ≤ 4 MiB) and a folder by entry names → `importBundle` in-process (`BundleImportService`, core `planImport` in `storage/import-plan.ts`: verified as the gate would against the desktop's key, gate id, version above the latest, no `__proto__` key; ZIPs through the strict `readZip` in `package/unzip.ts`, deflate via injected zlib; only `bundle-v<n>.json`, `policy.json`, `LIESMICH.txt`, `README.txt` in a package) → the bundle's exact bytes as a new `bundles/<gate>/<n>.json`; the package's policy is ignored. «Log ansehen» per gate in «Gates» (DT-12): IPC `moat:gate:log` (ids only) → the main process's file dialog (`log.php`/`logold.php` or the output of `php moat-gate.php log`, at most two regular files, `lib/request-log.ts`) → `readRequestLog` in-process (`apps/api/src/gate-log/request-log-view.ts`, core `parseRequestLog` + `summariseRequestLog`) → summary per route and the newest 200 lines. «Vom Gate abrufen» in «Erstes Gate» (SEC-28, SEC-32, T-73; desktop only, `mt-gate-fetch`) reads gate id and box key from the gate's setup mode: `POST /api/projects/:id/gates/setup` (`GateSetupCommand` in `apps/api/src/gate-test/`, the URL through `gateSetupTarget` = the `.php` gate file with exactly `?moat-setup`, the token `^[A-Za-z0-9_-]{43}$` only in the header `X-Moat-Setup-Token` via `GateClientPort.setup`, the main process confirms the address like «Testen») → core `parseSetupAnswer` (`gate/setup-answer.ts`: strict JSON, exact keys, the box key's fingerprint recomputed and a differing claim refused); the page shows the fingerprints, whether the desktop's own signer is among the gate's pinned ones, and fills the fields — pinning still needs the confirmed fingerprint. Releases: `.github/workflows/release.yml`, started by hand, unsigned (see CI). Trust mode 2 «Passkey» (docs/CRYPTO.md §7, T-74): core and PHP gate verify WebAuthn ES256 entries and `php moat-gate.php trust|install --passkey=… --rp-id=… --origin=…` pins them (vectors `crypto/webauthn.json`, `trust.json`); **Desktop passkey (T-77):** «Passkey anlegen» and «Mit Passkey signieren» per gate in «Gates» (`bridge.passkey.status|enroll|use`, IPC `moat:passkey:*`, ids/booleans only). Chromium refuses WebAuthn on `app://` (measured), so `src/main/passkey-window.ts` opens the ceremony window on `https://passkey.moat.invalid` (rpId `passkey.moat.invalid`) which the main process itself answers in the in-memory session `moat-passkey`: three static files in `dialogs/`, no network (`lib/passkey.ts` `passkeyRoute`); preloads `passkey-preload.ts` / `passkey-sign-preload.ts`. Enrollment (`lib/passkey-enrollment.ts`, strict CBOR/COSE in `lib/passkey-attestation.ts`) stores credential id + public point in `config.json` `passkey`; gates that sign with it are `passkeyGates`; signing = `lib/passkey-signing.ts` → API `BundleSigningService.signWithPasskey` (`webauthnChallenge` of the payload, `verifyBundle` against the pinned passkey before writing); core `PlanSigner.passkey`/`pinnedSignerOf`, `TrustMode` `'passkey'`. **Honest limit:** Electron has no passkey UI of its own; mode 2 works only if the OS offers Chromium a platform authenticator (probe `isUserVerifyingPlatformAuthenticatorAvailable`), else the window and the page say so and nothing is stored. Tested only with a Chromium virtual authenticator (`MOAT_VIRTUAL_AUTHENTICATOR=1`, unpackaged only; `xvfb-run -a pnpm e2e:desktop-passkey` after `nx run api:build`), never with a real passkey. Not yet: Cloud. Everything else below is **Storage backends (DT-03, T-76):** tab «Verlauf» → `GET|POST /api/projects/:id/history` and `…/history/verify` (`HistoryService`, core `storage/history.ts`): an opt-in, append-only, hash-chained SQLite history per project in `<MOAT_DATA_DIR>/history/`, tamper-evident only; «Externe Datenbank» opens the main-process database window (`database-window.ts`): a PostgreSQL URL typed only there (TLS except localhost, kept as `safeStorage` ciphertext in `config.json` `databaseTargets`), push/pull of moat.yaml, gate files, sealed secrets and signed bundles (`DatabaseSyncService`, core `storage/sync.ts`); pulled bundles are verified like an import, a gate is never pinned from the database, nothing newer is overwritten. Prisma 7 with one schema and migration history per provider (`apps/api/prisma/`), a driver adapter on `node:sqlite`. MySQL/MariaDB not yet (open licence question).
 > the target; each section becomes concrete when the code lands. Update this file whenever the code
 > makes a section concrete or wrong.
 
@@ -78,16 +78,16 @@ convention, look at how lazy-koins does it.
 
 ### Shared (TypeScript)
 
-|                 |                                                                       |
-| --------------- | --------------------------------------------------------------------- |
-| Node            | **22.23.2**, pinned via Volta in `package.json`                       |
-| Package manager | **pnpm 11.21.0**, pinned via `packageManager` — do not use npm        |
-| Nx              | 23.2.1 (exact; `@nx/devkit` pinned to match in `pnpm-workspace.yaml`) |
-| TypeScript      | 6.0.3                                                                 |
-| Tests           | **Vitest** everywhere (TS) — one runner for every TS project          |
-| Validation      | **Zod 4** — the config schema and every boundary                      |
-| YAML            | **`yaml`** (eemeli) — the only YAML parser, strict options (see YAML) |
-| Crypto          | **libsodium** (`libsodium-wrappers-sumo`) — same primitives as PHP    |
+|                 |                                                                                                                                                                                  |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Node            | **22.23.2**, pinned via Volta in `package.json`                                                                                                                                  |
+| Package manager | **pnpm 11.21.0**, pinned via `packageManager` — do not use npm                                                                                                                   |
+| Nx              | 23.2.1 (exact; `@nx/devkit` pinned to match in `pnpm-workspace.yaml`)                                                                                                            |
+| TypeScript      | 6.0.3                                                                                                                                                                            |
+| Tests           | **Vitest** everywhere (TS) — one runner for every TS project                                                                                                                     |
+| Validation      | **Zod 4** — the config schema and every boundary                                                                                                                                 |
+| YAML            | **`yaml`** (eemeli) — the only YAML parser, strict options (see YAML)                                                                                                            |
+| Crypto          | **libsodium** (`libsodium-wrappers-sumo`) — same primitives as PHP; ECDSA P-256 (passkeys, mode 2) only through the platform's Web Crypto (TS) / `ext-openssl` (PHP), see Crypto |
 
 ### Cloud web (`apps/web`)
 
@@ -158,11 +158,13 @@ Target set (create them with the scaffold; keep this list true):
 ```bash
 pnpm start:full      # migrations, then API + web
 pnpm start:desktop   # desktop in dev
+pnpm e2e:desktop-passkey  # Electron: passkey windows + virtual authenticator (xvfb-run -a, after nx run api:build)
 pnpm check           # THE gate for TS: lint + budget + format + yamllint + test + build + typecheck
 pnpm check:gate-php  # THE gate for PHP: composer validate + cs + phpstan + phpunit + conformance
 pnpm check:all       # both — what CI runs
 pnpm test            # all TS unit tests (root Vitest, not via Nx — see Testing)
-pnpm test:integration
+pnpm test:integration # *.integration.spec.ts: SQLite for real, PostgreSQL (see Database)
+pnpm db:generate     # the Prisma clients → apps/api/src/generated/ (run by prepare)
 pnpm test:authz      # the authorization matrix alone (also part of pnpm check)
 pnpm test:dast       # ZAP against a locally started Cloud + gate (needs Docker)
 pnpm conformance     # the conformance suite against libs/core and every gate target present
@@ -254,7 +256,14 @@ signing, test vectors). Change it only together with `conformance/vectors/crypto
 implementation. In short: Ed25519 signatures over `"moat:bundle:v1\n" ‖ payloadBytes` with JCS
 payloads; secrets sealed with X25519 + keyed BLAKE2b + XChaCha20-Poly1305, AD bound to gate id,
 name and secret version; key files with Argon2id; base64url without padding. Passkeys (mode 2):
-the gate verifies WebAuthn ES256 itself (decided 12.10.2026, §7).
+the gate verifies WebAuthn ES256 itself (decided 12.10.2026, §7): `libs/core/src/crypto/webauthn.ts`
+(strict DER, `rpId`/origin grammar, `verifyPasskeyEntry`, `webauthnSignature`; `webauthnChallenge`
+in `bundle/bundle.ts`; `parseTrust`/`encodeTrust` in `bundle/trust.ts`) and `gates/php`
+(`Crypto/Es256.php`, `Bundle/PinnedPasskey.php`, `trust --passkey`). The one exception to "libsodium
+only": the ECDSA P-256 verification uses `globalThis.crypto.subtle` (Web Crypto is part of the
+platform, not a library) in core and `openssl_verify` in the gate (`ext-openssl`, required only when
+mode 2 is pinned and checked at boot, `status` and `check`); hashing stays libsodium/`hash`. The
+vectors' signatures come from the test-only RFC 6979 signer `libs/core/scripts/p256-test-signer.ts`.
 
 ## YAML standards
 
@@ -393,9 +402,33 @@ in-memory port doubles; a cross-tenant isolation suite covers every endpoint.
 - One Prisma schema per provider (`prisma/sqlite/`, `prisma/postgresql/`) with its own migration
   history; a test keeps them structurally equal. CHECK constraints hand-written in the migration
   SQL, as in lazy-koins (copy them back after a table redefinition).
-- MySQL/MariaDB (DT-03) later, same pattern.
+- MySQL/MariaDB (DT-03) later, same pattern — open: `@prisma/adapter-mariadb` needs the `mariadb`
+  driver (LGPL-2.1), which the MIT rule does not obviously allow. Ask.
 - The desktop's storage choice (DT-03) is a `StoragePort` in core: project folder (default,
   files and Git), SQLite, external DB. **External backends store ciphertext and signed bundles only.**
+
+As built (DT-03):
+
+- **Prisma 7.10** (`prisma-client` generator, CJS) in `apps/api/prisma/{sqlite,postgresql}/`
+  (`schema.prisma`, `prisma.config.ts`, `migrations/`). The clients are generated into
+  `apps/api/src/generated/` (ignored) by `pnpm db:generate`, which `pnpm install` runs
+  (`prepare`). Nothing outside `apps/api/src/persistence/` imports Prisma, `pg` or `node:sqlite`
+  (ESLint).
+- **SQLite without a native module:** `persistence/database/node-sqlite-adapter.ts` is a Prisma
+  driver adapter on Node's built-in `node:sqlite` (works in Node 22 and Electron 42), so there is
+  no better-sqlite3 and no ABI pin. PostgreSQL through `@prisma/adapter-pg` on `pg` (pure JS).
+- **Migrations:** our own migrator (`persistence/database/migrator.ts`, as lazy-koins) applies the
+  bundled migration SQL (`?raw` imports; webpack `asset/source`) in a lock (`BEGIN IMMEDIATE` /
+  `pg_advisory_xact_lock`), records them in `_prisma_migrations`, and refuses foreign tables
+  (`foreign_tables`), a newer schema (`schema_newer`) and a changed one (`schema_damaged`). Never
+  `prisma migrate deploy` at runtime. A new migration: `prisma migrate diff` into both providers'
+  folders, hand-written CHECKs/triggers added to both, `MIGRATIONS` in `migrations.ts` extended.
+- **Tables:** `history_entry` (append-only by trigger), `sync_project`, `sync_gate`, `sync_secret`,
+  `sync_bundle` (no UPDATE); CHECKs refuse anything but sealed secrets and signed bundles.
+- **Tests:** `pnpm test:integration` (`apps/api/vitest.integration.config.ts`,
+  `*.integration.spec.ts`) runs SQLite for real and PostgreSQL from `MOAT_TEST_POSTGRES_URL`, or
+  a throwaway cluster from the local `initdb`/`postgres` (16/17) on a free port
+  (`persistence/database/testing/postgres-cluster.ts`).
 
 ## Auth
 

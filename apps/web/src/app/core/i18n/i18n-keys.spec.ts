@@ -15,6 +15,9 @@ import {
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './locales';
 import {
   DEPLOY_OUTCOMES,
+  IMPORT_OUTCOMES,
+  LOG_OUTCOMES,
+  PASSKEY_NOTICES,
   SEAL_OUTCOMES,
   SIGN_OUTCOMES,
 } from '../../features/gates/pages/gates-page/gates-page.service';
@@ -22,6 +25,7 @@ import { PROJECT_TABS } from '../../features/projects/pages/project-workspace/pr
 import { SETUP_STEPS, STEP_STATES } from '../api/setup.types';
 import { SETUP_ERRORS } from '../../features/setup/pages/setup-page/setup-page.service';
 import { GATE_NOTICES } from '../../features/setup/components/steps/gate-step';
+import { GATE_FETCH_ERRORS } from '../../features/setup/components/steps/gate-fetch';
 import { KEY_NOTICES } from '../../features/setup/components/steps/key-step';
 import { PROJECT_NOTICES } from '../../features/setup/components/steps/project-step';
 import {
@@ -30,6 +34,11 @@ import {
 } from '../../features/setup/components/steps/recipe-step';
 import { GATE_FAILURES, RECIPE_IDS } from '../api/recipe.types';
 import { HARDENING_NOTICES } from '../../shared/components/hardening-check';
+import {
+  DEPLOY_TARGET_KINDS,
+  HISTORY_BREAKS,
+  HISTORY_KINDS,
+} from '../api/history.types';
 import {
   CONSOLE_COUNTERS,
   CONSOLE_NOTICES,
@@ -67,8 +76,11 @@ const DYNAMIC_KEYS = [
   ...USAGE_FORMATS.map((format) => `routes.form.usageFormats.${format}`),
   ...PROJECT_TABS.map((tab) => `projects.tabs.${tab}`),
   ...SIGN_OUTCOMES.map((outcome) => `gates.signResult.${outcome}`),
+  ...PASSKEY_NOTICES.map((notice) => `gates.passkey.notices.${notice}`),
   ...SEAL_OUTCOMES.map((outcome) => `gates.sealResult.${outcome}`),
   ...DEPLOY_OUTCOMES.map((outcome) => `gates.deployResult.${outcome}`),
+  ...IMPORT_OUTCOMES.map((outcome) => `gates.importResult.${outcome}`),
+  ...LOG_OUTCOMES.map((outcome) => `gates.logResult.${outcome}`),
   ...SETUP_STEPS.flatMap((step) => [
     `setup.steps.${step}.title`,
     `setup.steps.${step}.intro`,
@@ -78,6 +90,7 @@ const DYNAMIC_KEYS = [
   ...KEY_NOTICES.map((code) => `setup.key.notices.${code}`),
   ...PROJECT_NOTICES.map((code) => `setup.project.notices.${code}`),
   ...GATE_NOTICES.map((code) => `setup.gate.notices.${code}`),
+  ...GATE_FETCH_ERRORS.map((code) => `setup.gate.fetch.errors.${code}`),
   ...RECIPE_NOTICES.map((code) => `setup.recipe.notices.${code}`),
   ...GATE_CODES.map((code) => `setup.recipe.codes.${code}`),
   ...HARDENING_NOTICES.map((code) => `hardening.check.notices.${code}`),
@@ -85,6 +98,12 @@ const DYNAMIC_KEYS = [
   ...DRY_RUN_ERRORS.map((code) => `console.errors.${code}`),
   ...CONSOLE_COUNTERS.map((key) => `console.counters.${key}`),
   ...CONSOLE_PERIODS.map((period) => `console.periods.${period}`),
+  ...HISTORY_BREAKS.map((reason) => `history.breaks.${reason}`),
+  ...HISTORY_KINDS.map((kind) => `history.kinds.${kind}`),
+  ...DEPLOY_TARGET_KINDS.map((target) => `history.targets.${target}`),
+  'history.database.done.push',
+  'history.database.done.pull',
+  'history.notices.failed',
   ...GATE_FAILURES.map((reason) => `setup.recipe.failed.${reason}`),
   ...RECIPE_IDS.flatMap((id) => [
     `setup.recipe.recipes.${id}.title`,

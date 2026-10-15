@@ -16,6 +16,7 @@ const PREVIEW: SealPreview = {
   currentVersion: 1,
   nextVersion: 2,
   usedBy: [{ upstream: 'hubspot', origin: 'https://api.hubapi.com' }],
+  comparedBy: [],
   digest: 'digest-1',
 };
 /** TEST ONLY */

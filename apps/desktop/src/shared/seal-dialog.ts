@@ -38,6 +38,8 @@ export interface SealDialogView {
     readonly upstream: string;
     readonly origin: string;
   }[];
+  /** Routes that compare a caller's API key with the value (FR-16). */
+  readonly comparedBy: readonly string[];
   readonly notice: SealNotice | null;
 }
 
@@ -53,6 +55,7 @@ export interface SealDialogTexts {
   readonly firstVersion: string;
   readonly usedBy: string;
   readonly unused: string;
+  readonly comparedBy: string;
   readonly value: string;
   readonly valueHint: string;
   readonly show: string;

@@ -6,6 +6,8 @@ namespace Moat\Gate\Runtime;
 
 use Moat\Gate\Config\AuthType;
 use Moat\Gate\Config\Budget;
+use Moat\Gate\Config\ClientProtection;
+use Moat\Gate\Config\Limit;
 use Moat\Gate\Config\LimitScope;
 use Moat\Gate\Config\Method;
 use Moat\Gate\Config\Route;
@@ -38,22 +40,40 @@ final class RequestHandler
 {
     private const PREFLIGHT_VARY = 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers';
     /** Failures before the request could leave the gate: the provider bills nothing. */
-    private const NOT_SENT = [GateError::SecretUnavailable, GateError::UpstreamForbidden];
+    private const NOT_SENT = [GateError::SecretUnavailable, GateError::UpstreamForbidden, GateError::UpstreamAuthFailed];
 
     public static function handle(Request $request, ActiveBundle $bundle, Gate $gate, int $now): Response
     {
+        $started = hrtime(true);
+        $route = null;
+        $error = null;
         try {
-            return self::dispatch($request, $bundle, $gate, $now);
+            $response = self::dispatch($request, $bundle, $gate, $now, $route);
         } catch (Failure $failure) {
             if ($failure->error->status() >= 500) {
                 Kernel::log(null, $failure->error->value);
             }
-
-            return Response::error($failure->error, $failure->headers);
+            $error = $failure->error->value;
+            $response = Response::error($failure->error, $failure->headers);
         }
+        // FR-50: one line per request, without path, query, headers, body or address.
+        RequestLog::record(
+            $gate->data,
+            $bundle->policy->logMaxBytes,
+            $now,
+            $route,
+            $request->method,
+            $response->status,
+            $error,
+            intdiv(hrtime(true) - $started, 1_000_000),
+            $request->remoteAddr,
+        );
+
+        return $response;
     }
 
-    private static function dispatch(Request $request, ActiveBundle $bundle, Gate $gate, int $now): Response
+    /** @param-out ?string $route the matched route's name */
+    private static function dispatch(Request $request, ActiveBundle $bundle, Gate $gate, int $now, ?string &$route): Response
     {
         $kill = KillSwitch::read($gate->data);
         if (!$bundle->config->enabled || $kill->gate) {
@@ -69,27 +89,79 @@ final class RequestHandler
 
             return new Response(204, $headers + ['Vary' => self::PREFLIGHT_VARY], '');
         }
-        $route = self::match($request, $routes, $kill);
+        $matched = self::match($request, $routes, $kill);
+        $route = $matched->name;
         try {
-            $allowOrigin = Cors::check($route, $request->origin, $request->fetchSite);
+            $allowOrigin = Cors::check($matched, $request->origin, $request->fetchSite);
         } catch (Rejection) {
             throw new Failure(GateError::OriginForbidden, ['Vary' => 'Origin']);
         }
-        $cors = $route->origins === [] ? [] : ['Vary' => 'Origin'];
+        $cors = $matched->origins === [] ? [] : ['Vary' => 'Origin'];
         if ($allowOrigin !== null) {
             $cors = ['Access-Control-Allow-Origin' => $allowOrigin, 'Access-Control-Expose-Headers' => 'Retry-After'] + $cors;
         }
         try {
-            self::limit($request, $route, $bundle, $gate, $now);
-            $payload = self::payload($request, $route, $bundle);
-            $budgets = self::budgets($route, $bundle);
+            // FR-16: API key and JWT before the limits; honeypot with the body; Turnstile, which
+            // costs a call, only for requests the limits and the body let through.
+            if ($matched->client !== null) {
+                self::apiKey($request, $matched->client, $bundle, $gate, $now);
+                ClientCheck::jwt($request, $matched->client, $now);
+            }
+            self::limit($request, $matched, $bundle, $gate, $now);
+            $payload = self::payload($request, $matched, $bundle);
+            if ($matched->client !== null) {
+                ClientCheck::turnstile($request, $matched->client, $bundle, $gate);
+            }
+            $budgets = self::budgets($matched, $bundle);
             $response = $budgets === []
-                ? self::forward($payload, $route, $bundle, $gate)
-                : self::forwardWithin($budgets, $payload, $route, $bundle, $gate, $now);
+                ? self::forward($payload, $matched, $bundle, $gate, $now)
+                : self::forwardWithin($budgets, $payload, $matched, $bundle, $gate, $now);
 
             return new Response($response->status, $response->headers + $cors, $response->body);
         } catch (Failure $failure) {
             throw $failure->with($cors);
+        }
+    }
+
+    /**
+     * FR-16, T-71, SEC-45: the API key, with failed attempts counted per client. A client that has
+     * failed `ClientCheck::FAILURE_REQUESTS` times within the window is refused (429 `rate_limited`)
+     * before its key is compared, even when it is the right one. A failure is counted like a
+     * request against the policy's per-IP and total limits too, and keeps the answer
+     * `client_unauthorized`; only the client key is stored, never the key that was tried (SEC-47).
+     */
+    private static function apiKey(Request $request, ClientProtection $client, ActiveBundle $bundle, Gate $gate, int $now): void
+    {
+        if ($client->apiKey === null) {
+            return;
+        }
+        $key = ClientKey::of($request->remoteAddr) ?? throw new Failure(GateError::RateLimitUnavailable);
+        $name = 'apikey-failed ' . $key;
+        $limit = new Limit(ClientCheck::FAILURE_REQUESTS, ClientCheck::FAILURE_WINDOW_SECONDS);
+        try {
+            $wait = RateLimiter::exhausted($gate->data, $name, $limit, $now);
+        } catch (\Exception) {
+            throw new Failure(GateError::RateLimitUnavailable);
+        }
+        if ($wait !== null) {
+            throw new Failure(GateError::RateLimited, ['Retry-After' => (string) max(1, $wait)]);
+        }
+        try {
+            ClientCheck::apiKey($request, $client, $bundle, $gate);
+        } catch (Failure $failure) {
+            if ($failure->error !== GateError::ClientUnauthorized) {
+                throw $failure;
+            }
+            $limits = $bundle->policy->limits;
+            try {
+                $refusal = RateLimiter::hit($gate->data, [['ip ' . $key, $limits->perIp], ['total', $limits->total], [$name, $limit]], $limits->maxClients, $now, RateLimiter::routeLimitsId($bundle->config->routes));
+            } catch (\Exception) {
+                throw new Failure(GateError::RateLimitUnavailable);
+            }
+            if ($refusal !== null) {
+                throw new Failure(GateError::RateLimited, ['Retry-After' => (string) $refusal->retryAfter]);
+            }
+            throw $failure;
         }
     }
 
@@ -180,7 +252,7 @@ final class RequestHandler
             }
         };
         try {
-            $response = self::forward($payload, $route, $bundle, $gate);
+            $response = self::forward($payload, $route, $bundle, $gate, $now);
         } catch (Failure $failure) {
             // Not sent: nothing to pay. Anything else may have reached the provider and been
             // billed: the estimate stays charged.
@@ -217,6 +289,9 @@ final class RequestHandler
         if ($hasBody && ($mediaType === null || !\in_array($mediaType, $route->contentTypes, true))) {
             throw new Failure(GateError::UnsupportedMediaType);
         }
+        if ($route->client !== null) {
+            ClientCheck::honeypot($route->client, $body);
+        }
         if ($route->body !== null) {
             try {
                 $body = BodyValidator::validate($route->body, $body);
@@ -229,7 +304,7 @@ final class RequestHandler
     }
 
     /** @param array{string, bool, ?string} $payload */
-    private static function forward(array $payload, Route $route, ActiveBundle $bundle, Gate $gate): Response
+    private static function forward(array $payload, Route $route, ActiveBundle $bundle, Gate $gate, int $now): Response
     {
         $upstream = $bundle->config->upstreamOf($route);
         [$body, $hasBody, $mediaType] = $payload;
@@ -241,6 +316,10 @@ final class RequestHandler
         }
         $pathAndQuery = $route->upstreamPath;
         $secret = '';
+        // What the upstream gets from the secret (a Basic value, an access token): also never
+        // given back to the client (SEC-34).
+        $credential = '';
+        $tokenKey = null;
         try {
             if ($upstream->auth !== null) {
                 try {
@@ -252,8 +331,15 @@ final class RequestHandler
                     $headers['Authorization'] = 'Bearer ' . $secret;
                 } elseif ($upstream->auth->type === AuthType::Header) {
                     $headers[$upstream->auth->name] = $secret;
-                } else {
+                } elseif ($upstream->auth->type === AuthType::Query) {
                     $pathAndQuery .= '?' . rawurlencode($upstream->auth->name) . '=' . rawurlencode($secret);
+                } elseif ($upstream->auth->type === AuthType::Basic) {
+                    $credential = base64_encode($upstream->auth->name . ':' . $secret);
+                    $headers['Authorization'] = 'Basic ' . $credential;
+                } else {
+                    $tokenKey = OAuthToken::key($route->upstream, $upstream->auth, $bundle->version);
+                    $credential = OAuthToken::get($gate->data, $tokenKey, $upstream->auth, $secret, $bundle, $now);
+                    $headers['Authorization'] = 'Bearer ' . $credential;
                 }
             }
             $response = UpstreamClient::send(new UpstreamRequest(
@@ -268,11 +354,16 @@ final class RequestHandler
                 $route->responseContentTypes,
             ), $bundle->policy);
             // SEC-34: an upstream that echoes the credential does not get it to the client.
-            if (SecretEcho::found($response->body, $secret)) {
+            if (SecretEcho::found($response->body, $secret) || SecretEcho::found($response->body, $credential)) {
                 throw new Failure(GateError::UpstreamReflectedSecret);
+            }
+            // FR-20: a token the API no longer takes is not used again.
+            if ($tokenKey !== null && $response->status === 401) {
+                OAuthToken::drop($gate->data, $tokenKey);
             }
         } finally {
             sodium_memzero($secret);
+            sodium_memzero($credential);
             foreach ($headers as $name => $value) {
                 sodium_memzero($headers[$name]);
             }

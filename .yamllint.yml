@@ -6,6 +6,7 @@ ignore: |
   dist/
   pnpm-lock.yaml
   libs/ui/
+  .claude/worktrees/
 
 rules:
   document-start: disable

@@ -141,6 +141,25 @@ describe('loadMoatYaml', () => {
     });
   });
 
+  it('FR-16: suggestPolicy proposes requireClient once every route to the host has a key, token or JWT check', () => {
+    const secrets = ['hubspot-token', 'site-key'];
+    const withKey = `${valid}    client: { apiKey: { header: X-Api-Key, secret: site-key } }\n`;
+    const host = (text: string) =>
+      suggestPolicy(compileConfig(loadMoatYaml(text), secrets)).upstreams[
+        'api.hubapi.com'
+      ];
+    expect(host(withKey)?.requireClient).toBe(true);
+    expect(host(valid)?.requireClient).toBeUndefined();
+    // A second route to the same host without protection: not proposed.
+    const open = `${withKey}  other:
+    method: POST
+    path: "/other"
+    upstream: hubspot
+    upstreamPath: "/crm/v3/objects/contacts"
+`;
+    expect(host(open)?.requireClient).toBeUndefined();
+  });
+
   it('SEC-24: rejects anchors and aliases', () => {
     const text = valid.replace(
       'auth: { type: bearer, secret: hubspot-token }',

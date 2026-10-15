@@ -12,7 +12,12 @@ import {
   Post,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import type { HistoryCheck } from '@moat/core';
 import type { GateRefusal } from './application/gate.commands';
+import {
+  HistoryService,
+  type HistoryView,
+} from './application/history.service';
 import { ConfigEditDto, toConfigEdit } from './dto/config-edit.dto';
 import { GateDto, toGateInput } from './dto/gate.dto';
 import { ProjectService } from './project.service';
@@ -31,7 +36,10 @@ function gateRefusal(code: GateRefusal): never {
  */
 @Controller('projects')
 export class ProjectController {
-  constructor(private readonly projects: ProjectService) {}
+  constructor(
+    private readonly projects: ProjectService,
+    private readonly history: HistoryService,
+  ) {}
 
   @Get()
   @Header('Cache-Control', 'no-store')
@@ -125,5 +133,37 @@ export class ProjectController {
     const view = await this.projects.get(id);
     if (view === null) throw new NotFoundException();
     return view;
+  }
+
+  /** «Verlauf» (DT-03): whether the project keeps a history, and its rows. */
+  @Get(':id/history')
+  @Header('Cache-Control', 'no-store')
+  async getHistory(@Param('id') id: string): Promise<HistoryView> {
+    const view = await this.history.view(id);
+    if (view === null) throw new NotFoundException();
+    return view;
+  }
+
+  /**
+   * Switches the history on (a local SQLite file in the API's data folder, never in the project
+   * folder). Idempotent; there is no route that switches it off or removes a row.
+   */
+  @Post(':id/history')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  async enableHistory(@Param('id') id: string): Promise<HistoryView> {
+    const view = await this.history.enable(id);
+    if (view === null) throw new NotFoundException();
+    return view;
+  }
+
+  /** «Prüfen»: the hash chain and the anchor (core verifyHistory); writes nothing. */
+  @Post(':id/history/verify')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  async verifyHistory(@Param('id') id: string): Promise<HistoryCheck> {
+    const check = await this.history.verify(id);
+    if (check === null) throw new NotFoundException();
+    return check;
   }
 }

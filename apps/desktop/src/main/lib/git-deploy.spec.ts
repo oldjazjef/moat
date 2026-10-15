@@ -203,6 +203,27 @@ describe('deploy to Git (DT-05, T-68) against real repositories', () => {
     ]);
   });
 
+  it('refuses http./https. keys of the repository: they weaken or redirect the push (TLS, proxy, headers)', () => {
+    expect(
+      unsafeConfigKeys(
+        [
+          'local\thttp.sslVerify=false',
+          'local\thttp.proxy=http://evil.example',
+          'local\thttp.extraHeader=X: y',
+          'worktree\thttps.sslCAInfo=/tmp/ca',
+          'local\thttp.https://example.ch/.sslverify=false',
+          'global\thttp.proxy=http://mine.example',
+        ].join('\n'),
+      ),
+    ).toEqual([
+      'http.sslverify',
+      'http.proxy',
+      'http.extraheader',
+      'https.sslcainfo',
+      'http.https://example.ch/.sslverify',
+    ]);
+  });
+
   it('shows the push address without user or password', () => {
     expect(shownUrl('https://eme:ghp_TEST-ONLY@example.ch/shop.git\n')).toBe(
       'https://example.ch/shop.git',

@@ -34,13 +34,19 @@ describe('desktop config', () => {
   it('keeps the other fields when one changes, readable by this user only', () => {
     updateConfig(dir, { keyFile: '/home/me/release.moatkey' });
     updateConfig(dir, { passphrases: { [KID]: 'c2VhbGVk' } });
+    updateConfig(dir, { previousKey: 'P'.repeat(43) });
     expect(readConfig(dir)).toEqual({
       projectDir: null,
       keyFile: '/home/me/release.moatkey',
+      previousKey: 'P'.repeat(43),
       passphrases: { [KID]: 'c2VhbGVk' },
       deployed: {},
       sftpTargets: {},
       gitTargets: {},
+      ftpsTargets: {},
+      databaseTargets: {},
+      passkey: null,
+      passkeyGates: [],
     });
     if (process.platform !== 'win32')
       expect(statSync(join(dir, CONFIG_FILE)).mode & 0o077).toBe(0);
@@ -53,6 +59,7 @@ describe('desktop config', () => {
       'null',
       '{"projectDir":"relative/dir","keyFile":"key.moatkey"}',
       '{"projectDir":42,"passphrases":[]}',
+      '{"previousKey":"not a key"}',
     ]) {
       writeFileSync(join(dir, CONFIG_FILE), content);
       expect(readConfig(dir)).toEqual(EMPTY_CONFIG);
@@ -120,6 +127,57 @@ describe('desktop config', () => {
     );
     expect(readConfig(dir).gitTargets).toEqual({
       [`${id}/www`]: '/home/me/site-deploy',
+    });
+  });
+
+  it('keeps an FTPS target only in the shape the FTPS window writes (DT-05, T-69)', () => {
+    const id = 'EET8NETuKZO4J4p9vrWNKg';
+    const target = {
+      host: 'ftp.example.ch',
+      port: 21,
+      username: 'eme@example.ch',
+      remoteDir: 'moat-uploads',
+      mode: 'explicit',
+      certificate: `SHA256${':AB'.repeat(32)}`,
+      secret: 'c2VhbGVk',
+    };
+    writeFileSync(
+      join(dir, CONFIG_FILE),
+      JSON.stringify({
+        ftpsTargets: {
+          [`${id}/www`]: target,
+          [`${id}/a`]: { ...target, mode: 'plain' },
+          [`${id}/b`]: { ...target, certificate: 'SHA256:xx' },
+          [`${id}/c`]: { ...target, remoteDir: '../www' },
+          '../x': target,
+        },
+      }),
+    );
+    expect(readConfig(dir).ftpsTargets).toEqual({ [`${id}/www`]: target });
+  });
+
+  it('keeps a database target per project only with a label and keychain ciphertext (DT-03)', () => {
+    const id = 'EET8NETuKZO4J4p9vrWNKg';
+    const target = {
+      key: 'shop',
+      label: 'postgresql://moat@db.example.ch:5432/moat',
+      url: 'c2VhbGVk',
+    };
+    writeFileSync(
+      join(dir, CONFIG_FILE),
+      JSON.stringify({
+        databaseTargets: {
+          [id]: target,
+          AAAAAAAAAAAAAAAAAAAAAA: { ...target, url: null },
+          BBBBBBBBBBBBBBBBBBBBBB: { ...target, key: '../x' },
+          CCCCCCCCCCCCCCCCCCCCCC: { ...target, label: 'mysql://x' },
+          '../x': target,
+        },
+      }),
+    );
+    expect(readConfig(dir).databaseTargets).toEqual({
+      [id]: target,
+      AAAAAAAAAAAAAAAAAAAAAA: { ...target, url: null },
     });
   });
 

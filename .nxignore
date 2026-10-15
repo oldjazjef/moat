@@ -1,2 +1,4 @@
 private
 gates/php/vendor
+# Agent worktrees (full copies of the repo) are not part of the workspace.
+.claude/worktrees

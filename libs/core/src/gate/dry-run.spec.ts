@@ -20,6 +20,8 @@ const ONLY_THE_GATE = new Set([
   'budget_exhausted',
   'rate_limit_unavailable',
   'upstream_forbidden',
+  // FR-16: the key's value, the JWT's signature and the Turnstile answer.
+  'client_unauthorized',
 ]);
 /** Headers the dry run answers itself (the rest come from the gate's response writer). */
 const OWN_HEADERS = [
@@ -96,9 +98,13 @@ describe('dryRun predicts the gate (conformance/http/, FR-42)', () => {
 
   it('covers every case file', () => {
     expect(files.sort()).toEqual([
+      'gate-auth.json',
+      'gate-client.json',
       'gate-kill-switch.json',
       'gate-locked.json',
+      'gate-log.json',
       'gate-pull.json',
+      'gate-setup.json',
       'gate.json',
     ]);
   });
@@ -114,7 +120,10 @@ describe('dryRun predicts the gate (conformance/http/, FR-42)', () => {
         published ||= entry.publish?.version !== undefined;
         return published && entry.pullDue === true;
       });
-      const fixed = changed === -1 ? cases : cases.slice(0, changed);
+      // The setup mode (gate-setup.json) is the gate's own, before any bundle: not predicted.
+      const fixed = (changed === -1 ? cases : cases.slice(0, changed)).filter(
+        (entry) => !entry.request.path.includes('moat-setup'),
+      );
       for (const entry of fixed) {
         it(entry.name, () => {
           if (entry.killFile !== undefined)
@@ -139,10 +148,24 @@ describe('dryRun predicts the gate (conformance/http/, FR-42)', () => {
           } else if (result.kind === 'preflight') {
             expect(wanted.status).toBe(204);
             expect(wanted.upstreamCalls).toBe(0);
-          } else if (wanted.upstreamCalls === 0) {
+          } else if (
+            wanted.upstreamCalls === 0 ||
+            wanted.error === 'client_unauthorized'
+          ) {
+            // Refused by the gate, at most after a Turnstile check.
             expect(ONLY_THE_GATE).toContain(wanted.error);
+            expect(wanted.upstreamCalls).toBe(
+              result.call.turnstileCall === undefined ? 0 : 1,
+            );
           } else {
-            expect(wanted.upstreamCalls).toBe(1);
+            // OAuth2 (FR-20): the token request too, unless the gate has a token cached.
+            // FR-16: a Turnstile check is one more.
+            const calls = result.call.turnstileCall === undefined ? 1 : 2;
+            expect(
+              result.call.tokenCall === undefined
+                ? [calls]
+                : [calls, calls + 1],
+            ).toContain(wanted.upstreamCalls);
             const sent = wanted.json;
             if (sent?.method !== undefined && sent.path !== undefined) {
               const url = new URL(
@@ -158,12 +181,22 @@ describe('dryRun predicts the gate (conformance/http/, FR-42)', () => {
                 ).toBe(sent.query);
               if (sent.body !== undefined)
                 expect(result.call.body).toBe(sent.body);
-              const headers = lower(Object.fromEntries(result.call.headers));
+              const headers = lower(
+                Object.fromEntries(
+                  result.call.headers.map(([name, value]) => [
+                    name,
+                    // The fake upstream shows a Basic credential decoded (gate-auth.json).
+                    value.startsWith('Basic ')
+                      ? `Basic ${atob(value.slice(6))}`
+                      : value,
+                  ]),
+                ),
+              );
               for (const [name, value] of Object.entries(sent.headers ?? {}))
                 expect(headers[name] ?? null, name).toBe(value);
             }
           }
-          if (result.kind !== 'forwarded' || wanted.upstreamCalls === 1) {
+          if (result.kind !== 'forwarded' || wanted.upstreamCalls >= 1) {
             const answered = lower(result.headers);
             for (const [name, value] of Object.entries(wanted.headers ?? {})) {
               if (!OWN_HEADERS.includes(name)) continue;

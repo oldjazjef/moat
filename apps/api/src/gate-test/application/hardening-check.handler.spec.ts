@@ -28,6 +28,9 @@ class FakeHost extends GateClientPort {
   async send(): Promise<GateAnswer> {
     throw new Error('the check only probes');
   }
+  async setup(): Promise<ProbeReply> {
+    throw new Error('the check only probes');
+  }
   async probe(url: URL): Promise<ProbeReply> {
     this.urls.push(url.href);
     const page = this.pages[url.pathname] ?? 'Not Found';

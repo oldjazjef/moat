@@ -126,3 +126,14 @@ function parseIPv6(text: string): number[] | null {
     ? [...head, ...Array<number>(missing).fill(0), ...tail]
     : null;
 }
+
+/**
+ * T-71, SEC-45: failed `apiKey` attempts (wrong, missing or malformed key) counted per client
+ * (REMOTE_ADDR, SEC-26) across all routes with an API key: after this many within the window the
+ * gate answers 429 `rate_limited` before it compares the key, even to the right one. The counter
+ * is keyed by the client alone — no key, no secret is stored (SEC-47).
+ */
+export const CLIENT_FAILURE_LIMIT = {
+  requests: 5,
+  windowSeconds: 300,
+} as const;

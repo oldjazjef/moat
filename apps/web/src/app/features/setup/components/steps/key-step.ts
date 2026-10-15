@@ -131,7 +131,7 @@ export class KeyStep extends SetupStepComponent {
     try {
       const result = await action();
       if (result.status === 'chosen' || result.status === 'created') {
-        this.status.set({ status: 'ready', key: result.key });
+        this.status.set({ status: 'ready', key: result.key, previous: null });
       } else if (result.status === 'unreadable' || result.status === 'failed') {
         this.notice.set(result.status);
       }

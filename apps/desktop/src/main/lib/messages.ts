@@ -4,8 +4,13 @@
  */
 import type { KeyDialogTexts } from '../../shared/key-dialog';
 import type { DeployPackage, DeployTexts } from './deploy';
+import type { FtpsDialogTexts } from '../../shared/ftps-dialog';
 import type { SealDialogTexts } from '../../shared/seal-dialog';
 import type { SftpDialogTexts } from '../../shared/sftp-dialog';
+import type {
+  PasskeyEnrollTexts,
+  PasskeySignTexts,
+} from '../../shared/passkey-dialog';
 import type { SignDialogTexts } from '../../shared/sign-dialog';
 
 export type DesktopLocale = 'de-CH' | 'en';
@@ -41,6 +46,9 @@ export interface DesktopMessages {
     readonly filter: string;
   };
   readonly signDialog: SignDialogTexts;
+  /** Trust mode 2: «Passkey anlegen» and signing with the passkey. */
+  readonly passkeyDialog: PasskeyEnrollTexts;
+  readonly passkeySignDialog: PasskeySignTexts;
   readonly sealDialog: SealDialogTexts;
   /** «Testen» (T-59): the address of the first test request, confirmed outside the page. */
   readonly testRequest: {
@@ -48,6 +56,23 @@ export interface DesktopMessages {
     readonly message: (host: string) => string;
     readonly detail: (origin: string) => string;
     readonly send: string;
+    readonly cancel: string;
+  };
+  /** Settings the page asks to change, confirmed in a message box of the main process. */
+  readonly confirmChange: {
+    readonly keyRotationDone: {
+      readonly title: string;
+      readonly message: string;
+      readonly detail: string;
+      readonly confirm: string;
+    };
+    readonly passkeyUse: {
+      readonly title: string;
+      readonly on: string;
+      readonly off: string;
+      readonly detail: (gate: string) => string;
+      readonly confirm: string;
+    };
     readonly cancel: string;
   };
   /** The deploy package (DT-05): where it goes, and the instructions inside it. */
@@ -79,6 +104,23 @@ export interface DesktopMessages {
   /** The SFTP window (DT-05) and its file dialog for a private key. */
   readonly sftpDialog: SftpDialogTexts;
   readonly sftpKey: { readonly title: string; readonly button: string };
+  /** Import (FR-45): a bundle file or package ZIP, or a package folder. */
+  /** «Log ansehen» (DT-12): the dialog that chooses a gate's log files. */
+  readonly requestLog: {
+    readonly title: string;
+    readonly button: string;
+    readonly filter: string;
+  };
+  readonly importBundle: {
+    readonly chooseFile: {
+      readonly title: string;
+      readonly button: string;
+      readonly filter: string;
+    };
+    readonly chooseFolder: { readonly title: string; readonly button: string };
+  };
+  /** The FTPS window (DT-05, T-69). */
+  readonly ftpsDialog: FtpsDialogTexts;
   readonly menu: {
     readonly file: string;
     readonly edit: string;
@@ -143,6 +185,7 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       firstVersion: 'erstmals',
       usedBy: 'Gesendet an',
       unused: 'Kein Upstream verwendet es zurzeit.',
+      comparedBy: 'Nur verglichen mit dem API-Schlüssel des Aufrufers (Routen)',
       value: 'Wert',
       valueHint:
         'Füge den Schlüssel oder das Token ein. Moat zeigt ihn danach nie wieder an.',
@@ -202,6 +245,81 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
         passphrase_missing: 'Gib die Passphrase ein.',
       },
     },
+    passkeyDialog: {
+      title: 'Passkey anlegen',
+      intro:
+        'Moat legt auf diesem Gerät einen Passkey an. Er gibt künftig deine Bundles frei (Vertrauensmodus 2, „Signiert mit Passkey“). Der private Schlüssel verlässt den Passkey nie; Moat speichert nur den öffentlichen Schlüssel.',
+      honesty:
+        'Moat Desktop hat keine eigene Passkey-Oberfläche. Es klappt nur, wenn dein Betriebssystem Chromium einen Passkey anbietet (zum Beispiel Windows Hello). Sonst meldet dieses Fenster, dass keiner verfügbar ist, und Modus 2 bleibt aus.',
+      rpId: 'Relying-Party-ID',
+      origin: 'Origin',
+      replaces:
+        'Es gibt schon einen Passkey. Der neue ersetzt ihn: Gates, die den alten gepinnt haben, nehmen deine Bundles nicht mehr an, bis du den neuen am Gate pinnst.',
+      create: 'Passkey anlegen',
+      cancel: 'Abbrechen',
+      close: 'Schliessen',
+      doneTitle: 'Passkey angelegt',
+      doneIntro:
+        'Pinne den Passkey jetzt am Gate, auf dem Server. Vergleiche vorher den Fingerprint, den das Gate ausgibt, mit diesem.',
+      fingerprint: 'Fingerprint',
+      publicKey: 'Öffentlicher Schlüssel',
+      trustCommand: 'Befehl für ein bestehendes Gate',
+      installCommand: 'Befehl für ein neues Gate',
+      compare:
+        'Der Befehl pinnt den Passkey als einzigen Signer. Den Modus wechseln kannst du nur am Gate selbst.',
+      notices: {
+        cancelled:
+          'Der Passkey wurde nicht angelegt (abgebrochen oder Zeit abgelaufen).',
+        unavailable:
+          'Auf diesem System steht Moat Desktop kein Passkey zur Verfügung. Vertrauensmodus 2 ist hier nicht möglich; nutze eine Schlüsseldatei (Modus 1).',
+        failed: 'Das System hat keinen Passkey geliefert.',
+        invalid:
+          'Der Passkey passt nicht zu dem, was Moat angefordert hat. Er wurde nicht gespeichert.',
+        not_writable: 'Die Einstellungen konnten nicht gespeichert werden.',
+      },
+    },
+    passkeySignDialog: {
+      title: 'Bundle mit Passkey signieren',
+      intro:
+        'Prüfe, was das neue Bundle ändert. Erst nach deiner Bestätigung am Passkey wird es signiert und im Projektordner abgelegt. Der Passkey signiert genau dieses Bundle.',
+      project: 'Projekt',
+      gate: 'Gate',
+      version: 'Version',
+      firstVersion: 'erstes Bundle',
+      changes: 'Änderungen gegenüber dem letzten Bundle',
+      noChanges:
+        'Keine Änderungen. Das Bundle enthält dasselbe wie das letzte.',
+      kinds: {
+        route: 'Route',
+        upstream: 'Upstream',
+        secret: 'Secret',
+        lock: 'Sperre',
+      },
+      change: { added: 'neu', removed: 'entfernt', changed: 'geändert' },
+      lockAdded: 'sperrt das Gate',
+      lockRemoved: 'hebt die Sperre auf',
+      lockedWarning:
+        'Dieses Bundle sperrt das Gate: Sobald es angenommen ist, beantwortet das Gate keine Anfrage mehr.',
+      unverified:
+        'Das letzte Bundle ist nicht mit diesem Passkey signiert. Darum ist hier alles als neu aufgeführt: Prüfe jeden Eintrag.',
+      unset: '(nicht gesetzt)',
+      passkey: 'Passkey',
+      sign: 'Mit Passkey signieren',
+      signing: 'Warte auf den Passkey …',
+      cancel: 'Abbrechen',
+      notices: {
+        changed:
+          'Das Projekt hat sich geändert, während dieser Dialog offen war. Prüfe die Änderungen noch einmal.',
+        cancelled:
+          'Der Passkey hat nicht signiert (abgebrochen oder Zeit abgelaufen). Es wurde nichts gespeichert.',
+        unavailable:
+          'Auf diesem System steht Moat Desktop kein Passkey zur Verfügung. Es wurde nichts gespeichert.',
+        failed:
+          'Das System hat keine Signatur geliefert. Es wurde nichts gespeichert.',
+        assertion_invalid:
+          'Die Signatur gehört nicht zum gepinnten Passkey oder zu diesem Bundle. Es wurde nichts gespeichert.',
+      },
+    },
     startFailed: {
       title: 'Moat Desktop konnte nicht starten',
       detail: (reason) => `Grund: ${reason}`,
@@ -212,6 +330,24 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       detail: (origin) =>
         `Moat sendet eine Testanfrage oder die Prüfung von aussen an ${origin}. Erlaube das nur, wenn dort dein Gate läuft. Moat fragt für diese Adresse bis zum Beenden nicht noch einmal.`,
       send: 'Erlauben',
+      cancel: 'Abbrechen',
+    },
+    confirmChange: {
+      keyRotationDone: {
+        title: 'Schlüsselwechsel abschliessen',
+        message: 'Den alten Schlüssel vergessen?',
+        detail:
+          'Moat vergisst den alten Signaturschlüssel. Bestätige das nur, wenn jedes Gate den neuen Schlüssel allein eingetragen hat (SEC-08).',
+        confirm: 'Alten Schlüssel vergessen',
+      },
+      passkeyUse: {
+        title: 'Passkey für ein Gate',
+        on: 'Dieses Gate mit dem Passkey signieren?',
+        off: 'Dieses Gate nicht mehr mit dem Passkey signieren?',
+        detail: (gate) =>
+          `Gate «${gate}»: Neue Bundles signierst du danach mit der Passkey-Bestätigung am Gerät, sofern das Gate den Passkey angenommen hat. Erlaube das nur, wenn du es selbst ausgelöst hast.`,
+        confirm: 'Ändern',
+      },
       cancel: 'Abbrechen',
     },
     deploy: {
@@ -343,6 +479,81 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       title: 'SSH-Schlüssel wählen',
       button: 'Diesen Schlüssel verwenden',
     },
+    requestLog: {
+      title: 'Log-Dateien des Gates wählen (log.php, logold.php)',
+      button: 'Öffnen',
+      filter: 'Log des Gates',
+    },
+    importBundle: {
+      chooseFile: {
+        title: 'Bundle oder Deploy-Paket importieren',
+        button: 'Importieren',
+        filter: 'Bundle oder ZIP',
+      },
+      chooseFolder: {
+        title: 'Ordner des Deploy-Pakets wählen',
+        button: 'Diesen Ordner importieren',
+      },
+    },
+    ftpsDialog: {
+      title: 'Per FTPS hochladen',
+      intro:
+        'Moat Desktop legt das Paket als neuen Ordner auf deinem Server ab, immer verschlüsselt (FTP über TLS). Es ersetzt dort nichts. Danach aktivierst du das Bundle wie in der Anleitung im Paket.',
+      project: 'Projekt',
+      gate: 'Gate',
+      version: 'Version',
+      files: 'Dateien',
+      host: 'Server',
+      port: 'Port',
+      username: 'Benutzer',
+      remoteDir: 'Ordner auf dem Server',
+      remoteDirHint:
+        'Relativ zu deinem Login-Ordner oder absolut, etwa moat-uploads. Der Ordner muss es schon geben, am besten ausserhalb des Web-Ordners.',
+      mode: 'Verschlüsselung',
+      modeExplicit: 'Explizites FTPS (AUTH TLS, meist Port 21)',
+      modeImplicit: 'Implizites FTPS (meist Port 990)',
+      modeHint:
+        'Unverschlüsseltes FTP bietet Moat nicht an: Spricht der Server kein TLS, bricht Moat ab, bevor es Benutzer oder Passwort sendet.',
+      password: 'Passwort',
+      secretRemembered:
+        'Im Schlüsselbund gespeichert. Leer lassen, um es zu verwenden.',
+      remember: 'Im Schlüsselbund merken',
+      pinned: 'Zertifikat bestätigt:',
+      upload: 'Hochladen',
+      forget: 'Ziel entfernen',
+      cancel: 'Abbrechen',
+      certificateTitle: 'Zertifikat des Servers prüfen',
+      certificateIntro:
+        'Keine bekannte Zertifizierungsstelle bestätigt dieses Zertifikat für diesen Server, etwa weil es selbst signiert ist. Der Server hat sich damit ausgewiesen:',
+      fingerprint: 'SHA-256-Fingerprint',
+      subject: 'Ausgestellt für',
+      issuer: 'Ausgestellt von',
+      validTo: 'Gültig bis',
+      certificateHint:
+        'Vergleiche den Fingerprint mit dem, den dein Hoster nennt, oder mit openssl s_client auf einem Rechner, dem du vertraust. Erst nach deiner Bestätigung sendet Moat Benutzer, Passwort und Dateien. Moat merkt sich das Zertifikat und bricht ab, wenn der Server später ein anderes zeigt.',
+      trust: 'Zertifikat stimmt, hochladen',
+      notices: {
+        target_invalid:
+          'Prüfe Server, Port, Benutzer und Ordner. Der Ordner darf nur Buchstaben, Ziffern und . _ ~ - enthalten, ohne . oder .. als Teil.',
+        secret_missing: 'Gib das Passwort ein.',
+        connect_failed:
+          'Der Server ist nicht erreichbar oder hat die Verbindung beendet.',
+        tls_failed:
+          'Der Server bietet hier kein FTPS an (nur unverschlüsseltes FTP), oder die TLS-Verbindung kam nicht zustande. Moat hat weder Benutzer noch Passwort gesendet. Prüfe Port und Art der Verschlüsselung.',
+        auth_failed:
+          'Die Anmeldung wurde abgelehnt. Prüfe Benutzer und Passwort.',
+        certificate_changed:
+          'Der Server zeigt ein anderes Zertifikat als beim letzten Mal. Moat hat weder Benutzer noch Passwort gesendet. Frag deinen Hoster, ob das Zertifikat gewechselt hat. Nur dann entfernst du das Ziel und bestätigst das neue.',
+        exists:
+          'Auf dem Server liegt schon ein Ordner mit dem Namen dieses Pakets. Es wurde nichts überschrieben.',
+        partial:
+          'Das Hochladen brach mittendrin ab. Der Paketordner auf dem Server ist unvollständig: Lösche ihn, bevor du es noch einmal versuchst.',
+        upload_failed:
+          'Hochladen hat nicht geklappt. Gibt es den Ordner auf dem Server, und darfst du dort schreiben?',
+        forgotten:
+          'Das Ziel ist entfernt. Beim nächsten Hochladen bestätigst du das Zertifikat neu, falls keine Zertifizierungsstelle es bestätigt.',
+      },
+    },
     menu: {
       file: 'Datei',
       edit: 'Bearbeiten',
@@ -402,6 +613,7 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       firstVersion: 'first time',
       usedBy: 'Sent to',
       unused: 'No upstream uses it at the moment.',
+      comparedBy: "Only compared with the caller's API key (routes)",
       value: 'Value',
       valueHint:
         'Paste the key or token. Moat never shows it again afterwards.',
@@ -459,6 +671,78 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
         passphrase_missing: 'Enter the passphrase.',
       },
     },
+    passkeyDialog: {
+      title: 'Create passkey',
+      intro:
+        'Moat creates a passkey on this device. From now on it approves your bundles (trust mode 2, “Signed with passkey”). The private key never leaves the passkey; Moat stores only the public key.',
+      honesty:
+        'Moat Desktop has no passkey interface of its own. It works only when your operating system offers Chromium a passkey (for example Windows Hello). Otherwise this window says none is available, and mode 2 stays off.',
+      rpId: 'Relying party ID',
+      origin: 'Origin',
+      replaces:
+        'A passkey exists already. The new one replaces it: gates that pinned the old one no longer accept your bundles until you pin the new one on the gate.',
+      create: 'Create passkey',
+      cancel: 'Cancel',
+      close: 'Close',
+      doneTitle: 'Passkey created',
+      doneIntro:
+        'Pin the passkey on the gate, on the server, now. First compare the fingerprint the gate prints with this one.',
+      fingerprint: 'Fingerprint',
+      publicKey: 'Public key',
+      trustCommand: 'Command for an existing gate',
+      installCommand: 'Command for a new gate',
+      compare:
+        'The command pins the passkey as the only signer. You can change the mode only on the gate itself.',
+      notices: {
+        cancelled: 'No passkey was created (cancelled or timed out).',
+        unavailable:
+          'This system offers Moat Desktop no passkey. Trust mode 2 is not possible here; use a key file (mode 1).',
+        failed: 'The system did not return a passkey.',
+        invalid:
+          'The passkey does not match what Moat asked for. It was not stored.',
+        not_writable: 'The settings could not be saved.',
+      },
+    },
+    passkeySignDialog: {
+      title: 'Sign bundle with passkey',
+      intro:
+        'Check what the new bundle changes. Only after you confirm at the passkey is it signed and saved in the project folder. The passkey signs exactly this bundle.',
+      project: 'Project',
+      gate: 'Gate',
+      version: 'Version',
+      firstVersion: 'first bundle',
+      changes: 'Changes since the last bundle',
+      noChanges: 'No changes. The bundle holds the same as the last one.',
+      kinds: {
+        route: 'Route',
+        upstream: 'Upstream',
+        secret: 'Secret',
+        lock: 'Lock',
+      },
+      change: { added: 'new', removed: 'removed', changed: 'changed' },
+      lockAdded: 'locks the gate',
+      lockRemoved: 'lifts the lock',
+      lockedWarning:
+        'This bundle locks the gate: once it is accepted, the gate answers no request.',
+      unverified:
+        'The latest bundle is not signed with this passkey, so everything is listed as new: check every entry.',
+      unset: '(not set)',
+      passkey: 'Passkey',
+      sign: 'Sign with passkey',
+      signing: 'Waiting for the passkey …',
+      cancel: 'Cancel',
+      notices: {
+        changed:
+          'The project changed while this dialog was open. Check the changes again.',
+        cancelled:
+          'The passkey did not sign (cancelled or timed out). Nothing was saved.',
+        unavailable:
+          'This system offers Moat Desktop no passkey. Nothing was saved.',
+        failed: 'The system returned no signature. Nothing was saved.',
+        assertion_invalid:
+          'The signature does not belong to the pinned passkey or to this bundle. Nothing was saved.',
+      },
+    },
     startFailed: {
       title: 'Moat Desktop could not start',
       detail: (reason) => `Reason: ${reason}`,
@@ -469,6 +753,24 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       detail: (origin) =>
         `Moat sends a test request or the check from outside to ${origin}. Allow this only if your gate runs there. Moat does not ask again for this address until it quits.`,
       send: 'Allow',
+      cancel: 'Cancel',
+    },
+    confirmChange: {
+      keyRotationDone: {
+        title: 'Finish the key change',
+        message: 'Forget the old key?',
+        detail:
+          'Moat forgets the old signing key. Confirm only if every gate now pins the new key alone (SEC-08).',
+        confirm: 'Forget old key',
+      },
+      passkeyUse: {
+        title: 'Passkey for a gate',
+        on: 'Sign this gate with the passkey?',
+        off: 'Stop signing this gate with the passkey?',
+        detail: (gate) =>
+          `Gate “${gate}”: new bundles are then signed with the passkey confirmation on your device, provided the gate has accepted the passkey. Allow this only if you started it yourself.`,
+        confirm: 'Change',
+      },
       cancel: 'Cancel',
     },
     deploy: {
@@ -595,6 +897,79 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       },
     },
     sftpKey: { title: 'Choose SSH key', button: 'Use this key' },
+    requestLog: {
+      title: "Choose the gate's log files (log.php, logold.php)",
+      button: 'Open',
+      filter: 'Gate log',
+    },
+    importBundle: {
+      chooseFile: {
+        title: 'Import bundle or deploy package',
+        button: 'Import',
+        filter: 'Bundle or ZIP',
+      },
+      chooseFolder: {
+        title: 'Choose the deploy package folder',
+        button: 'Import this folder',
+      },
+    },
+    ftpsDialog: {
+      title: 'Upload via FTPS',
+      intro:
+        'Moat Desktop puts the package on your server as a new folder, always encrypted (FTP over TLS). It replaces nothing there. Then you activate the bundle as the instructions in the package say.',
+      project: 'Project',
+      gate: 'Gate',
+      version: 'Version',
+      files: 'Files',
+      host: 'Server',
+      port: 'Port',
+      username: 'User',
+      remoteDir: 'Folder on the server',
+      remoteDirHint:
+        'Relative to your login folder or absolute, e.g. moat-uploads. The folder must exist already, preferably outside the web root.',
+      mode: 'Encryption',
+      modeExplicit: 'Explicit FTPS (AUTH TLS, usually port 21)',
+      modeImplicit: 'Implicit FTPS (usually port 990)',
+      modeHint:
+        'Moat does not offer unencrypted FTP: if the server speaks no TLS, Moat stops before it sends user or password.',
+      password: 'Password',
+      secretRemembered: 'Saved in the keychain. Leave empty to use it.',
+      remember: 'Remember in the keychain',
+      pinned: 'Certificate confirmed:',
+      upload: 'Upload',
+      forget: 'Remove target',
+      cancel: 'Cancel',
+      certificateTitle: 'Check the server’s certificate',
+      certificateIntro:
+        'No known certificate authority vouches for this certificate for this server, for example because it is self-signed. The server identified itself with it:',
+      fingerprint: 'SHA-256 fingerprint',
+      subject: 'Issued to',
+      issuer: 'Issued by',
+      validTo: 'Valid until',
+      certificateHint:
+        'Compare the fingerprint with the one your hoster gives, or with openssl s_client on a computer you trust. Only after you confirm does Moat send user, password and files. Moat remembers the certificate and stops if the server later shows another.',
+      trust: 'Certificate matches, upload',
+      notices: {
+        target_invalid:
+          'Check server, port, user and folder. The folder may hold only letters, digits and . _ ~ -, with no . or .. as a part.',
+        secret_missing: 'Enter the password.',
+        connect_failed:
+          'The server cannot be reached or closed the connection.',
+        tls_failed:
+          'The server offers no FTPS here (only unencrypted FTP), or the TLS connection failed. Moat sent neither user nor password. Check the port and the kind of encryption.',
+        auth_failed: 'Sign-in was refused. Check user and password.',
+        certificate_changed:
+          'The server shows another certificate than last time. Moat sent neither user nor password. Ask your hoster whether the certificate changed. Only then remove the target and confirm the new one.',
+        exists:
+          "A folder with this package's name is on the server already. Nothing was replaced.",
+        partial:
+          'The upload stopped halfway. The package folder on the server is incomplete: delete it before you try again.',
+        upload_failed:
+          'The upload did not work. Does the folder exist on the server, and may you write there?',
+        forgotten:
+          'The target is removed. On the next upload you confirm the certificate again, unless a certificate authority vouches for it.',
+      },
+    },
     menu: { file: 'File', edit: 'Edit', view: 'View', quit: 'Quit' },
   },
 };

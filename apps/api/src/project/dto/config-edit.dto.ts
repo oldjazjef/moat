@@ -106,6 +106,45 @@ export class BudgetDto {
   cost?: CostDto;
 }
 
+/** FR-16: a client check's secret by name, and the header it reads. */
+export class ClientSecretCheckDto {
+  @IsString()
+  @Matches(NAME)
+  secret!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  header?: string;
+}
+
+export class HoneypotDto {
+  @IsString()
+  @MaxLength(64)
+  field!: string;
+}
+
+/** FR-16: the client checks the route form edits (a `jwt` stays as written in moat.yaml). */
+export class ClientDto {
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ClientSecretCheckDto)
+  apiKey?: ClientSecretCheckDto;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ClientSecretCheckDto)
+  turnstile?: ClientSecretCheckDto;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => HoneypotDto)
+  honeypot?: HoneypotDto;
+}
+
 /**
  * A route as the desktop's form sends it. Types and lengths only: whether a path, origin, size or
  * duration is valid is decided by the core's schema, the same one every moat.yaml passes.
@@ -155,9 +194,21 @@ export class RouteDto {
   @ValidateNested()
   @Type(() => BudgetDto)
   budget?: BudgetDto;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ClientDto)
+  client?: ClientDto;
 }
 
-export const AUTH_TYPES = ['bearer', 'header', 'query'] as const;
+export const AUTH_TYPES = [
+  'bearer',
+  'header',
+  'query',
+  'basic',
+  'oauth2',
+] as const;
 
 /** `secret` names a sealed secret; the value never travels here (SEC-31). */
 export class UpstreamAuthDto {
@@ -179,6 +230,30 @@ export class UpstreamAuthDto {
   @IsString()
   @MaxLength(256)
   param?: string;
+
+  /** The user name, for `type: basic` (FR-20). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  username?: string;
+
+  /** The token endpoint, for `type: oauth2` (FR-20). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_VALUE)
+  tokenUrl?: string;
+
+  /** The client id, for `type: oauth2`. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  clientId?: string;
+
+  /** The scope, for `type: oauth2`; absent = none. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_VALUE)
+  scope?: string;
 }
 
 /** An upstream as the desktop's form sends it; the core's schema decides the values. */
@@ -280,6 +355,21 @@ function routeInput(dto: RouteDto): RouteInput {
           quota: { requests: dto.quota.requests, period: dto.quota.period },
         }),
     ...(dto.budget === undefined ? {} : { budget: budgetInput(dto.budget) }),
+    ...(dto.client === undefined ? {} : { client: clientInput(dto.client) }),
+  };
+}
+
+function clientInput(dto: ClientDto): NonNullable<RouteInput['client']> {
+  const check = (entry: ClientSecretCheckDto) => ({
+    secret: entry.secret,
+    ...(entry.header === undefined ? {} : { header: entry.header }),
+  });
+  return {
+    ...(dto.apiKey === undefined ? {} : { apiKey: check(dto.apiKey) }),
+    ...(dto.turnstile === undefined ? {} : { turnstile: check(dto.turnstile) }),
+    ...(dto.honeypot === undefined
+      ? {}
+      : { honeypot: { field: dto.honeypot.field } }),
   };
 }
 
@@ -303,16 +393,44 @@ function budgetInput(dto: BudgetDto): NonNullable<RouteInput['budget']> {
 
 /** The auth the DTO describes, or null when it has a key its type does not take or lacks one. */
 function authInput(dto: UpstreamAuthDto): UpstreamAuthInput | null {
-  const { type, secret, name, param } = dto;
-  if (type === 'bearer')
-    return name === undefined && param === undefined ? { type, secret } : null;
-  if (type === 'header')
-    return name !== undefined && param === undefined
-      ? { type, name, secret }
-      : null;
-  return param !== undefined && name === undefined
-    ? { type, param, secret }
-    : null;
+  const { type, secret, name, param, username, tokenUrl, clientId, scope } =
+    dto;
+  // Exactly the fields of the type, nothing else.
+  const given = { name, param, username, tokenUrl, clientId, scope };
+  const exactly = (...keys: (keyof typeof given)[]) =>
+    Object.entries(given).every(
+      ([key, value]) =>
+        (value !== undefined) === keys.includes(key as keyof typeof given) ||
+        (key === 'scope' && type === 'oauth2' && value === undefined),
+    );
+  switch (type) {
+    case 'bearer':
+      return exactly() ? { type, secret } : null;
+    case 'header':
+      return name !== undefined && exactly('name')
+        ? { type, name, secret }
+        : null;
+    case 'query':
+      return param !== undefined && exactly('param')
+        ? { type, param, secret }
+        : null;
+    case 'basic':
+      return username !== undefined && exactly('username')
+        ? { type, username, secret }
+        : null;
+    case 'oauth2':
+      return tokenUrl !== undefined &&
+        clientId !== undefined &&
+        exactly('tokenUrl', 'clientId', 'scope')
+        ? {
+            type,
+            tokenUrl,
+            clientId,
+            ...(scope === undefined ? {} : { scope }),
+            secret,
+          }
+        : null;
+  }
 }
 
 function upstreamInput(dto: UpstreamDto): UpstreamInput | null {

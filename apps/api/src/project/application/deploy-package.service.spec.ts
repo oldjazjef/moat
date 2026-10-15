@@ -9,6 +9,7 @@ import {
 } from '../testing/in-memory-projects';
 import { BundleSigningService } from './bundle-signing.service';
 import { DeployPackageService } from './deploy-package.service';
+import { historyService } from '../testing/in-memory-storage';
 
 const RECIPE = readFileSync(
   resolve(__dirname, '../../../../../recipes/hubspot-newsletter.moat.yaml'),
@@ -48,7 +49,11 @@ async function setup() {
   });
   const { id } = registry.add('/sites/shop');
   const signer = { kid: keyFile.kid, publicKey: fromBase64Url(keyFile.pk) };
-  const signing = new BundleSigningService(registry, files);
+  const signing = new BundleSigningService(
+    registry,
+    files,
+    historyService(registry),
+  );
   const sign = async () => {
     const prepared = await signing.prepare(id, 'site', signer);
     if (prepared.status !== 'ready') throw new Error(prepared.status);

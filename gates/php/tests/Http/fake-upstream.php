@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 // The fake HTTPS upstream of the HTTP conformance runner (conformance/http/gate.json): one request
 // at a time on 127.0.0.1, TLS with the runner's TEST ONLY certificate. Never a real API.
-// php fake-upstream.php <cert.pem> <key.pem> <port file> <log file> <secret>
+// php fake-upstream.php <cert.pem> <key.pem> <port file> <log file> <secrets, one per line>
 
 $args = is_array($_SERVER['argv'] ?? null) ? array_values(array_filter($_SERVER['argv'], is_string(...))) : [];
 if (count($args) !== 6) {
     fwrite(STDERR, "usage: fake-upstream.php <cert> <key> <port file> <log file> <secret>\n");
     exit(2);
 }
-[, $cert, $key, $portFile, $logFile, $secret] = $args;
+[, $cert, $key, $portFile, $logFile, $secretList] = $args;
+// Every secret of the case file, one per line; the first is the upstream's.
+$secrets = explode("\n", $secretList);
+$secret = $secrets[0];
 // Failed handshakes and broken connections are expected: ignore their warnings.
 set_error_handler(static fn(): bool => true);
 
+$tokens = 0;
 $context = stream_context_create(['ssl' => ['local_cert' => $cert, 'local_pk' => $key]]);
 $server = stream_socket_server('tls://127.0.0.1:0', $errno, $error, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN, $context);
 if ($server === false) {
@@ -56,12 +60,54 @@ for (;;) {
     $status = 200;
     $type = 'application/json';
     $extra = [];
-    $hide = static fn(string $text): string => str_replace([$secret, rawurlencode($secret)], '<SECRET>', $text);
+    $hide = static function (string $text) use ($secret, $secrets): string {
+        // A Basic credential `user:<secret>` (FR-20) and an access token from /token are shown as
+        // placeholders, like the secret itself.
+        if (preg_match('/^Basic ([A-Za-z0-9+\/=]+)$/D', $text, $basic) === 1) {
+            $decoded = base64_decode($basic[1], true);
+            if (is_string($decoded) && str_contains($decoded, $secret)) {
+                $text = 'Basic ' . $decoded;
+            }
+        }
+        $text = (string) preg_replace('/TEST-ONLY-access-token-[0-9]+/', '<TOKEN>', $text);
+
+        foreach ($secrets as $one) {
+            $text = str_replace([$one, rawurlencode($one)], '<SECRET>', $text);
+        }
+
+        return $text;
+    };
     if ($path === '/echo') {
         $answer = json_encode(
             ['method' => $method, 'path' => $path, 'query' => $hide($query), 'headers' => array_map($hide, $headers), 'body' => $body],
             JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES,
         );
+    } elseif ($path === '/token') {
+        // OAuth2 client credentials (FR-20): client_secret_basic with the form-encoded id and secret.
+        $wanted = 'Basic ' . base64_encode('moat-client:' . rawurlencode($secret));
+        $grant = $method === 'POST' && ($headers['content-type'] ?? '') === 'application/x-www-form-urlencoded'
+            && in_array($body, ['grant_type=client_credentials', 'grant_type=client_credentials&scope=read%20write'], true);
+        if (hash_equals($wanted, $headers['authorization'] ?? '') && $grant) {
+            ++$tokens;
+            $answer = '{"access_token":"TEST-ONLY-access-token-' . $tokens . '","token_type":"Bearer","expires_in":3600}';
+        } else {
+            $status = 401;
+            $answer = '{"error":"invalid_client"}';
+        }
+    } elseif ($path === '/turnstile') {
+        // Cloudflare Turnstile's siteverify (FR-16): a form with one of the secrets and the token.
+        $form = [];
+        foreach (explode('&', $body) as $pair) {
+            [$name, $value] = array_pad(explode('=', $pair, 2), 2, '');
+            $form[rawurldecode($name)] = rawurldecode($value);
+        }
+        $pass = $method === 'POST' && in_array($form['secret'] ?? '', $secrets, true) && ($form['response'] ?? '') === 'TEST-ONLY-turnstile-pass';
+        $answer = $pass ? '{"success":true}' : '{"success":false,"error-codes":["invalid-input-response"]}';
+    } elseif ($path === '/token-fail') {
+        $status = 401;
+        $answer = '{"error":"invalid_client"}';
+    } elseif ($path === '/token-bad') {
+        $answer = '{"token_type":"Bearer","expires_in":3600}';
     } elseif ($path === '/usage') {
         $answer = '{"id":"chatcmpl-1","usage":{"prompt_tokens":60,"completion_tokens":40,"total_tokens":100}}';
     } elseif ($path === '/bundles/gate.json') {

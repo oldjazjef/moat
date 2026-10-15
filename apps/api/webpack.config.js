@@ -10,6 +10,11 @@ module.exports = {
     // `module.exports = { bootstrap, … }` instead of a script with no exports.
     library: { type: 'commonjs2' },
   },
+  module: {
+    // The migrations' SQL (persistence/database/migrations.ts) as text, so the desktop applies
+    // them without the Prisma CLI.
+    rules: [{ resourceQuery: /raw/, type: 'asset/source' }],
+  },
   plugins: [
     new NxAppWebpackPlugin({
       target: 'node',

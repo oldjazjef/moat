@@ -10,6 +10,7 @@ import {
   NAME,
   JSON_TYPE,
   QUOTA_PERIODS,
+  splitTokenUrl,
   type CompiledConfig,
 } from '../config/compiled';
 import { reject } from '../errors';
@@ -20,6 +21,7 @@ import {
   type UsageFormat,
 } from '../http/budget';
 import { normalisePath } from '../http/path';
+import { CLIENT_FAILURE_LIMIT } from '../http/rate-limit';
 import { hasProtoKey, type JsonValue } from '../json/strict-json';
 
 /**
@@ -50,6 +52,10 @@ export const MAX_CONFIG_AGE = 10 * 365 * 86_400;
 export const MIN_PULL_INTERVAL = 60;
 export const MAX_PULL_INTERVAL = 86_400;
 export const MAX_PULL_URL = 2048;
+
+/** FR-50: the request log's size before it rolls over (gate/request-log.ts); 0 = no log. */
+export const DEFAULT_LOG_BYTES = 262_144;
+export const MAX_LOG_BYTES = 1_048_576;
 
 /**
  * The pull URL (DT-11): `https://host[:port]` as an upstream origin (isOrigin: lower-case DNS
@@ -97,6 +103,12 @@ export const policySchema = z.strictObject({
        * pass any body on with the host's secret.
        */
       requireBody: z.boolean().optional(),
+      /**
+       * FR-16, SEC-14, T-71: every route to this host has client protection (`apiKey`, `jwt` or
+       * `turnstile`; a honeypot alone does not count), so a bundle cannot drop it and open the
+       * host's secret to anyone who finds the route.
+       */
+      requireClient: z.boolean().optional(),
     }),
   ),
   maxBodyBytes: z.int().min(0).max(MAX_BODY_BYTES),
@@ -138,6 +150,12 @@ export const policySchema = z.strictObject({
       intervalSeconds: z.int().min(MIN_PULL_INTERVAL).max(MAX_PULL_INTERVAL),
     })
     .optional(),
+  /**
+   * FR-50, DT-12: bytes the request log (data file `log`) may reach before it becomes `logold`
+   * and a new one starts — so both together stay below twice this. Default DEFAULT_LOG_BYTES;
+   * 0 writes no log at all.
+   */
+  logMaxBytes: z.int().min(0).max(MAX_LOG_BYTES).optional(),
   /**
    * Local test setups only (the conformance runner, a demo): send these `host[:port]`s to a fixed
    * IP — loopback included — and trust an extra CA file. Never set by a bundle; the hardening
@@ -191,6 +209,17 @@ export function matchesPrefix(path: string, pathPrefix: string): boolean {
   return path.startsWith(base);
 }
 
+/** FR-16: the route checks who calls it — a key, a signed token or a Turnstile token. */
+function protectsClient(route: CompiledConfig['routes'][string]): boolean {
+  const client = route.client;
+  return (
+    client !== undefined &&
+    (client.apiKey !== undefined ||
+      client.jwt !== undefined ||
+      client.turnstile !== undefined)
+  );
+}
+
 /** FR-13: the route forwards no body it has not checked — it lists its fields or takes none. */
 function checksBody(route: CompiledConfig['routes'][string]): boolean {
   return route.body !== undefined || route.maxBodyBytes === 0;
@@ -208,6 +237,21 @@ export function checkPolicy(config: CompiledConfig, policy: Policy): void {
         !allowed.secrets.includes(upstream.auth.secret)
       )
         reject('policy_violation');
+      // FR-20: the token request is a POST with the secret to the token endpoint, which the
+      // policy must allow like any other call.
+      if (upstream.auth.type === 'oauth2') {
+        const token = splitTokenUrl(upstream.auth.tokenUrl);
+        const host = policy.upstreams[hostKey(token.origin)];
+        if (
+          host === undefined ||
+          !host.secrets.includes(upstream.auth.secret) ||
+          !host.methods.includes('POST') ||
+          !host.pathPrefixes.some((pathPrefix) =>
+            matchesPrefix(token.path, pathPrefix),
+          )
+        )
+          reject('policy_violation');
+      }
     }
   }
   for (const route of Object.values(config.routes)) {
@@ -224,7 +268,24 @@ export function checkPolicy(config: CompiledConfig, policy: Policy): void {
       reject('policy_violation');
     }
     if (route.maxBodyBytes > policy.maxBodyBytes) reject('policy_violation');
+    // FR-16: the Turnstile check sends its secret to `verifyUrl`, allowed like any other call.
+    const turnstile = route.client?.turnstile;
+    if (turnstile !== undefined) {
+      const verify = splitTokenUrl(turnstile.verifyUrl);
+      const host = policy.upstreams[hostKey(verify.origin)];
+      if (
+        host === undefined ||
+        !host.secrets.includes(turnstile.secret) ||
+        !host.methods.includes('POST') ||
+        !host.pathPrefixes.some((pathPrefix) =>
+          matchesPrefix(verify.path, pathPrefix),
+        )
+      )
+        reject('policy_violation');
+    }
     if (allowed.requireBody === true && !checksBody(route))
+      reject('policy_violation');
+    if (allowed.requireClient === true && !protectsClient(route))
       reject('policy_violation');
     if (allowed.budget !== undefined) {
       // Every answer from a host with a budget must be countable, in the policy's format.
@@ -246,7 +307,8 @@ export function checkPolicy(config: CompiledConfig, policy: Policy): void {
  * refuses every new client — cannot be reached by flooding. A counter is created only for a
  * request that passes the `total` limit, so per kind of per-IP counter (the policy's, and each
  * route limited per IP) at most `total.requests × (⌈window / total.windowSeconds⌉ + 1)` are alive
- * at once; plus one per route limited as a whole, one per quota (route or policy), plus `total`.
+ * at once; plus one per route limited as a whole, one per quota (route or policy), plus `total`,
+ * plus one more kind of per-client counter when a route checks an API key (failed attempts, T-71).
  */
 export function counterCapacity(
   config: CompiledConfig,
@@ -257,6 +319,10 @@ export function counterCapacity(
     total.requests * (Math.ceil(windowSeconds / total.windowSeconds) + 1);
   let count = 1 + live(perIp.windowSeconds);
   if (policy.limits.quota !== undefined) count += 1;
+  // T-71: one counter per client for failed API key attempts, created only for a request that
+  // passes `total` (the failed request is counted against the policy's limits too).
+  if (Object.values(config.routes).some((route) => route.client?.apiKey))
+    count += live(CLIENT_FAILURE_LIMIT.windowSeconds);
   for (const route of Object.values(config.routes)) {
     if (route.quota !== undefined) count += 1;
     if (route.rateLimit === null) continue;
@@ -337,6 +403,33 @@ export function suggestPolicy(config: CompiledConfig): Policy {
     });
     if (upstream.auth !== null && !entry.secrets.includes(upstream.auth.secret))
       entry.secrets.push(upstream.auth.secret);
+    if (upstream.auth?.type === 'oauth2') {
+      const token = splitTokenUrl(upstream.auth.tokenUrl);
+      const host = (upstreams[hostKey(token.origin)] ??= {
+        pathPrefixes: [],
+        methods: [],
+        secrets: [],
+      });
+      if (!host.secrets.includes(upstream.auth.secret))
+        host.secrets.push(upstream.auth.secret);
+      if (!host.pathPrefixes.includes(token.path))
+        host.pathPrefixes.push(token.path);
+      if (!host.methods.includes('POST')) host.methods.push('POST');
+    }
+    const turnstile = route.client?.turnstile;
+    if (turnstile !== undefined) {
+      const verify = splitTokenUrl(turnstile.verifyUrl);
+      const host = (upstreams[hostKey(verify.origin)] ??= {
+        pathPrefixes: [],
+        methods: [],
+        secrets: [],
+      });
+      if (!host.secrets.includes(turnstile.secret))
+        host.secrets.push(turnstile.secret);
+      if (!host.pathPrefixes.includes(verify.path))
+        host.pathPrefixes.push(verify.path);
+      if (!host.methods.includes('POST')) host.methods.push('POST');
+    }
     if (!entry.pathPrefixes.includes(route.upstreamPath))
       entry.pathPrefixes.push(route.upstreamPath);
     if (!entry.methods.includes(route.method)) entry.methods.push(route.method);
@@ -355,6 +448,12 @@ export function suggestPolicy(config: CompiledConfig): Policy {
       toHost.every(checksBody)
     )
       entry.requireBody = true;
+    // FR-16: once every route to the host checks its caller, keep it that way.
+    if (
+      toHost.some((route) => route.client !== undefined) &&
+      toHost.every(protectsClient)
+    )
+      entry.requireClient = true;
   }
   const routes = Object.values(config.routes);
   const policy: Policy = {

@@ -2,11 +2,15 @@ import {
   hostKey,
   type CompiledConfig,
   type CompiledRoute,
+  type CompiledUpstream,
 } from '../config/compiled';
+import { toBase64 } from '../encoding/base64url';
+import { utf8 } from '../encoding/utf8';
 import { MoatRejection } from '../errors';
 import { validateBody } from '../http/body';
 import { requestEstimate, type Budget, type Usage } from '../http/budget';
 import { mediaTypeOf } from '../http/content-type';
+import { honeypotFilled } from '../http/client';
 import { checkOrigin, preflight } from '../http/cors';
 import { normalisePath } from '../http/path';
 import { checkPolicy, type Policy } from '../policy/policy';
@@ -36,11 +40,14 @@ export const DRY_RUN_ERRORS = {
   gate_disabled: 503,
   gate_not_configured: 503,
   secret_unavailable: 500,
+  client_unauthorized: 401,
 } as const;
 export type DryRunError = keyof typeof DRY_RUN_ERRORS;
 
 /** Stands for a secret's value wherever the gate would put it; the dry run never has one. */
 export const SECRET_PLACEHOLDER = '<SECRET>';
+/** Stands for the OAuth2 access token the gate fetches (FR-20); only the gate has one. */
+export const ACCESS_TOKEN_PLACEHOLDER = '<TOKEN>';
 /** The gate's own User-Agent on every upstream call. */
 export const GATE_USER_AGENT = 'moat-gate';
 /** The longest body the console sends to the API (it stays below the API's own request limit). */
@@ -87,6 +94,21 @@ export interface DryRunUpstreamCall {
   readonly timeoutMs: number;
   /** The secret the gate opens for this call, or null. */
   readonly secret: string | null;
+  /**
+   * FR-20, OAuth2: the token request the gate sends first when it has no valid access token
+   * cached — whether it has one, only the gate knows. Absent for every other auth.
+   */
+  readonly tokenCall?: DryRunTokenCall;
+  /** FR-16: the Turnstile check the gate makes before it calls the upstream. */
+  readonly turnstileCall?: DryRunTokenCall;
+}
+
+/** The OAuth2 token request (RFC 6749 §4.4) with the secret as SECRET_PLACEHOLDER. */
+export interface DryRunTokenCall {
+  readonly method: 'POST';
+  readonly url: string;
+  readonly headers: readonly (readonly [string, string])[];
+  readonly body: string;
 }
 
 export type DryRunResult =
@@ -205,6 +227,21 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
   const refuse = (error: DryRunError): never => {
     throw new Refusal(error, cors, name);
   };
+  // FR-16: the API key and the JWT come before the limits. Only the gate can open the key's
+  // secret and check a signature: the dry run sees only whether they are there.
+  const client = route.client;
+  if (
+    client?.apiKey !== undefined &&
+    !header(client.apiKey.header.toLowerCase())
+  )
+    refuse('client_unauthorized');
+  if (
+    client?.jwt !== undefined &&
+    !/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(
+      header('authorization') ?? '',
+    )
+  )
+    refuse('client_unauthorized');
 
   // Body size and media type (FR-18), with the bytes the gate would read.
   const bytes = new TextEncoder().encode(request.body).length;
@@ -236,6 +273,18 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
     }
   }
 
+  // FR-16: a filled honeypot, then a missing Turnstile token (whose check only the gate makes).
+  if (
+    client?.honeypot !== undefined &&
+    honeypotFilled(client.honeypot.field, request.body)
+  )
+    refuse('client_unauthorized');
+  if (
+    client?.turnstile !== undefined &&
+    !header(client.turnstile.header.toLowerCase())
+  )
+    refuse('client_unauthorized');
+
   const upstream = config.upstreams[route.upstream];
   if (upstream === undefined) return refuse('gate_not_configured');
   const budgets: DryRunBudget[] = [];
@@ -261,6 +310,7 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
   ];
   if (hasBody && mediaType !== null) headers.push(['Content-Type', mediaType]);
   let url = upstream.origin + route.upstreamPath;
+  let tokenCall: DryRunTokenCall | undefined;
   const auth = upstream.auth;
   if (auth !== null) {
     if (!context.secrets.includes(auth.secret)) refuse('secret_unavailable');
@@ -268,7 +318,17 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
       headers.push(['Authorization', `Bearer ${SECRET_PLACEHOLDER}`]);
     else if (auth.type === 'header')
       headers.push([auth.name, SECRET_PLACEHOLDER]);
-    else url += `?${encodeURIComponent(auth.param)}=${SECRET_PLACEHOLDER}`;
+    else if (auth.type === 'query')
+      url += `?${encodeURIComponent(auth.param)}=${SECRET_PLACEHOLDER}`;
+    else if (auth.type === 'basic')
+      headers.push([
+        'Authorization',
+        `Basic ${basic(auth.username, SECRET_PLACEHOLDER)}`,
+      ]);
+    else {
+      headers.push(['Authorization', `Bearer ${ACCESS_TOKEN_PLACEHOLDER}`]);
+      tokenCall = tokenRequest(auth);
+    }
   }
   return {
     kind: 'forwarded',
@@ -280,11 +340,64 @@ function run(context: DryRunContext, request: DryRunRequest): DryRunResult {
       body,
       timeoutMs: Math.min(upstream.timeoutMs, policy.maxTimeoutMs),
       secret: auth?.secret ?? null,
+      ...(tokenCall === undefined ? {} : { tokenCall }),
+      ...(client?.turnstile === undefined
+        ? {}
+        : {
+            turnstileCall: {
+              method: 'POST',
+              url: client.turnstile.verifyUrl,
+              headers: [
+                ['User-Agent', GATE_USER_AGENT],
+                ['Accept', 'application/json'],
+                ['Content-Type', 'application/x-www-form-urlencoded'],
+              ],
+              body: `secret=${SECRET_PLACEHOLDER}&response=${formEncode(header(client.turnstile.header.toLowerCase()) ?? '')}`,
+            },
+          }),
     },
     headers: cors,
     counters: countersOf(policy, route),
     budgets,
     estimate,
+  };
+}
+
+/** Like PHP's rawurlencode: every byte but `[A-Za-z0-9_.~-]` as `%XX`. */
+function formEncode(value: string): string {
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+}
+
+/** `base64(user ":" password)` of HTTP Basic (RFC 7617). */
+function basic(user: string, password: string): string {
+  return toBase64(utf8(`${user}:${password}`));
+}
+
+/**
+ * The token request as the gate sends it (FR-20): client_secret_basic with the form-encoded
+ * client id and secret (RFC 6749 §2.3.1), the grant and the scope as a form.
+ */
+function tokenRequest(
+  auth: Extract<CompiledUpstream['auth'], { type: 'oauth2' }>,
+): DryRunTokenCall {
+  return {
+    method: 'POST',
+    url: auth.tokenUrl,
+    headers: [
+      ['User-Agent', GATE_USER_AGENT],
+      ['Accept', 'application/json'],
+      ['Content-Type', 'application/x-www-form-urlencoded'],
+      [
+        'Authorization',
+        `Basic ${basic(formEncode(auth.clientId), SECRET_PLACEHOLDER)}`,
+      ],
+    ],
+    body:
+      'grant_type=client_credentials' +
+      (auth.scope === undefined ? '' : `&scope=${formEncode(auth.scope)}`),
   };
 }
 

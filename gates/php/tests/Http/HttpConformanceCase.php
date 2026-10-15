@@ -54,6 +54,9 @@ abstract class HttpConformanceCase extends TestCase
         if (\array_key_exists('killFile', $case)) {
             $gate->setKillFile($case['killFile'] === null ? null : Vectors::map($case['killFile']));
         }
+        if (isset($case['setup'])) {
+            $gate->setup(Vectors::string($case['setup']));
+        }
         if (isset($case['publish'])) {
             $gate->publish(Vectors::map($case['publish']));
         }
@@ -63,6 +66,7 @@ abstract class HttpConformanceCase extends TestCase
         $before = $gate->upstreamCalls();
         $pullsBefore = $gate->pulls();
 
+        $request = self::withSetupToken($request, $gate->setupToken);
         [$status, $headers, $body] = self::send($gate->baseUrl, $request);
 
         self::assertSame(Vectors::int($expect['status']), $status, $body);
@@ -86,6 +90,70 @@ abstract class HttpConformanceCase extends TestCase
         foreach (explode("\n", $gate->secret) as $secret) {
             self::assertStringNotContainsString($secret, $body . implode("\n", $headers));
         }
+        self::assertLog($gate->requestLog(), $expect);
+    }
+
+    /**
+     * conformance/http/gate-log.json: `log` = the newest line (`t`, `ms`, `client` by shape),
+     * `logExcludes` = texts the log never holds, `logBytesAtMost` = both files together.
+     *
+     * @param array<string, mixed> $expect
+     */
+    private static function assertLog(string $log, array $expect): void
+    {
+        if (\array_key_exists('log', $expect)) {
+            $lines = explode("\n", rtrim($log, "\n"));
+            $last = json_decode(end($lines), true, 8, JSON_THROW_ON_ERROR);
+            self::assertIsArray($last, 'log line');
+            self::assertSame(['client', 'error', 'method', 'ms', 'route', 'status', 't'], self::sortedKeys($last), 'log keys');
+            foreach (Vectors::map($expect['log']) as $key => $value) {
+                self::assertSame($value, $last[$key], "log.{$key}");
+            }
+            self::assertIsInt($last['t']);
+            self::assertTrue(abs(time() - $last['t']) < 120, 'log.t');
+            self::assertIsInt($last['ms']);
+            self::assertTrue($last['ms'] >= 0, 'log.ms');
+            self::assertIsString($last['client']);
+            self::assertMatchesRegularExpression('/^[0-9a-f]{16}$/D', $last['client']);
+        }
+        foreach (Vectors::list($expect['logExcludes'] ?? []) as $text) {
+            self::assertStringNotContainsString(Vectors::string($text), $log, 'log');
+        }
+        if (isset($expect['logBytesAtMost'])) {
+            self::assertTrue(\strlen($log) <= Vectors::int($expect['logBytesAtMost']), 'log size');
+        }
+    }
+
+    /**
+     * @param array<mixed> $map
+     *
+     * @return list<int|string>
+     */
+    private static function sortedKeys(array $map): array
+    {
+        $keys = array_keys($map);
+        sort($keys);
+
+        return $keys;
+    }
+
+    /**
+     * `{setupToken}` in the path or a header value: the token `setup` printed.
+     *
+     * @param array<string, mixed> $request
+     *
+     * @return array<string, mixed>
+     */
+    private static function withSetupToken(array $request, string $token): array
+    {
+        $request['path'] = str_replace('{setupToken}', $token, Vectors::string($request['path']));
+        $headers = [];
+        foreach (Vectors::map($request['headers']) as $name => $value) {
+            $headers[$name] = str_replace('{setupToken}', $token, Vectors::string($value));
+        }
+        $request['headers'] = $headers;
+
+        return $request;
     }
 
     /** Runs after every case (PHPUnit keeps declaration order). */

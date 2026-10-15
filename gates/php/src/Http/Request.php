@@ -26,7 +26,20 @@ final readonly class Request
         public ?string $requestHeaders = null,
         public string $remoteAddr = '',
         public ?string $fetchSite = null,
+        /** @var array<string, string> request headers by lower-case name, only for client checks (FR-16) */
+        private array $headers = [],
     ) {}
+
+    /**
+     * A request header for a client check (FR-16), by name in any case; null when absent or empty.
+     * Read, compared, never forwarded (SEC-43).
+     */
+    public function header(string $name): ?string
+    {
+        $value = $this->headers[strtolower($name)] ?? null;
+
+        return $value === null || $value === '' ? null : $value;
+    }
 
     /**
      * The route path is what follows the gate's script name in the raw request URI
@@ -48,16 +61,40 @@ final readonly class Request
             \is_string($server['CONTENT_TYPE'] ?? null) && $server['CONTENT_TYPE'] !== '' ? $server['CONTENT_TYPE'] : null,
             preg_match('/^[0-9]{1,15}$/D', $length) === 1 ? (int) $length : null,
             Files::readInput(...),
-            self::header($server, 'HTTP_ORIGIN'),
-            self::header($server, 'HTTP_ACCESS_CONTROL_REQUEST_METHOD'),
-            self::header($server, 'HTTP_ACCESS_CONTROL_REQUEST_HEADERS'),
+            self::serverValue($server, 'HTTP_ORIGIN'),
+            self::serverValue($server, 'HTTP_ACCESS_CONTROL_REQUEST_METHOD'),
+            self::serverValue($server, 'HTTP_ACCESS_CONTROL_REQUEST_HEADERS'),
             \is_string($server['REMOTE_ADDR'] ?? null) ? $server['REMOTE_ADDR'] : '',
-            self::header($server, 'HTTP_SEC_FETCH_SITE'),
+            self::serverValue($server, 'HTTP_SEC_FETCH_SITE'),
+            self::headers($server),
         );
     }
 
+    /**
+     * The `HTTP_*` entries as header names. Apache often hands Authorization over only as
+     * `REDIRECT_HTTP_AUTHORIZATION` (or not at all without `CGIPassAuth On`).
+     *
+     * @param array<mixed> $server
+     *
+     * @return array<string, string>
+     */
+    private static function headers(array $server): array
+    {
+        $headers = [];
+        foreach ($server as $key => $value) {
+            if (\is_string($key) && \is_string($value) && str_starts_with($key, 'HTTP_')) {
+                $headers[strtolower(str_replace('_', '-', substr($key, 5)))] = $value;
+            }
+        }
+        if (!isset($headers['authorization']) && \is_string($server['REDIRECT_HTTP_AUTHORIZATION'] ?? null)) {
+            $headers['authorization'] = $server['REDIRECT_HTTP_AUTHORIZATION'];
+        }
+
+        return $headers;
+    }
+
     /** @param array<mixed> $server */
-    private static function header(array $server, string $name): ?string
+    private static function serverValue(array $server, string $name): ?string
     {
         return \is_string($server[$name] ?? null) ? $server[$name] : null;
     }

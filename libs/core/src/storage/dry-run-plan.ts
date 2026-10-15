@@ -1,3 +1,4 @@
+import { usedSecrets } from '../config/secrets';
 import { compileConfig } from '../config/compile';
 import { ConfigError, loadMoatYaml } from '../config/yaml';
 import type { MoatConfig } from '../config/schema';
@@ -39,13 +40,7 @@ export function planDryRun(
       throw new DryRunPlanError('config_invalid');
     throw error;
   }
-  const used = [
-    ...new Set(
-      Object.values(parsed.upstreams).flatMap((upstream) =>
-        upstream.auth ? [upstream.auth.secret] : [],
-      ),
-    ),
-  ].sort();
+  const used = usedSecrets(parsed);
   if (
     gate !== null &&
     (!NAME_PATTERN.test(gate) || storage.read(`gates/${gate}.json`) === null)

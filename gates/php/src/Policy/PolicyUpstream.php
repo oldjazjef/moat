@@ -22,5 +22,7 @@ final readonly class PolicyUpstream
         public ?Budget $budget = null,
         /** FR-13, SEC-14: every route to this host lists its body fields or takes no body (`maxBodyBytes` 0). */
         public bool $requireBody = false,
+        /** FR-16, SEC-14: every route to this host has an `apiKey`, `jwt` or `turnstile` check. */
+        public bool $requireClient = false,
     ) {}
 }

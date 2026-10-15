@@ -1,0 +1,269 @@
+{
+  "description": "The setup mode (SEC-28, SEC-32, docs/CRYPTO.md §8, T-73): `GET <gate file>?moat-setup` with the header `X-Moat-Setup-Token: <token>` answers the gate's public identity — `gateId`, `boxKey` (base64url), `boxKeyFingerprint`, `signers` (`kid`, `fingerprint`), `threshold`, `mode` — so the person can compare the fingerprints without a shell. `php moat-gate.php install` and `php moat-gate.php setup` switch it on and print the token once; the data file `setup` keeps only its SHA-256. It switches itself off for good after 30 minutes and as soon as a bundle above the version accepted when it was switched on arrives; only the command line switches it on again. Anything else — no token, a wrong one, the token in the query, another method, setup mode off — is the gate's plain 404 `not_found`, and nothing is forwarded. Same runner and fake upstream as gate.json. Before a case, the runner applies `setup`: `enable` runs `php moat-gate.php setup` and keeps the token it printed for `{setupToken}` in the request, `expire` moves the expiry of the data file `setup` into the past, `acceptNext` accepts a bundle one version above the current one.",
+  "config": {
+    "version": 1,
+    "enabled": true,
+    "upstreams": {
+      "fake": {
+        "origin": "https://upstream.test:{port}",
+        "auth": {
+          "type": "bearer",
+          "secret": "api-token"
+        },
+        "timeoutMs": 5000
+      }
+    },
+    "routes": {
+      "newsletter": {
+        "method": "POST",
+        "path": "/newsletter",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 1024,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": ["https://www.example.ch"],
+        "rateLimit": null
+      },
+      "status": {
+        "method": "GET",
+        "path": "/status",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
+      }
+    }
+  },
+  "policy": {
+    "v": 1,
+    "upstreams": {
+      "upstream.test:{port}": {
+        "pathPrefixes": ["/echo"],
+        "methods": ["GET", "POST"],
+        "secrets": ["api-token"]
+      }
+    },
+    "maxBodyBytes": 1024,
+    "maxResponseBytes": 65536,
+    "maxTimeoutMs": 5000,
+    "limits": {
+      "perIp": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "total": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "maxClients": 5000
+    },
+    "testing": {
+      "resolve": {
+        "upstream.test:{port}": "127.0.0.1"
+      },
+      "caFile": "{caFile}"
+    }
+  },
+  "secrets": {
+    "api-token": "TEST-ONLY-planted-secret-7f3a9c"
+  },
+  "cases": [
+    {
+      "name": "off once the first bundle is accepted",
+      "request": {
+        "method": "GET",
+        "path": "?moat-setup",
+        "headers": {
+          "X-Moat-Setup-Token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "switched on locally, the right token shows the gate's identity",
+      "setup": "enable",
+      "request": {
+        "method": "GET",
+        "path": "?moat-setup",
+        "headers": {
+          "X-Moat-Setup-Token": "{setupToken}"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 0,
+        "json": {
+          "threshold": 1,
+          "mode": 1
+        },
+        "headers": {
+          "cache-control": "no-store"
+        }
+      }
+    },
+    {
+      "name": "a wrong token is a plain 404",
+      "request": {
+        "method": "GET",
+        "path": "?moat-setup",
+        "headers": {
+          "X-Moat-Setup-Token": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "no token is a plain 404",
+      "request": {
+        "method": "GET",
+        "path": "?moat-setup",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "the token in the query is not read",
+      "request": {
+        "method": "GET",
+        "path": "?moat-setup={setupToken}",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "only GET",
+      "request": {
+        "method": "POST",
+        "path": "?moat-setup",
+        "headers": {
+          "X-Moat-Setup-Token": "{setupToken}"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "the routes keep working while it is on",
+      "request": {
+        "method": "GET",
+        "path": "/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1
+      }
+    },
+    {
+      "name": "still on after wrong tokens",
+      "request": {
+        "method": "GET",
+        "path": "?moat-setup",
+        "headers": {
+          "X-Moat-Setup-Token": "{setupToken}"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 0,
+        "json": {
+          "threshold": 1,
+          "mode": 1
+        },
+        "headers": {
+          "cache-control": "no-store"
+        }
+      }
+    },
+    {
+      "name": "off for good after 30 minutes",
+      "setup": "expire",
+      "request": {
+        "method": "GET",
+        "path": "?moat-setup",
+        "headers": {
+          "X-Moat-Setup-Token": "{setupToken}"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0
+      }
+    },
+    {
+      "name": "switched on again",
+      "setup": "enable",
+      "request": {
+        "method": "GET",
+        "path": "?moat-setup",
+        "headers": {
+          "X-Moat-Setup-Token": "{setupToken}"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 0,
+        "json": {
+          "threshold": 1,
+          "mode": 1
+        },
+        "headers": {
+          "cache-control": "no-store"
+        }
+      }
+    },
+    {
+      "name": "off for good once a newer bundle is accepted",
+      "setup": "acceptNext",
+      "request": {
+        "method": "GET",
+        "path": "?moat-setup",
+        "headers": {
+          "X-Moat-Setup-Token": "{setupToken}"
+        },
+        "body": ""
+      },
+      "expect": {
+        "status": 404,
+        "error": "not_found",
+        "upstreamCalls": 0
+      }
+    }
+  ]
+}

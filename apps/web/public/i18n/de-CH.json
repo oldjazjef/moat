@@ -53,7 +53,8 @@
       "overview": "Übersicht",
       "gates": "Gates",
       "routes": "Routen",
-      "console": "Test-Konsole"
+      "console": "Test-Konsole",
+      "history": "Verlauf"
     },
     "remove": {
       "button": "Aus der Liste entfernen",
@@ -80,6 +81,11 @@
         "label": "Signiert",
         "short": "Du gibst jede Änderung mit deiner Schlüsseldatei frei.",
         "ifHacked": "… kann ein Angreifer nichts ändern. Im Browser gilt das nur eingeschränkt, volle Garantie mit Moat Desktop oder CLI."
+      },
+      "passkey": {
+        "label": "Signiert mit Passkey",
+        "short": "Du gibst jede Änderung mit Passkey oder Sicherheitsschlüssel frei.",
+        "ifHacked": "wie „Signiert“, zusätzlich kann dein Schlüssel nicht gestohlen werden."
       }
     }
   },
@@ -216,10 +222,12 @@
     "deployZip": "Als ZIP speichern",
     "deployFolder": "In Ordner ablegen",
     "deploySftp": "Per SFTP hochladen",
+    "deployFtps": "Per FTPS hochladen",
     "deployGit": "Per Git ausliefern",
     "deployResult": {
       "exported_zip": "Das Paket mit Version {{version}} ist als ZIP gespeichert. Die Anleitung darin heisst `LIESMICH.txt`.",
       "exported_folder": "Das Paket mit Version {{version}} liegt im neuen Ordner `moat-{{gate}}-v{{version}}`. Die Anleitung darin heisst `LIESMICH.txt`.",
+      "exported_ftps": "Das Paket mit Version {{version}} liegt auf dem Server im neuen Ordner `moat-{{gate}}-v{{version}}`, verschlüsselt per FTPS hochgeladen. Aktiviere es dort wie in `LIESMICH.txt` beschrieben.",
       "exported_sftp": "Das Paket mit Version {{version}} liegt auf dem Server im neuen Ordner `moat-{{gate}}-v{{version}}`. Aktiviere es dort wie in `LIESMICH.txt` beschrieben.",
       "exported_git": "Das Paket mit Version {{version}} ist als neuer Ordner `moat-{{gate}}-v{{version}}` committet und gepusht. Aktiviere es auf dem Server wie in `LIESMICH.txt` beschrieben, sobald es dort angekommen ist.",
       "committed": "Das Paket mit Version {{version}} ist committet, aber der Push hat nicht geklappt. Pushe den Commit selbst, zum Beispiel mit `git push`.",
@@ -239,6 +247,89 @@
       "not_writable": "Am gewählten Ort kann Moat nicht schreiben. Es wurde nichts gespeichert.",
       "git_failed": "Git konnte das Paket nicht committen. Ist `user.name` und `user.email` gesetzt, und läuft gerade kein Merge oder Rebase? Moat hat den Ordner wieder entfernt.",
       "failed": "Das Paket konnte nicht gespeichert werden."
+    },
+    "import": "Import",
+    "importIntro": "Übernimmt ein signiertes Bundle in dieses Projekt, zum Beispiel ein Deploy-Paket von einem anderen Computer. Moat nimmt nur ein Bundle an, das mit deiner Schlüsseldatei für dieses Gate signiert ist und eine höhere Version hat als das letzte. Die Policy im Paket übernimmt es nicht.",
+    "importFile": "Bundle importieren",
+    "importFolder": "Paketordner importieren",
+    "importResult": {
+      "imported": "Version {{version}} ist importiert. Sie ist jetzt das letzte Bundle dieses Gates.",
+      "key_missing": "Moat Desktop hat keine lesbare Schlüsseldatei. Wähle sie beim Signieren.",
+      "gate_unknown": "Die Gate-Datei fehlt oder ist beschädigt.",
+      "unreadable": "Die gewählte Datei oder der Ordner lässt sich nicht lesen. Moat liest nur gewöhnliche Dateien, keine Verknüpfungen.",
+      "too_large": "Die gewählte Datei ist zu gross für ein Bundle oder ein Deploy-Paket.",
+      "package_invalid": "Das ist kein Deploy-Paket, wie Moat es speichert. Erwartet werden `bundle-v<n>.json` und höchstens `policy.json`, `LIESMICH.txt` oder `README.txt`, ohne Verknüpfungen, Unterordner oder unsichere Pfade.",
+      "bundle_invalid": "Die Datei ist kein gültiges Bundle. Nichts wurde übernommen.",
+      "signature_invalid": "Das Bundle ist nicht mit deiner Schlüsseldatei signiert oder wurde verändert. Nichts wurde übernommen.",
+      "gate_mismatch": "Das Bundle ist für ein anderes Gate signiert. Nichts wurde übernommen.",
+      "version_not_newer": "Das Bundle ist nicht neuer als das letzte Bundle dieses Gates. Nichts wurde übernommen.",
+      "config_invalid": "Die Konfiguration im Bundle ist nicht gültig. Nichts wurde übernommen.",
+      "not_writable": "Der Ordner `bundles/{{gate}}` lässt sich nicht schreiben. Nichts wurde übernommen.",
+      "failed": "Der Import hat nicht geklappt."
+    },
+    "log": "Anfrage-Log",
+    "rotation": {
+      "title": "Schlüssel wechseln",
+      "intro": "Ein neuer Signaturschlüssel ersetzt den alten in zwei Schritten auf dem Server, damit die Seite nie stehen bleibt. Beide Schlüssel stehen unten.",
+      "stepPin": "1. Auf jedem Server: den alten und den neuen Schlüssel festlegen.",
+      "stepSign": "2. Das nächste Bundle jedes Gates mit dem neuen Schlüssel signieren («Bundle signieren») und auf dem Server aktivieren.",
+      "stepPinNew": "3. Auf jedem Server, wenn alle Gates unten mit dem neuen Schlüssel signiert sind: nur den neuen Schlüssel festlegen.",
+      "signed": "letztes Bundle ist mit dem neuen Schlüssel signiert",
+      "notSigned": "letztes Bundle ist noch nicht mit dem neuen Schlüssel signiert",
+      "done": "Wechsel abschliessen",
+      "wait": "Verfügbar, wenn jedes Gate ein mit dem neuen Schlüssel signiertes Bundle hat."
+    },
+    "logIntro": "Das Gate schreibt zu jeder Anfrage eine Zeile: Zeit, Route, Methode, Status, Fehlercode, Dauer und eine Kennung des Besuchers, die jeden Tag wechselt. Pfade, Inhalte und Adressen schreibt es nie. Hol die Dateien `log.php` und `logold.php` aus dem Datenordner des Gates (per SFTP oder FTP) oder speichere, was `php moat-gate.php log` ausgibt, und öffne sie hier.",
+    "logRead": "Log ansehen",
+    "logSummary": "{{requests}} Anfragen von {{from}} bis {{to}}, davon {{errors}} mit Fehler, von {{clients}} Besuchern.",
+    "logSkipped": "{{count}} Zeilen waren keine Log-Einträge.",
+    "logNoRoute": "(keine Route)",
+    "logMs": "{{ms}} ms",
+    "logCodes": "Fehlercodes:",
+    "logRecent": "Die neuesten {{count}} Anfragen",
+    "logColumns": {
+      "route": "Route",
+      "requests": "Anfragen",
+      "errors": "Fehler",
+      "median": "Median",
+      "slowest": "95 %",
+      "time": "Zeit",
+      "method": "Methode",
+      "status": "Status",
+      "code": "Code",
+      "duration": "Dauer",
+      "client": "Besucher"
+    },
+    "logResult": {
+      "unreadable": "Die Dateien liessen sich nicht lesen. Wähle höchstens zwei normale Dateien, `log.php` und `logold.php`.",
+      "too_large": "Die Dateien sind grösser als ein Log des Gates.",
+      "no_entries": "In den Dateien steht keine Zeile aus dem Anfrage-Log eines Gates.",
+      "failed": "Das Log liess sich nicht anzeigen."
+    },
+    "passkey": {
+      "title": "Passkey",
+      "intro": "Statt einer Schlüsseldatei kann ein Passkey deine Bundles freigeben (Vertrauensmodus 2). Der private Schlüssel verlässt den Passkey nie; Moat speichert nur den öffentlichen Schlüssel.",
+      "honesty": "Moat Desktop kann einen Passkey nur nutzen, wenn dein Betriebssystem ihn anbietet. Sonst meldet das Fenster, dass keiner verfügbar ist, und der Modus bleibt aus.",
+      "none": "Noch kein Passkey angelegt.",
+      "fingerprint": "Fingerprint",
+      "rpId": "Relying-Party-ID",
+      "origin": "Origin",
+      "trustCommand": "Am Gate festlegen (bestehendes Gate)",
+      "installCommand": "Bei der Installation (neues Gate)",
+      "enroll": "Passkey anlegen",
+      "created": "Passkey angelegt. Lege ihn jetzt am Gate fest und vergleiche den Fingerprint.",
+      "gatesTitle": "Gates mit Passkey",
+      "gatesHint": "Schalte ein Gate erst um, wenn du den Passkey dort mit dem Befehl festgelegt hast. Moat Desktop sieht nicht, was das Gate festgelegt hat: Ein falscher Modus führt nur dazu, dass das Gate das Bundle ablehnt.",
+      "use": "Mit Passkey signieren",
+      "useKey": "Mit Schlüsseldatei signieren",
+      "stateOn": "signiert mit Passkey (Modus 2)",
+      "stateOff": "signiert mit Schlüsseldatei (Modus 1)",
+      "notices": {
+        "unavailable": "Auf diesem System steht Moat Desktop kein Passkey zur Verfügung. Vertrauensmodus 2 ist hier nicht möglich; nutze eine Schlüsseldatei (Modus 1).",
+        "cancelled": "Es wurde kein Passkey angelegt.",
+        "failed": "Der Passkey konnte nicht angelegt werden.",
+        "set_failed": "Das Gate liess sich nicht umstellen. Lege zuerst einen Passkey an."
+      }
     }
   },
   "routes": {
@@ -288,7 +379,9 @@
       "bearer": "Bearer-Token aus Secret «{{secret}}»",
       "header": "Header {{name}} aus Secret «{{secret}}»",
       "query": "Parameter {{param}} aus Secret «{{secret}}»",
-      "none": "Keine"
+      "none": "Keine",
+      "basic": "Basic als {{username}} mit Secret «{{secret}}»",
+      "oauth2": "OAuth2 als {{clientId}} mit Secret «{{secret}}»"
     },
     "new": "Neue Route",
     "newUpstream": "Neuer Upstream",
@@ -311,12 +404,24 @@
         "none": "Keine",
         "bearer": "Bearer-Token",
         "header": "Eigener Header",
-        "query": "Query-Parameter"
+        "query": "Query-Parameter",
+        "basic": "Benutzer und Passwort (Basic)",
+        "oauth2": "OAuth2 Client Credentials"
       },
       "header": "Header",
       "headerPlaceholder": "X-Api-Key",
       "param": "Parameter",
       "paramPlaceholder": "api_key",
+      "username": "Benutzername",
+      "usernamePlaceholder": "api-user",
+      "tokenUrl": "Token-Adresse",
+      "tokenUrlPlaceholder": "https://auth.example.com/oauth/token",
+      "tokenUrlHint": "Dort holt das Gate mit Client-ID und Secret ein Zugriffstoken und behält es, bis es fast abläuft. Die Policy des Gates muss POST auf diese Adresse und das Secret für ihren Host erlauben.",
+      "clientId": "Client-ID",
+      "clientIdPlaceholder": "moat-gate",
+      "scope": "Scope",
+      "scopePlaceholder": "crm.read crm.write",
+      "scopeHint": "Leer heisst: kein Scope anfragen.",
       "secret": "Name des Secrets",
       "secretPlaceholder": "hubspot-token",
       "secretHint": "Nur der Name, nie der Schlüssel selbst. Den Schlüssel versiegelst du danach im Terminal für jedes Gate: `moat secret seal <gate> <name>`.",
@@ -376,7 +481,22 @@
       "pathPlaceholder": "/newsletter",
       "upstreamPathPlaceholder": "/crm/v3/objects/contacts",
       "maxBodySizePlaceholder": "64KiB",
-      "originsPlaceholder": "https://www.example.ch"
+      "originsPlaceholder": "https://www.example.ch",
+      "client": "Wer darf die Route aufrufen?",
+      "clientHint": "Jede gewählte Prüfung muss bestehen, sonst antwortet das Gate mit 401 und sendet nichts weiter.",
+      "apiKey": "API-Key im Header",
+      "clientSecret": "Name des Secrets",
+      "apiKeySecretPlaceholder": "client-key",
+      "apiKeyHeader": "Header",
+      "apiKeyHeaderPlaceholder": "X-Api-Key",
+      "apiKeyHint": "Für Aufrufe von Servern, nie für eine öffentliche Seite. Das Gate vergleicht den Header mit dem versiegelten Secret: `moat secret seal <gate> <name>`.",
+      "turnstile": "Cloudflare Turnstile",
+      "turnstileSecretPlaceholder": "turnstile-key",
+      "turnstileHint": "Die Seite schickt das Turnstile-Token im Header `X-Turnstile-Token`. Das Gate prüft es mit dem versiegelten Secret bei Cloudflare; die Policy muss POST auf `challenges.cloudflare.com/turnstile/v0/siteverify` erlauben.",
+      "honeypot": "Honeypot-Feld",
+      "honeypotField": "Feld",
+      "honeypotHint": "Ein unsichtbares Formularfeld, das nur Bots ausfüllen. Ist es im JSON gefüllt, lehnt das Gate ab.",
+      "jwtKept": "Diese Route prüft auch ein JWT. Seine Schlüssel änderst du in moat.yaml; das Formular lässt sie, wie sie sind."
     }
   },
   "setup": {
@@ -493,6 +613,37 @@
         "required": "Trage ein Gate ein, oder klicke auf «Später».",
         "rejected": "Nichts wurde gespeichert. Kopiere Gate-ID und Box-Schlüssel noch einmal aus der Ausgabe genau dieses Gates.",
         "noProject": "Wähle zuerst ein Projekt."
+      },
+      "fetch": {
+        "toggle": "Vom Gate abrufen",
+        "intro": "Hast du keinen Zugang zum Server? Das Gate zeigt Gate-ID und Box-Schlüssel nach `install` oder `php moat-gate.php setup` 30 Minuten lang unter seiner Adresse an. Du brauchst dazu das Setup-Token, das der Befehl einmal ausgegeben hat.",
+        "url": "Adresse des Gates",
+        "urlHint": "Die Adresse von `moat-gate.php`, zum Beispiel https://www.example.ch/api/moat-gate.php.",
+        "token": "Setup-Token",
+        "tokenHint": "Das Token wird nur für diese eine Anfrage verwendet und nicht gespeichert.",
+        "run": "Jetzt abrufen",
+        "read": "Vom Gate abgerufen.",
+        "boxFingerprint": "Fingerprint des Box-Schlüssels",
+        "signers": "Auf dem Gate gepinnte Signaturschlüssel",
+        "signerPinned": "Dein Signaturschlüssel ist auf dem Gate gepinnt.",
+        "signerMissing": "Achtung: Dein Signaturschlüssel ist auf dem Gate nicht gepinnt. Das Gate würde deine Bundles ablehnen. Prüfe, ob bei `install` der richtige `--signer` angegeben wurde.",
+        "signerUnknown": "Du hast noch keinen Signaturschlüssel gewählt. Darum kann nicht geprüft werden, ob er auf dem Gate gepinnt ist.",
+        "claim": "Diese Angaben meldet das Gate selbst über HTTPS. Den Fingerprint des Box-Schlüssels berechnet Moat Desktop aus dem Schlüssel neu.",
+        "next": "Gate-ID und Box-Schlüssel sind unten eingetragen. Klicke auf «Prüfen» und bestätige den Fingerprint, bevor das Gate gespeichert wird.",
+        "errors": {
+          "url_invalid": "Das ist nicht die https-Adresse einer Datei `moat-gate.php`. Trage sie ohne Parameter ein.",
+          "token_invalid": "Das Setup-Token hat 43 Zeichen (Buchstaben, Ziffern, - und _). Kopiere es genau so, wie das Gate es ausgegeben hat.",
+          "not_confirmed": "Die Adresse wurde nicht bestätigt. Es wurde nichts gesendet.",
+          "busy": "Es läuft schon eine Anfrage. Warte kurz und versuche es noch einmal.",
+          "setup_off": "Das Gate antwortet nicht mit seiner Identität. Der Setup-Modus ist aus, abgelaufen, oder das Token stimmt nicht. Das Gate sagt nicht, was davon zutrifft. Starte ihn mit `php moat-gate.php setup` neu.",
+          "answer_invalid": "Die Antwort sieht nicht nach der Identität eines Gates aus. Es wurde nichts übernommen.",
+          "address_forbidden": "Diese Adresse führt zu einem nicht erlaubten Ziel (privat oder lokal). Es wurde nichts gesendet.",
+          "not_found": "Der Server dieser Adresse wurde nicht gefunden.",
+          "unreachable": "Der Server ist nicht erreichbar.",
+          "timeout": "Der Server hat nicht rechtzeitig geantwortet.",
+          "tls": "Das Zertifikat des Servers ist nicht gültig für diese Adresse. Es wurde nichts übernommen.",
+          "failed": "Das hat nicht geklappt. Versuche es noch einmal."
+        }
       }
     },
     "recipe": {
@@ -720,12 +871,14 @@
           "install": "Führe auf dem Server `php moat-gate.php install --signer=<öffentlicher Schlüssel>` aus. Das Gate legt einen geschützten Datenordner an und gibt Gate-ID, Box-Schlüssel und Fingerprints aus.",
           "add": "Trage das Gate in deinem Projektordner ein, mit der Zeile `moat gate add`, die das Gate ausgegeben hat.",
           "addDesktop": "In Moat Desktop trägst du das Gate unter «Einrichtung» › «Erstes Gate» ein und vergleichst dort den Fingerprint, bevor es gespeichert wird.",
+          "fetchDesktop": "Hast du keinen Zugang zum Server, klicke unter «Einrichtung» › «Erstes Gate» auf «Vom Gate abrufen». Trage die Adresse von `moat-gate.php` und das Setup-Token ein, das `install` oder `php moat-gate.php setup` einmal ausgegeben hat. Moat Desktop liest Gate-ID und Box-Schlüssel vom Gate, zeigt die Fingerprints und ob dein Signaturschlüssel auf dem Gate gepinnt ist. Gespeichert wird das Gate erst, wenn du den Fingerprint bestätigst.",
           "compare": "Vergleiche den Fingerprint, den das CLI ausgibt, Gruppe für Gruppe mit dem des Gates.",
           "check": "Unter «Gates» siehst du jedes eingetragene Gate mit Gate-ID und Fingerprint."
         },
         "tips": {
           "mismatch": "Weicht eine Gruppe ab, lösche die Gate-Datei und trage das Gate neu ein.",
-          "php": "Das Gate braucht PHP 8.2 oder neuer mit den Erweiterungen sodium, curl, json und hash."
+          "php": "Das Gate braucht PHP 8.2 oder neuer mit den Erweiterungen sodium, curl, json und hash.",
+          "setupMode": "Der Setup-Modus des Gates ist 30 Minuten offen und endet, sobald ein neues Bundle ankommt. Er zeigt nur Öffentliches. Ist er aus, startest du ihn auf dem Server mit `php moat-gate.php setup` neu."
         }
       },
       "hardening": {
@@ -748,17 +901,20 @@
       },
       "trust": {
         "title": "Vertrauensmodus",
-        "purpose": "Der Vertrauensmodus legt fest, wer Änderungen an einem Gate freigeben darf. In Moat Desktop gilt immer «Signiert»: Das Gate nimmt nur Bundles an, die mit deiner Schlüsseldatei signiert sind.",
+        "purpose": "Der Vertrauensmodus legt fest, wer Änderungen an einem Gate freigeben darf. In Moat Desktop gilt «Signiert» (Schlüsseldatei) oder «Signiert mit Passkey»: Das Gate nimmt nur Bundles an, die mit dem festgelegten Schlüssel oder Passkey signiert sind.",
         "where": "Projekt › Übersicht › Vertrauensmodus und Gates",
         "steps": {
           "keygen": "Erzeuge einmal eine Schlüsseldatei mit `moat keygen <datei>.moatkey` und wähle eine gute Passphrase.",
           "keyDesktop": "In Moat Desktop erstellst du den Schlüssel unter «Einrichtung» › «Signaturschlüssel» mit «Neuen Schlüssel erstellen».",
           "trust": "Gib dem Gate bei der Installation den öffentlichen Schlüssel mit (--signer). Wechseln kannst du ihn nur am Gate selbst, mit `php moat-gate.php trust`.",
+          "passkeyDesktop": "Für «Signiert mit Passkey» klickst du unter «Gates» im Abschnitt «Passkey» auf «Passkey anlegen». Ein eigenes Fenster von Moat Desktop fragt dein Betriebssystem nach einem Passkey und zeigt Fingerprint und Befehl.",
+          "passkeyGate": "Führe den Befehl `php moat-gate.php trust --passkey=…` am Gate aus und vergleiche den Fingerprint. Schalte danach beim Gate «Mit Passkey signieren» ein.",
           "badge": "Neben jedem Gate steht der Vertrauensmodus, mit dem Satz, was ein Angreifer könnte, wenn Moat Cloud gehackt würde."
         },
         "tips": {
           "passphrase": "Bewahre die Schlüsseldatei ausserhalb des Projektordners auf und sichere sie. Ohne sie kannst du keine Bundles mehr signieren.",
-          "desktopOnly": "Moat Desktop arbeitet ohne Cloud: Jede Änderung gibst du selbst mit deiner Schlüsseldatei frei."
+          "desktopOnly": "Moat Desktop arbeitet ohne Cloud: Jede Änderung gibst du selbst mit deiner Schlüsseldatei frei.",
+          "passkeyHonest": "Moat Desktop hat keine eigene Passkey-Oberfläche und nutzt nur, was dein System anbietet. Gibt es keinen Passkey (zum Beispiel unter Linux), meldet das Fenster das, und du bleibst bei der Schlüsseldatei."
         }
       },
       "secrets": {
@@ -773,7 +929,8 @@
         },
         "tips": {
           "never": "Moat zeigt Secrets nie an, auch nicht in Moat Desktop. Es kennt nur ihre Namen und Versionen.",
-          "rotate": "Ein neuer Schlüssel? Klicke auf «Neu versiegeln» (im CLI: `--secret-version` mit einer höheren Nummer) und signiere ein neues Bundle."
+          "rotate": "Ein neuer Schlüssel? Klicke auf «Neu versiegeln» (im CLI: `--secret-version` mit einer höheren Nummer) und signiere ein neues Bundle.",
+          "oauth": "Verlangt die API Benutzer und Passwort, wähle bei «Anmeldung» «Benutzer und Passwort (Basic)»: Das Secret ist dann das Passwort. Bei «OAuth2 Client Credentials» ist das Secret das Client-Secret; das Gate holt damit an der «Token-Adresse» ein Zugriffstoken und schickt der API nur dieses. Die Policy des Gates muss POST auf die Token-Adresse erlauben."
         }
       },
       "routes": {
@@ -786,7 +943,8 @@
           "origins": "Ruft eine andere Website die Route im Browser auf, trage sie unter «Erlaubte Websites» ein (in moat.yaml: `origins`). Ohne Eintrag lehnen Browser fremde Websites ab.",
           "body": "Damit nur erwartete Daten zur API gehen, liste in moat.yaml unter `body` die Felder, die deine Website schickt, mit Typ (`string`, `integer`, `boolean`, `object`, `array`) und Grenzen wie `required`, `maxLength`, `enum` oder `format: email`. Das Gate entfernt jedes andere Feld und lehnt Inhalte, die nicht passen, mit 400 und `body_invalid` ab. Die Recipes bringen ihre Felder mit. Unter «Routen» steht bei jeder Route, welche Felder geprüft werden, oder dass der Inhalt ungeprüft weitergeht.",
           "bundle": "Eine neue oder geänderte Route gilt auf dem Gate erst mit dem nächsten Bundle: `moat build <gate>`, hochladen und annehmen.",
-          "check": "Unter «Routen» siehst du jede Route so, wie das Gate sie prüft: Pfad, Ziel, erlaubte Websites, Limits und maximale Grösse."
+          "check": "Unter «Routen» siehst du jede Route so, wie das Gate sie prüft: Pfad, Ziel, erlaubte Websites, Limits und maximale Grösse.",
+          "client": "Wer die Route aufrufen darf: API-Key, Cloudflare Turnstile und Honeypot stellst du in «Neue Route» bzw. «Bearbeiten» unter «Wer darf die Route aufrufen?» ein. Ein JWT mit seinen öffentlichen Schlüsseln (`client.jwt`) schreibst du in moat.yaml. Scheitert eine Prüfung, antwortet das Gate mit 401 `client_unauthorized`."
         },
         "tips": {
           "exact": "Pfade gelten exakt: `/newsletter` passt nicht auf `/newsletter/abc`.",
@@ -834,7 +992,9 @@
           "sign": "Klicke unter «Gates» beim Gate auf «Bundle signieren». Ein eigenes Fenster von Moat Desktop zeigt, was sich gegenüber dem letzten Bundle ändert. Wähle beim ersten Mal deine Schlüsseldatei (`.moatkey`), gib die Passphrase ein und bestätige. Das Bundle liegt danach unter `bundles`.",
           "package": "Unter «Gates» speicherst du mit «Als ZIP speichern» oder «In Ordner ablegen» ein Deploy-Paket: das zuletzt signierte Bundle unverändert, die passende `policy.json` und eine Anleitung (`LIESMICH.txt`) mit den Befehlen und der Prüfsumme. Wohin, wählst du im Dialog von Moat Desktop. Moat packt nur ein Bundle ein, das mit deiner Schlüsseldatei für dieses Gate signiert ist.",
           "sftp": "Unter «Gates» lädt «Per SFTP hochladen» dasselbe Paket als neuen Ordner auf deinen Server. Server, Benutzer, Ordner und Passwort oder SSH-Schlüssel gibst du im Fenster von Moat Desktop ein, nie in der App-Seite. Beim ersten Mal zeigt es den Host-Key des Servers: Vergleiche ihn mit dem, den dein Hoster nennt. Erst danach sendet Moat Benutzer, Passwort und Dateien. Zeigt der Server später einen anderen Schlüssel, bricht Moat ab. Moat überschreibt auf dem Server nichts und führt dort keinen Befehl aus: `accept` startest du selbst.",
+          "ftps": "Bietet dein Hoster kein SFTP, aber FTPS, lädt «Per FTPS hochladen» unter «Gates» dasselbe Paket als neuen Ordner hoch, immer über TLS: explizit mit `AUTH TLS` (meist Port 21) oder implizit (meist Port 990). Server, Benutzer, Ordner und Passwort gibst du im Fenster von Moat Desktop ein, nie in der App-Seite. Bestätigt keine bekannte Zertifizierungsstelle das Zertifikat des Servers, etwa weil es selbst signiert ist, zeigt Moat beim ersten Mal seinen SHA-256-Fingerprint: Vergleiche ihn mit dem, den dein Hoster nennt. Erst danach sendet Moat Benutzer, Passwort und Dateien. Zeigt der Server später ein anderes Zertifikat, bricht Moat ab. Moat überschreibt auf dem Server nichts: `accept` startest du selbst.",
           "git": "Liefert dein Hoster aus einem Git-Repository aus, legt «Per Git ausliefern» unter «Gates» das Paket als neuen Ordner in deine lokale Arbeitskopie, committet nur diesen Ordner und pusht ihn auf den Upstream des ausgecheckten Branches. Den Ordner wählst du beim ersten Mal, danach bestätigst du jedes Mal Branch und Remote. Moat nutzt dein installiertes Git mit deinen Zugangsdaten, führt aber keine Hooks des Repositorys aus und liefert nicht in ein Repository aus, dessen eigene Config Programme startet. Hat der Branch Commits, die noch nicht gepusht sind, pushst du sie zuerst selbst: Moat schickt nur das Paket. Klappt der Push nicht, bleibt der Commit, und du pushst ihn selbst.",
+          "import": "Unter «Gates» übernimmt «Bundle importieren» ein signiertes Bundle (`bundle-v<n>.json`) oder ein Deploy-Paket als ZIP ins Projekt, «Paketordner importieren» den Ordner eines Pakets. So arbeitest du auch ohne Cloud an mehreren Computern mit derselben Schlüsseldatei. Moat prüft es wie das Gate: Signatur deiner Schlüsseldatei, Gate-ID, eine höhere Version als das letzte Bundle und eine gültige Konfiguration. Übernommen wird nur das Bundle, Byte für Byte. Die `policy.json` im Paket bleibt draussen: Die Policy gehört dem Gate.",
           "build": "Im CLI baust du das Bundle mit `moat build <gate> --key <datei>.moatkey`. Es liegt danach unter `bundles`.",
           "deploy": "Lade die Bundle-Datei auf den Server.",
           "accept": "Aktiviere sie dort mit `php moat-gate.php accept <bundle>.json`. Unter «Gates» siehst du die zuletzt gebaute Version."
@@ -844,6 +1004,7 @@
           "policy": "Passt ein Bundle nicht zur lokalen Policy, lehnt das Gate es ab. Die Policy änderst du nur am Gate selbst.",
           "pull": "Ohne Upload aufs Gate: Steht in der lokalen Policy ein `pull`-Block mit einer HTTPS-Adresse, holt das Gate das Bundle dort selbst ab, höchstens einmal pro Intervall, und prüft es wie bei `accept`. Du lädst das signierte Bundle dann nur an diese Adresse hoch. Mit `php moat-gate.php pull` holt es sofort, `php moat-gate.php status` zeigt den letzten Versuch.",
           "keychain": "Auf Wunsch merkt sich Moat Desktop die Passphrase im Schlüsselbund deines Betriebssystems. Nimmst du das Häkchen beim nächsten Signieren weg, wird sie dort gelöscht. Ohne echten Schlüsselbund bietet Moat Desktop das gar nicht an.",
+          "ftpsPlain": "Unverschlüsseltes FTP nutzt Moat Desktop nie: Bietet der Server kein TLS an, bricht es ab, bevor es Benutzer oder Passwort sendet. Auch die Datenverbindungen sind verschlüsselt und gehen nur an den Server, mit dem Moat verbunden ist. Das Passwort merkt es sich wie bei SFTP nur im Schlüsselbund.",
           "sftpKeychain": "Das Passwort oder die Passphrase des Schlüssels merkt sich Moat Desktop nur im Schlüsselbund deines Betriebssystems und nur, wenn du das willst. Ohne echten Schlüsselbund fragt es jedes Mal."
         }
       },
@@ -878,6 +1039,57 @@
           "status": "`php moat-gate.php status` zeigt, was der Kill-Switch gerade abschaltet.",
           "closed": "Steht in `kill.php` etwas, das das Gate nicht versteht, schaltet es lieber das ganze Gate ab.",
           "age": "Setzt du in der lokalen Policy `maxConfigAgeSeconds`, warnt `status`, wenn das aktive Bundle älter ist. So merkst du, wenn eine Sperre aus dem Projekt nie ankommt."
+        }
+      },
+      "log": {
+        "title": "Anfrage-Log",
+        "purpose": "Das Anfrage-Log zeigt, wie oft deine Routen aufgerufen werden, wie oft sie Fehler liefern und wie lange sie brauchen. Es liegt auf deinem Server, nicht in einer Cloud.",
+        "where": "Projekt › Gates › Anfrage-Log",
+        "steps": {
+          "write": "Das Gate schreibt nach jeder Anfrage eine Zeile in `log.php` im Datenordner: Zeit, Route, Methode, Status, Fehlercode des Gates, Dauer und eine Besucherkennung, die jeden Tag wechselt.",
+          "fetch": "Hol das Log ab: entweder `php moat-gate.php log > log.txt` auf dem Server, oder lade `log.php` und `logold.php` aus dem Datenordner per SFTP oder FTP herunter.",
+          "view": "Klick unter «Gates» beim Gate auf «Log ansehen» und wähle die Dateien. Moat zeigt Anfragen, Fehler und Dauer pro Route und die neuesten Anfragen.",
+          "size": "Wird `log.php` grösser als `logMaxBytes` der lokalen Policy (Standard 256 KiB), wird sie zu `logold.php` und ein neues Log beginnt. `\"logMaxBytes\": 0` schaltet das Log ab."
+        },
+        "tips": {
+          "privacy": "Pfade, Query-Parameter, Inhalte und IP-Adressen stehen nie im Log. Die Besucherkennung ist ein Hash mit einem Schlüssel, der den Server nie verlässt, und gilt nur einen Tag.",
+          "cloud": "Live-Dashboards und Alarme gibt es erst mit Moat Cloud. Ohne Cloud holst du das Log ab, wenn du es brauchst."
+        }
+      },
+      "keyRotation": {
+        "title": "Signaturschlüssel wechseln",
+        "purpose": "Ein neuer Signaturschlüssel ersetzt den alten in zwei Schritten auf jedem Server, damit keine Website ausfällt. Moat Desktop merkt sich den alten Schlüssel, bis du den Wechsel abschliesst.",
+        "where": "Projekt › Gates › Schlüssel wechseln",
+        "steps": {
+          "choose": "Wähle oder erstelle einen neuen Schlüssel in der Einrichtung oder unter «Gates». Sobald er sich vom alten unterscheidet, erscheint das Feld «Schlüssel wechseln».",
+          "pin": "Führe auf jedem Server den ersten Befehl aus: er legt den alten und den neuen Schlüssel fest.",
+          "sign": "Signiere das nächste Bundle jedes Gates mit dem neuen Schlüssel («Bundle signieren») und aktiviere es auf dem Server.",
+          "pinNew": "Wenn jedes Gate den neuen Schlüssel zeigt, führe auf jedem Server den zweiten Befehl aus: er legt nur den neuen Schlüssel fest.",
+          "finish": "Klicke auf «Wechsel abschliessen». Moat Desktop vergisst den alten Schlüssel."
+        },
+        "tips": {
+          "refuse": "`trust` lehnt eine Liste ohne den Schlüssel des aktiven Bundles ab, weil das Gate sonst nichts mehr ausliefert. Nur `--force` übergeht das, bei einem verlorenen oder gestohlenen Schlüssel.",
+          "local": "Auf einem Server ändert sich nur etwas, wenn du die Befehle dort ausführst. Moat Cloud und der Desktop ersetzen nie von sich aus einen festgelegten Schlüssel."
+        }
+      },
+      "history": {
+        "title": "Verlauf und externe Datenbank",
+        "purpose": "Der Verlauf hält fest, was Moat Desktop in einem Projekt getan hat, und zeigt, ob jemand ihn nachträglich verändert hat. Die externe Datenbank ist eine Sicherung des Projekts, die du mit anderen teilen kannst.",
+        "where": "Projekt › Verlauf",
+        "steps": {
+          "open": "Öffne im Projekt den Bereich «Verlauf».",
+          "enable": "Klicke auf «Verlauf einschalten». Ab dann schreibt Moat Desktop jedes signierte Bundle, jedes versiegelte Secret, jeden Deploy und jede Änderung an moat.yaml in eine eigene SQLite-Datenbank auf diesem Computer. Der Projektordner bleibt, wie er ist.",
+          "verify": "Klicke auf «Prüfen». Moat rechnet die Kette der Prüfsummen nach und sagt dir, ab welchem Eintrag etwas nicht mehr stimmt.",
+          "database": "Unter «Externe Datenbank» öffnet «Datenbank öffnen» ein eigenes Fenster von Moat Desktop. Dort gibst du die Verbindungs-URL der PostgreSQL-Datenbank und den Namen des Projekts in der Datenbank ein, nie in der App-Seite. Ausser für diesen Computer verlangt Moat TLS mit geprüftem Zertifikat.",
+          "push": "Sichern kopiert moat.yaml, die öffentlichen Gate-Dateien, die versiegelten Secrets und die mit deinem Schlüssel signierten Bundles in die Datenbank. Fehlt Moats Struktur dort, legt Moat sie an.",
+          "pull": "Holen schreibt neuere Dateien aus der Datenbank in den Projektordner. Jedes Bundle prüft Moat vorher wie beim Annehmen am Gate: Signatur deines Schlüssels, Gate und Version. Ein Gate, das nur in der Datenbank steht, fügst du selbst unter «Gates» mit seinem Fingerprint hinzu. Ein versiegeltes Secret, das hier schon liegt, überschreibt Moat nie: Weicht es in der Datenbank ab, meldet Moat das und lässt deine Datei. Ein Secret, das hier neu ist, übernimmt Moat, aber es ist nicht beglaubigt (wer die Datenbank beschreiben kann, könnte es ausgetauscht haben): versiegle es auf einem Rechner, dem du traust, neu."
+        },
+        "tips": {
+          "recorded": "Im Verlauf stehen nur Namen, Versionen, Prüfsummen und Zähler: nie ein Secret, nie eine Passphrase, nie ein Pfad.",
+          "evidence": "«Prüfen» erkennt einen veränderten, gelöschten oder eingefügten Eintrag. Wer diesen Computer ganz kontrolliert, kann den Verlauf trotzdem neu schreiben: Er ist ein Nachweis, kein Schutz.",
+          "ciphertext": "In die Datenbank kommen Secrets nur versiegelt und Bundles nur signiert. Ein Secret im Klartext, deine Schlüsseldatei oder ihre Passphrase verlassen den Computer nie. Die Verbindungs-URL merkt sich Moat Desktop nur im Schlüsselbund deines Betriebssystems, und nur, wenn du das willst.",
+          "conflicts": "Moat überschreibt nichts, was auf der anderen Seite neuer oder anders ist: eine höhere Bundle-Version, eine andere moat.yaml, eine andere Secret-Version. Das Fenster listet solche Fälle; du entscheidest selbst.",
+          "refused": "Enthält die Datenbank Tabellen, die nicht von Moat sind, oder hat eine neuere Moat-Version sie eingerichtet, ändert Moat nichts daran. Verwende eine eigene, leere Datenbank."
         }
       },
       "privacy": {
@@ -933,10 +1145,13 @@
       "route_disabled": "Die Route ist ausgeschaltet.",
       "gate_disabled": "Das Gate ist gesperrt und beantwortet jede Anfrage so.",
       "gate_not_configured": "Die Route verweist auf einen Upstream, den es nicht gibt.",
-      "secret_unavailable": "Das Secret dieses Upstreams ist für das gewählte Gate nicht versiegelt."
+      "secret_unavailable": "Das Secret dieses Upstreams ist für das gewählte Gate nicht versiegelt.",
+      "client_unauthorized": "Die Route verlangt einen API-Key, ein JWT, ein Turnstile-Token oder ein leeres Honeypot-Feld, und die Anfrage hat es nicht. Ob ein vorhandener Key oder ein JWT gilt, weiss nur das Gate."
     },
     "preflight": "Das Gate beantwortet den Preflight selbst. Der Browser darf die Anfrage danach senden.",
     "forwarded": "Das Gate würde die Anfrage über die Route {{route}} so weiterleiten:",
+    "tokenCall": "Hat das Gate kein gültiges Zugriffstoken gespeichert, holt es zuerst eins (OAuth2). Das Secret steckt dabei Base64-kodiert in der Basic-Anmeldung; der API schickt das Gate nur das Token (<TOKEN>).",
+    "turnstileCall": "Zuerst prüft das Gate das Turnstile-Token bei Cloudflare, mit dem versiegelten Secret (<SECRET>). Nur wenn Cloudflare zustimmt, ruft es die API auf.",
     "secret": "{{placeholder}} ersetzt das Gate durch das versiegelte Secret «{{secret}}». Die Konsole kennt den Wert nicht.",
     "countersTitle": "Dabei zählt das Gate",
     "counters": {
@@ -954,5 +1169,61 @@
     "gateOnly": "Wie weit diese Zähler schon sind und was die API antwortet, weiss nur das laufende Gate.",
     "headersTitle": "Header des Gates an den Browser",
     "policyNote": "Geprüft gegen die Policy, die `moat policy suggest` für dieses Projekt vorschlägt. Die Policy auf deinem Gate kann davon abweichen, und einen lokalen Kill-Switch sieht die Konsole nicht."
+  },
+  "history": {
+    "subtitle": "Was Moat Desktop in diesem Projekt getan hat: signierte Bundles, versiegelte Secrets, Deploys, Änderungen an moat.yaml und Kopien in die externe Datenbank.",
+    "off": {
+      "title": "Verlauf ist aus",
+      "description": "Eingeschaltet schreibt Moat Desktop jede dieser Aktionen in eine eigene Datenbank auf diesem Computer, verkettet mit Prüfsummen. Nie ein Secret, nie ein Pfad, nie eine Passphrase."
+    },
+    "enable": "Verlauf einschalten",
+    "verify": "Prüfen",
+    "intact": "Der Verlauf ist unverändert: {{entries}} Einträge, die Kette stimmt.",
+    "broken": "Ab Eintrag {{seq}} passt der Verlauf nicht mehr.",
+    "brokenTail": "Am Ende des Verlaufs fehlen Einträge.",
+    "breaks": {
+      "sequence": "Ein Eintrag fehlt oder wurde eingefügt.",
+      "chain": "Ein Eintrag verweist nicht auf den davor.",
+      "hash": "Ein Eintrag wurde nachträglich verändert.",
+      "details": "Ein Eintrag enthält Angaben, die Moat nie schreibt.",
+      "anchor": "Der Verlauf passt nicht zu dem, was Moat sich ausserhalb der Datenbank gemerkt hat."
+    },
+    "evidenceNote": "Prüfen zeigt, ob jemand den Verlauf nachträglich verändert hat. Wer diesen Computer ganz kontrolliert, kann ihn trotzdem neu schreiben.",
+    "columns": {
+      "seq": "Nr.",
+      "at": "Zeit",
+      "event": "Ereignis",
+      "hash": "Prüfsumme"
+    },
+    "kinds": {
+      "history_started": "Verlauf eingeschaltet",
+      "bundle_signed": "Bundle v{{version}} für {{gate}} signiert (SHA-256 {{sha256}}…)",
+      "secret_sealed": "Secret {{name}} für {{gate}} versiegelt (Version {{secretVersion}})",
+      "deploy": "Bundle v{{version}} für {{gate}} als Deploy-Paket ausgeliefert",
+      "config_edited": "moat.yaml geändert ({{op}}): {{before}}… → {{after}}…",
+      "database_pushed": "In die Datenbank gesichert als {{key}}: {{gates}} Gates, {{secrets}} Secrets, {{bundles}} Bundles, {{conflicts}} nicht überschrieben",
+      "database_pulled": "Aus der Datenbank {{key}} geholt: {{gates}} Gates, {{secrets}} Secrets, {{bundles}} Bundles, {{conflicts}} nicht überschrieben"
+    },
+    "targets": {
+      "zip": "ZIP",
+      "folder": "Ordner",
+      "sftp": "SFTP",
+      "ftps": "FTPS",
+      "git": "Git"
+    },
+    "database": {
+      "title": "Externe Datenbank",
+      "description": "Eine Kopie des Projekts in einer eigenen PostgreSQL-Datenbank: moat.yaml, die öffentlichen Gate-Dateien, versiegelte Secrets und signierte Bundles. Die Verbindung gibst du in einem eigenen Fenster von Moat Desktop ein.",
+      "open": "Datenbank öffnen",
+      "done": {
+        "push": "In die Datenbank gesichert: {{gates}} Gates, {{secrets}} Secrets, {{bundles}} Bundles.",
+        "pull": "Aus der Datenbank geholt: {{gates}} Gates, {{secrets}} Secrets, {{bundles}} Bundles."
+      },
+      "issues": "{{issues}} Mal nichts überschrieben, siehe Fenster.",
+      "failed": "Die Datenbank-Kopie hat nicht geklappt."
+    },
+    "notices": {
+      "failed": "Das hat nicht geklappt. Bitte nochmals."
+    }
   }
 }

@@ -9,10 +9,13 @@ use Moat\Gate\Config\ConfigValidator;
 use Moat\Gate\Config\Limit;
 use Moat\Gate\Config\LimitScope;
 use Moat\Gate\Config\Method;
+use Moat\Gate\Config\TokenEndpoint;
 use Moat\Gate\Http\PathNormaliser;
 use Moat\Gate\Json\JsonObject;
 use Moat\Gate\Rejection;
 use Moat\Gate\RejectionCode;
+use Moat\Gate\Runtime\ClientCheck;
+use Moat\Gate\Runtime\RequestLog;
 
 /**
  * Parses the local policy and checks a config against it, exactly as libs/core does
@@ -35,7 +38,12 @@ final class PolicyCheck
         $testing = $value->has('testing');
         $hasMaxAge = $value->has('maxConfigAgeSeconds');
         $hasPull = $value->has('pull');
-        if (!$value->hasExactKeys('v', 'upstreams', 'maxBodyBytes', 'maxResponseBytes', 'maxTimeoutMs', 'limits', ...($testing ? ['testing'] : []), ...($hasMaxAge ? ['maxConfigAgeSeconds'] : []), ...($hasPull ? ['pull'] : []))) {
+        $hasLog = $value->has('logMaxBytes');
+        if (!$value->hasExactKeys('v', 'upstreams', 'maxBodyBytes', 'maxResponseBytes', 'maxTimeoutMs', 'limits', ...($testing ? ['testing'] : []), ...($hasMaxAge ? ['maxConfigAgeSeconds'] : []), ...($hasPull ? ['pull'] : []), ...($hasLog ? ['logMaxBytes'] : []))) {
+            self::invalid();
+        }
+        $logMaxBytes = $hasLog ? $value->get('logMaxBytes') : RequestLog::DEFAULT_MAX_BYTES;
+        if (!\is_int($logMaxBytes) || !ConfigValidator::intIn($logMaxBytes, 0, RequestLog::MAX_BYTES)) {
             self::invalid();
         }
         $maxAge = null;
@@ -66,7 +74,7 @@ final class PolicyCheck
 
         $pull = $hasPull ? self::pull($value->get('pull')) : null;
 
-        return new Policy($allowed, $maxBodyBytes, $maxResponseBytes, $maxTimeoutMs, $limits, $testing, $resolve, $caFile, $maxAge, $pull);
+        return new Policy($allowed, $maxBodyBytes, $maxResponseBytes, $maxTimeoutMs, $limits, $testing, $resolve, $caFile, $maxAge, $pull, $logMaxBytes);
     }
 
     /**
@@ -118,9 +126,18 @@ final class PolicyCheck
                 if ($allowed === null || !\in_array($upstream->auth->secret, $allowed->secrets, true)) {
                     self::violation();
                 }
+                // FR-20: the token request is a POST with the secret, allowed like any other call.
+                if ($upstream->auth->token !== null) {
+                    self::checkEndpoint($policy, $upstream->auth->token, $upstream->auth->secret);
+                }
             }
         }
         foreach ($config->routes as $route) {
+            // FR-16: the Turnstile check sends its secret to the verify endpoint.
+            $turnstile = $route->client?->turnstile;
+            if ($turnstile !== null) {
+                self::checkEndpoint($policy, $turnstile[2], $turnstile[1]);
+            }
             $allowed = $policy->upstreams[$config->upstreamOf($route)->hostKey()] ?? null;
             if ($allowed === null || !\in_array($route->method, $allowed->methods, true) || $route->maxBodyBytes > $policy->maxBodyBytes) {
                 self::violation();
@@ -135,6 +152,12 @@ final class PolicyCheck
             // FR-13, SEC-14, T-65: a bundle cannot drop the body check of a host that requires it;
             // a route without body fields must take no body at all, whatever its method.
             if ($allowed->requireBody && $route->body === null && $route->maxBodyBytes !== 0) {
+                self::violation();
+            }
+            // FR-16, SEC-14, T-71: a bundle cannot drop the client protection of a host that requires
+            // it; a honeypot alone is no protection.
+            $client = $route->client;
+            if ($allowed->requireClient && ($client === null || ($client->apiKey === null && $client->jwt === null && $client->turnstile === null))) {
                 self::violation();
             }
             // Every answer from a host with a budget must be countable, in the policy's format.
@@ -159,6 +182,13 @@ final class PolicyCheck
         $total = $policy->limits->total;
         $live = static fn(int $window): int => $total->requests * (intdiv($window + $total->windowSeconds - 1, $total->windowSeconds) + 1);
         $count = 1 + $live($policy->limits->perIp->windowSeconds) + ($policy->limits->quota !== null ? 1 : 0);
+        // T-71: failed API key attempts, one counter per client (ClientCheck::FAILURE_*).
+        foreach ($config->routes as $route) {
+            if ($route->client?->apiKey !== null) {
+                $count += $live(ClientCheck::FAILURE_WINDOW_SECONDS);
+                break;
+            }
+        }
         foreach ($config->routes as $route) {
             if ($route->quota !== null) {
                 ++$count;
@@ -172,6 +202,19 @@ final class PolicyCheck
     }
 
     /** True when `path` equals the prefix or continues it at a segment boundary. */
+    /** A POST with `$secret` to `$endpoint`: the policy allows the path, POST and the secret on its host. */
+    private static function checkEndpoint(Policy $policy, TokenEndpoint $endpoint, string $secret): void
+    {
+        $host = $policy->upstreams[$endpoint->hostKey()] ?? null;
+        $within = false;
+        foreach ($host === null ? [] : $host->pathPrefixes as $prefix) {
+            $within = $within || self::matchesPrefix($endpoint->path, $prefix);
+        }
+        if ($host === null || !$within || !\in_array($secret, $host->secrets, true) || !\in_array(Method::Post, $host->methods, true)) {
+            self::violation();
+        }
+    }
+
     public static function matchesPrefix(string $path, string $prefix): bool
     {
         if ($prefix === '/' || $path === $prefix) {
@@ -192,7 +235,7 @@ final class PolicyCheck
 
     private static function upstream(mixed $entry): PolicyUpstream
     {
-        if (!$entry instanceof JsonObject || !$entry->hasExactKeys('pathPrefixes', 'methods', 'secrets', ...($entry->has('budget') ? ['budget'] : []), ...($entry->has('requireBody') ? ['requireBody'] : []))) {
+        if (!$entry instanceof JsonObject || !$entry->hasExactKeys('pathPrefixes', 'methods', 'secrets', ...($entry->has('budget') ? ['budget'] : []), ...($entry->has('requireBody') ? ['requireBody'] : []), ...($entry->has('requireClient') ? ['requireClient'] : []))) {
             self::invalid();
         }
         $prefixes = $entry->get('pathPrefixes');
@@ -231,7 +274,12 @@ final class PolicyCheck
             self::invalid();
         }
 
-        return new PolicyUpstream($pathPrefixes, $allowed, $secrets, $budget, $requireBody);
+        $requireClient = $entry->has('requireClient') ? $entry->get('requireClient') : false;
+        if (!\is_bool($requireClient)) {
+            self::invalid();
+        }
+
+        return new PolicyUpstream($pathPrefixes, $allowed, $secrets, $budget, $requireBody, $requireClient);
     }
 
     private static function isPrefix(string $value): bool

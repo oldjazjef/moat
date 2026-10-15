@@ -1,3 +1,4 @@
+import { usedSecrets } from '../config/secrets';
 import { compileConfig } from '../config/compile';
 import type { CompiledConfig } from '../config/compiled';
 import { gateLockState, type GateLockState } from '../config/lock';
@@ -26,12 +27,14 @@ export const GATE_ID = /^[A-Za-z0-9_-]{22}$/;
 export const MAX_LISTED = 500;
 
 /**
- * The trust mode of a gate fed from this project (§2.9). Moat Desktop and the CLI only ever
- * produce bundles signed with a key file, and a gate accepts those only after pinning that key,
- * so a gate of a project folder is always "Signiert" (FR-46, DT-01). Mode 2 joins once passkey
- * signing exists; this is never a stronger claim than what the gate enforces (§1.5).
+ * The trust mode of a gate fed from this project (§2.9). Moat Desktop and the CLI produce bundles
+ * signed with a key file ("Signiert", mode 1), and a gate accepts those only after pinning that
+ * key, so `readProject` reports "signed" for every gate (FR-46, DT-01). "passkey" (mode 2,
+ * "Signiert mit Passkey") is what Moat Desktop reports for a gate the person set to sign with
+ * the passkey (its own, local setting, never a project file or Cloud data) — never a stronger
+ * claim than what the gate enforces (§1.5). Neither value can be lowered by data from outside.
  */
-export type TrustMode = 'signed';
+export type TrustMode = 'signed' | 'passkey';
 
 export type ConfigState =
   | { readonly status: 'missing' }
@@ -83,6 +86,11 @@ export type GateState =
        * bundle or it cannot be read. Read for display only: the gate verifies, not the desktop.
        */
       readonly latestBundleLocked: boolean | null;
+      /**
+       * The key ids in the latest bundle's signatures (SEC-08: which key signed it, for the
+       * rotation guide). Null without a readable bundle. Display only, not verified here.
+       */
+      readonly latestBundleSigners: readonly string[] | null;
     };
 
 export interface ProjectState {
@@ -108,13 +116,7 @@ function readConfig(storage: StoragePort): {
   if (text === null) return { state: { status: 'missing' }, parsed: null };
   try {
     const parsed = loadMoatYaml(text);
-    const secretNames = [
-      ...new Set(
-        Object.values(parsed.upstreams).flatMap((upstream) =>
-          upstream.auth ? [upstream.auth.secret] : [],
-        ),
-      ),
-    ].sort();
+    const secretNames = usedSecrets(parsed);
     const environments = Object.entries(parsed.environments ?? {})
       .map(([name, environment]) => ({
         name,
@@ -189,6 +191,8 @@ async function readGate(
     lock: config === null ? null : gateLockState(config, name),
     latestBundleLocked:
       latest === 0 ? null : bundleLocked(storage, name, latest, file['gateId']),
+    latestBundleSigners:
+      latest === 0 ? null : bundleSigners(storage, name, latest),
   };
 }
 
@@ -213,6 +217,23 @@ function bundleLocked(
   )
     return null;
   return payload['config']['enabled'] === false;
+}
+
+/** The `kid`s of a bundle file's signatures; null when it is no envelope. */
+function bundleSigners(
+  storage: StoragePort,
+  gate: string,
+  version: number,
+): string[] | null {
+  const envelope = parseJson(storage.read(`bundles/${gate}/${version}.json`));
+  if (!isRecord(envelope) || !Array.isArray(envelope['sigs'])) return null;
+  return envelope['sigs'].flatMap((entry: unknown) =>
+    isRecord(entry) &&
+    typeof entry['kid'] === 'string' &&
+    /^[A-Za-z0-9_-]{22}$/.test(entry['kid'])
+      ? [entry['kid']]
+      : [],
+  );
 }
 
 function readSecrets(storage: StoragePort, gate: string): SealedSecretInfo[] {

@@ -6,14 +6,16 @@
  *   main.js, preload.js   the main process + preload, bundled here with esbuild
  *   sign-preload.js,      the signing (DT-15) and seal dialogs: their preloads and static pages
  *   seal-preload.js,      and the key window (FR-73)
- *   key-preload.js,       and the SFTP window (DT-05)
- *   sftp-preload.js, dialogs/
+ *   key-preload.js,       and the SFTP, FTPS and database windows (DT-05, DT-03) and the
+ *   passkey windows (passkey-preload.js, passkey-sign-preload.js: trust mode 2)
+ *   sftp-preload.js, ftps-preload.js, database-preload.js, dialogs/
  *   api/main.js           the NestJS API as a library (`nx run api:build`)
  *   web/                  the Angular build (`nx run web:build:desktop`), served via app://
  *   package.json          name/version/main + the API's runtime dependencies
  *   node_modules/         `pnpm install --prod` — OUTSIDE the workspace's node_modules
  *
- * No native modules yet, so nothing is rebuilt for Electron's ABI.
+ * No native modules: SQLite runs on Node's own node:sqlite (a Prisma adapter of our own) and
+ * PostgreSQL on pure-JS pg, so nothing is rebuilt for Electron's ABI.
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -74,9 +76,25 @@ await esbuild.build({
       repoRoot,
       'apps/desktop/src/preload/key-preload.ts',
     ),
+    'passkey-preload': path.join(
+      repoRoot,
+      'apps/desktop/src/preload/passkey-preload.ts',
+    ),
+    'passkey-sign-preload': path.join(
+      repoRoot,
+      'apps/desktop/src/preload/passkey-sign-preload.ts',
+    ),
     'sftp-preload': path.join(
       repoRoot,
       'apps/desktop/src/preload/sftp-preload.ts',
+    ),
+    'ftps-preload': path.join(
+      repoRoot,
+      'apps/desktop/src/preload/ftps-preload.ts',
+    ),
+    'database-preload': path.join(
+      repoRoot,
+      'apps/desktop/src/preload/database-preload.ts',
     ),
   },
   outdir: out,

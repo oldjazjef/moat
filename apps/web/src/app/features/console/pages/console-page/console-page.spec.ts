@@ -90,6 +90,53 @@ describe('ConsolePage (FR-42)', () => {
     );
   });
 
+  it('shows the OAuth2 token request the gate sends first (FR-20)', async () => {
+    const { el, harness } = await openProjectTab(
+      'console',
+      ConsolePage,
+      PROJECT,
+    );
+    submit(el);
+    TestBed.inject(HttpTestingController)
+      .expectOne(ENDPOINT)
+      .flush({
+        ...FORWARDED,
+        call: {
+          ...FORWARDED.call,
+          headers: [['Authorization', 'Bearer <TOKEN>']],
+          tokenCall: {
+            method: 'POST',
+            url: 'https://auth.example.com/oauth/token',
+            headers: [['Authorization', 'Basic bW9hdDo8U0VDUkVUPg==']],
+            body: 'grant_type=client_credentials',
+          },
+        },
+      } satisfies DryRunResult);
+    await settle(harness);
+    expect(text(el, '[data-console-token]')).toContain('OAuth2');
+    expect(text(el, '[data-console-token-call]')).toContain(
+      'POST https://auth.example.com/oauth/token',
+    );
+    expect(text(el, '[data-console-token-call]')).toContain(
+      'grant_type=client_credentials',
+    );
+    expect(text(el, '[data-console-call]')).toContain(
+      'Authorization: Bearer <TOKEN>',
+    );
+  });
+
+  it('shows no token request for other upstreams', async () => {
+    const { el, harness } = await openProjectTab(
+      'console',
+      ConsolePage,
+      PROJECT,
+    );
+    submit(el);
+    TestBed.inject(HttpTestingController).expectOne(ENDPOINT).flush(FORWARDED);
+    await settle(harness);
+    expect(el.querySelector('[data-console-token-call]')).toBeNull();
+  });
+
   it('explains a refusal with its status and code', async () => {
     const { el, harness } = await openProjectTab(
       'console',

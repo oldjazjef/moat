@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
+import { DATABASE_KEY, type DatabaseTarget } from './database';
 import {
   SFTP_HOST,
   SFTP_HOST_KEY,
@@ -7,12 +8,17 @@ import {
   type SftpTarget,
   isRemoteDir,
 } from './sftp';
+import type { FtpsTarget } from './ftps';
+import { FTPS_FINGERPRINT } from './ftps-client';
+import { passkeyRecordOf, type PasskeyRecord } from './passkey';
 
 /** `<userData>/config.json`: what the desktop remembers between starts. */
 export const CONFIG_FILE = 'config.json';
 
 /** A key id as core hands it out (docs/CRYPTO.md §2: 16 bytes, base64url). */
 const KID = /^[A-Za-z0-9_-]{22}$/;
+/** An Ed25519 public key, base64url (32 bytes). */
+const PUBLIC_KEY = /^[A-Za-z0-9_-]{43}$/;
 
 export interface DesktopConfig {
   /**
@@ -22,6 +28,11 @@ export interface DesktopConfig {
   readonly projectDir: string | null;
   /** The `.moatkey` file chosen for signing bundles (the same file the CLI uses). */
   readonly keyFile: string | null;
+  /**
+   * SEC-08: the public key (base64url) of the key used before the current one, while a key
+   * rotation is not finished; the gates still pin it next to the new one. Public only.
+   */
+  readonly previousKey: string | null;
   /**
    * Passphrases the person asked to remember, by the key file's kid: encrypted with Electron
    * `safeStorage` (the OS keychain, DT-04), base64. Never plain text in this file.
@@ -42,6 +53,28 @@ export interface DesktopConfig {
    * process's folder dialog; the page never learns it.
    */
   readonly gitTargets: Readonly<Record<string, string>>;
+  /**
+   * The FTPS target per `<projectId>/<gate>` (DT-05, T-69): host, user, folder, mode, the pinned
+   * certificate, and the password only as keychain ciphertext (DT-04).
+   */
+  readonly ftpsTargets: Readonly<Record<string, FtpsTarget>>;
+
+  /**
+   * The external database per project id (DT-03): its key and label, and the connection string
+   * only as keychain ciphertext (DT-04), or not at all.
+   */
+  readonly databaseTargets: Readonly<Record<string, DatabaseTarget>>;
+
+  /**
+   * The passkey of trust mode 2 (docs/CRYPTO.md §7): its credential id and public key, nothing
+   * secret — the private key never leaves the authenticator.
+   */
+  readonly passkey: PasskeyRecord | null;
+  /**
+   * The gates (`<projectId>/<gate>`) the person set to sign with the passkey, because the gate
+   * pins it (trust mode 2). A local setting; nothing from a project or the Cloud sets it.
+   */
+  readonly passkeyGates: readonly string[];
 }
 
 export interface DeployedPackage {
@@ -52,12 +85,18 @@ export interface DeployedPackage {
 export const EMPTY_CONFIG: DesktopConfig = {
   projectDir: null,
   keyFile: null,
+  previousKey: null,
   passphrases: {},
   deployed: {},
   sftpTargets: {},
   gitTargets: {},
+  ftpsTargets: {},
+  databaseTargets: {},
+  passkey: null,
+  passkeyGates: [],
 };
 
+const PROJECT_KEY = /^[A-Za-z0-9_-]{22}$/;
 const DEPLOYED_KEY = /^[A-Za-z0-9_-]{22}\/[a-z][a-z0-9-]{0,62}$/;
 
 /** The stored config; a missing or damaged file is an empty one (the user chooses again). */
@@ -110,13 +149,46 @@ export function readConfig(userData: string): DesktopConfig {
         if (DEPLOYED_KEY.test(key) && dir !== null) gitTargets[key] = dir;
       }
     }
+    const ftpsTargets: Record<string, FtpsTarget> = {};
+    const ftps = value['ftpsTargets'];
+    if (isRecord(ftps)) {
+      for (const [key, entry] of Object.entries(ftps)) {
+        const target = DEPLOYED_KEY.test(key) ? ftpsTargetOf(entry) : null;
+        if (target !== null) ftpsTargets[key] = target;
+      }
+    }
+    const databaseTargets: Record<string, DatabaseTarget> = {};
+    const databases = value['databaseTargets'];
+    if (isRecord(databases)) {
+      for (const [id, entry] of Object.entries(databases)) {
+        const target = PROJECT_KEY.test(id) ? databaseTargetOf(entry) : null;
+        if (target !== null) databaseTargets[id] = target;
+      }
+    }
+    const passkeyGates: string[] = [];
+    const marked = value['passkeyGates'];
+    if (Array.isArray(marked)) {
+      for (const key of marked) {
+        if (typeof key === 'string' && DEPLOYED_KEY.test(key))
+          passkeyGates.push(key);
+      }
+    }
     return {
       projectDir: absolute(value['projectDir']),
       keyFile: absolute(value['keyFile']),
+      previousKey:
+        typeof value['previousKey'] === 'string' &&
+        PUBLIC_KEY.test(value['previousKey'])
+          ? value['previousKey']
+          : null,
       passphrases,
       deployed,
       sftpTargets,
       gitTargets,
+      ftpsTargets,
+      databaseTargets,
+      passkey: passkeyRecordOf(value['passkey']),
+      passkeyGates: [...new Set(passkeyGates)].sort(),
     };
   } catch {
     return EMPTY_CONFIG;
@@ -177,6 +249,56 @@ function sftpTargetOf(value: unknown): SftpTarget | null {
     hostKey: hostKey as string | null,
     secret: secret as string | null,
   };
+}
+
+/** A stored FTPS target as the FTPS window writes it; anything else is dropped. */
+function ftpsTargetOf(value: unknown): FtpsTarget | null {
+  if (!isRecord(value)) return null;
+  const { host, port, username, remoteDir, mode, certificate, secret } = value;
+  if (
+    typeof host !== 'string' ||
+    !SFTP_HOST.test(host) ||
+    typeof port !== 'number' ||
+    !Number.isInteger(port) ||
+    port < 1 ||
+    port > 65535 ||
+    typeof username !== 'string' ||
+    !SFTP_USER.test(username) ||
+    typeof remoteDir !== 'string' ||
+    !(remoteDir === '.' || (remoteDir !== '' && isRemoteDir(remoteDir))) ||
+    (mode !== 'explicit' && mode !== 'implicit') ||
+    !(
+      certificate === null ||
+      (typeof certificate === 'string' && FTPS_FINGERPRINT.test(certificate))
+    ) ||
+    !(secret === null || (typeof secret === 'string' && secret !== ''))
+  )
+    return null;
+  return {
+    host,
+    port,
+    username,
+    remoteDir,
+    mode,
+    certificate: certificate as string | null,
+    secret: secret as string | null,
+  };
+}
+
+/** A stored database target as the database window writes it; anything else is dropped. */
+function databaseTargetOf(value: unknown): DatabaseTarget | null {
+  if (!isRecord(value)) return null;
+  const { key, label, url } = value;
+  if (
+    typeof key !== 'string' ||
+    !DATABASE_KEY.test(key) ||
+    typeof label !== 'string' ||
+    label.length > 600 ||
+    !label.startsWith('postgresql://') ||
+    !(url === null || (typeof url === 'string' && url !== ''))
+  )
+    return null;
+  return { key, label, url: url as string | null };
 }
 
 function absolute(value: unknown): string | null {

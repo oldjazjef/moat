@@ -17,6 +17,8 @@ enum GateError: string
     case BodyInvalid = 'body_invalid';
     case UnsupportedMediaType = 'unsupported_media_type';
     case OriginForbidden = 'origin_forbidden';
+    /** FR-16: an API key, JWT, Turnstile token or honeypot check failed. */
+    case ClientUnauthorized = 'client_unauthorized';
     case PreflightRejected = 'preflight_rejected';
     case RateLimited = 'rate_limited';
     case QuotaExceeded = 'quota_exceeded';
@@ -35,6 +37,8 @@ enum GateError: string
     case UpstreamTooLarge = 'upstream_too_large';
     case UpstreamReflectedSecret = 'upstream_reflected_secret';
     case UpstreamUsageInvalid = 'upstream_usage_invalid';
+    /** FR-20: the OAuth2 token endpoint gave no usable access token. */
+    case UpstreamAuthFailed = 'upstream_auth_failed';
     case Internal = 'internal_error';
 
     public function status(): int
@@ -42,6 +46,7 @@ enum GateError: string
         return match ($this) {
             self::NotFound => 404,
             self::MethodNotAllowed => 405,
+            self::ClientUnauthorized => 401,
             self::PathInvalid, self::BodyInvalid, self::RequestUnbounded => 400,
             self::BodyTooLarge => 413,
             self::UnsupportedMediaType => 415,
@@ -51,7 +56,8 @@ enum GateError: string
             self::SecretUnavailable, self::Internal => 500,
             self::UpstreamTimeout => 504,
             self::UpstreamForbidden, self::UpstreamUnreachable, self::UpstreamRedirect,
-            self::UpstreamContentType, self::UpstreamTooLarge, self::UpstreamReflectedSecret, self::UpstreamUsageInvalid => 502,
+            self::UpstreamContentType, self::UpstreamTooLarge, self::UpstreamReflectedSecret, self::UpstreamUsageInvalid,
+            self::UpstreamAuthFailed => 502,
         };
     }
 }

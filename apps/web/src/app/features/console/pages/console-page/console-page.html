@@ -210,6 +210,31 @@
   <p data-console-forwarded>
     {{ 'console.forwarded' | translate: { route: result.route } }}
   </p>
+  @if (result.call.turnstileCall; as check) {
+  <p class="text-muted-foreground" data-console-turnstile>
+    {{ 'console.turnstileCall' | translate }}
+  </p>
+  <pre
+    class="mt-code bg-muted overflow-x-auto rounded-md p-3 text-xs"
+    data-console-turnstile-call
+  >
+{{ check.method }} {{ check.url }}
+@for (header of check.headers; track $index) {{{ header[0] }}: {{ header[1] }}
+}
+{{ check.body }}</pre>
+  } @if (result.call.tokenCall; as token) {
+  <p class="text-muted-foreground" data-console-token>
+    {{ 'console.tokenCall' | translate }}
+  </p>
+  <pre
+    class="mt-code bg-muted overflow-x-auto rounded-md p-3 text-xs"
+    data-console-token-call
+  >
+{{ token.method }} {{ token.url }}
+@for (header of token.headers; track $index) {{{ header[0] }}: {{ header[1] }}
+}
+{{ token.body }}</pre>
+  }
   <pre
     class="mt-code bg-muted overflow-x-auto rounded-md p-3 text-xs"
     data-console-call

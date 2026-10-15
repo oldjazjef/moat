@@ -42,6 +42,13 @@ export class DialogSlot<Session, Result> {
     /** File names next to main.js (scripts/stage.mjs). */
     preload: string;
     page: string;
+    /**
+     * Load this URL instead of the local file `page`, in the session `partition`: for the passkey
+     * windows, whose page must come from a web origin (lib/passkey.ts).
+     */
+    web?: { readonly url: string; readonly partition: string };
+    /** Right after the window exists, before it loads (the passkey windows' test hook). */
+    onCreated?: (window: BrowserWindow) => void;
     height: number;
     session: Session;
     cancelled: Result;
@@ -71,9 +78,13 @@ export class DialogSlot<Session, Result> {
           webSecurity: true,
           spellcheck: false,
           devTools: false,
+          ...(options.web === undefined
+            ? {}
+            : { partition: options.web.partition }),
         },
       });
       window.setMenu(null);
+      options.onCreated?.(window);
       let done = false;
       let busy = 0;
       const dialog = {
@@ -102,7 +113,8 @@ export class DialogSlot<Session, Result> {
       });
       window.on('closed', () => dialog.finish(options.cancelled));
       void window.loadURL(
-        pathToFileURL(join(options.appDir, options.page)).href,
+        options.web?.url ??
+          pathToFileURL(join(options.appDir, options.page)).href,
       );
     });
   }

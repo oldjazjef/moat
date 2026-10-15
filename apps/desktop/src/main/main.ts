@@ -5,7 +5,7 @@ import {
   realpathSync,
   statSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import {
   app,
   BrowserWindow,
@@ -19,14 +19,21 @@ import {
 } from 'electron';
 import {
   type BundleSignResult,
+  type DatabaseResult,
   DEPLOY_TARGETS,
   type DeployResult,
   type DeployTarget,
   GATE_NAME,
+  IMPORT_FROM,
+  type ImportFrom,
+  type ImportResult,
   IPC,
   PROJECT_ID,
+  type PasskeyEnrollResult,
+  type PasskeyStatus,
   type ProjectAddResult,
   type ProjectCreateResult,
+  type RequestLogResult,
   type SecretSealResult,
   type SigningKeyInfo,
   type SigningKeyResult,
@@ -34,6 +41,8 @@ import {
 } from '../shared/bridge';
 import { type RunningApi, startApi } from './api-host';
 import { readConfig, updateConfig } from './lib/config';
+import { previousKeyAfter } from './lib/key-rotation';
+import { confirmed, passkeyGatesAfter } from './lib/state-change';
 import {
   type DesktopMessages,
   MESSAGES,
@@ -47,19 +56,44 @@ import {
   writeDeployFolder,
   writeDeployZip,
 } from './lib/deploy';
+import {
+  importOutcome,
+  listPackageFolder,
+  MAX_IMPORT_FILE_BYTES,
+  readImportFile,
+  readPackageFile,
+} from './lib/import';
 import { KeyCreationSession, writeKeyFile } from './lib/key-creation';
+import { logOutcome, MAX_LOG_FILES, readLogFiles } from './lib/request-log';
 import { gitRunner, runGitDeploy } from './lib/git-deploy';
 import { readPrivateKey, SftpSession } from './lib/sftp';
 import { uploadPackage } from './lib/sftp-client';
+import { FtpsSession } from './lib/ftps';
+import { uploadPackage as uploadFtpsPackage } from './lib/ftps-client';
+import { registerFtpsDialogIpc, showFtpsDialog } from './ftps-window';
 import { registerSftpDialogIpc, showSftpDialog } from './sftp-window';
 import { gateTestConfirmation } from './lib/test-confirmation';
-import { PassphraseVault, readKeyFile, SigningSession } from './lib/signing';
+import {
+  PassphraseVault,
+  type PlanSigner,
+  readKeyFile,
+  SigningSession,
+} from './lib/signing';
 import { SealingSession } from './lib/sealing';
+import { gateKey, passkeyGatesOf, passkeyPlanSigner } from './lib/passkey';
+import { enrollPasskey, passkeyInfo, signWithPasskey } from './passkey-flow';
+import { registerPasskeyDialogIpc } from './passkey-window';
 import { registerKeyDialogIpc, showKeyDialog } from './key-window';
 import { registerSealDialogIpc, showSealDialog } from './seal-window';
 import { registerSignDialogIpc, showSignDialog } from './sign-window';
 import { APP_ORIGIN, isAppUrl } from './lib/web-protocol';
 import { handleAppScheme, registerAppScheme } from './protocol';
+import {
+  registerDatabaseDialogIpc,
+  showDatabaseDialog,
+} from './database-window';
+import { DatabaseSession, defaultDatabaseKey } from './lib/database';
+import { DATABASE_MESSAGES } from './lib/database-messages';
 
 // The packaged app and a dev run (`pnpm start:desktop`) must never share settings.
 if (!app.isPackaged) {
@@ -81,6 +115,31 @@ let api: RunningApi | null = null;
 let shutdownDone = false;
 
 const messages = () => MESSAGES[systemLocale(app.getLocale())];
+
+/** A question of the main process, outside the page; a no (or closing it) is the default. */
+async function askYesNo(
+  title: string,
+  message: string,
+  detail: string,
+  yes: string,
+  no: string,
+): Promise<boolean> {
+  const options = {
+    type: 'question' as const,
+    title,
+    message,
+    detail,
+    buttons: [yes, no],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true,
+  };
+  const { response } =
+    mainWindow === null
+      ? await dialog.showMessageBox(options)
+      : await dialog.showMessageBox(mainWindow, options);
+  return response === 0;
+}
 
 app.on('second-instance', () => {
   if (mainWindow) {
@@ -280,8 +339,34 @@ function registerIpc(): void {
     const path = readConfig(app.getPath('userData')).keyFile;
     if (path === null) return { status: 'none' };
     const key = await keyInfo(api, path);
-    return key === null ? { status: 'unreadable' } : { status: 'ready', key };
+    if (key === null) return { status: 'unreadable' };
+    const previousKey = readConfig(app.getPath('userData')).previousKey;
+    return {
+      status: 'ready',
+      key,
+      previous:
+        previousKey === null ? null : await api.signingKeyInfo(previousKey),
+    };
   });
+  // SEC-08: the person says every gate now pins the new key alone; the old key is forgotten.
+  ipcMain.handle(
+    IPC.keyRotationDone,
+    async (event, locale: unknown): Promise<boolean> => {
+      if (!fromApp(event)) return false;
+      const text = MESSAGES[pageLocale(locale, app.getLocale())].confirmChange;
+      return confirmed(
+        () =>
+          askYesNo(
+            text.keyRotationDone.title,
+            text.keyRotationDone.message,
+            text.keyRotationDone.detail,
+            text.keyRotationDone.confirm,
+            text.cancel,
+          ),
+        () => updateConfig(app.getPath('userData'), { previousKey: null }),
+      );
+    },
+  );
   ipcMain.handle(IPC.keyChoose, async (event): Promise<SigningKeyResult> => {
     if (!fromApp(event) || mainWindow === null || api === null)
       return { status: 'failed' };
@@ -296,7 +381,13 @@ function registerIpc(): void {
     if (picked.canceled || file === undefined) return { status: 'cancelled' };
     const key = await keyInfo(api, file);
     if (key === null) return { status: 'unreadable' };
-    updateConfig(app.getPath('userData'), { keyFile: file });
+    const userData = app.getPath('userData');
+    const before = await currentKey(api, userData);
+    const config = readConfig(userData);
+    updateConfig(userData, {
+      keyFile: file,
+      previousKey: previousKeyAfter(before, config.previousKey, key.publicKey),
+    });
     return { status: 'chosen', key };
   });
   ipcMain.handle(
@@ -329,7 +420,21 @@ function registerIpc(): void {
         },
         create: (passphrase) => running.createSigningKey(passphrase),
         write: writeKeyFile,
-        use: (path) => updateConfig(userData, { keyFile: path }),
+        use: async (path) => {
+          const before = await currentKey(running, userData);
+          const next = await keyInfo(running, path);
+          updateConfig(userData, {
+            keyFile: path,
+            previousKey:
+              next === null
+                ? readConfig(userData).previousKey
+                : previousKeyAfter(
+                    before,
+                    readConfig(userData).previousKey,
+                    next.publicKey,
+                  ),
+          });
+        },
       });
       try {
         return await showKeyDialog({
@@ -387,6 +492,77 @@ function registerIpc(): void {
     },
   );
   registerSignDialogIpc();
+  // Trust mode 2 (docs/CRYPTO.md §7): the page learns public data and outcomes only; the
+  // challenge, the credential and the assertion stay between the passkey window and this process.
+  ipcMain.handle(
+    IPC.passkeyStatus,
+    async (event, id: unknown): Promise<PasskeyStatus> => {
+      const none = { passkey: null, gates: [] };
+      if (!fromApp(event) || api === null) return none;
+      if (typeof id !== 'string' || !PROJECT_ID.test(id)) return none;
+      const config = readConfig(app.getPath('userData'));
+      const info =
+        config.passkey === null ? null : await passkeyInfo(api, config.passkey);
+      return info === null
+        ? none
+        : { passkey: info, gates: passkeyGatesOf(config.passkeyGates, id) };
+    },
+  );
+  ipcMain.handle(
+    IPC.passkeyEnroll,
+    async (event, locale: unknown): Promise<PasskeyEnrollResult> => {
+      if (!fromApp(event) || mainWindow === null || api === null)
+        return { status: 'failed' };
+      return enrollPasskey(
+        {
+          parent: mainWindow,
+          appDir,
+          userData: app.getPath('userData'),
+          running: api,
+        },
+        MESSAGES[pageLocale(locale, app.getLocale())],
+      );
+    },
+  );
+  ipcMain.handle(
+    IPC.passkeyUse,
+    async (
+      event,
+      id: unknown,
+      gate: unknown,
+      on: unknown,
+      locale: unknown,
+    ): Promise<boolean> => {
+      if (!fromApp(event)) return false;
+      if (typeof id !== 'string' || !PROJECT_ID.test(id)) return false;
+      if (typeof gate !== 'string' || !GATE_NAME.test(gate)) return false;
+      if (typeof on !== 'boolean') return false;
+      const userData = app.getPath('userData');
+      const config = readConfig(userData);
+      const key = gateKey(id, gate);
+      // Only with a passkey to use; turning it off is always possible.
+      const after = passkeyGatesAfter(
+        config.passkeyGates,
+        key,
+        on,
+        config.passkey !== null,
+      );
+      if (after === null) return false;
+      const text = MESSAGES[pageLocale(locale, app.getLocale())].confirmChange;
+      return confirmed(
+        () =>
+          askYesNo(
+            text.passkeyUse.title,
+            on ? text.passkeyUse.on : text.passkeyUse.off,
+            text.passkeyUse.detail(gate),
+            text.passkeyUse.confirm,
+            text.cancel,
+          ),
+        () => updateConfig(userData, { passkeyGates: after }),
+      );
+    },
+  );
+  registerPasskeyDialogIpc();
   // The value of a secret is typed only in the main process's seal window, never in the page.
   ipcMain.handle(
     IPC.secretSeal,
@@ -430,6 +606,30 @@ function registerIpc(): void {
   );
   registerSealDialogIpc();
   registerSftpDialogIpc();
+  registerFtpsDialogIpc();
+
+  // «Externe Datenbank» (DT-03): the connection string is typed only in the database window.
+  ipcMain.handle(
+    IPC.databaseOpen,
+    async (event, id: unknown, locale: unknown): Promise<DatabaseResult> => {
+      if (!fromApp(event) || mainWindow === null || api === null)
+        return { status: 'failed' };
+      if (typeof id !== 'string' || !PROJECT_ID.test(id))
+        return { status: 'failed' };
+      try {
+        return await openDatabase(
+          mainWindow,
+          api,
+          id,
+          pageLocale(locale, app.getLocale()),
+        );
+      } catch {
+        console.error('[desktop] database window failed');
+        return { status: 'failed' };
+      }
+    },
+  );
+  registerDatabaseDialogIpc();
   // DT-05: the page asks for a gate's deploy package; where it goes is chosen in the main
   // process's own dialog, and the page learns only the outcome, never the path.
   ipcMain.handle(
@@ -466,6 +666,136 @@ function registerIpc(): void {
       }
     },
   );
+  // FR-45: the page asks to import a bundle into a gate; what is chosen in the main process's own
+  // dialog, read here with limits, checked in core as the gate would (DT-17).
+  ipcMain.handle(
+    IPC.gateImport,
+    async (
+      event,
+      id: unknown,
+      gate: unknown,
+      from: unknown,
+      locale: unknown,
+    ): Promise<ImportResult> => {
+      if (!fromApp(event) || mainWindow === null || api === null)
+        return { status: 'failed' };
+      if (typeof id !== 'string' || !PROJECT_ID.test(id))
+        return { status: 'failed' };
+      if (typeof gate !== 'string' || !GATE_NAME.test(gate))
+        return { status: 'failed' };
+      if (!IMPORT_FROM.includes(from as ImportFrom))
+        return { status: 'failed' };
+      const text = MESSAGES[pageLocale(locale, app.getLocale())];
+      try {
+        return await importGate(
+          mainWindow,
+          api,
+          id,
+          gate,
+          from as ImportFrom,
+          text,
+        );
+      } catch (error) {
+        // Never a message to the page: it could name paths (SEC-46).
+        console.error('[desktop] import failed', error);
+        return { status: 'failed' };
+      }
+    },
+  );
+  // FR-50, DT-12: the page asks to show a gate's request log; the files are chosen in the main
+  // process's own dialog and read here with limits, parsed in core. The page never names a path.
+  ipcMain.handle(
+    IPC.gateLog,
+    async (
+      event,
+      id: unknown,
+      gate: unknown,
+      locale: unknown,
+    ): Promise<RequestLogResult> => {
+      if (!fromApp(event) || mainWindow === null || api === null)
+        return { status: 'failed' };
+      if (typeof id !== 'string' || !PROJECT_ID.test(id))
+        return { status: 'failed' };
+      if (typeof gate !== 'string' || !GATE_NAME.test(gate))
+        return { status: 'failed' };
+      const text = MESSAGES[pageLocale(locale, app.getLocale())].requestLog;
+      try {
+        const picked = await dialog.showOpenDialog(mainWindow, {
+          title: text.title,
+          buttonLabel: text.button,
+          defaultPath: app.getPath('downloads'),
+          properties: ['openFile', 'multiSelections'],
+          filters: [
+            { name: text.filter, extensions: ['php', 'txt', 'log', 'jsonl'] },
+          ],
+        });
+        if (picked.canceled || picked.filePaths.length === 0)
+          return { status: 'cancelled' };
+        if (picked.filePaths.length > MAX_LOG_FILES)
+          return { status: 'refused', code: 'unreadable' };
+        const read = readLogFiles(picked.filePaths);
+        if ('refused' in read) return { status: 'refused', code: read.refused };
+        return logOutcome(api.readRequestLog(read.texts));
+      } catch (error) {
+        // Never a message to the page: it could name paths (SEC-46).
+        console.error('[desktop] reading the log failed', error);
+        return { status: 'failed' };
+      }
+    },
+  );
+}
+
+/**
+ * Imports a bundle file, a deploy package ZIP or folder into the gate (FR-45): only a bundle
+ * signed with the desktop's own key, for this gate, above its latest bundle (DT-17, T-50).
+ */
+async function importGate(
+  parent: BrowserWindow,
+  running: RunningApi,
+  id: string,
+  gate: string,
+  from: ImportFrom,
+  text: DesktopMessages,
+): Promise<ImportResult> {
+  const signer = gateSigner(app.getPath('userData'), id, gate);
+  if (signer === null) return { status: 'refused', code: 'key_missing' };
+  const dialogText = text.importBundle;
+  if (from === 'file') {
+    const picked = await dialog.showOpenDialog(parent, {
+      title: dialogText.chooseFile.title,
+      buttonLabel: dialogText.chooseFile.button,
+      defaultPath: app.getPath('documents'),
+      properties: ['openFile'],
+      filters: [
+        { name: dialogText.chooseFile.filter, extensions: ['json', 'zip'] },
+      ],
+    });
+    const file = picked.filePaths[0];
+    if (picked.canceled || file === undefined) return { status: 'cancelled' };
+    const bytes = readImportFile(file, MAX_IMPORT_FILE_BYTES);
+    if (bytes === null) return { status: 'refused', code: 'unreadable' };
+    if (bytes === 'too_large') return { status: 'refused', code: 'too_large' };
+    return importOutcome(
+      await running.importBundle(id, gate, signer, { kind: 'file', bytes }),
+    );
+  }
+  const picked = await dialog.showOpenDialog(parent, {
+    title: dialogText.chooseFolder.title,
+    buttonLabel: dialogText.chooseFolder.button,
+    defaultPath: app.getPath('documents'),
+    properties: ['openDirectory'],
+  });
+  const dir = picked.filePaths[0];
+  if (picked.canceled || dir === undefined) return { status: 'cancelled' };
+  const entries = listPackageFolder(dir);
+  if (entries === null) return { status: 'refused', code: 'unreadable' };
+  return importOutcome(
+    await running.importBundle(id, gate, signer, {
+      kind: 'folder',
+      entries,
+      read: (name) => readPackageFile(dir, name),
+    }),
+  );
 }
 
 /**
@@ -481,10 +811,8 @@ async function deployGate(
   text: DesktopMessages,
 ): Promise<DeployResult> {
   const userData = app.getPath('userData');
-  const keyPath = readConfig(userData).keyFile;
-  const signer = keyPath === null ? null : readKeyFile(keyPath)?.signer;
-  if (signer === null || signer === undefined)
-    return { status: 'refused', code: 'key_missing' };
+  const signer = gateSigner(userData, id, gate);
+  if (signer === null) return { status: 'refused', code: 'key_missing' };
   const prepared = await running.prepareDeploy(id, gate, signer);
   if (prepared.status === 'not_found') return { status: 'failed' };
   if (prepared.status === 'refused')
@@ -494,13 +822,23 @@ async function deployGate(
   const refused = deployRefusal(pkg, readConfig(userData).deployed[key]);
   if (refused !== null) return refused;
   const files = deployFiles(pkg, text.deploy);
-  const remember = () =>
+  const remember = () => {
     updateConfig(userData, {
       deployed: {
         ...readConfig(userData).deployed,
         [key]: { gateId: pkg.gateId, version: pkg.version },
       },
     });
+    // «Verlauf» (DT-03): the deploy with its target kind, never the target itself.
+    void running
+      .recordDeploy(id, {
+        gate: pkg.gate,
+        version: pkg.version,
+        target,
+        sha256: pkg.bundleSha256,
+      })
+      .catch(() => undefined);
+  };
   if (target === 'sftp') {
     const result = await showSftpDialog({
       parent,
@@ -546,6 +884,32 @@ async function deployGate(
         },
         readPrivateKey,
         upload: uploadPackage,
+      }),
+    });
+    if (result.status === 'exported') remember();
+    return result;
+  }
+  if (target === 'ftps') {
+    const result = await showFtpsDialog({
+      parent,
+      appDir,
+      title: text.ftpsDialog.title,
+      session: new FtpsSession({
+        texts: text.ftpsDialog,
+        pkg,
+        files,
+        keychain: deployKeychain(),
+        stored: () => readConfig(userData).ftpsTargets[key] ?? null,
+        save: (stored) =>
+          updateConfig(userData, {
+            ftpsTargets: { ...readConfig(userData).ftpsTargets, [key]: stored },
+          }),
+        forget: () => {
+          const { [key]: _dropped, ...rest } = readConfig(userData).ftpsTargets;
+          updateConfig(userData, { ftpsTargets: rest });
+        },
+        upload: (connection, pinned, remoteDir, packageFiles) =>
+          uploadFtpsPackage(connection, pinned, remoteDir, packageFiles),
       }),
     });
     if (result.status === 'exported') remember();
@@ -642,6 +1006,56 @@ async function deployGate(
   return { status: 'exported', target, version: pkg.version };
 }
 
+/** The database window of a project (DT-03, DT-13). */
+async function openDatabase(
+  parent: BrowserWindow,
+  running: RunningApi,
+  id: string,
+  locale: 'de-CH' | 'en',
+): Promise<DatabaseResult> {
+  const folder = await running.projectFolder(id);
+  if (folder === null) return { status: 'failed' };
+  const userData = app.getPath('userData');
+  const texts = DATABASE_MESSAGES[locale];
+  const name = basename(folder);
+  const session = new DatabaseSession({
+    texts,
+    project: name,
+    defaultKey: defaultDatabaseKey(name),
+    keychain: {
+      available: keychain.isEncryptionAvailable(),
+      seal: (secret) => keychain.encryptString(secret).toString('base64'),
+      open: (sealed) => {
+        try {
+          return keychain.decryptString(Buffer.from(sealed, 'base64'));
+        } catch {
+          return null;
+        }
+      },
+    },
+    stored: () => readConfig(userData).databaseTargets[id] ?? null,
+    save: (target) =>
+      updateConfig(userData, {
+        databaseTargets: {
+          ...readConfig(userData).databaseTargets,
+          [id]: target,
+        },
+      }),
+    forget: () => {
+      const { [id]: _dropped, ...rest } = readConfig(userData).databaseTargets;
+      updateConfig(userData, { databaseTargets: rest });
+    },
+    label: (url) => running.databaseLabel(url),
+    signer: () => {
+      const keyPath = readConfig(userData).keyFile;
+      return (keyPath === null ? null : readKeyFile(keyPath)?.signer) ?? null;
+    },
+    sync: (url, key, direction, signer) =>
+      running.syncDatabase(id, url, key, direction, signer),
+  });
+  return showDatabaseDialog({ parent, appDir, title: texts.title, session });
+}
+
 /** `<userData>/no-git-hooks`, created empty: git's hooks path for every Git deploy (T-68). */
 function emptyHooksDir(userData: string): string {
   const dir = join(userData, 'no-git-hooks');
@@ -665,6 +1079,21 @@ const keychain = {
   decryptString: (sealed: Buffer) => safeStorage.decryptString(sealed),
 };
 
+/** A deploy target's password in the keychain (DT-04), base64 ciphertext; null when it no longer opens. */
+function deployKeychain() {
+  return {
+    available: keychain.isEncryptionAvailable(),
+    seal: (secret: string) => keychain.encryptString(secret).toString('base64'),
+    open: (sealed: string) => {
+      try {
+        return keychain.decryptString(Buffer.from(sealed, 'base64'));
+      } catch {
+        return null;
+      }
+    },
+  };
+}
+
 async function signBundle(
   parent: BrowserWindow,
   running: RunningApi,
@@ -673,6 +1102,14 @@ async function signBundle(
   text: DesktopMessages,
 ): Promise<BundleSignResult> {
   const userData = app.getPath('userData');
+  // Trust mode 2: a gate the person set to sign with the passkey never asks for the key file.
+  if (readConfig(userData).passkeyGates.includes(gateKey(id, gate)))
+    return signWithPasskey(
+      { parent, appDir, userData, running },
+      id,
+      gate,
+      text,
+    );
   const session = new SigningSession({
     texts: text.signDialog,
     prepare: (signer) => running.prepareBundle(id, gate, signer),
@@ -708,6 +1145,22 @@ async function signBundle(
   });
 }
 
+/** The signer a gate's bundles are made and checked against: its passkey, or the key file. */
+function gateSigner(
+  userData: string,
+  id: string,
+  gate: string,
+): PlanSigner | null {
+  const config = readConfig(userData);
+  if (config.passkeyGates.includes(gateKey(id, gate)))
+    return config.passkey === null ? null : passkeyPlanSigner(config.passkey);
+  return keySigner(config.keyFile);
+}
+
+function keySigner(keyPath: string | null) {
+  return keyPath === null ? null : (readKeyFile(keyPath)?.signer ?? null);
+}
+
 /**
  * The public half of a key file, as the API computes it from `pk`; null when the file cannot be
  * read or names another key id than its `pk` gives. Read for display: whether the file really
@@ -723,6 +1176,16 @@ async function keyInfo(
     Buffer.from(file.signer.publicKey).toString('base64url'),
   );
   return info !== null && info.kid === file.kid ? info : null;
+}
+
+/** The public key of the key file in use, null when none or unreadable. */
+async function currentKey(
+  running: RunningApi,
+  userData: string,
+): Promise<string | null> {
+  const path = readConfig(userData).keyFile;
+  if (path === null) return null;
+  return (await keyInfo(running, path))?.publicKey ?? null;
 }
 
 /** The resolved path when it is a directory, otherwise null. */

@@ -7,11 +7,18 @@ export const IPC = {
   projectCreate: 'moat:project:create',
   keyStatus: 'moat:key:status',
   keyChoose: 'moat:key:choose',
+  keyRotationDone: 'moat:key:rotation-done',
   keyCreate: 'moat:key:create',
   projectReveal: 'moat:project:reveal',
   bundleSign: 'moat:bundle:sign',
   secretSeal: 'moat:secret:seal',
   gateDeploy: 'moat:gate:deploy',
+  gateImport: 'moat:gate:import',
+  gateLog: 'moat:gate:log',
+  databaseOpen: 'moat:database:open',
+  passkeyStatus: 'moat:passkey:status',
+  passkeyEnroll: 'moat:passkey:enroll',
+  passkeyUse: 'moat:passkey:use',
 } as const;
 
 /** A project id as the API hands it out (22 characters base64url). */
@@ -38,7 +45,8 @@ export interface SigningKeyInfo {
 }
 
 export type SigningKeyStatus =
-  | { status: 'ready'; key: SigningKeyInfo }
+  /** `previous`: the key an open rotation (SEC-08) replaces; null when none is open. */
+  | { status: 'ready'; key: SigningKeyInfo; previous: SigningKeyInfo | null }
   /** No key file chosen yet. */
   | { status: 'none' }
   /** The chosen file is gone or is not a key file. */
@@ -84,13 +92,14 @@ export type SecretSealResult =
 
 /**
  * Where a deploy package goes (DT-05): a ZIP file, a new folder inside a chosen one, or a new
- * folder on a server over SFTP, or a new folder committed and pushed in a Git working copy.
+ * folder on a server over SFTP or FTPS, or a new folder committed and pushed in a Git working copy.
  */
-export type DeployTarget = 'zip' | 'folder' | 'sftp' | 'git';
+export type DeployTarget = 'zip' | 'folder' | 'sftp' | 'ftps' | 'git';
 export const DEPLOY_TARGETS: readonly DeployTarget[] = [
   'zip',
   'folder',
   'sftp',
+  'ftps',
   'git',
 ];
 
@@ -128,6 +137,135 @@ export type DeployResult =
   | { status: 'git_failed' }
   | { status: 'failed' };
 
+/** What «Bundle importieren» opens (FR-45): a bundle file or package ZIP, or a package folder. */
+export type ImportFrom = 'file' | 'folder';
+export const IMPORT_FROM: readonly ImportFrom[] = ['file', 'folder'];
+
+/**
+ * Why an import was refused (FR-45, DT-17): `key_missing`: no signing key chosen;
+ * `unreadable` / `too_large`: the chosen file cannot be read or is too big; `package_invalid`: not
+ * a deploy package as Moat writes it (unexpected or doubled files, links, unsafe ZIP entries);
+ * `bundle_invalid`: not a well-formed bundle; `signature_invalid`: not signed with the desktop's
+ * key; `gate_mismatch`: made for another gate; `version_not_newer`: not above the latest bundle;
+ * `config_invalid`: its config breaks the schema.
+ */
+export type ImportRefusal =
+  | 'key_missing'
+  | 'gate_unknown'
+  | 'unreadable'
+  | 'too_large'
+  | 'package_invalid'
+  | 'bundle_invalid'
+  | 'signature_invalid'
+  | 'gate_mismatch'
+  | 'version_not_newer'
+  | 'config_invalid';
+
+export type ImportResult =
+  | { status: 'imported'; version: number }
+  | { status: 'cancelled' }
+  | { status: 'refused'; code: ImportRefusal }
+  /** `bundles/<gate>/` could not be written; nothing was saved. */
+  | { status: 'not_writable' }
+  | { status: 'failed' };
+
+/** One line of a gate's request log (FR-50): never a path, a body or an address. */
+export interface RequestLogLine {
+  /** Unix seconds. */
+  t: number;
+  route: string | null;
+  method: string;
+  status: number;
+  /** The gate's error code; null when the upstream answered. */
+  error: string | null;
+  ms: number;
+  /** The same for one client on one UTC day. */
+  client: string;
+}
+
+/** «Log ansehen» (DT-12): the summary of the files the person chose, and the newest lines. */
+export interface RequestLogView {
+  requests: number;
+  errors: number;
+  clients: number;
+  from: number | null;
+  to: number | null;
+  codes: { code: string; count: number }[];
+  routes: {
+    route: string | null;
+    requests: number;
+    errors: number;
+    p50Ms: number;
+    p95Ms: number;
+  }[];
+  /** Newest first, at most 200. */
+  recent: RequestLogLine[];
+  /** Lines that were no log entry. */
+  skipped: number;
+}
+
+/**
+ * `unreadable` / `too_large`: a chosen file cannot be read or is too big; `no_entries`: nothing
+ * in them is a line of a gate's request log.
+ */
+export type RequestLogRefusal = 'unreadable' | 'too_large' | 'no_entries';
+
+export type RequestLogResult =
+  | { status: 'read'; log: RequestLogView }
+  | { status: 'cancelled' }
+  | { status: 'refused'; code: RequestLogRefusal }
+  | { status: 'failed' };
+
+/**
+ * «Externe Datenbank» (DT-03, DT-13): what the page learns of the database window — counts only;
+ * the connection string and the issues' details stay in the window.
+ */
+export type DatabaseResult =
+  | {
+      status: 'done';
+      direction: 'push' | 'pull';
+      /** moat.yaml was written. */
+      config: boolean;
+      gates: number;
+      secrets: number;
+      bundles: number;
+      /** Conflicts and notes the window listed; nothing was overwritten for them. */
+      issues: number;
+    }
+  | { status: 'cancelled' }
+  | { status: 'failed' };
+
+/**
+ * Trust mode 2 (docs/CRYPTO.md §7): the desktop's passkey, public data only. The private key
+ * never leaves the authenticator; the challenge and the credential never reach the page.
+ */
+export interface PasskeyInfo {
+  kid: string;
+  /** base64url, the 65-byte P-256 point: `--passkey=<publicKey>`. */
+  publicKey: string;
+  /** `MOAT-…`, what the gate prints as "Passkey". */
+  fingerprint: string;
+  rpId: string;
+  origin: string;
+  /** `php moat-gate.php trust --passkey=… --rp-id=… --origin=…` */
+  trustCommand: string;
+  /** The same for a new gate (`install`). */
+  installCommand: string;
+}
+
+export interface PasskeyStatus {
+  passkey: PasskeyInfo | null;
+  /** The gates of the project the person set to sign with the passkey (mode 2), sorted. */
+  gates: string[];
+}
+
+export type PasskeyEnrollResult =
+  | { status: 'created'; passkey: PasskeyInfo }
+  | { status: 'cancelled' }
+  /** The system offers Moat Desktop no passkey: mode 2 is not possible here (no pretending). */
+  | { status: 'unavailable' }
+  | { status: 'failed' };
+
 export interface DesktopBridge {
   readonly platform: string;
   readonly project: {
@@ -151,6 +289,8 @@ export interface DesktopBridge {
      * where the person chooses. The page learns only the public key.
      */
     create(locale: string): Promise<SigningKeyResult>;
+    /** SEC-08: every gate pins the new key alone now; the desktop forgets the old key. */
+    rotationDone(locale: string): Promise<boolean>;
   };
   readonly bundle: {
     /**
@@ -188,5 +328,50 @@ export interface DesktopBridge {
       target: DeployTarget,
       locale: string,
     ): Promise<DeployResult>;
+    /**
+     * Imports a bundle (FR-45): the main process's dialog chooses a `bundle-v<n>.json`, a deploy
+     * package ZIP or folder; the bundle is checked as the gate would and saved byte for byte.
+     * The page never learns the path, only the outcome.
+     */
+    import(
+      projectId: string,
+      gate: string,
+      from: ImportFrom,
+      locale: string,
+    ): Promise<ImportResult>;
+    /**
+     * «Log ansehen» (FR-50, DT-12): the main process's dialog chooses the gate's log files
+     * (`log.php`, `logold.php`) or what `php moat-gate.php log` printed; the page gets the
+     * summary and the newest lines, never a path.
+     */
+    log(
+      projectId: string,
+      gate: string,
+      locale: string,
+    ): Promise<RequestLogResult>;
+  };
+  /**
+   * Trust mode 2, «Signiert mit Passkey». `enroll` opens the main process's passkey window;
+   * `use` marks a gate as signing with the passkey (or back with the key file) — the person says
+   * the gate pins it, and the gate enforces it, not the desktop. The page learns public data and
+   * outcomes only.
+   */
+  readonly passkey: {
+    status(projectId: string): Promise<PasskeyStatus>;
+    enroll(locale: string): Promise<PasskeyEnrollResult>;
+    use(
+      projectId: string,
+      gate: string,
+      on: boolean,
+      locale: string,
+    ): Promise<boolean>;
+  };
+  /**
+   * Opens the main process's database window for the project (DT-03): the connection string is
+   * typed there, never in the page, and the page learns only the counts. Optional only so test
+   * doubles need not stub it; the desktop's preload always provides it.
+   */
+  readonly database?: {
+    open(projectId: string, locale: string): Promise<DatabaseResult>;
   };
 }

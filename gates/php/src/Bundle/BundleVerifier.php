@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Moat\Gate\Bundle;
 
+use Moat\Gate\Crypto\Es256;
+use Moat\Gate\Crypto\KeyAlgorithm;
 use Moat\Gate\Encoding\Base64Url;
 use Moat\Gate\Json\JsonObject;
 use Moat\Gate\Json\StrictJson;
@@ -20,6 +22,9 @@ final class BundleVerifier
 {
     public const MAX_ENVELOPE_BYTES = 1024 * 1024;
     public const MAX_SIGNATURES = 16;
+    public const MIN_AUTHENTICATOR_DATA = 37;
+    public const MAX_AUTHENTICATOR_DATA = 1024;
+    public const MAX_CLIENT_DATA_JSON = 2048;
     private const DOMAIN = "moat:bundle:v1\n";
 
     public static function verify(string $envelopeBytes, VerificationContext $context): VerifiedBundle
@@ -50,16 +55,26 @@ final class BundleVerifier
         }
         $signatures = [];
         foreach ($entries as $entry) {
-            if (!$entry instanceof JsonObject || !$entry->hasExactKeys('kid', 'alg', 'sig')) {
+            if (!$entry instanceof JsonObject) {
                 throw new Rejection(RejectionCode::EnvelopeInvalid);
             }
             $kid = $entry->get('kid');
             $alg = $entry->get('alg');
-            $sig = $entry->get('sig');
-            if (!\is_string($kid) || !\is_string($alg) || !\is_string($sig)) {
+            if (!\is_string($kid) || !\is_string($alg)) {
                 throw new Rejection(RejectionCode::EnvelopeInvalid);
             }
-            $signatures[] = [$kid, $alg, $sig];
+            // docs/CRYPTO.md §4.2: the algorithm decides the exact keys of an entry.
+            $passkey = $alg === KeyAlgorithm::WebAuthnEs256->value;
+            if (!($passkey ? $entry->hasExactKeys('kid', 'alg', 'sig', 'authenticatorData', 'clientDataJSON') : $entry->hasExactKeys('kid', 'alg', 'sig'))) {
+                throw new Rejection(RejectionCode::EnvelopeInvalid);
+            }
+            $sig = $entry->get('sig');
+            $authenticatorData = $entry->get('authenticatorData');
+            $clientData = $entry->get('clientDataJSON');
+            if (!\is_string($sig) || ($passkey && (!\is_string($authenticatorData) || !\is_string($clientData)))) {
+                throw new Rejection(RejectionCode::EnvelopeInvalid);
+            }
+            $signatures[] = [$kid, $alg, $sig, \is_string($authenticatorData) ? $authenticatorData : '', \is_string($clientData) ? $clientData : ''];
         }
 
         // 3. Payload bytes — not parsed yet.
@@ -73,26 +88,18 @@ final class BundleVerifier
         //    with a wrong algorithm or signature rejects the bundle; each key id counts once.
         $message = self::DOMAIN . $payloadBytes;
         $valid = [];
-        foreach ($signatures as [$kid, $alg, $sig]) {
+        foreach ($signatures as [$kid, $alg, $sig, $authenticatorData, $clientData]) {
             $signer = self::pinned($context, $kid);
             if ($signer === null) {
                 continue;
             }
-            if ($alg !== 'ed25519') {
+            if ($alg !== $signer->alg->value) {
                 throw new Rejection(RejectionCode::SignatureInvalid);
             }
-            try {
-                $signature = Base64Url::decodeLength($sig, SODIUM_CRYPTO_SIGN_BYTES);
-            } catch (Rejection) {
-                throw new Rejection(RejectionCode::SignatureInvalid);
-            }
-            $publicKey = $signer->publicKey;
-            // Both lengths were checked (64 and 32 bytes); this only tells the type checker.
-            if ($signature === '' || $publicKey === '') {
-                throw new Rejection(RejectionCode::SignatureInvalid);
-            }
-            if (!sodium_crypto_sign_verify_detached($signature, $message, $publicKey)) {
-                throw new Rejection(RejectionCode::SignatureInvalid);
+            if ($signer instanceof PinnedPasskey) {
+                self::verifyPasskey($signer, $message, $sig, $authenticatorData, $clientData);
+            } else {
+                self::verifyEd25519($signer, $message, $sig);
             }
             $valid[$signer->kid] = true;
         }
@@ -126,7 +133,72 @@ final class BundleVerifier
         return $bundle;
     }
 
-    private static function pinned(VerificationContext $context, string $kid): ?PinnedSigner
+    private static function verifyEd25519(PinnedSigner $signer, string $message, string $sig): void
+    {
+        try {
+            $signature = Base64Url::decodeLength($sig, SODIUM_CRYPTO_SIGN_BYTES);
+        } catch (Rejection) {
+            throw new Rejection(RejectionCode::SignatureInvalid);
+        }
+        $publicKey = $signer->publicKey;
+        // Both lengths were checked (64 and 32 bytes); this only tells the type checker.
+        if ($signature === '' || $publicKey === '') {
+            throw new Rejection(RejectionCode::SignatureInvalid);
+        }
+        if (!sodium_crypto_sign_verify_detached($signature, $message, $publicKey)) {
+            throw new Rejection(RejectionCode::SignatureInvalid);
+        }
+    }
+
+    /**
+     * docs/CRYPTO.md §7.3, steps 2 to 6 (step 1, kid and alg, is done by the caller). Every
+     * failure is `signature_invalid`. The sign counter is not used (no state per authenticator;
+     * replay is stopped by the monotonic bundle version, SEC-04).
+     */
+    private static function verifyPasskey(PinnedPasskey $signer, string $message, string $sig, string $authenticatorData, string $clientData): void
+    {
+        $invalid = new Rejection(RejectionCode::SignatureInvalid);
+        // 2. Strict base64url and sizes.
+        try {
+            $der = Base64Url::decode($sig);
+            $auth = Base64Url::decode($authenticatorData);
+            $client = Base64Url::decode($clientData);
+        } catch (Rejection) {
+            throw $invalid;
+        }
+        if (\strlen($der) > Es256::MAX_DER_BYTES || \strlen($auth) < self::MIN_AUTHENTICATOR_DATA || \strlen($auth) > self::MAX_AUTHENTICATOR_DATA || $client === '' || \strlen($client) > self::MAX_CLIENT_DATA_JSON) {
+            throw $invalid;
+        }
+        // 3. clientDataJSON: more members than we read are fine here and only here.
+        try {
+            $data = StrictJson::decode($client);
+        } catch (Rejection) {
+            throw $invalid;
+        }
+        if (!$data instanceof JsonObject) {
+            throw $invalid;
+        }
+        $origin = $data->get('origin');
+        if (
+            $data->get('type') !== 'webauthn.get'
+            || $data->get('challenge') !== Base64Url::encode(hash('sha256', $message, true))
+            || !\is_string($origin) || !\in_array($origin, $signer->origins, true)
+            || ($data->has('crossOrigin') && $data->get('crossOrigin') !== false)
+        ) {
+            throw $invalid;
+        }
+        // 4. rpIdHash, UP and UV.
+        $flags = \ord($auth[32]);
+        if (!hash_equals(hash('sha256', $signer->rpId, true), substr($auth, 0, 32)) || ($flags & 0x01) === 0 || ($flags & 0x04) === 0) {
+            throw $invalid;
+        }
+        // 5. and 6. Strict DER, then ECDSA over authenticatorData ‖ SHA-256(clientDataJSON).
+        if (!Es256::verify($signer->publicKey, $auth . hash('sha256', $client, true), $der)) {
+            throw $invalid;
+        }
+    }
+
+    private static function pinned(VerificationContext $context, string $kid): PinnedSigner|PinnedPasskey|null
     {
         foreach ($context->signers as $signer) {
             if ($signer->kid === $kid) {

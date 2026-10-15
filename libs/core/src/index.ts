@@ -20,13 +20,38 @@ export {
 export {
   signBundle,
   verifyBundle,
+  bundlePayloadBytes,
+  webauthnChallenge,
+  assembleEnvelope,
   MAX_ENVELOPE_BYTES,
   type BundlePayload,
   type Ed25519Signer,
+  type Ed25519SignatureEntry,
+  type PinnedEd25519Signer,
   type PinnedSigner,
+  type SignatureEntry,
   type VerificationContext,
   type VerifiedBundle,
 } from './bundle/bundle';
+export {
+  webauthnSignature,
+  verifyPasskeyEntry,
+  parseEcdsaDer,
+  encodeEcdsaDer,
+  isRpId,
+  isPasskeyOrigin,
+  isPasskeyPoint,
+  PASSKEY_POINT_LENGTH,
+  WEBAUTHN_ALG,
+  type PinnedPasskeySigner,
+  type WebauthnSignatureEntry,
+} from './crypto/webauthn';
+export {
+  parseTrust,
+  encodeTrust,
+  MAX_TRUST_SIGNERS,
+  type TrustFile,
+} from './bundle/trust';
 export {
   sealSecret,
   openSecret,
@@ -103,6 +128,8 @@ export {
   isPullUrl,
   MIN_PULL_INTERVAL,
   MAX_PULL_INTERVAL,
+  DEFAULT_LOG_BYTES,
+  MAX_LOG_BYTES,
   type Policy,
 } from './policy/policy';
 export {
@@ -111,7 +138,11 @@ export {
   KEYFILE_WRITE_MIN,
   type KeyFile,
 } from './crypto/keyfile';
-export { buildBundle, type BuildBundleInput } from './bundle/build';
+export {
+  buildBundle,
+  buildBundlePayload,
+  type BuildBundleInput,
+} from './bundle/build';
 export type { StoragePort } from './storage/storage-port';
 export {
   BundlePlanError,
@@ -121,6 +152,7 @@ export {
   type BundlePlanErrorCode,
   type FieldChange,
   type PlanSigner,
+  pinnedSignerOf,
 } from './storage/bundle-plan';
 export {
   DeployPlanError,
@@ -128,6 +160,28 @@ export {
   type DeployPlan,
   type DeployPlanErrorCode,
 } from './storage/deploy-plan';
+export {
+  hasForbiddenKey,
+  ImportPlanError,
+  IMPORT_ZIP_LIMITS,
+  MAX_IMPORT_BUNDLE_BYTES,
+  MAX_PACKAGE_ENTRIES,
+  packageBundleName,
+  planImport,
+  zipBundle,
+  type ImportPlan,
+  type ImportPlanErrorCode,
+  type ImportSource,
+  type PackageEntry,
+} from './storage/import-plan';
+export {
+  readZip,
+  ZipReadError,
+  type Inflate,
+  type ZipContents,
+  type ZipReadErrorCode,
+  type ZipReadLimits,
+} from './package/unzip';
 export {
   crc32,
   storedZip,
@@ -251,3 +305,64 @@ export {
   type Recipe,
   type RecipeId,
 } from './recipes/recipes';
+export {
+  LOG_FILE,
+  LOG_OLD_FILE,
+  MAX_LOG_ENTRIES,
+  MAX_LOG_TEXT,
+  parseRequestLog,
+  summariseRequestLog,
+  type RequestLog,
+  type RequestLogEntry,
+  type RequestLogRouteSummary,
+  type RequestLogSummary,
+} from './gate/request-log';
+export {
+  chainHistory,
+  verifyHistory,
+  detailsValid,
+  HistoryEventError,
+  HISTORY_KINDS,
+  DEPLOY_TARGET_KINDS,
+  GENESIS_HASH,
+  type DeployTargetKind,
+  type HistoryAnchor,
+  type HistoryCheck,
+  type HistoryEvent,
+  type HistoryKind,
+  type HistoryRow,
+  type SyncCounts,
+} from './storage/history';
+export {
+  readLocalProject,
+  planPush,
+  planPull,
+  verifyPulledBundle,
+  gateIdOf,
+  sealedVersionOf,
+  sha256Hex,
+  SYNC_ISSUES,
+  type BundleFile,
+  type BundleRef,
+  type GateFile,
+  type LocalProject,
+  type PullPlan,
+  type PushPlan,
+  type RemoteProject,
+  type SecretFile,
+  type SyncedConfig,
+  type SyncIssue,
+  type SyncIssueCode,
+} from './storage/sync';
+export {
+  MAX_SETUP_ANSWER_BYTES,
+  MAX_SETUP_SIGNERS,
+  parseSetupAnswer,
+  SETUP_QUERY,
+  SETUP_TOKEN,
+  SETUP_TOKEN_HEADER,
+  SetupAnswerError,
+  type GateSetupIdentity,
+  type GateSetupSigner,
+  type SetupAnswerErrorCode,
+} from './gate/setup-answer';

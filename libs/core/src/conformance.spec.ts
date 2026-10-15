@@ -10,6 +10,7 @@ import { fromBase64Url } from './encoding/base64url';
 import { utf8 } from './encoding/utf8';
 import { MoatRejection } from './errors';
 import { verifyBundle, type PinnedSigner } from './bundle/bundle';
+import { parseTrust } from './bundle/trust';
 import { parseStrictJson, type JsonValue } from './json/strict-json';
 import { openSecret } from './secrets/seal';
 import { normalisePath } from './http/path';
@@ -115,6 +116,8 @@ describe('conformance vectors', () => {
           ? Object.values(value).flatMap(lists)
           : [];
     for (const file of [
+      'crypto/webauthn.json',
+      'crypto/trust.json',
       'config/config.json',
       'config/policy.json',
       'http/path.json',
@@ -284,6 +287,103 @@ describe('conformance vectors', () => {
         }
       },
     );
+  });
+
+  describe('crypto/webauthn.json', () => {
+    const vectors = load<{
+      signers: {
+        name: string;
+        alg: 'ed25519' | 'webauthn-es256';
+        publicKey: string;
+        kid: string;
+        rpId?: string;
+        origins?: string[];
+      }[];
+      cases: {
+        name: string;
+        envelope: string;
+        context: {
+          gateId: string;
+          pinned: string[];
+          threshold: number;
+          currentVersion: number;
+          now: number;
+          expiryEnabled: boolean;
+        };
+        expect: Expect;
+      }[];
+    }>('crypto/webauthn.json');
+    const signers = new Map(
+      vectors.signers.map((signer) => [signer.name, signer]),
+    );
+
+    it.each(vectors.cases)(
+      '$name',
+      async ({ envelope, context, expect: expected }) => {
+        const pinned: PinnedSigner[] = context.pinned.map((name) => {
+          const signer = signers.get(name);
+          if (signer === undefined) throw new Error(`unknown signer ${name}`);
+          const publicKey = fromBase64Url(signer.publicKey);
+          return signer.alg === 'ed25519'
+            ? { kid: signer.kid, alg: signer.alg, publicKey }
+            : {
+                kid: signer.kid,
+                alg: signer.alg,
+                publicKey,
+                rpId: signer.rpId ?? '',
+                origins: signer.origins ?? [],
+              };
+        });
+        const result = await outcome(() =>
+          verifyBundle(utf8(envelope), { ...context, signers: pinned }),
+        );
+        if (expected.ok) {
+          expect(result.ok).toBe(true);
+          const { payload } = (
+            result as {
+              value: { payload: { gateId: string; version: number } };
+            }
+          ).value;
+          expect({
+            ok: true,
+            gateId: payload.gateId,
+            version: payload.version,
+          }).toEqual(expected);
+        } else {
+          expect(result).toEqual(expected);
+        }
+      },
+    );
+  });
+
+  describe('crypto/trust.json', () => {
+    const vectors = load<{
+      gateId: string;
+      cases: { name: string; trust: string; expect: Expect }[];
+    }>('crypto/trust.json');
+    it.each(vectors.cases)('$name', async ({ trust, expect: expected }) => {
+      const result = await outcome(() => parseTrust(trust, vectors.gateId));
+      if (expected.ok) {
+        expect(result.ok).toBe(true);
+        const file = (
+          result as {
+            value: {
+              mode: number;
+              threshold: number;
+              signers: { kid: string }[];
+            };
+          }
+        ).value;
+        expect({
+          ok: true,
+          mode: file.mode,
+          threshold: file.threshold,
+          kids: file.signers.map((signer) => signer.kid),
+        }).toEqual(expected);
+      } else {
+        expect(result).toEqual(expected);
+      }
+    });
   });
 
   describe('crypto/secret.json', () => {

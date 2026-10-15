@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { bodyFieldsSchema, bodySchemaProblem } from '../http/body';
 import { budgetSchema } from '../http/budget';
+import {
+  clientRouteProblem,
+  clientSchemaWith,
+  clientSecrets,
+} from '../http/client';
 import { MEDIA_TYPE } from '../http/content-type';
 import { normalisePath } from '../http/path';
 import { MoatRejection, reject } from '../errors';
@@ -50,6 +55,13 @@ const name = z.string().regex(NAME);
 const mediaType = z.string().regex(MEDIA_TYPE);
 const routePath = z.string().refine(isRoutePath);
 
+/** A Basic user name or OAuth2 client id (FR-20): visible ASCII without ":". */
+export const CREDENTIAL_ID = /^[\x21-\x39\x3B-\x7E]{1,128}$/;
+/** OAuth2 scopes (RFC 6749 §3.3): scope tokens separated by single spaces. */
+export const OAUTH_SCOPE =
+  /^[\x21\x23-\x5B\x5D-\x7E]{1,128}(?: [\x21\x23-\x5B\x5D-\x7E]{1,128}){0,15}$/;
+export const MAX_TOKEN_URL = 512;
+
 const auth = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('bearer'), secret: name }),
   z.strictObject({
@@ -63,6 +75,24 @@ const auth = z.discriminatedUnion('type', [
   z.strictObject({
     type: z.literal('query'),
     param: z.string().regex(QUERY_PARAM),
+    secret: name,
+  }),
+  /** FR-20: HTTP Basic, the secret as password. */
+  z.strictObject({
+    type: z.literal('basic'),
+    username: z.string().regex(CREDENTIAL_ID),
+    secret: name,
+  }),
+  /**
+   * FR-20: OAuth2 client credentials (RFC 6749 §4.4). The gate fetches an access token from
+   * `tokenUrl` with `clientId` and the secret, caches it until shortly before it expires and
+   * sends it as a bearer token. `scope` only when set.
+   */
+  z.strictObject({
+    type: z.literal('oauth2'),
+    tokenUrl: z.string().refine(isTokenUrl),
+    clientId: z.string().regex(CREDENTIAL_ID),
+    scope: z.string().regex(OAUTH_SCOPE).optional(),
     secret: name,
   }),
 ]);
@@ -127,6 +157,11 @@ export const compiledRouteSchema = z.strictObject({
    * forwarded as received. Only on POST, PUT and PATCH routes that accept JSON alone.
    */
   body: bodyFieldsSchema.optional(),
+  /**
+   * FR-16: who may call the route (http/client.ts): API key, JWT, Turnstile, honeypot. Compiled
+   * only when set; a failed check answers 401 `client_unauthorized`.
+   */
+  client: clientSchemaWith(isTokenUrl).optional(),
 });
 
 /** Methods whose requests carry a body the gate forwards. */
@@ -176,6 +211,26 @@ export function validateCompiledConfig(
       reject('config_invalid');
     if (route.body !== undefined && bodyRouteProblem(route) !== null)
       reject('config_invalid');
+    if (route.client !== undefined) {
+      if (clientRouteProblem(route.client, route) !== null)
+        reject('config_invalid');
+      if (
+        !clientSecrets(route.client).every((secret) =>
+          secretNames.includes(secret),
+        )
+      )
+        reject('config_invalid');
+      // An API key is compared, never sent: it is no upstream's or Turnstile's secret.
+      const key = route.client.apiKey?.secret;
+      if (
+        key !== undefined &&
+        (key === route.client.turnstile?.secret ||
+          Object.values(result.upstreams).some(
+            (upstream) => upstream.auth?.secret === key,
+          ))
+      )
+        reject('config_invalid');
+    }
     const key = `${route.method} ${route.path}`;
     if (seen.has(key)) reject('config_invalid');
     seen.add(key);
@@ -206,6 +261,26 @@ export function bodyRouteProblem(
   if (route.contentTypes.length !== 1 || route.contentTypes[0] !== JSON_TYPE)
     return '`body` needs `contentTypes: [application/json]` (the default)';
   return bodySchemaProblem(route.body);
+}
+
+/**
+ * An OAuth2 token endpoint (FR-20): an HTTPS origin as isOrigin() and a path of plain segments
+ * (`[A-Za-z0-9._~-]`, never `.` or `..`), no query, at most MAX_TOKEN_URL characters.
+ */
+export function isTokenUrl(value: string): boolean {
+  if (value.length > MAX_TOKEN_URL) return false;
+  const match = /^(https:\/\/[^/]+)((?:\/[A-Za-z0-9._~-]+)+)$/.exec(value);
+  if (match === null || !isOrigin(match[1] ?? '')) return false;
+  return (match[2] ?? '')
+    .split('/')
+    .slice(1)
+    .every((segment) => segment !== '.' && segment !== '..');
+}
+
+/** The origin and path of a token URL that passed isTokenUrl(). */
+export function splitTokenUrl(value: string): { origin: string; path: string } {
+  const at = value.indexOf('/', 'https://'.length);
+  return { origin: value.slice(0, at), path: value.slice(at) };
 }
 
 /** A path as routes and upstream paths are written: already normalised, no trailing "/". */

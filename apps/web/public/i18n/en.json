@@ -53,7 +53,8 @@
       "overview": "Overview",
       "gates": "Gates",
       "routes": "Routes",
-      "console": "Test console"
+      "console": "Test console",
+      "history": "History"
     },
     "remove": {
       "button": "Remove from list",
@@ -80,6 +81,11 @@
         "label": "Signed",
         "short": "You approve every change with your key file.",
         "ifHacked": "… an attacker cannot change anything. In the browser this holds only partly; full guarantee with Moat Desktop or the CLI."
+      },
+      "passkey": {
+        "label": "Signed with passkey",
+        "short": "You approve every change with a passkey or security key.",
+        "ifHacked": "as “Signed”, and your key cannot be stolen as well."
       }
     }
   },
@@ -216,10 +222,12 @@
     "deployZip": "Save as ZIP",
     "deployFolder": "Put into a folder",
     "deploySftp": "Upload via SFTP",
+    "deployFtps": "Upload via FTPS",
     "deployGit": "Deliver via Git",
     "deployResult": {
       "exported_zip": "The package with version {{version}} is saved as a ZIP. The instructions inside are in `README.txt`.",
       "exported_folder": "The package with version {{version}} is in the new folder `moat-{{gate}}-v{{version}}`. The instructions inside are in `README.txt`.",
+      "exported_ftps": "The package with version {{version}} is on the server in the new folder `moat-{{gate}}-v{{version}}`, uploaded encrypted via FTPS. Activate it there as `README.txt` describes.",
       "exported_sftp": "The package with version {{version}} is on the server in the new folder `moat-{{gate}}-v{{version}}`. Activate it there as `README.txt` describes.",
       "exported_git": "The package with version {{version}} is committed and pushed as the new folder `moat-{{gate}}-v{{version}}`. Activate it on the server as `README.txt` describes once it has arrived there.",
       "committed": "The package with version {{version}} is committed, but the push did not work. Push the commit yourself, for example with `git push`.",
@@ -239,6 +247,89 @@
       "not_writable": "Moat cannot write to the chosen place. Nothing was saved.",
       "git_failed": "Git could not commit the package. Are `user.name` and `user.email` set, and is no merge or rebase in progress? Moat removed the folder again.",
       "failed": "The package could not be saved."
+    },
+    "import": "Import",
+    "importIntro": "Takes a signed bundle into this project, for example a deploy package from another computer. Moat accepts only a bundle signed with your key file for this gate, with a higher version than the latest one. It does not take the policy in the package.",
+    "importFile": "Import bundle",
+    "importFolder": "Import package folder",
+    "importResult": {
+      "imported": "Version {{version}} is imported. It is now the latest bundle of this gate.",
+      "key_missing": "Moat Desktop has no readable key file. Choose it when signing.",
+      "gate_unknown": "The gate file is missing or damaged.",
+      "unreadable": "The chosen file or folder cannot be read. Moat reads only ordinary files, no links.",
+      "too_large": "The chosen file is too big for a bundle or a deploy package.",
+      "package_invalid": "This is not a deploy package as Moat saves it. Expected are `bundle-v<n>.json` and at most `policy.json`, `LIESMICH.txt` or `README.txt`, without links, subfolders or unsafe paths.",
+      "bundle_invalid": "The file is not a valid bundle. Nothing was taken over.",
+      "signature_invalid": "The bundle is not signed with your key file, or it was changed. Nothing was taken over.",
+      "gate_mismatch": "The bundle is signed for another gate. Nothing was taken over.",
+      "version_not_newer": "The bundle is not newer than the latest bundle of this gate. Nothing was taken over.",
+      "config_invalid": "The configuration in the bundle is not valid. Nothing was taken over.",
+      "not_writable": "The folder `bundles/{{gate}}` cannot be written. Nothing was taken over.",
+      "failed": "The import did not work."
+    },
+    "log": "Request log",
+    "rotation": {
+      "title": "Change key",
+      "intro": "A new signing key replaces the old one in two steps on the server, so the site never stops. Both keys are shown below.",
+      "stepPin": "1. On each server: pin the old and the new key.",
+      "stepSign": "2. Sign the next bundle of every gate with the new key (“Sign bundle”) and activate it on the server.",
+      "stepPinNew": "3. On each server, when every gate below is signed with the new key: pin the new key alone.",
+      "signed": "latest bundle is signed with the new key",
+      "notSigned": "latest bundle is not signed with the new key yet",
+      "done": "Finish the change",
+      "wait": "Available when every gate has a bundle signed with the new key."
+    },
+    "logIntro": "The gate writes one line per request: time, route, method, status, error code, duration and a visitor id that changes every day. It never writes paths, contents or addresses. Fetch the files `log.php` and `logold.php` from the gate’s data folder (by SFTP or FTP) or save what `php moat-gate.php log` prints, and open them here.",
+    "logRead": "View log",
+    "logSummary": "{{requests}} requests from {{from}} to {{to}}, {{errors}} of them with an error, from {{clients}} visitors.",
+    "logSkipped": "{{count}} lines were not log entries.",
+    "logNoRoute": "(no route)",
+    "logMs": "{{ms}} ms",
+    "logCodes": "Error codes:",
+    "logRecent": "The newest {{count}} requests",
+    "logColumns": {
+      "route": "Route",
+      "requests": "Requests",
+      "errors": "Errors",
+      "median": "Median",
+      "slowest": "95 %",
+      "time": "Time",
+      "method": "Method",
+      "status": "Status",
+      "code": "Code",
+      "duration": "Duration",
+      "client": "Visitor"
+    },
+    "logResult": {
+      "unreadable": "The files could not be read. Choose at most two regular files, `log.php` and `logold.php`.",
+      "too_large": "The files are larger than a gate’s log.",
+      "no_entries": "The files hold no line of a gate’s request log.",
+      "failed": "The log could not be shown."
+    },
+    "passkey": {
+      "title": "Passkey",
+      "intro": "Instead of a key file, a passkey can approve your bundles (trust mode 2). The private key never leaves the passkey; Moat stores only the public key.",
+      "honesty": "Moat Desktop can use a passkey only when your operating system offers one. Otherwise the window says none is available, and the mode stays off.",
+      "none": "No passkey created yet.",
+      "fingerprint": "Fingerprint",
+      "rpId": "Relying party ID",
+      "origin": "Origin",
+      "trustCommand": "Pin on the gate (existing gate)",
+      "installCommand": "At installation (new gate)",
+      "enroll": "Create passkey",
+      "created": "Passkey created. Pin it on the gate now and compare the fingerprint.",
+      "gatesTitle": "Gates with passkey",
+      "gatesHint": "Switch a gate only after you have pinned the passkey there with the command. Moat Desktop cannot see what the gate has pinned: a wrong mode only makes the gate reject the bundle.",
+      "use": "Sign with passkey",
+      "useKey": "Sign with key file",
+      "stateOn": "signs with passkey (mode 2)",
+      "stateOff": "signs with key file (mode 1)",
+      "notices": {
+        "unavailable": "This system offers Moat Desktop no passkey. Trust mode 2 is not possible here; use a key file (mode 1).",
+        "cancelled": "No passkey was created.",
+        "failed": "The passkey could not be created.",
+        "set_failed": "The gate could not be switched. Create a passkey first."
+      }
     }
   },
   "routes": {
@@ -288,7 +379,9 @@
       "bearer": "Bearer token from secret “{{secret}}”",
       "header": "Header {{name}} from secret “{{secret}}”",
       "query": "Parameter {{param}} from secret “{{secret}}”",
-      "none": "None"
+      "none": "None",
+      "basic": "Basic as {{username}} with secret “{{secret}}”",
+      "oauth2": "OAuth2 as {{clientId}} with secret “{{secret}}”"
     },
     "new": "New route",
     "newUpstream": "New upstream",
@@ -311,12 +404,24 @@
         "none": "None",
         "bearer": "Bearer token",
         "header": "Custom header",
-        "query": "Query parameter"
+        "query": "Query parameter",
+        "basic": "User and password (Basic)",
+        "oauth2": "OAuth2 client credentials"
       },
       "header": "Header",
       "headerPlaceholder": "X-Api-Key",
       "param": "Parameter",
       "paramPlaceholder": "api_key",
+      "username": "User name",
+      "usernamePlaceholder": "api-user",
+      "tokenUrl": "Token address",
+      "tokenUrlPlaceholder": "https://auth.example.com/oauth/token",
+      "tokenUrlHint": "The gate fetches an access token there with the client ID and the secret and keeps it until it almost expires. The gate’s policy must allow POST to this address and the secret for its host.",
+      "clientId": "Client ID",
+      "clientIdPlaceholder": "moat-gate",
+      "scope": "Scope",
+      "scopePlaceholder": "crm.read crm.write",
+      "scopeHint": "Empty means: ask for no scope.",
       "secret": "Secret name",
       "secretPlaceholder": "hubspot-token",
       "secretHint": "Only the name, never the key itself. Then seal the key in the terminal for each gate: `moat secret seal <gate> <name>`.",
@@ -376,7 +481,22 @@
       "pathPlaceholder": "/newsletter",
       "upstreamPathPlaceholder": "/crm/v3/objects/contacts",
       "maxBodySizePlaceholder": "64KiB",
-      "originsPlaceholder": "https://www.example.ch"
+      "originsPlaceholder": "https://www.example.ch",
+      "client": "Who may call the route?",
+      "clientHint": "Every check chosen must pass; otherwise the gate answers 401 and sends nothing on.",
+      "apiKey": "API key in a header",
+      "clientSecret": "Secret name",
+      "apiKeySecretPlaceholder": "client-key",
+      "apiKeyHeader": "Header",
+      "apiKeyHeaderPlaceholder": "X-Api-Key",
+      "apiKeyHint": "For calls from servers, never for a public page. The gate compares the header with the sealed secret: `moat secret seal <gate> <name>`.",
+      "turnstile": "Cloudflare Turnstile",
+      "turnstileSecretPlaceholder": "turnstile-key",
+      "turnstileHint": "The page sends the Turnstile token in the `X-Turnstile-Token` header. The gate checks it with Cloudflare using the sealed secret; the policy must allow POST to `challenges.cloudflare.com/turnstile/v0/siteverify`.",
+      "honeypot": "Honeypot field",
+      "honeypotField": "Field",
+      "honeypotHint": "An invisible form field only bots fill in. If it is filled in the JSON, the gate refuses.",
+      "jwtKept": "This route also checks a JWT. Change its keys in moat.yaml; the form leaves them as they are."
     }
   },
   "setup": {
@@ -493,6 +613,37 @@
         "required": "Enter a gate, or click “Later”.",
         "rejected": "Nothing was saved. Copy the gate ID and box key again from the output of exactly this gate.",
         "noProject": "First choose a project."
+      },
+      "fetch": {
+        "toggle": "Fetch from the gate",
+        "intro": "No access to the server? For 30 minutes after `install` or `php moat-gate.php setup`, the gate shows its gate ID and box key at its own address. You need the setup token the command printed once.",
+        "url": "Address of the gate",
+        "urlHint": "The address of `moat-gate.php`, for example https://www.example.ch/api/moat-gate.php.",
+        "token": "Setup token",
+        "tokenHint": "The token is used for this one request only and is not stored.",
+        "run": "Fetch now",
+        "read": "Fetched from the gate.",
+        "boxFingerprint": "Box key fingerprint",
+        "signers": "Signing keys pinned on the gate",
+        "signerPinned": "Your signing key is pinned on the gate.",
+        "signerMissing": "Warning: your signing key is not pinned on the gate. The gate would reject your bundles. Check that the right `--signer` was given at `install`.",
+        "signerUnknown": "You have not chosen a signing key yet, so it cannot be checked whether it is pinned on the gate.",
+        "claim": "The gate reports these details itself over HTTPS. Moat Desktop recomputes the box key fingerprint from the key.",
+        "next": "Gate ID and box key are filled in below. Click “Check” and confirm the fingerprint before the gate is saved.",
+        "errors": {
+          "url_invalid": "That is not the https address of a `moat-gate.php` file. Enter it without parameters.",
+          "token_invalid": "The setup token has 43 characters (letters, digits, - and _). Copy it exactly as the gate printed it.",
+          "not_confirmed": "The address was not confirmed. Nothing was sent.",
+          "busy": "A request is already running. Wait a moment and try again.",
+          "setup_off": "The gate does not answer with its identity. The setup mode is off, has expired, or the token is wrong. The gate does not say which. Switch it on again with `php moat-gate.php setup`.",
+          "answer_invalid": "The answer does not look like a gate’s identity. Nothing was taken over.",
+          "address_forbidden": "This address leads to a target that is not allowed (private or local). Nothing was sent.",
+          "not_found": "The server of this address was not found.",
+          "unreachable": "The server cannot be reached.",
+          "timeout": "The server did not answer in time.",
+          "tls": "The server’s certificate is not valid for this address. Nothing was taken over.",
+          "failed": "That did not work. Try again."
+        }
       }
     },
     "recipe": {
@@ -720,12 +871,14 @@
           "install": "On the server, run `php moat-gate.php install --signer=<public key>`. The gate creates a protected data folder and prints its gate ID, box key and fingerprints.",
           "add": "Add the gate to your project folder with the `moat gate add` line the gate printed.",
           "addDesktop": "In Moat Desktop you enter the gate under “Setup” › “First gate” and compare the fingerprint there before it is saved.",
+          "fetchDesktop": "Without access to the server, click “Fetch from the gate” under “Setup” › “First gate”. Enter the address of `moat-gate.php` and the setup token that `install` or `php moat-gate.php setup` printed once. Moat Desktop reads gate ID and box key from the gate and shows the fingerprints and whether your signing key is pinned on the gate. The gate is saved only when you confirm the fingerprint.",
           "compare": "Compare the fingerprint the CLI prints group by group with the gate's.",
           "check": "Under “Gates” you see every gate you added, with gate ID and fingerprint."
         },
         "tips": {
           "mismatch": "If a group differs, delete the gate file and add the gate again.",
-          "php": "The gate needs PHP 8.2 or newer with the extensions sodium, curl, json and hash."
+          "php": "The gate needs PHP 8.2 or newer with the extensions sodium, curl, json and hash.",
+          "setupMode": "The gate’s setup mode is open for 30 minutes and ends as soon as a new bundle arrives. It shows public details only. When it is off, switch it on again on the server with `php moat-gate.php setup`."
         }
       },
       "hardening": {
@@ -748,17 +901,20 @@
       },
       "trust": {
         "title": "Trust mode",
-        "purpose": "The trust mode decides who may approve changes to a gate. Moat Desktop always uses “Signed”: the gate accepts only bundles signed with your key file.",
+        "purpose": "The trust mode decides who may approve changes to a gate. Moat Desktop uses “Signed” (key file) or “Signed with passkey”: the gate accepts only bundles signed with the key or passkey it has pinned.",
         "where": "Project › Overview › Trust mode and Gates",
         "steps": {
           "keygen": "Create a key file once with `moat keygen <file>.moatkey` and choose a good passphrase.",
           "keyDesktop": "In Moat Desktop you create the key under “Setup” › “Signing key” with “Create a new key”.",
           "trust": "Give the gate the public key when you install it (--signer). You can change it only on the gate itself, with `php moat-gate.php trust`.",
+          "passkeyDesktop": "For “Signed with passkey” click “Create passkey” under “Gates” in the “Passkey” section. A window of Moat Desktop of its own asks your operating system for a passkey and shows the fingerprint and the command.",
+          "passkeyGate": "Run the command `php moat-gate.php trust --passkey=…` on the gate and compare the fingerprint. Then switch on “Sign with passkey” for the gate.",
           "badge": "Next to each gate you see its trust mode, with the sentence on what an attacker could do if Moat Cloud were hacked."
         },
         "tips": {
           "passphrase": "Keep the key file outside the project folder and back it up. Without it you cannot sign bundles any more.",
-          "desktopOnly": "Moat Desktop works without the Cloud: you approve every change yourself with your key file."
+          "desktopOnly": "Moat Desktop works without the Cloud: you approve every change yourself with your key file.",
+          "passkeyHonest": "Moat Desktop has no passkey interface of its own and uses only what your system offers. If there is no passkey (on Linux, for example) the window says so and you stay with the key file."
         }
       },
       "secrets": {
@@ -773,7 +929,8 @@
         },
         "tips": {
           "never": "Moat never shows secrets, not even in Moat Desktop. It knows only their names and versions.",
-          "rotate": "A new key? Click “Seal again” (in the CLI: `--secret-version` with a higher number) and sign a new bundle."
+          "rotate": "A new key? Click “Seal again” (in the CLI: `--secret-version` with a higher number) and sign a new bundle.",
+          "oauth": "If the API wants a user and password, choose “User and password (Basic)” under “Authentication”: the secret is then the password. With “OAuth2 client credentials” the secret is the client secret; the gate uses it to fetch an access token at the “Token address” and sends the API only that token. The gate’s policy must allow POST to the token address."
         }
       },
       "routes": {
@@ -786,7 +943,8 @@
           "origins": "If another website calls the route in a browser, add it under “Allowed websites” (in moat.yaml: `origins`). Without an entry, browsers refuse other websites.",
           "body": "So that only expected data reaches the API, list the fields your website sends under `body` in moat.yaml, with a type (`string`, `integer`, `boolean`, `object`, `array`) and bounds such as `required`, `maxLength`, `enum` or `format: email`. The gate removes every other field and refuses content that does not fit with 400 and `body_invalid`. The recipes bring their fields along. Under “Routes”, each route shows which fields are checked, or that its content is forwarded unchecked.",
           "bundle": "A new or changed route applies on the gate only with the next bundle: `moat build <gate>`, upload it and accept it.",
-          "check": "Under “Routes” you see every route as the gate checks it: path, target, allowed websites, limits and maximum size."
+          "check": "Under “Routes” you see every route as the gate checks it: path, target, allowed websites, limits and maximum size.",
+          "client": "Who may call the route: set an API key, Cloudflare Turnstile and a honeypot in “New route” or “Edit” under “Who may call the route?”. A JWT with its public keys (`client.jwt`) goes into moat.yaml. If a check fails, the gate answers 401 `client_unauthorized`."
         },
         "tips": {
           "exact": "Paths match exactly: `/newsletter` does not match `/newsletter/abc`.",
@@ -834,7 +992,9 @@
           "sign": "Under “Gates”, click “Sign bundle” on the gate. A separate Moat Desktop window shows what changes since the last bundle. The first time, choose your key file (`.moatkey`), then enter the passphrase and confirm. The bundle is then saved under `bundles`.",
           "package": "Under “Gates”, “Save as ZIP” or “Put into a folder” saves a deploy package: the latest signed bundle unchanged, the matching `policy.json` and instructions (`README.txt`) with the commands and the checksum. You choose where in Moat Desktop’s dialog. Moat packs only a bundle signed with your key file for this gate.",
           "sftp": "Under “Gates”, “Upload via SFTP” puts the same package on your server as a new folder. You enter server, user, folder and password or SSH key in Moat Desktop’s window, never in the app page. The first time it shows the server’s host key: compare it with the one your hoster gives. Only then does Moat send user, password and files. If the server later shows another key, Moat stops. Moat replaces nothing on the server and runs no command there: you start `accept` yourself.",
+          "ftps": "If your hoster offers FTPS but no SFTP, “Upload via FTPS” under “Gates” uploads the same package as a new folder, always over TLS: explicit with `AUTH TLS` (usually port 21) or implicit (usually port 990). You enter server, user, folder and password in Moat Desktop’s window, never in the app page. If no known certificate authority vouches for the server’s certificate, for example because it is self-signed, Moat shows its SHA-256 fingerprint the first time: compare it with the one your hoster gives. Only then does Moat send user, password and files. If the server later shows another certificate, Moat stops. Moat replaces nothing on the server: you start `accept` yourself.",
           "git": "If your hoster deploys from a Git repository, “Deliver via Git” under “Gates” puts the package as a new folder into your local working copy, commits only that folder and pushes it to the upstream of the checked-out branch. You choose the folder the first time; after that you confirm branch and remote every time. Moat uses your installed Git with your credentials but runs none of the repository’s hooks, and does not deliver into a repository whose own config starts programs. If the branch has commits that are not pushed yet, push them yourself first: Moat sends only the package. If the push fails, the commit stays and you push it yourself.",
+          "import": "Under “Gates”, “Import bundle” takes a signed bundle (`bundle-v<n>.json`) or a deploy package ZIP into the project, “Import package folder” the folder of a package. That way you work on several computers with the same key file, without the Cloud. Moat checks it as the gate does: the signature of your key file, the gate id, a higher version than the latest bundle and a valid configuration. Only the bundle is taken over, byte for byte. The `policy.json` in the package stays out: the policy belongs to the gate.",
           "build": "In the CLI, build the bundle with `moat build <gate> --key <file>.moatkey`. It is then saved under `bundles`.",
           "deploy": "Upload the bundle file to the server.",
           "accept": "Activate it there with `php moat-gate.php accept <bundle>.json`. Under “Gates” you see the version built last."
@@ -844,6 +1004,7 @@
           "policy": "If a bundle does not fit the local policy, the gate refuses it. You change the policy only on the gate itself.",
           "pull": "No upload to the gate: if the local policy has a `pull` block with an HTTPS address, the gate fetches the bundle there itself, at most once per interval, and checks it as `accept` does. You then only upload the signed bundle to that address. `php moat-gate.php pull` fetches it at once, `php moat-gate.php status` shows the last attempt.",
           "keychain": "If you like, Moat Desktop remembers the passphrase in your operating system’s keychain. Untick the box the next time you sign and it is deleted there. Without a real keychain, Moat Desktop does not offer this at all.",
+          "ftpsPlain": "Moat Desktop never uses unencrypted FTP: if the server offers no TLS, it stops before it sends user or password. The data connections are encrypted too and go only to the server Moat is connected to. As with SFTP, it remembers the password only in the keychain.",
           "sftpKeychain": "Moat Desktop remembers the password or the key’s passphrase only in your operating system’s keychain, and only if you want it to. Without a real keychain it asks every time."
         }
       },
@@ -878,6 +1039,57 @@
           "status": "`php moat-gate.php status` shows what the kill switch currently turns off.",
           "closed": "If `kill.php` holds something the gate does not understand, it turns the whole gate off rather than guess.",
           "age": "Set `maxConfigAgeSeconds` in the local policy and `status` warns when the active bundle is older. That way you notice when a lock from the project never arrives."
+        }
+      },
+      "log": {
+        "title": "Request log",
+        "purpose": "The request log shows how often your routes are called, how often they fail and how long they take. It stays on your server, not in a cloud.",
+        "where": "Project › Gates › Request log",
+        "steps": {
+          "write": "After every request the gate writes one line to `log.php` in its data folder: time, route, method, status, the gate’s error code, duration and a visitor id that changes every day.",
+          "fetch": "Fetch the log: either `php moat-gate.php log > log.txt` on the server, or download `log.php` and `logold.php` from the data folder by SFTP or FTP.",
+          "view": "Under “Gates”, click “View log” at the gate and choose the files. Moat shows requests, errors and duration per route and the newest requests.",
+          "size": "When `log.php` grows beyond the local policy’s `logMaxBytes` (default 256 KiB), it becomes `logold.php` and a new log starts. `\"logMaxBytes\": 0` turns the log off."
+        },
+        "tips": {
+          "privacy": "Paths, query parameters, contents and IP addresses are never in the log. The visitor id is a hash with a key that never leaves the server, and it lasts one day.",
+          "cloud": "Live dashboards and alerts come only with Moat Cloud. Without it, you fetch the log when you need it."
+        }
+      },
+      "keyRotation": {
+        "title": "Change the signing key",
+        "purpose": "A new signing key replaces the old one in two steps on each server, so no website stops working. Moat Desktop remembers the old key until you finish the change.",
+        "where": "Project › Gates › Change key",
+        "steps": {
+          "choose": "Choose or create a new key in the setup or in “Gates”. As soon as it differs from the old one, the panel “Change key” appears.",
+          "pin": "On each server run the first command: it pins the old and the new key.",
+          "sign": "Sign the next bundle of every gate with the new key (“Sign bundle”) and activate it on the server.",
+          "pinNew": "When every gate shows the new key, run the second command on each server: it pins the new key alone.",
+          "finish": "Click “Finish the change”. Moat Desktop forgets the old key."
+        },
+        "tips": {
+          "refuse": "`trust` refuses a list without the key of the active bundle, because the gate would then serve nothing. Only `--force` overrides that, for a lost or stolen key.",
+          "local": "Nothing changes on a server unless you run the commands there. Moat Cloud and the desktop never replace a pinned key by themselves."
+        }
+      },
+      "history": {
+        "title": "History and external database",
+        "purpose": "The history records what Moat Desktop did in a project and shows whether someone changed it afterwards. The external database is a backup of the project you can share with others.",
+        "where": "Project › History",
+        "steps": {
+          "open": "In the project, open “History”.",
+          "enable": "Click “Turn on history”. From then on Moat Desktop writes every signed bundle, every sealed secret, every deploy and every change to moat.yaml into its own SQLite database on this computer. The project folder stays as it is.",
+          "verify": "Click “Check”. Moat recomputes the chain of checksums and tells you from which entry on something no longer fits.",
+          "database": "Under “External database”, “Open database” opens a separate Moat Desktop window. There you enter the connection URL of the PostgreSQL database and the project’s name in the database, never in the app page. Except for this computer, Moat requires TLS with a verified certificate.",
+          "push": "Backing up copies moat.yaml, the gates’ public files, the sealed secrets and the bundles signed with your key into the database. If Moat’s structure is missing there, Moat creates it.",
+          "pull": "Fetching writes newer files from the database into the project folder. Moat checks every bundle first as the gate does on accept: your key’s signature, gate and version. A gate that is only in the database you add yourself under “Gates” with its fingerprint. Moat never overwrites a sealed secret that already exists here: if it differs in the database, Moat reports it and keeps your file. A secret that is new here is taken over but not authenticated (whoever can write to the database could have swapped it): seal it again on a machine you trust."
+        },
+        "tips": {
+          "recorded": "The history holds only names, versions, checksums and counts: never a secret, never a passphrase, never a path.",
+          "evidence": "“Check” detects a changed, deleted or inserted entry. Whoever fully controls this computer can still rewrite the history: it is evidence, not protection.",
+          "ciphertext": "Secrets go into the database only sealed and bundles only signed. A plaintext secret, your key file or its passphrase never leave the computer. Moat Desktop remembers the connection URL only in your operating system’s keychain, and only if you want it to.",
+          "conflicts": "Moat overwrites nothing that is newer or different on the other side: a higher bundle version, another moat.yaml, another secret version. The window lists such cases; you decide.",
+          "refused": "If the database holds tables that are not Moat’s, or a newer Moat version set it up, Moat changes nothing. Use an empty database of its own."
         }
       },
       "privacy": {
@@ -933,10 +1145,13 @@
       "route_disabled": "The route is switched off.",
       "gate_disabled": "The gate is locked and answers every request like this.",
       "gate_not_configured": "The route names an upstream that does not exist.",
-      "secret_unavailable": "This upstream's secret is not sealed for the chosen gate."
+      "secret_unavailable": "This upstream's secret is not sealed for the chosen gate.",
+      "client_unauthorized": "The route wants an API key, a JWT, a Turnstile token or an empty honeypot field, and the request does not have it. Whether a key or JWT that is there holds, only the gate knows."
     },
     "preflight": "The gate answers the preflight itself. The browser may then send the request.",
     "forwarded": "Through the route {{route}}, the gate would forward the request like this:",
+    "tokenCall": "If the gate has no valid access token stored, it fetches one first (OAuth2). The secret is then base64-encoded in the Basic credentials; the gate sends the API only the token (<TOKEN>).",
+    "turnstileCall": "First the gate checks the Turnstile token with Cloudflare, using the sealed secret (<SECRET>). Only if Cloudflare agrees does it call the API.",
     "secret": "The gate replaces {{placeholder}} with the sealed secret “{{secret}}”. The console does not know its value.",
     "countersTitle": "The gate counts",
     "counters": {
@@ -954,5 +1169,61 @@
     "gateOnly": "How far these counters are and what the API answers, only the running gate knows.",
     "headersTitle": "Headers from the gate to the browser",
     "policyNote": "Checked against the policy `moat policy suggest` proposes for this project. The policy on your gate can differ, and the console does not see a local kill switch."
+  },
+  "history": {
+    "subtitle": "What Moat Desktop did in this project: signed bundles, sealed secrets, deploys, changes to moat.yaml and copies to the external database.",
+    "off": {
+      "title": "History is off",
+      "description": "Once on, Moat Desktop writes each of these actions into its own database on this computer, chained with checksums. Never a secret, never a path, never a passphrase."
+    },
+    "enable": "Turn on history",
+    "verify": "Check",
+    "intact": "The history is unchanged: {{entries}} entries, the chain holds.",
+    "broken": "From entry {{seq}} on the history no longer fits.",
+    "brokenTail": "Entries are missing at the end of the history.",
+    "breaks": {
+      "sequence": "An entry is missing or was inserted.",
+      "chain": "An entry does not point to the one before it.",
+      "hash": "An entry was changed afterwards.",
+      "details": "An entry holds data Moat never writes.",
+      "anchor": "The history does not match what Moat remembered outside the database."
+    },
+    "evidenceNote": "Checking shows whether someone changed the history afterwards. Whoever fully controls this computer can still rewrite it.",
+    "columns": {
+      "seq": "No.",
+      "at": "Time",
+      "event": "Event",
+      "hash": "Checksum"
+    },
+    "kinds": {
+      "history_started": "History turned on",
+      "bundle_signed": "Bundle v{{version}} for {{gate}} signed (SHA-256 {{sha256}}…)",
+      "secret_sealed": "Secret {{name}} for {{gate}} sealed (version {{secretVersion}})",
+      "deploy": "Bundle v{{version}} for {{gate}} delivered as a deploy package",
+      "config_edited": "moat.yaml changed ({{op}}): {{before}}… → {{after}}…",
+      "database_pushed": "Backed up to the database as {{key}}: {{gates}} gates, {{secrets}} secrets, {{bundles}} bundles, {{conflicts}} not overwritten",
+      "database_pulled": "Fetched from the database {{key}}: {{gates}} gates, {{secrets}} secrets, {{bundles}} bundles, {{conflicts}} not overwritten"
+    },
+    "targets": {
+      "zip": "ZIP",
+      "folder": "Folder",
+      "sftp": "SFTP",
+      "ftps": "FTPS",
+      "git": "Git"
+    },
+    "database": {
+      "title": "External database",
+      "description": "A copy of the project in a PostgreSQL database of its own: moat.yaml, the gates’ public files, sealed secrets and signed bundles. You enter the connection in a separate Moat Desktop window.",
+      "open": "Open database",
+      "done": {
+        "push": "Backed up to the database: {{gates}} gates, {{secrets}} secrets, {{bundles}} bundles.",
+        "pull": "Fetched from the database: {{gates}} gates, {{secrets}} secrets, {{bundles}} bundles."
+      },
+      "issues": "Nothing overwritten {{issues}} times, see the window.",
+      "failed": "The database copy did not work."
+    },
+    "notices": {
+      "failed": "That did not work. Please try again."
+    }
   }
 }

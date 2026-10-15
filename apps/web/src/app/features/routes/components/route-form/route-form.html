@@ -267,6 +267,122 @@
       </p>
       }
     </fieldset>
+    <fieldset class="flex flex-col gap-3 md:col-span-2" data-route-client>
+      <legend class="text-sm font-medium">
+        {{ 'routes.form.client' | translate }}
+      </legend>
+      <p class="text-muted-foreground text-xs">
+        {{ 'routes.form.clientHint' | translate }}
+      </p>
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" formControlName="apiKeyOn" data-route-api-key />
+        {{ 'routes.form.apiKey' | translate }}
+      </label>
+      @if (form.controls.apiKeyOn.value) {
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-api-key-secret">
+            {{ 'routes.form.clientSecret' | translate }}
+          </label>
+          <input
+            hlmInput
+            id="route-api-key-secret"
+            class="mt-code max-w-80"
+            autocomplete="off"
+            spellcheck="false"
+            formControlName="apiKeySecret"
+            [placeholder]="'routes.form.apiKeySecretPlaceholder' | translate"
+            [attr.aria-invalid]="invalid('apiKeySecret')"
+            [class.border-destructive]="invalid('apiKeySecret')"
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-api-key-header">
+            {{ 'routes.form.apiKeyHeader' | translate }}
+          </label>
+          <input
+            hlmInput
+            id="route-api-key-header"
+            class="mt-code max-w-80"
+            autocomplete="off"
+            spellcheck="false"
+            formControlName="apiKeyHeader"
+            [placeholder]="'routes.form.apiKeyHeaderPlaceholder' | translate"
+            [attr.aria-invalid]="invalid('apiKeyHeader')"
+            [class.border-destructive]="invalid('apiKeyHeader')"
+          />
+        </div>
+      </div>
+      <p class="text-muted-foreground text-xs">
+        <mt-rich-text [text]="'routes.form.apiKeyHint' | translate" />
+      </p>
+      }
+      <label class="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          formControlName="turnstileOn"
+          data-route-turnstile
+        />
+        {{ 'routes.form.turnstile' | translate }}
+      </label>
+      @if (form.controls.turnstileOn.value) {
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-turnstile-secret">
+            {{ 'routes.form.clientSecret' | translate }}
+          </label>
+          <input
+            hlmInput
+            id="route-turnstile-secret"
+            class="mt-code max-w-80"
+            autocomplete="off"
+            spellcheck="false"
+            formControlName="turnstileSecret"
+            [placeholder]="'routes.form.turnstileSecretPlaceholder' | translate"
+            [attr.aria-invalid]="invalid('turnstileSecret')"
+            [class.border-destructive]="invalid('turnstileSecret')"
+          />
+        </div>
+      </div>
+      <p class="text-muted-foreground text-xs">
+        <mt-rich-text [text]="'routes.form.turnstileHint' | translate" />
+      </p>
+      }
+      <label class="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          formControlName="honeypotOn"
+          data-route-honeypot
+        />
+        {{ 'routes.form.honeypot' | translate }}
+      </label>
+      @if (form.controls.honeypotOn.value) {
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="route-honeypot-field">
+            {{ 'routes.form.honeypotField' | translate }}
+          </label>
+          <input
+            hlmInput
+            id="route-honeypot-field"
+            class="mt-code max-w-60"
+            autocomplete="off"
+            spellcheck="false"
+            formControlName="honeypotField"
+            [attr.aria-invalid]="invalid('honeypotField')"
+            [class.border-destructive]="invalid('honeypotField')"
+          />
+        </div>
+      </div>
+      <p class="text-muted-foreground text-xs">
+        {{ 'routes.form.honeypotHint' | translate }}
+      </p>
+      } @if (jwt()) {
+      <p class="text-muted-foreground text-xs" data-route-jwt>
+        {{ 'routes.form.jwtKept' | translate }}
+      </p>
+      }
+    </fieldset>
     <fieldset class="flex flex-col gap-3 md:col-span-2">
       <label class="flex items-center gap-2 text-sm font-medium">
         <input type="checkbox" formControlName="budgetOn" data-route-budget />

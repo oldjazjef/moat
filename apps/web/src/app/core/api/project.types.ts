@@ -4,7 +4,7 @@
  * `ProjectState` (libs/core/src/storage/project.ts). The web app does not import the core; keep
  * these in step. Never carries a secret or ciphertext.
  */
-export type TrustMode = 'signed';
+export type TrustMode = 'signed' | 'passkey';
 
 export interface ConfigIssue {
   readonly code: string;
@@ -61,6 +61,24 @@ export interface CompiledRoute {
   readonly budget?: Budget;
   /** FR-13: the fields of the JSON body the gate forwards; absent = the body as received. */
   readonly body?: BodyFields;
+  /** FR-16: who may call the route (libs/core/src/http/client.ts). */
+  readonly client?: ClientProtection;
+}
+
+/** FR-16, compiled: every header and the verify URL filled in. */
+export interface ClientProtection {
+  readonly apiKey?: { readonly header: string; readonly secret: string };
+  readonly jwt?: {
+    readonly issuer: string;
+    readonly audience: string;
+    readonly keys: readonly { readonly kid: string; readonly alg: string }[];
+  };
+  readonly turnstile?: {
+    readonly header: string;
+    readonly secret: string;
+    readonly verifyUrl: string;
+  };
+  readonly honeypot?: { readonly field: string };
 }
 
 /** FR-13: a body field (libs/core/src/http/body.ts). */
@@ -87,6 +105,18 @@ export interface CompiledUpstream {
     | {
         readonly type: 'header';
         readonly name: string;
+        readonly secret: string;
+      }
+    | {
+        readonly type: 'basic';
+        readonly username: string;
+        readonly secret: string;
+      }
+    | {
+        readonly type: 'oauth2';
+        readonly tokenUrl: string;
+        readonly clientId: string;
+        readonly scope?: string;
         readonly secret: string;
       }
     | {
@@ -147,6 +177,8 @@ export type GateState =
       readonly lock: GateLockState | null;
       /** Whether the latest bundle carries the lock; null without a readable bundle. */
       readonly latestBundleLocked: boolean | null;
+      /** Key ids in the latest bundle's signatures (SEC-08); null without a readable bundle. */
+      readonly latestBundleSigners: readonly string[] | null;
     };
 
 export interface ProjectState {
@@ -225,6 +257,12 @@ export interface RouteDefinition {
   readonly budget?: Budget;
   /** FR-13: not edited by the route form; absent = left as written. */
   readonly body?: BodyFields | null;
+  /** FR-16: API key, Turnstile, honeypot; a `jwt` stays as written. Absent = left as written. */
+  readonly client?: {
+    readonly apiKey?: { readonly secret: string; readonly header?: string };
+    readonly turnstile?: { readonly secret: string; readonly header?: string };
+    readonly honeypot?: { readonly field: string };
+  };
 }
 
 /** An upstream as moat.yaml writes it (UpstreamInput in libs/core/src/config/edit.ts). */
@@ -273,4 +311,10 @@ export const CONFIG_ISSUE_CODES = [
 ] as const;
 
 /** `CompiledUpstream.auth.type`, each `routes.auth.<type>`. */
-export const AUTH_TYPES = ['bearer', 'header', 'query'] as const;
+export const AUTH_TYPES = [
+  'bearer',
+  'header',
+  'query',
+  'basic',
+  'oauth2',
+] as const;

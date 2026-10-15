@@ -22,6 +22,7 @@ import {
 import { sealSecret, type SealedSecret } from '../src/secrets/seal';
 import type { JsonValue } from '../src/json/strict-json';
 import { buildFormatVectors } from './build-format-vectors';
+import { buildWebauthnVectors } from './build-webauthn-vectors';
 
 export const TEST_ONLY_NOTICE =
   'TEST ONLY — every key in this file is derived from a public label. Never use it anywhere else.';
@@ -970,6 +971,7 @@ export async function buildVectors(): Promise<Record<string, Json>> {
     'crypto/kid.json': await kidVectors(),
     'crypto/bundle.json': await bundleVectors(),
     'crypto/secret.json': await secretVectors(),
+    ...(await buildWebauthnVectors()),
     ...(await buildFormatVectors()),
   };
 }

@@ -55,7 +55,12 @@ export type SignResult =
       readonly status: 'key_refused';
       readonly code: 'keyfile_locked' | 'keyfile_invalid';
     }
-  | { readonly status: 'not_writable' };
+  | { readonly status: 'not_writable' }
+  /** Trust mode 2: no assertion, or one that does not verify as the gate would (nothing written). */
+  | {
+      readonly status: 'passkey_refused';
+      readonly code: 'cancelled' | 'assertion_invalid';
+    };
 
 /** Electron `safeStorage`, as far as the vault needs it. */
 export interface Keychain {
@@ -314,6 +319,7 @@ export class SigningSession {
       case 'not_writable':
         return { done: { status: 'not_writable' } };
       case 'not_found':
+      case 'passkey_refused': // never answered for a key file
         return { done: { status: 'failed' } };
     }
   }

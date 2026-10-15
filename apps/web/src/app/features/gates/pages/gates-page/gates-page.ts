@@ -3,6 +3,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { HlmButtonImports } from '@moat/ui/button';
 import { HlmCardImports } from '@moat/ui/card';
 import { HlmInputImports } from '@moat/ui/input';
+import { HlmTableImports } from '@moat/ui/table';
 import { HardeningCheck } from '../../../../shared/components/hardening-check';
 import { HelpLink } from '../../../help/components/help-link';
 import { LockBadge } from '../../../../shared/components/lock-badge';
@@ -24,6 +25,7 @@ import { GatesPageService } from './gates-page.service';
     ...HlmButtonImports,
     ...HlmCardImports,
     ...HlmInputImports,
+    ...HlmTableImports,
   ],
   providers: [GatesPageService],
   templateUrl: './gates-page.html',

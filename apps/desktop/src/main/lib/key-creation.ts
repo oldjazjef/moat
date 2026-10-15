@@ -35,7 +35,7 @@ export interface KeyCreationDeps {
   create(passphrase: string): Promise<{ text: string; key: SigningKeyInfo }>;
   write(path: string, text: string): WriteOutcome;
   /** The new file becomes the desktop's signing key (config.json `keyFile`). */
-  use(path: string): void;
+  use(path: string): void | Promise<void>;
 }
 
 export type KeyStep =
@@ -71,7 +71,7 @@ export class KeyCreationSession {
         case 'failed':
           return this.show('not_writable');
         case 'written':
-          this.deps.use(target);
+          await this.deps.use(target);
           return { done: { status: 'created', key } };
       }
     } finally {

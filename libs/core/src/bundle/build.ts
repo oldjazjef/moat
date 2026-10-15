@@ -1,3 +1,4 @@
+import { usedSecrets } from '../config/secrets';
 import { compileConfig } from '../config/compile';
 import type { MoatConfig } from '../config/schema';
 import type { JsonValue } from '../json/strict-json';
@@ -29,11 +30,15 @@ export async function buildBundle(
   input: BuildBundleInput,
   signers: readonly Ed25519Signer[],
 ): Promise<string> {
-  const referenced = new Set(
-    Object.values(input.config.upstreams).flatMap((upstream) =>
-      upstream.auth ? [upstream.auth.secret] : [],
-    ),
-  );
+  return signBundle(buildBundlePayload(input), signers);
+}
+
+/**
+ * The payload `buildBundle` signs, unsigned: for signers that are not an Ed25519 key in memory
+ * (a passkey signs `webauthnChallenge(bundlePayloadBytes(payload))`, docs/CRYPTO.md §7.2).
+ */
+export function buildBundlePayload(input: BuildBundleInput): BundlePayload {
+  const referenced = new Set(usedSecrets(input.config));
   const secrets: Record<string, JsonValue> = {};
   for (const name of [...referenced].sort()) {
     const sealed = input.secrets[name];
@@ -41,7 +46,7 @@ export async function buildBundle(
   }
   const config = compileConfig(input.config, Object.keys(secrets), input.gate);
   if (input.policy !== undefined) checkPolicy(config, input.policy);
-  const payload: BundlePayload = {
+  return {
     type: 'moat.bundle',
     v: 1,
     gateId: input.gateId,
@@ -51,5 +56,4 @@ export async function buildBundle(
     config: config as unknown as BundlePayload['config'],
     secrets,
   };
-  return signBundle(payload, signers);
 }

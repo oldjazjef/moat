@@ -12,6 +12,7 @@ import {
 import { ProjectFilesPort } from '../ports/project-files.port';
 import { ProjectRegistryPort } from '../ports/project-registry.port';
 import { PROJECT_ID } from '../project.types';
+import { HistoryService } from './history.service';
 import { projectName } from './project-name';
 
 /** What the seal dialog shows before it asks for the value: never a value, never ciphertext. */
@@ -24,6 +25,8 @@ export interface SealPreview {
   readonly currentVersion: number | null;
   readonly nextVersion: number;
   readonly usedBy: SealPlan['usedBy'];
+  /** Routes that compare a caller's key with it (FR-16): it is never sent anywhere for them. */
+  readonly comparedBy: SealPlan['comparedBy'];
   /** Binds the value to exactly this gate key and version: seal() refuses when they changed. */
   readonly digest: string;
 }
@@ -53,6 +56,7 @@ export class SecretSealingService {
   constructor(
     private readonly registry: ProjectRegistryPort,
     private readonly files: ProjectFilesPort,
+    private readonly history: HistoryService,
   ) {}
 
   async prepare(
@@ -74,6 +78,7 @@ export class SecretSealingService {
         currentVersion: plan.currentVersion,
         nextVersion: plan.nextVersion,
         usedBy: plan.usedBy,
+        comparedBy: plan.comparedBy,
         digest: digest(plan),
       },
     };
@@ -108,6 +113,15 @@ export class SecretSealingService {
       } catch {
         return { status: 'not_writable' };
       }
+      // Name and version only: the value is never recorded (SEC-31).
+      await this.history.record(id, {
+        kind: 'secret_sealed',
+        details: {
+          gate: plan.gate,
+          name: plan.name,
+          secretVersion: plan.nextVersion,
+        },
+      });
       return { status: 'sealed', secretVersion: plan.nextVersion };
     } finally {
       plaintext.fill(0);
@@ -143,7 +157,7 @@ export class SecretSealingService {
 
 /**
  * SHA-256 over what the dialog shows: what the value is bound to (gate id, box key, name, new
- * version) and the upstreams that send it, so a change to either asks again (§1.5).
+ * version) the upstreams that send it and the routes that compare it, so a change to either asks again (§1.5).
  */
 function digest(plan: SealPlan): string {
   return createHash('sha256')
@@ -154,6 +168,7 @@ function digest(plan: SealPlan): string {
         plan.name,
         plan.nextVersion,
         plan.usedBy.map(({ upstream, origin }) => [upstream, origin]),
+        plan.comparedBy,
       ]),
     )
     .digest('hex');

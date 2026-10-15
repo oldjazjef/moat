@@ -145,6 +145,18 @@ export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
     expect: { ...LOCAL_ONLY, desktop: 422 },
   },
   {
+    // Reads a gate's setup mode (SEC-28, T-73): the desktop only. A bad token is refused before
+    // anything is sent, so even the desktop gets 422 `token_invalid` and the spec makes no request.
+    method: 'POST',
+    path: '/api/projects/:id/gates/setup',
+    request: `/api/projects/${SEEDED_PROJECT}/gates/setup`,
+    body: {
+      url: 'https://www.example.ch/moat-gate.php',
+      token: 'not-a-token',
+    },
+    expect: { ...LOCAL_ONLY, desktop: 422 },
+  },
+  {
     // Sends nothing anywhere: the answer is worked out from the seeded moat.yaml (FR-42).
     method: 'POST',
     path: '/api/projects/:id/dry-run',
@@ -155,6 +167,27 @@ export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
       contentType: 'application/json',
       body: '{}',
     },
+    expect: LOCAL_ONLY,
+  },
+  {
+    // «Verlauf» (DT-03): names, versions and digests only, never a secret or a path.
+    method: 'GET',
+    path: '/api/projects/:id/history',
+    request: `/api/projects/${SEEDED_PROJECT}/history`,
+    expect: LOCAL_ONLY,
+  },
+  {
+    // Switches the local history on (a SQLite file in the data folder); never off.
+    method: 'POST',
+    path: '/api/projects/:id/history',
+    request: `/api/projects/${SEEDED_PROJECT}/history`,
+    expect: LOCAL_ONLY,
+  },
+  {
+    // Checks the hash chain; writes nothing.
+    method: 'POST',
+    path: '/api/projects/:id/history/verify',
+    request: `/api/projects/${SEEDED_PROJECT}/history/verify`,
     expect: LOCAL_ONLY,
   },
   { method: 'GET', path: '/api/setup', expect: LOCAL_ONLY },

@@ -3,8 +3,13 @@ import { join } from 'node:path';
 import { desktopApiEnv } from './lib/api-env';
 import type { SigningKeyInfo } from '../shared/bridge';
 import type { PrepareDeployResult } from './lib/deploy';
+import type { BundleImportResult, ImportInput } from './lib/import';
+import type { RequestLogApiResult } from './lib/request-log';
+import type { SyncAnswer } from './lib/database';
 import type { PrepareSealResult, SealResult } from './lib/sealing';
 import type { PlanSigner, PrepareResult, SignResult } from './lib/signing';
+import type { PasskeyPlanSigner } from './lib/passkey';
+import type { Assertion } from './lib/passkey-signing';
 
 interface ApiHandle {
   app: { close(): Promise<void> };
@@ -44,6 +49,17 @@ interface ApiBundle {
     keyFile: string,
     passphrase: string,
   ): Promise<SignResult>;
+  passkeyKeyInfo(
+    point: string,
+  ): Promise<{ kid: string; publicKey: string; fingerprint: string } | null>;
+  signBundleWithPasskey(
+    api: ApiHandle,
+    id: string,
+    gate: string,
+    digest: string,
+    signer: PasskeyPlanSigner,
+    assert: (challenge: Uint8Array) => Promise<Assertion | null>,
+  ): Promise<SignResult>;
   prepareSeal(
     api: ApiHandle,
     id: string,
@@ -69,6 +85,39 @@ interface ApiBundle {
     signer: PlanSigner,
   ): Promise<PrepareDeployResult>;
   zipFiles(entries: readonly { name: string; data: Uint8Array }[]): Uint8Array;
+  importBundle(
+    api: ApiHandle,
+    id: string,
+    gate: string,
+    signer: PlanSigner,
+    input: ImportInput,
+  ): Promise<BundleImportResult>;
+  readRequestLog(texts: readonly string[]): RequestLogApiResult;
+  syncDatabase(
+    api: ApiHandle,
+    id: string,
+    input: {
+      url: string;
+      key: string;
+      direction: 'push' | 'pull';
+      signer: PlanSigner;
+    },
+  ): Promise<SyncAnswer>;
+  databaseLabel(
+    url: string,
+  ):
+    | { status: 'ok'; label: string }
+    | { status: 'refused'; code: 'url_invalid' | 'tls_required' };
+  recordDeploy(
+    api: ApiHandle,
+    id: string,
+    deploy: {
+      gate: string;
+      version: number;
+      target: 'zip' | 'folder' | 'sftp' | 'ftps' | 'git';
+      sha256: string;
+    },
+  ): Promise<void>;
 }
 
 export interface RunningApi {
@@ -103,6 +152,22 @@ export interface RunningApi {
     keyFile: string,
     passphrase: string,
   ): Promise<SignResult>;
+  /** The key id and fingerprint of a passkey's public key (trust mode 2); null: not a point. */
+  passkeyKeyInfo(
+    point: string,
+  ): Promise<{ kid: string; publicKey: string; fingerprint: string } | null>;
+  /**
+   * In-process only (trust mode 2): signs the confirmed bundle with the passkey; `assert` asks
+   * it in the main process's own window. Written only when the assertion verifies as the gate
+   * would verify it.
+   */
+  signBundleWithPasskey(
+    id: string,
+    gate: string,
+    digest: string,
+    signer: PasskeyPlanSigner,
+    assert: (challenge: Uint8Array) => Promise<Assertion | null>,
+  ): Promise<SignResult>;
   /** In-process only, for the seal window: the page never sees a secret's value. */
   prepareSeal(
     id: string,
@@ -123,6 +188,29 @@ export interface RunningApi {
     signer: PlanSigner,
   ): Promise<PrepareDeployResult>;
   zipFiles(entries: readonly { name: string; data: Uint8Array }[]): Uint8Array;
+  /** In-process only (FR-45): the main process chose and read the file in its own dialog. */
+  importBundle(
+    id: string,
+    gate: string,
+    signer: PlanSigner,
+    input: ImportInput,
+  ): Promise<BundleImportResult>;
+  /** In-process only (DT-12): the text of the log files the person chose in its own dialog. */
+  readRequestLog(texts: readonly string[]): RequestLogApiResult;
+  /** In-process only (DT-03): the connection string comes from the database window. */
+  syncDatabase(
+    id: string,
+    url: string,
+    key: string,
+    direction: 'push' | 'pull',
+    signer: PlanSigner,
+  ): Promise<SyncAnswer>;
+  databaseLabel: ApiBundle['databaseLabel'];
+  /** A finished deploy (DT-05) into the project's history, if it keeps one. */
+  recordDeploy(
+    id: string,
+    deploy: Parameters<ApiBundle['recordDeploy']>[2],
+  ): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -162,12 +250,22 @@ export async function startApi(options: {
       api.prepareBundle(running, id, gate, signer),
     signBundle: (id, gate, digest, keyFile, passphrase) =>
       api.signBundle(running, id, gate, digest, keyFile, passphrase),
+    passkeyKeyInfo: (point) => api.passkeyKeyInfo(point),
+    signBundleWithPasskey: (id, gate, digest, signer, assert) =>
+      api.signBundleWithPasskey(running, id, gate, digest, signer, assert),
     prepareSeal: (id, gate, name) => api.prepareSeal(running, id, gate, name),
     sealSecret: (id, gate, name, digest, value) =>
       api.sealSecret(running, id, gate, name, digest, value),
     prepareDeploy: (id, gate, signer) =>
       api.prepareDeploy(running, id, gate, signer),
     zipFiles: (entries) => api.zipFiles(entries),
+    importBundle: (id, gate, signer, input) =>
+      api.importBundle(running, id, gate, signer, input),
+    readRequestLog: (texts) => api.readRequestLog(texts),
+    syncDatabase: (id, url, key, direction, signer) =>
+      api.syncDatabase(running, id, { url, key, direction, signer }),
+    databaseLabel: (url) => api.databaseLabel(url),
+    recordDeploy: (id, deploy) => api.recordDeploy(running, id, deploy),
     close: () => running.app.close(),
   };
 }

@@ -25,16 +25,19 @@ This creates a data folder `moat-data-<random>/` next to the gate file, with `.h
 `web.config`, an empty `index.php`, and data files that stop PHP before their content (fetched over
 HTTP they answer 404 with an empty body):
 
-| File           | Content                                                                      |
-| -------------- | ---------------------------------------------------------------------------- |
-| `identity.php` | gate id and the gate's X25519 box key (never leaves the server)              |
-| `trust.php`    | pinned signers and threshold (docs/CRYPTO.md §8)                             |
-| `policy.php`   | the local policy                                                             |
-| `bundle.php`   | the active bundle, exactly as received                                       |
-| `state.php`    | the highest version ever accepted (a deleted bundle reopens no rollback)     |
-| `limits.php`   | rate-limit counters, keyed by hashes (no IP addresses), at most `maxClients` |
-| `lock.php`     | the lock that serialises updates to `limits.php`                             |
-| `webfacts.php` | what the web server process saw of itself, for the hardening check           |
+| File           | Content                                                                         |
+| -------------- | ------------------------------------------------------------------------------- |
+| `identity.php` | gate id and the gate's X25519 box key (never leaves the server)                 |
+| `trust.php`    | trust mode, pinned signers or passkeys and threshold (docs/CRYPTO.md §7, §8)    |
+| `policy.php`   | the local policy                                                                |
+| `bundle.php`   | the active bundle, exactly as received                                          |
+| `state.php`    | the highest version ever accepted (a deleted bundle reopens no rollback)        |
+| `limits.php`   | rate-limit counters, keyed by hashes (no IP addresses), at most `maxClients`    |
+| `lock.php`     | the lock that serialises updates to `limits.php`                                |
+| `webfacts.php` | what the web server process saw of itself, for the hardening check              |
+| `log.php`      | the request log, one JSON line per request (below); `logold.php` the one before |
+| `setup.php`    | the setup mode: the token's SHA-256, its expiry, the version when switched on   |
+| `logkey.php`   | the random key of the request log's client hashes                               |
 
 `install` prints the gate id, the box key and the fingerprints. Compare them, then pin the gate
 in the project folder with the `moat gate add` line it prints.
@@ -47,12 +50,16 @@ php moat-gate.php policy <policy.json>     # install the local policy (moat poli
                                            # secrets that may be sent there (SEC-35), and the
                                            # rate limits that always apply (SEC-14)
 php moat-gate.php accept <bundle.json>     # verify (steps 1–10) and activate a bundle
-php moat-gate.php trust --signer=<pk>[,…] [--threshold=n]   # replace the pinned signers
+php moat-gate.php trust --signer=<pk>[,…] [--threshold=n] [--force]   # replace the pinned signers (key rotation below)
+php moat-gate.php trust --passkey=<point>[,…] --rp-id=<rpId> --origin=<origin>[,…] [--threshold=n] [--force]
+                                           # pin passkeys, trust mode 2 (below)
 php moat-gate.php pull                     # fetch the bundle from the policy's pull place now (below)
 php moat-gate.php status                   # fingerprints, policy, active bundle, pull, kill switch
 php moat-gate.php kill [--route=<name>]    # switch the gate or one route off at once (below)
 php moat-gate.php revive [--route=<name>]  # and on again (without --route: everything)
 php moat-gate.php check [--url=https://…/moat-gate.php]   # the hardening check (below)
+php moat-gate.php log [--lines=1000]       # the newest lines of the request log (below)
+php moat-gate.php setup                    # the setup mode for 30 minutes, with a new token (below)
 ```
 
 A bundle is accepted only when its signature is valid for the pinned signers, it is bound to this
@@ -79,6 +86,7 @@ body come back. Errors are `{"error":"<code>"}`:
 | Status | Code                                                                        |
 | ------ | --------------------------------------------------------------------------- |
 | 400    | `path_invalid`, `body_invalid`, `request_unbounded`                         |
+| 401    | `client_unauthorized`                                                       |
 | 403    | `origin_forbidden`, `preflight_rejected`                                    |
 | 404    | `not_found`                                                                 |
 | 405    | `method_not_allowed` (with `Allow`)                                         |
@@ -88,12 +96,51 @@ body come back. Errors are `{"error":"<code>"}`:
 | 500    | `secret_unavailable`, `internal_error`                                      |
 | 502    | `upstream_forbidden`, `upstream_unreachable`, `upstream_redirect`,          |
 |        | `upstream_content_type`, `upstream_too_large`, `upstream_reflected_secret`, |
-|        | `upstream_usage_invalid`                                                    |
+|        | `upstream_usage_invalid`, `upstream_auth_failed`                            |
 | 503    | `gate_not_configured`, `gate_disabled`, `route_disabled`,                   |
 |        | `rate_limit_unavailable`                                                    |
 | 504    | `upstream_timeout`                                                          |
 
 The log gets these codes only, never a value.
+
+### Upstream sign-in (FR-20)
+
+An upstream's `auth` adds its secret as a bearer token, a header of its own, a query parameter,
+HTTP Basic (`type: basic`, `username`, the secret as password) or OAuth2 client credentials
+(`type: oauth2`, `tokenUrl`, `clientId`, optional `scope`). For OAuth2 the gate first POSTs to
+`tokenUrl` through the same pinned client, with `client_secret_basic` (RFC 6749 §2.3.1) and
+`grant_type=client_credentials`, and sends the API only the access token. The token is kept in
+the data file `tokens` until 30 s before it expires (at most an hour, 5 minutes when the answer
+says nothing), for this bundle version and these settings only; a 401 from the API drops it. The
+file holds access tokens, never the secret, next to `identity`, whose key opens every secret, so
+it gets no extra encryption. A token request that fails answers `upstream_auth_failed` (502) and
+sends nothing to the API. The policy must allow POST to the token path on its host, with the
+secret bound to that host and to the API's host (SEC-35). An answer that contains the Basic
+value or the access token is refused like one with the secret (`upstream_reflected_secret`).
+
+### Client protection (FR-16, T-71)
+
+A route's `client` says who may call it; every check that is set must pass, else 401
+`client_unauthorized`, the same answer for each:
+
+- `apiKey` (`header`, `secret`): the header compared in constant time with a sealed secret. For
+  servers calling the gate, never for a key in a public page. It is no upstream's secret. Failed
+  attempts (wrong, missing or malformed key) are counted per client (`REMOTE_ADDR`) and against the
+  policy's limits: after 5 within 300 s that client gets 429 `rate_limited` before its key is
+  compared, even with the right one (T-71). Only a hash of the client is stored, never a key.
+- `jwt` (`issuer`, `audience`, `keys`): `Authorization: Bearer <JWT>` signed by a listed key
+  (`kid`, `alg` EdDSA, ES256 or RS256 ≥ 2048 bits, `spki` as base64url DER). The algorithm is
+  the key's; `iss`, `aud` (or a list containing it) and `exp` are required, `nbf` is respected,
+  60 s leeway. ES256 and RS256 need `ext-openssl` (without it: 500 `internal_error`). Apache
+  often passes `Authorization` to PHP only with `CGIPassAuth On`.
+- `turnstile` (`header`, `secret`, `verifyUrl`): the Cloudflare Turnstile token from the header,
+  checked with a POST to `verifyUrl` (Cloudflare's siteverify by default) through the pinned
+  client; the policy must allow it like a token endpoint. Unreachable or not `success: true` →
+  refused.
+- `honeypot` (`field`): a JSON body whose field is there and not `""` or `null` is refused.
+
+API key and JWT are checked before the limits, the honeypot with the body, Turnstile (a call)
+last, after the limits and the body.
 
 ### Body fields (FR-13, T-65)
 
@@ -119,6 +166,13 @@ with a budget estimates the body it forwards. Without `body` the body goes on as
 host that has no `body` but takes a body (`policy_violation`), whatever its method: such a route
 needs `maxBodySize: '0B'`. `moat policy suggest` proposes it once every route to the host
 qualifies.
+
+`requireClient: true` under a host in the local policy refuses every bundle with a route to that
+host that has no `client` check of `apiKey`, `jwt` or `turnstile` (a `honeypot` alone does not
+count; `policy_violation`), so a signed or unsigned bundle cannot switch client protection off
+(FR-16, SEC-14). `moat policy suggest` proposes it once every route to the host has one. **Without
+it, mode 0 trusts the Cloud for this:** a bundle from a compromised Moat Cloud could drop a
+route's client protection and open the host's secret to anyone who finds the route.
 
 ## Locked gate
 
@@ -315,6 +369,109 @@ budget as the sum of the routes' token budgets. The spending lives in `budget.ph
 at most 1024 entries, the spending of routes no longer in the bundle dropped); `status` prints
 each budget with what it has spent and when it resets. A damaged or full store refuses every
 request with a budget (`503 rate_limit_unavailable`); deleting `budget.php` resets the spending.
+
+## Key rotation (SEC-08)
+
+A new signing key replaces the old one in two steps, so the site never stops:
+
+1. `php moat-gate.php trust --signer=<old>,<new>` pins both keys.
+2. Sign the next bundle with the new key and activate it (`accept`, or the lazy pull).
+3. `php moat-gate.php trust --signer=<new>` pins the new key alone.
+
+`trust` refuses a list that would drop the key of the active bundle, because the gate would then
+serve nothing; `--force` does it anyway (a lost or stolen key: the gate stops until a bundle
+signed with the new key arrives). Moat Desktop guides through the steps («Schlüssel wechseln»).
+
+## Trust mode 2, passkeys (docs/CRYPTO.md §7, T-74)
+
+Instead of an Ed25519 key file, the person approves each bundle with a passkey or hardware key
+(WebAuthn, ES256). The private key never leaves the authenticator; the gate verifies the
+assertion itself, so a hacked Moat Cloud still cannot produce a bundle. Pin it on the server:
+
+```bash
+php moat-gate.php trust --passkey=<point>[,<point>…] --rp-id=<rpId> --origin=<origin>[,<origin>…] [--threshold=n] [--force]
+php moat-gate.php install --passkey=… --rp-id=… --origin=…      # the same for a new gate
+```
+
+- `--passkey` is the 65-byte uncompressed P-256 public key (`0x04 ‖ X ‖ Y`) as base64url, 87
+  characters. A comma list pins several keys, all with the same `--rp-id` and `--origin` list;
+  `--threshold` is how many of them must sign (default 1). Moat Desktop shows the value after the
+  passkey is created.
+- `--rp-id` is the relying party id the ceremony runs under (a lower-case DNS name, e.g.
+  `moat.example.org`). `--origin` lists the 1 to 8 exact origins the signing page may run on:
+  `https://<host>[:<port>]` (never the port 443, no trailing slash) or `app://<name>` for the
+  desktop app (`app://moat`). Each is compared byte for byte with the `origin` the browser wrote
+  into the signed `clientDataJSON`.
+- The mode decides the algorithm: `--passkey` pins mode 2 and cannot be combined with `--signer`.
+  Changing between modes replaces the pinned keys, so the active bundle (signed in the other
+  mode) can no longer be verified; `trust` refuses that unless `--force`, and the gate serves
+  nothing until the first bundle signed in the new mode is accepted. Only the server's command
+  line can change the mode (SEC-06): nothing from the Cloud can lower it.
+- A bundle carries per signer `{kid, alg: "webauthn-es256", sig, authenticatorData,
+clientDataJSON}`. The gate checks, in this order and with one generic `signature_invalid` for
+  any failure: the pinned `kid` and `alg`; the strict base64url and the sizes; in
+  `clientDataJSON` `type == "webauthn.get"`, `challenge == SHA-256("moat:bundle:v1\n" ‖ payload)`,
+  `origin` pinned, `crossOrigin` absent or `false`; in `authenticatorData` the `rpIdHash` and the
+  UP and UV flags; strict DER; the ECDSA P-256 signature. The sign counter is not used: replay is
+  stopped by the monotonic bundle version (SEC-04) and the gate id (SEC-07).
+- Mode 2 needs **`ext-openssl`**, only for this mode. `trust --passkey` pins nothing without it;
+  with a mode 2 trust file and no openssl the gate answers `gate_not_configured` and logs
+  `extension_missing`, `status` and `check` print `MISSING` (and `check` exits 1). Modes 0 and 1
+  never need it.
+- `status` and `install` print the passkeys' fingerprints (§3, from the kid of the ES256 key), the
+  rpId and the origins; compare them with what Moat Desktop shows. The setup mode answers the
+  same fingerprints under `signers` and `mode: 2`.
+
+Vectors: [`conformance/vectors/crypto/webauthn.json`](../../conformance/vectors/crypto/webauthn.json)
+and [`trust.json`](../../conformance/vectors/crypto/trust.json).
+
+## Setup mode (SEC-28, SEC-32, T-73)
+
+`install` switches the setup mode on and prints a token once; `php moat-gate.php setup` does it
+again with a new token. While it is on,
+
+```
+GET https://<site>/<path>/moat-gate.php?moat-setup
+X-Moat-Setup-Token: <token>
+```
+
+answers the gate's public identity — `gateId`, `boxKey`, `boxKeyFingerprint`, the pinned `signers`
+with their fingerprints, `threshold` and `mode` — so the fingerprints can be compared from Moat
+Desktop without a shell on the server (`conformance/http/gate-setup.json`). Nothing in the answer
+is secret, and nothing can be changed through it (SEC-40). The data file `setup.php` holds only the
+token's SHA-256. The mode switches itself off for good after 30 minutes and as soon as a bundle
+above the version accepted when it was switched on arrives; only the command line switches it on
+again. Every other answer — no token, a wrong one, the token in the query, another method, the
+mode off — is the gate's plain 404 `not_found`. `status` shows whether it is on.
+
+## Request log (FR-50, DT-12, T-72)
+
+After every request the gate appends one JSON line to `log.php`
+(`conformance/http/gate-log.json`):
+
+```json
+{
+  "t": 1792010534,
+  "route": "newsletter",
+  "method": "POST",
+  "status": 200,
+  "error": null,
+  "ms": 184,
+  "client": "b431975193a03e04"
+}
+```
+
+`route` is null when no route matched, `error` is the gate's code (null when the upstream answered),
+`client` a keyed BLAKE2b hash of the client address (IPv4, or the IPv6 /64) and the UTC day: one
+client is one id for one day, and the address cannot be read back (the key in `logkey.php` never
+leaves the server). There is no path, query, header or body in it. When `log.php` would grow
+beyond the policy's `logMaxBytes` (default 262144 bytes, at most 1 MiB), it becomes `logold.php`
+and a new one starts; `"logMaxBytes": 0` turns the log off. Writing the log never changes an
+answer: when the lock is busy or the disk full, the line is lost.
+
+`php moat-gate.php log` prints the newest lines of both files, oldest first. Moat Desktop reads
+that output, or the two data files fetched by SFTP or FTP («Log ansehen» in «Gates»); there is
+no endpoint for it (SEC-40).
 
 ## Hardening check (SEC-49, SEC-49a)
 

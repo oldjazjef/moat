@@ -18,6 +18,7 @@ import { ProjectFilesPort } from '../ports/project-files.port';
 import { ProjectRegistryPort } from '../ports/project-registry.port';
 import { type ConfigEdit, PROJECT_ID } from '../project.types';
 import { configHash } from './config-hash';
+import { HistoryService } from './history.service';
 import {
   EditConfigCommand,
   type EditConfigResult,
@@ -79,6 +80,7 @@ export class EditConfigHandler implements ICommandHandler<EditConfigCommand> {
   constructor(
     private readonly registry: ProjectRegistryPort,
     private readonly files: ProjectFilesPort,
+    private readonly history: HistoryService,
   ) {}
 
   async execute(command: EditConfigCommand): Promise<EditConfigResult> {
@@ -108,6 +110,14 @@ export class EditConfigHandler implements ICommandHandler<EditConfigCommand> {
     } catch {
       return { status: 'refused', code: 'not_writable' };
     }
+    await this.history.record(command.id, {
+      kind: 'config_edited',
+      details: {
+        op: command.edit.op,
+        before: command.base,
+        after: configHash(next),
+      },
+    });
     return { status: 'saved' };
   }
 }

@@ -9,6 +9,12 @@ import { reject } from '../errors';
 import { keyId } from '../crypto/kid';
 import { sodium } from '../crypto/sodium';
 import {
+  verifyPasskeyEntry,
+  WEBAUTHN_ALG,
+  type PinnedPasskeySigner,
+  type WebauthnSignatureEntry,
+} from '../crypto/webauthn';
+import {
   hasExactKeys,
   isJsonObject,
   parseStrictJson,
@@ -38,11 +44,25 @@ export interface Ed25519Signer {
   readonly publicKey: Uint8Array;
 }
 
-export interface PinnedSigner {
+export interface PinnedEd25519Signer {
   readonly kid: string;
   readonly alg: 'ed25519';
   readonly publicKey: Uint8Array;
 }
+
+/**
+ * A pinned key: Ed25519 in trust modes 0 and 1, a passkey (WebAuthn ES256) in mode 2
+ * (docs/CRYPTO.md §7.1). The mode decides which kind a trust file may hold; see `parseTrust`.
+ */
+export type PinnedSigner = PinnedEd25519Signer | PinnedPasskeySigner;
+
+/** One entry of the envelope's `sigs` (docs/CRYPTO.md §4.2, §7.2). */
+export interface Ed25519SignatureEntry {
+  readonly kid: string;
+  readonly alg: 'ed25519';
+  readonly sig: string;
+}
+export type SignatureEntry = Ed25519SignatureEntry | WebauthnSignatureEntry;
 
 /** What the gate has pinned locally (trust.json, docs/CRYPTO.md §8) plus its own state. */
 export interface VerificationContext {
@@ -66,15 +86,44 @@ function signedMessage(payloadBytes: Uint8Array): Uint8Array {
   return concatBytes(utf8(BUNDLE_DOMAIN), payloadBytes);
 }
 
+/** The exact bytes a bundle signs: the JCS payload (docs/CRYPTO.md §4.1). */
+export function bundlePayloadBytes(payload: BundlePayload): Uint8Array {
+  return canonicalJsonBytes(payload as unknown as JsonValue);
+}
+
+/**
+ * The WebAuthn challenge for a payload: SHA-256(M) with M = "moat:bundle:v1\n" ‖ payloadBytes
+ * (docs/CRYPTO.md §7.2). 32 bytes; hand them to `navigator.credentials.get` as `challenge`.
+ */
+export async function webauthnChallenge(
+  payloadBytes: Uint8Array,
+): Promise<Uint8Array> {
+  const na = await sodium();
+  return na.crypto_hash_sha256(signedMessage(payloadBytes));
+}
+
+/** The envelope for payload bytes and already collected signature entries (any algorithm mix). */
+export function assembleEnvelope(
+  payloadBytes: Uint8Array,
+  sigs: readonly SignatureEntry[],
+): string {
+  return JSON.stringify({
+    moat: 'bundle',
+    v: 1,
+    payload: toBase64Url(payloadBytes),
+    sigs,
+  });
+}
+
 /** Builds the JCS payload bytes and the envelope signed by every given signer. */
 export async function signBundle(
   payload: BundlePayload,
   signers: readonly Ed25519Signer[],
 ): Promise<string> {
   const na = await sodium();
-  const payloadBytes = canonicalJsonBytes(payload as unknown as JsonValue);
+  const payloadBytes = bundlePayloadBytes(payload);
   const message = signedMessage(payloadBytes);
-  const sigs = [];
+  const sigs: Ed25519SignatureEntry[] = [];
   for (const signer of signers) {
     sigs.push({
       kid: await keyId('ed25519', signer.publicKey),
@@ -82,12 +131,7 @@ export async function signBundle(
       sig: toBase64Url(na.crypto_sign_detached(message, signer.secretKey)),
     });
   }
-  return JSON.stringify({
-    moat: 'bundle',
-    v: 1,
-    payload: toBase64Url(payloadBytes),
-    sigs,
-  });
+  return assembleEnvelope(payloadBytes, sigs);
 }
 
 /**
@@ -122,16 +166,51 @@ export async function verifyBundle(
   ) {
     reject('envelope_invalid');
   }
-  const entries = envelope['sigs'];
-  for (const entry of entries) {
+  const entries: SignatureEntry[] = [];
+  for (const entry of envelope['sigs']) {
     if (
       !isJsonObject(entry) ||
-      !hasExactKeys(entry, ['kid', 'alg', 'sig']) ||
       typeof entry['kid'] !== 'string' ||
-      typeof entry['alg'] !== 'string' ||
-      typeof entry['sig'] !== 'string'
+      typeof entry['alg'] !== 'string'
     ) {
       reject('envelope_invalid');
+    }
+    // docs/CRYPTO.md §4.2: the algorithm decides the exact keys of an entry.
+    if (entry['alg'] === WEBAUTHN_ALG) {
+      if (
+        !hasExactKeys(entry, [
+          'kid',
+          'alg',
+          'sig',
+          'authenticatorData',
+          'clientDataJSON',
+        ]) ||
+        typeof entry['sig'] !== 'string' ||
+        typeof entry['authenticatorData'] !== 'string' ||
+        typeof entry['clientDataJSON'] !== 'string'
+      ) {
+        reject('envelope_invalid');
+      }
+      entries.push({
+        kid: entry['kid'],
+        alg: WEBAUTHN_ALG,
+        sig: entry['sig'],
+        authenticatorData: entry['authenticatorData'],
+        clientDataJSON: entry['clientDataJSON'],
+      });
+    } else {
+      if (
+        !hasExactKeys(entry, ['kid', 'alg', 'sig']) ||
+        typeof entry['sig'] !== 'string'
+      ) {
+        reject('envelope_invalid');
+      }
+      // Any other alg is carried as is: it can only match a pinned key of that very alg.
+      entries.push({
+        kid: entry['kid'],
+        alg: entry['alg'] as 'ed25519',
+        sig: entry['sig'],
+      });
     }
   }
 
@@ -149,18 +228,26 @@ export async function verifyBundle(
   const na = await sodium();
   const message = signedMessage(payloadBytes);
   const valid = new Set<string>();
-  for (const entry of entries as { kid: string; alg: string; sig: string }[]) {
+  for (const entry of entries) {
     const signer = context.signers.find((pinned) => pinned.kid === entry.kid);
     if (signer === undefined) continue;
     if (entry.alg !== signer.alg) reject('signature_invalid');
-    let signature: Uint8Array;
-    try {
-      signature = fromBase64UrlLength(entry.sig, 64);
-    } catch {
-      reject('signature_invalid');
-    }
-    if (!na.crypto_sign_verify_detached(signature, message, signer.publicKey)) {
-      reject('signature_invalid');
+    if (signer.alg === WEBAUTHN_ALG) {
+      // Only reachable with a webauthn entry: alg equality was checked above.
+      if (entry.alg !== WEBAUTHN_ALG) reject('signature_invalid');
+      await verifyPasskeyEntry(signer, message, entry);
+    } else {
+      let signature: Uint8Array;
+      try {
+        signature = fromBase64UrlLength(entry.sig, 64);
+      } catch {
+        reject('signature_invalid');
+      }
+      if (
+        !na.crypto_sign_verify_detached(signature, message, signer.publicKey)
+      ) {
+        reject('signature_invalid');
+      }
     }
     valid.add(signer.kid);
   }

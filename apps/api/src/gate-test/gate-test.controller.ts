@@ -10,7 +10,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import type { DryRunResult, Policy } from '@moat/core';
+import type { DryRunResult, GateSetupIdentity, Policy } from '@moat/core';
 import { DryRunQuery } from './application/dry-run.handler';
 import {
   SuggestPolicyQuery,
@@ -20,8 +20,14 @@ import {
   HardeningCheckCommand,
   type HardeningCheckReport,
 } from './application/hardening-check.handler';
-import { DryRunDto, GateTestDto, HardeningCheckDto } from './dto/gate-test.dto';
-import type { GateAnswer } from './ports/gate-client.port';
+import { GateSetupCommand } from './application/gate-setup.handler';
+import {
+  DryRunDto,
+  GateSetupDto,
+  GateTestDto,
+  HardeningCheckDto,
+} from './dto/gate-test.dto';
+import type { GateAnswer, GateFailure } from './ports/gate-client.port';
 
 /**
  * What the wizard's recipe step needs to bring a gate to life (FR-73): the local policy to
@@ -97,6 +103,31 @@ export class GateTestController {
     if (result.status === 'refused')
       throw new UnprocessableEntityException({ error: result.code });
     return result.report;
+  }
+
+  /**
+   * Reads a gate's identity from its setup mode (SEC-28, SEC-32, T-73): gate id, box key and the
+   * fingerprints to compare, so the gate can be pinned without a shell on the server. 422 when
+   * nothing was read (GateSetupRefusal, `setup_off` when the gate answered 404); 200 with
+   * `status: 'failed'` and the reason when the gate could not be reached.
+   */
+  @Post(':id/gates/setup')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  async gateSetup(
+    @Param('id') id: string,
+    @Body() body: GateSetupDto,
+  ): Promise<
+    | { status: 'read'; identity: GateSetupIdentity }
+    | { status: 'failed'; reason: GateFailure }
+  > {
+    const result = await this.commands.execute(
+      new GateSetupCommand(id, body.url, body.token, body.locale ?? ''),
+    );
+    if (result.status === 'not_found') throw new NotFoundException();
+    if (result.status === 'refused')
+      throw new UnprocessableEntityException({ error: result.code });
+    return result;
   }
 
   /**

@@ -14,6 +14,8 @@ const bridge: DesktopBridge = {
   key: {
     status: () => ipcRenderer.invoke(IPC.keyStatus),
     choose: () => ipcRenderer.invoke(IPC.keyChoose),
+    rotationDone: (locale: string) =>
+      ipcRenderer.invoke(IPC.keyRotationDone, String(locale)),
     create: (locale: string) =>
       ipcRenderer.invoke(IPC.keyCreate, String(locale)),
   },
@@ -45,6 +47,39 @@ const bridge: DesktopBridge = {
         String(target),
         String(locale),
       ),
+    import: (projectId: string, gate: string, from: string, locale: string) =>
+      ipcRenderer.invoke(
+        IPC.gateImport,
+        String(projectId),
+        String(gate),
+        String(from),
+        String(locale),
+      ),
+    log: (projectId: string, gate: string, locale: string) =>
+      ipcRenderer.invoke(
+        IPC.gateLog,
+        String(projectId),
+        String(gate),
+        String(locale),
+      ),
+  },
+  passkey: {
+    status: (projectId: string) =>
+      ipcRenderer.invoke(IPC.passkeyStatus, String(projectId)),
+    enroll: (locale: string) =>
+      ipcRenderer.invoke(IPC.passkeyEnroll, String(locale)),
+    use: (projectId: string, gate: string, on: boolean, locale: string) =>
+      ipcRenderer.invoke(
+        IPC.passkeyUse,
+        String(projectId),
+        String(gate),
+        on === true,
+        String(locale),
+      ),
+  },
+  database: {
+    open: (projectId: string, locale: string) =>
+      ipcRenderer.invoke(IPC.databaseOpen, String(projectId), String(locale)),
   },
 };
 
