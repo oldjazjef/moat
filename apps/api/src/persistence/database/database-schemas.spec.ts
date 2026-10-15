@@ -59,6 +59,11 @@ describe('database schemas (CLAUDE.md, Database)', () => {
       // Ciphertext only: the sealed-secret CHECK is part of both histories.
       expect(sql).toContain("'x25519-blake2b-xchacha20poly1305'");
       expect(sql).toMatch(/history_entry[^;]*(append-only|refuse_change)/);
+      // Moat Cloud: nothing but an Argon2id hash as password, the roles of SEC-52, and the
+      // release permission only for roles that can hold it.
+      expect(sql).toContain('$argon2id$');
+      expect(sql).toContain("'owner', 'admin', 'editor', 'viewer', 'billing'");
+      expect(sql).toContain('membership_release_role');
     }
   });
 });

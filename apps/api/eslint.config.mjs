@@ -16,7 +16,13 @@ export default [
     // Only src/persistence touches the file system for project data or a database (CLAUDE.md,
     // Persistence: nothing outside src/persistence imports Prisma); features depend on a port.
     files: ['**/*.ts'],
-    ignores: ['src/persistence/**', 'prisma/**', '**/*.spec.ts'],
+    // `testing/` holds test support (temporary folders for a booted app), never shipped code paths.
+    ignores: [
+      'src/persistence/**',
+      'prisma/**',
+      '**/*.spec.ts',
+      'src/**/testing/**',
+    ],
     rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',
