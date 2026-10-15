@@ -91,10 +91,11 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       'install',
       'add',
       { id: 'addDesktop', only: 'desktop' },
+      { id: 'fetchDesktop', only: 'desktop' },
       'compare',
       'check',
     ),
-    tips: items('mismatch', 'php'),
+    tips: items('mismatch', 'php', { id: 'setupMode', only: 'desktop' }),
     links: [PROJECTS],
   },
   {

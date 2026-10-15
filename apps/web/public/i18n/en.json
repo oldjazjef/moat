@@ -571,6 +571,37 @@
         "required": "Enter a gate, or click “Later”.",
         "rejected": "Nothing was saved. Copy the gate ID and box key again from the output of exactly this gate.",
         "noProject": "First choose a project."
+      },
+      "fetch": {
+        "toggle": "Fetch from the gate",
+        "intro": "No access to the server? For 30 minutes after `install` or `php moat-gate.php setup`, the gate shows its gate ID and box key at its own address. You need the setup token the command printed once.",
+        "url": "Address of the gate",
+        "urlHint": "The address of `moat-gate.php`, for example https://www.example.ch/api/moat-gate.php.",
+        "token": "Setup token",
+        "tokenHint": "The token is used for this one request only and is not stored.",
+        "run": "Fetch now",
+        "read": "Fetched from the gate.",
+        "boxFingerprint": "Box key fingerprint",
+        "signers": "Signing keys pinned on the gate",
+        "signerPinned": "Your signing key is pinned on the gate.",
+        "signerMissing": "Warning: your signing key is not pinned on the gate. The gate would reject your bundles. Check that the right `--signer` was given at `install`.",
+        "signerUnknown": "You have not chosen a signing key yet, so it cannot be checked whether it is pinned on the gate.",
+        "claim": "The gate reports these details itself over HTTPS. Moat Desktop recomputes the box key fingerprint from the key.",
+        "next": "Gate ID and box key are filled in below. Click “Check” and confirm the fingerprint before the gate is saved.",
+        "errors": {
+          "url_invalid": "That is not the https address of a `moat-gate.php` file. Enter it without parameters.",
+          "token_invalid": "The setup token has 43 characters (letters, digits, - and _). Copy it exactly as the gate printed it.",
+          "not_confirmed": "The address was not confirmed. Nothing was sent.",
+          "busy": "A request is already running. Wait a moment and try again.",
+          "setup_off": "The gate does not answer with its identity. The setup mode is off, has expired, or the token is wrong. The gate does not say which. Switch it on again with `php moat-gate.php setup`.",
+          "answer_invalid": "The answer does not look like a gate’s identity. Nothing was taken over.",
+          "address_forbidden": "This address leads to a target that is not allowed (private or local). Nothing was sent.",
+          "not_found": "The server of this address was not found.",
+          "unreachable": "The server cannot be reached.",
+          "timeout": "The server did not answer in time.",
+          "tls": "The server’s certificate is not valid for this address. Nothing was taken over.",
+          "failed": "That did not work. Try again."
+        }
       }
     },
     "recipe": {
@@ -798,12 +829,14 @@
           "install": "On the server, run `php moat-gate.php install --signer=<public key>`. The gate creates a protected data folder and prints its gate ID, box key and fingerprints.",
           "add": "Add the gate to your project folder with the `moat gate add` line the gate printed.",
           "addDesktop": "In Moat Desktop you enter the gate under “Setup” › “First gate” and compare the fingerprint there before it is saved.",
+          "fetchDesktop": "Without access to the server, click “Fetch from the gate” under “Setup” › “First gate”. Enter the address of `moat-gate.php` and the setup token that `install` or `php moat-gate.php setup` printed once. Moat Desktop reads gate ID and box key from the gate and shows the fingerprints and whether your signing key is pinned on the gate. The gate is saved only when you confirm the fingerprint.",
           "compare": "Compare the fingerprint the CLI prints group by group with the gate's.",
           "check": "Under “Gates” you see every gate you added, with gate ID and fingerprint."
         },
         "tips": {
           "mismatch": "If a group differs, delete the gate file and add the gate again.",
-          "php": "The gate needs PHP 8.2 or newer with the extensions sodium, curl, json and hash."
+          "php": "The gate needs PHP 8.2 or newer with the extensions sodium, curl, json and hash.",
+          "setupMode": "The gate’s setup mode is open for 30 minutes and ends as soon as a new bundle arrives. It shows public details only. When it is off, switch it on again on the server with `php moat-gate.php setup`."
         }
       },
       "hardening": {

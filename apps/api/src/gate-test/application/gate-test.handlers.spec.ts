@@ -38,6 +38,9 @@ class FakeClient extends GateClientPort {
   async probe(): Promise<never> {
     throw new Error('not used by «Testen»');
   }
+  async setup(): Promise<never> {
+    throw new Error('not used by «Testen»');
+  }
 }
 
 class FakeConfirmation extends GateTestConfirmationPort {

@@ -49,6 +49,24 @@ export class HardeningCheckDto {
   locale?: 'de-CH' | 'en';
 }
 
+/** `POST /api/projects/:id/gates/setup` (SEC-28, T-73). */
+export class GateSetupDto {
+  /** The URL of the gate file (`.../moat-gate.php`); gateSetupTarget decides. */
+  @IsString()
+  @MaxLength(MAX_GATE_URL)
+  url!: string;
+
+  /** The setup token `php moat-gate.php setup` printed; the handler checks its shape. */
+  @IsString()
+  @MaxLength(256)
+  token!: string;
+
+  /** The page's language, for the desktop's confirmation dialog. */
+  @IsOptional()
+  @IsIn(['de-CH', 'en'])
+  locale?: 'de-CH' | 'en';
+}
+
 /** `POST /api/projects/:id/dry-run` (FR-42): a request as a client would send it to the gate. */
 export class DryRunDto {
   /** The gate whose lock and sealed secrets count; null for the config alone. */

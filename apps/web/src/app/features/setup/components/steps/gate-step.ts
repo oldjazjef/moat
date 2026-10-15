@@ -32,6 +32,7 @@ import { RichText } from '../../../../shared/components/rich-text';
 import { HelpLink } from '../../../help/components/help-link';
 import { SetupPageService } from '../../pages/setup-page/setup-page.service';
 import { provideSetupStep, SetupStepComponent } from '../setup-step';
+import { GateFetch, type GateSetupIdentity } from './gate-fetch';
 import { parseGateAddLine } from './gate-line';
 
 /** `POST /api/projects/:id/gates/check`. */
@@ -79,6 +80,7 @@ const NAME = /^[a-z][a-z0-9-]{0,62}$/;
     ReactiveFormsModule,
     RichText,
     HelpLink,
+    GateFetch,
     ...HlmButtonImports,
     ...HlmInputImports,
     ...HlmLabelImports,
@@ -125,6 +127,13 @@ const NAME = /^[a-z][a-z0-9-]{0,62}$/;
         <li>
           <mt-rich-text [text]="'setup.gate.enter' | translate" />
           @if (preview() === null) {
+            @if (desktop) {
+              <mt-gate-fetch
+                [project]="service.project() ?? ''"
+                [key]="key()"
+                (fetched)="fill($event)"
+              />
+            }
             <form
               class="mt-3 grid max-w-xl gap-3"
               [formGroup]="form"
@@ -268,6 +277,8 @@ export class GateStep extends SetupStepComponent {
     );
   });
   protected readonly key = signal<SigningKeyStatus | null>(null);
+  /** «Vom Gate abrufen» exists in Moat Desktop only (T-59, T-73). */
+  protected readonly desktop = this.bridge !== null;
   protected readonly command = computed(() => {
     const key = this.key();
     const signer = key?.status === 'ready' ? key.key.publicKey : '<…>';
@@ -304,6 +315,15 @@ export class GateStep extends SetupStepComponent {
       this.service.project();
       this.preview.set(null);
       this.saved.set(null);
+    });
+  }
+
+  /** «Vom Gate abrufen» filled in: gate id and box key; the person still checks the fingerprint. */
+  protected fill(identity: GateSetupIdentity): void {
+    this.notice.set(null);
+    this.form.patchValue({
+      gateId: identity.gateId,
+      boxKey: identity.boxKey,
     });
   }
 
