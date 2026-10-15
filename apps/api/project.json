@@ -5,7 +5,7 @@
   "projectType": "application",
   "tags": ["scope:api"],
   "mt-note-no-test-target": "Deliberate, as in lazy-koins: tests run via `pnpm test` (root Vitest workspace) or `pnpm vitest run --project api`.",
-  "mt-note-build": "Only the desktop library so far (src/desktop.ts → dist/apps/desktop-api/main.js), loaded in-process by apps/desktop. The Cloud server entry (main.ts) joins with the Cloud's own auth.",
+  "mt-note-build": "The desktop library (src/desktop.ts -> dist/apps/desktop-api/main.js, loaded in-process by apps/desktop) and, separately, the Moat Cloud server entry (src/main-cloud.ts -> dist/apps/cloud-api/main.js, build-cloud / serve-cloud).",
   "targets": {
     "build": {
       "executor": "nx:run-commands",
@@ -14,7 +14,9 @@
       "outputs": ["{workspaceRoot}/dist/apps/desktop-api"],
       "options": {
         "command": "webpack-cli build",
-        "env": { "NODE_ENV": "production" },
+        "env": {
+          "NODE_ENV": "production"
+        },
         "cwd": "apps/api"
       }
     },
@@ -26,6 +28,32 @@
         "command": "tsc -p apps/api/tsconfig.app.json --noEmit && tsc -p apps/api/tsconfig.spec.json --noEmit",
         "cwd": "."
       }
+    },
+    "build-cloud": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["production", "^production"],
+      "outputs": ["{workspaceRoot}/dist/apps/cloud-api"],
+      "options": {
+        "command": "webpack-cli build --config webpack.cloud.config.js",
+        "env": {
+          "NODE_ENV": "production"
+        },
+        "cwd": "apps/api"
+      }
+    },
+    "serve-cloud": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build-cloud"],
+      "options": {
+        "command": "node dist/apps/cloud-api/main.js",
+        "cwd": ".",
+        "env": {
+          "MOAT_DEV": "true",
+          "NODE_ENV": "development"
+        }
+      },
+      "mt-note": "DEVELOPMENT ONLY: MOAT_DEV=true fills in a temporary SQLite folder, a random account key, the cheap Argon2id and a cookie without Secure (cloud-dev-env.ts); the entry refuses MOAT_DEV with NODE_ENV=production."
     }
   }
 }

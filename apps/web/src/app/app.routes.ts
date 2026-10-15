@@ -1,25 +1,69 @@
 import type { Route } from '@angular/router';
+import {
+  authGuard,
+  cloudOnly,
+  desktopOnly,
+  guestGuard,
+} from './core/auth/auth.guard';
+import { isCloud } from './core/config/runtime-env';
 import { setupGuard } from './core/setup/setup-state.service';
 
 export const appRoutes: Route[] = [
   { path: '', pathMatch: 'full', redirectTo: 'app' },
   {
+    // Moat Cloud: sign in and register, outside the shell (a signed-in account goes to /app).
+    path: 'login',
+    canActivate: [guestGuard],
+    loadComponent: () =>
+      import('./features/auth/pages/login-page/login-page').then(
+        (m) => m.LoginPage,
+      ),
+  },
+  {
+    path: 'register',
+    canActivate: [guestGuard],
+    loadComponent: () =>
+      import('./features/auth/pages/register-page/register-page').then(
+        (m) => m.RegisterPage,
+      ),
+  },
+  {
     // Everything lives under /app, inside the shell with the sidebar.
     path: 'app',
     loadComponent: () =>
       import('./core/layout/app-shell').then((m) => m.AppShell),
-    // FR-73: until the wizard is finished, every page but the help opens it.
-    canActivateChild: [setupGuard],
+    // Moat Cloud: without a session the sign-in opens. FR-73 (Desktop): until the wizard is
+    // finished, every page but the help opens it.
+    canActivateChild: [authGuard, setupGuard],
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'projects' },
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: () => (isCloud() ? 'organisations' : 'projects'),
+      },
+      {
+        // Moat Cloud only: the account (password, second factor).
+        path: 'account',
+        canMatch: [cloudOnly],
+        loadChildren: () => import('./features/account/account.routes'),
+      },
+      {
+        // Moat Cloud only: organisations, their members and projects.
+        path: 'organisations',
+        canMatch: [cloudOnly],
+        loadChildren: () =>
+          import('./features/organisations/organisations.routes'),
+      },
       {
         // The start page, and each project's workspace below it.
         path: 'projects',
+        canMatch: [desktopOnly],
         loadChildren: () => import('./features/projects/projects.routes'),
       },
       {
         // FR-73: the setup wizard — on the first start, and again from the sidebar.
         path: 'setup',
+        canMatch: [desktopOnly],
         loadChildren: () => import('./features/setup/setup.routes'),
       },
       {

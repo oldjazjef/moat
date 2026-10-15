@@ -25,6 +25,8 @@ export interface HelpLink {
 }
 
 export const HELP_SECTION_IDS = [
+  'account',
+  'organisations',
   'setup',
   'project',
   'gate',
@@ -46,6 +48,8 @@ export type HelpSectionId = (typeof HELP_SECTION_IDS)[number];
 
 export interface HelpSection {
   readonly id: HelpSectionId;
+  /** Only in that app: the whole section is left out of the other (and not numbered there). */
+  readonly only?: HelpMode;
   readonly steps: readonly HelpItem[];
   readonly tips: readonly HelpItem[];
   readonly links: readonly HelpLink[];
@@ -55,12 +59,33 @@ const items = (...ids: readonly (string | HelpItem)[]): readonly HelpItem[] =>
   ids.map((id) => (typeof id === 'string' ? { id } : id));
 
 /** Gates and routes live inside a project, so every step opens the project list. */
-const PROJECTS: HelpLink = { id: 'projects', path: '/app/projects' };
+/** The project list is Moat Desktop's; the Cloud has organisations (see the `organisations` section). */
+const PROJECTS: HelpLink = {
+  id: 'projects',
+  path: '/app/projects',
+  only: 'desktop',
+};
 /** FR-73: the setup wizard. */
-const SETUP: HelpLink = { id: 'setup', path: '/app/setup' };
+const SETUP: HelpLink = { id: 'setup', path: '/app/setup', only: 'desktop' };
 
 /** The guide, in the order of the work (FR-70): "Schritt N von M" is the position here. */
 export const HELP_SECTIONS: readonly HelpSection[] = [
+  {
+    // Moat Cloud: sign-in, password and the second factor.
+    id: 'account',
+    only: 'cloud',
+    steps: items('register', 'login', 'password', 'totp', 'codes', 'signOut'),
+    tips: items('trust', 'recovery', 'session'),
+    links: [{ id: 'account', path: '/app/account', only: 'cloud' }],
+  },
+  {
+    // Moat Cloud: organisations, members, roles and the release permission, projects.
+    id: 'organisations',
+    only: 'cloud',
+    steps: items('create', 'switch', 'projects', 'members', 'roles', 'release'),
+    tips: items('uniform', 'refusals', 'projectsLimit'),
+    links: [{ id: 'organisations', path: '/app/organisations', only: 'cloud' }],
+  },
   {
     id: 'setup',
     steps: items(

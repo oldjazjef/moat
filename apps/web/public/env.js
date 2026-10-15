@@ -6,6 +6,6 @@
 window.__MT_ENV__ = {
   // Empty = same origin.
   apiBaseUrl: '',
-  // 'local' = Moat Desktop (no sign-in). The Cloud's own sign-in joins as another mode.
+  // 'local' = Moat Desktop (no sign-in); 'cloud' = Moat Cloud (accounts, sessions, organisations).
   authMode: 'local',
 };

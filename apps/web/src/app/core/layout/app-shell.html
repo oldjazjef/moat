@@ -16,7 +16,7 @@
             variant="outline"
             class="text-muted-foreground shrink-0 font-normal"
           >
-            {{ 'app.edition' | translate }}
+            {{ (cloud ? 'app.editionCloud' : 'app.edition') | translate }}
           </span>
         </span>
       </a>
@@ -31,7 +31,7 @@
       >
         <div hlmSidebarGroupContent>
           <ul hlmSidebarMenu>
-            @for (item of items; track item.path) {
+            @for (item of items(); track item.path) {
             <li hlmSidebarMenuItem>
               @let active = isActive(item);
               <a
@@ -54,6 +54,22 @@
 
     <div hlmSidebarFooter>
       <ul hlmSidebarMenu>
+        @if (cloud) {
+        <li hlmSidebarMenuItem>
+          @let accountActive = isActive(accountItem);
+          <a
+            hlmSidebarMenuButton
+            data-account-nav
+            [routerLink]="accountItem.path"
+            [isActive]="accountActive"
+            [attr.aria-current]="accountActive ? 'page' : null"
+            [tooltip]="accountItem.labelKey | translate"
+          >
+            <ng-icon [name]="accountItem.icon" aria-hidden="true" />
+            <span>{{ accountItem.labelKey | translate }}</span>
+          </a>
+        </li>
+        } @else {
         <!-- FR-73: the setup wizard, again at any time. -->
         <li hlmSidebarMenuItem>
           @let setupActive = isActive(setupItem);
@@ -69,6 +85,7 @@
             <span>{{ setupItem.labelKey | translate }}</span>
           </a>
         </li>
+        }
         <!-- FR-70: "Hilfe" at the bottom of the sidebar. -->
         <li hlmSidebarMenuItem>
           @let helpActive = isActive(help);
@@ -84,6 +101,20 @@
             <span>{{ help.labelKey | translate }}</span>
           </a>
         </li>
+        @if (cloud) {
+        <li hlmSidebarMenuItem>
+          <button
+            hlmSidebarMenuButton
+            type="button"
+            data-sign-out
+            [tooltip]="'nav.signOut' | translate"
+            (click)="signOut()"
+          >
+            <ng-icon name="lucideLogOut" aria-hidden="true" />
+            <span>{{ 'nav.signOut' | translate }}</span>
+          </button>
+        </li>
+        }
       </ul>
     </div>
   </hlm-sidebar>

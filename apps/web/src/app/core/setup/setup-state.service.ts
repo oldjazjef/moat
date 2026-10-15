@@ -3,7 +3,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { type CanActivateChildFn, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import type { SetupView } from '../api/setup.types';
-import { apiUrl } from '../config/runtime-env';
+import { apiUrl, isCloud } from '../config/runtime-env';
 
 /**
  * The setup wizard's state for the whole app (FR-73): whether it is finished. Until then the
@@ -48,6 +48,8 @@ export const OPEN_DURING_SETUP = ['/app/setup', '/app/help'];
  * except the help. If the API cannot be reached the app opens normally (and shows that error).
  */
 export const setupGuard: CanActivateChildFn = async (_route, state) => {
+  // The wizard sets up Moat Desktop (key file, project folder); the Cloud has none.
+  if (isCloud()) return true;
   const path = state.url.split(/[?#]/)[0] ?? '';
   if (
     OPEN_DURING_SETUP.some(

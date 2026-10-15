@@ -1,0 +1,209 @@
+<mt-page-header
+  [title]="'members.title' | translate"
+  [subtitle]="service.scope.name()"
+>
+  <mt-help-link section="organisations" />
+</mt-page-header>
+
+<mt-org-tabs [orgId]="orgId()" />
+
+@if (service.scope.entry.error()) {
+<p class="mt-note" role="alert" data-not-found>
+  <ng-icon
+    name="lucideTriangleAlert"
+    size="16"
+    aria-hidden="true"
+    class="mt-0.5 shrink-0"
+  />
+  <span>{{ 'errors.api.not_found' | translate }}</span>
+</p>
+} @else if (service.scope.access(); as access) {
+<div class="flex flex-col gap-6">
+  <p class="text-muted-foreground text-sm" data-my-role>
+    {{ 'members.myRole' | translate: { role: 'roles.' + access.role | translate
+    } }}
+  </p>
+
+  @if (service.error(); as code) {
+  <p class="mt-note" role="alert" data-members-error>
+    <ng-icon
+      name="lucideTriangleAlert"
+      size="16"
+      aria-hidden="true"
+      class="mt-0.5 shrink-0"
+    />
+    <span>{{ errorKey(code) | translate }}</span>
+  </p>
+  } @if (service.members.isLoading() && !service.members.hasValue()) {
+  <p class="text-muted-foreground text-sm" role="status">
+    {{ 'common.loading' | translate }}
+  </p>
+  } @else if (service.members.hasValue()) {
+  <div hlmTableContainer class="mt-panel" data-members>
+    <table hlmTable>
+      <thead hlmTHead>
+        <tr hlmTr>
+          <th hlmTh>{{ 'members.columns.email' | translate }}</th>
+          <th hlmTh>{{ 'members.columns.role' | translate }}</th>
+          <th hlmTh>{{ 'members.columns.release' | translate }}</th>
+          <th hlmTh class="mt-actions-cell">
+            <span class="sr-only">{{ 'common.actions' | translate }}</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody hlmTBody>
+        @for (member of service.members.value().members; track member.accountId)
+        {
+        <tr hlmTr data-member [attr.data-account-id]="member.accountId">
+          <td hlmTd class="font-medium" data-email>{{ member.email }}</td>
+          <td hlmTd>
+            @if (service.canManage()) {
+            <select
+              hlmInput
+              class="w-auto"
+              data-role-select
+              [attr.aria-label]="
+                'members.roleOf' | translate: { name: member.email }
+              "
+              [disabled]="service.busy()"
+              (change)="changeRole(member, roleSelect)"
+              #roleSelect
+            >
+              @for (role of service.roles; track role) {
+              <option [value]="role" [selected]="role === member.role">
+                {{ 'roles.' + role | translate }}
+              </option>
+              }
+            </select>
+            } @else {
+            <span data-role>{{ 'roles.' + member.role | translate }}</span>
+            }
+          </td>
+          <td hlmTd>
+            @if (service.canGrantRelease() &&
+            service.releaseApplies(member.role)) {
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                class="accent-primary size-4"
+                data-release-toggle
+                [checked]="member.releaseGranted"
+                [disabled]="service.busy()"
+                (change)="service.setRelease(member, releaseToggle.checked)"
+                #releaseToggle
+              />
+              {{ (member.releaseGranted ? 'members.releaseYes' :
+              'members.releaseNo') | translate }}
+            </label>
+            } @else {
+            <span data-release
+              >{{ (member.releaseGranted ? 'members.releaseYes' :
+              'members.releaseNo') | translate }}</span
+            >
+            }
+          </td>
+          <td hlmTd class="mt-actions-cell">
+            @if (service.canManage()) { @if (service.confirmingRemove() ===
+            member.accountId) {
+            <span class="inline-flex gap-1">
+              <button
+                hlmBtn
+                variant="destructive"
+                size="sm"
+                type="button"
+                data-remove-confirm
+                [disabled]="service.busy()"
+                (click)="service.remove(member)"
+              >
+                {{ 'members.removeConfirm' | translate }}
+              </button>
+              <button
+                hlmBtn
+                variant="ghost"
+                size="sm"
+                type="button"
+                data-remove-cancel
+                (click)="service.cancelRemove()"
+              >
+                {{ 'common.cancel' | translate }}
+              </button>
+            </span>
+            } @else {
+            <mt-row-actions
+              [actions]="removeAction"
+              [name]="member.email"
+              [disabled]="service.busy()"
+              (run)="service.askRemove(member)"
+            />
+            } }
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  } @if (service.canManage()) {
+  <form
+    hlmCard
+    class="max-w-xl"
+    data-member-form
+    aria-labelledby="member-new"
+    novalidate
+    [formGroup]="service.addForm"
+    (submit)="$event.preventDefault(); service.add()"
+  >
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="member-new">
+        {{ 'members.add.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'members.add.description' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      @if (service.addSent()) {
+      <p class="mt-note" role="status" data-add-sent>
+        {{ 'members.add.sent' | translate }}
+      </p>
+      }
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="member-email"
+          >{{ 'auth.fields.email' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="member-email"
+          type="email"
+          autocomplete="off"
+          spellcheck="false"
+          formControlName="email"
+        />
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="member-role"
+          >{{ 'members.columns.role' | translate }}</label
+        >
+        <select
+          hlmInput
+          id="member-role"
+          class="w-auto max-w-60"
+          formControlName="role"
+        >
+          @for (role of service.roles; track role) {
+          <option [value]="role">{{ 'roles.' + role | translate }}</option>
+          }
+        </select>
+      </div>
+    </div>
+    <div hlmCardFooter>
+      <button
+        hlmBtn
+        type="submit"
+        data-member-submit
+        [disabled]="service.busy()"
+      >
+        {{ 'members.add.submit' | translate }}
+      </button>
+    </div>
+  </form>
+  }
+</div>
+}

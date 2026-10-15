@@ -1,7 +1,8 @@
 {
   "app": {
     "name": "Moat",
-    "edition": "Desktop"
+    "edition": "Desktop",
+    "editionCloud": "Cloud"
   },
   "nav": {
     "label": "Hauptnavigation",
@@ -11,7 +12,12 @@
     "toggleSidebar": "Seitenleiste ein- oder ausblenden",
     "toggleTheme": "Hell oder dunkel",
     "toggleLanguage": "Sprache wechseln",
-    "otherLanguage": "English"
+    "otherLanguage": "English",
+    "organisations": "Organisationen",
+    "orgProjects": "Projekte",
+    "members": "Mitglieder",
+    "account": "Konto",
+    "signOut": "Abmelden"
   },
   "common": {
     "reload": "Neu laden",
@@ -825,7 +831,9 @@
     },
     "links": {
       "projects": "Projekte",
-      "setup": "Einrichtung"
+      "setup": "Einrichtung",
+      "account": "Konto",
+      "organisations": "Organisationen"
     },
     "sections": {
       "setup": {
@@ -1104,6 +1112,42 @@
         "tips": {
           "folder": "Den Projektordner kannst du wie andere Dateien sichern, zum Beispiel mit Git."
         }
+      },
+      "account": {
+        "title": "Konto und Anmeldung",
+        "purpose": "In Moat Cloud meldest du dich mit E-Mail-Adresse und Passwort an. Die Sitzung liegt in einem Cookie, das der Browser nur an Moat Cloud zurückschickt und das keine Seite lesen kann.",
+        "where": "Konto, in der Seitenleiste unten",
+        "steps": {
+          "register": "Gib auf der Seite «Registrieren» deine E-Mail-Adresse und ein Passwort mit mindestens 12 Zeichen ein. Moat Cloud antwortet immer gleich, ob die Adresse neu war oder nicht. Danach meldest du dich an.",
+          "login": "Melde dich mit «Anmelden» an. Hat dein Konto einen zweiten Faktor, fragt Moat Cloud danach den Code deiner Authenticator-App oder einen Wiederherstellungscode.",
+          "password": "Ändere dein Passwort unter «Konto» mit «Passwort ändern». Alle anderen Sitzungen deines Kontos enden dabei, dieses Gerät bleibt angemeldet.",
+          "totp": "Schalte unter «Konto» mit «Zwei-Faktor einrichten» einen zweiten Faktor ein. Moat Cloud zeigt das Geheimnis und die `otpauth`-Adresse einmal als Text, einen QR-Code gibt es nicht. Trage sie in die Authenticator-App ein und bestätige mit einem Code über «Bestätigen».",
+          "codes": "Danach zeigt Moat Cloud einmal die Wiederherstellungscodes. Speichere sie an einem sicheren Ort und klicke auf «Erledigt»: Danach sind sie nicht mehr abrufbar.",
+          "signOut": "Mit «Abmelden» in der Seitenleiste endet die Sitzung auf dem Server, und dieser Browser vergisst dein Konto."
+        },
+        "tips": {
+          "trust": "Dieses Konto stellt keinen Vertrauensmodus ein. Moat Cloud verwaltet bis jetzt Konten, Organisationen und Projektnamen. Gates, Secrets und Bundles gibt es hier noch nicht. Den Vertrauensmodus und die Folgen eines gehackten Moat Cloud erklärt der Abschnitt über den Vertrauensmodus.",
+          "recovery": "Ein Wiederherstellungscode gilt einmal. Hast du weder Gerät noch Code, kann Moat Cloud das Konto noch nicht zurücksetzen: Ein Passwort-Reset ist noch nicht gebaut.",
+          "session": "Die Sitzung endet nach 12 Stunden ohne Aktivität und spätestens nach 14 Tagen."
+        }
+      },
+      "organisations": {
+        "title": "Organisationen, Mitglieder und Projekte",
+        "purpose": "Eine Organisation fasst Projekte und die Menschen zusammen, die daran arbeiten. Jede Person hat darin eine Rolle. Was sie darf, entscheidet immer Moat Cloud, nie die Seite.",
+        "where": "Organisationen, in der Seitenleiste",
+        "steps": {
+          "create": "Lege unter «Organisationen» mit «Organisation anlegen» eine neue an. Du wirst ihr Inhaber.",
+          "switch": "Klicke in der Liste auf «Wechseln»: Die Organisation erscheint danach in der Seitenleiste mit «Projekte» und «Mitglieder».",
+          "projects": "Unter «Projekte» siehst du die Projekte der Organisation. Mit «Projekt anlegen» legst du ein neues an, wenn deine Rolle das erlaubt.",
+          "members": "Unter «Mitglieder» fügst du mit «Mitglied hinzufügen» jemanden über die E-Mail-Adresse hinzu, änderst Rollen oder entfernst jemanden mit «Entfernen» und «Wirklich entfernen».",
+          "roles": "Es gibt die Rollen Inhaber, Administrator, Bearbeiter, Betrachter und Abrechnung. Die Rolle bestimmt, was jemand lesen und ändern darf. Moat Cloud lehnt ab, was die Rolle nicht erlaubt.",
+          "release": "Das Recht, Bundles freizugeben, ist von der Rolle getrennt. Nur ein Inhaber vergibt es, und nur an Inhaber, Administratoren und Bearbeiter. Du siehst den Schalter nur als Inhaber. Bundles selbst gibt es in Moat Cloud noch nicht."
+        },
+        "tips": {
+          "uniform": "Moat Cloud antwortet beim Hinzufügen gleich, ob es die Adresse gibt oder nicht. Einladungen und Bestätigungs-E-Mails gibt es noch nicht: Die Person braucht schon ein Konto.",
+          "refusals": "Lehnt Moat Cloud eine Änderung ab, steht der Grund in einem festen Text, zum Beispiel dass die Organisation mindestens einen Inhaber braucht.",
+          "projectsLimit": "Ein Projekt besteht hier erst aus einem Namen. Gates, Routen und Secrets in der Cloud kommen später. Bis dahin arbeitest du mit Moat Desktop oder der CLI."
+        }
       }
     }
   },
@@ -1224,6 +1268,163 @@
     },
     "notices": {
       "failed": "Das hat nicht geklappt. Bitte nochmals."
+    }
+  },
+  "errors": {
+    "api": {
+      "invalid_credentials": "E-Mail-Adresse oder Passwort stimmen nicht.",
+      "mfa_required": "Gib den Code deiner Authenticator-App oder einen Wiederherstellungscode ein.",
+      "invalid_code": "Der Code stimmt nicht. Versuche den nächsten Code der App oder einen Wiederherstellungscode.",
+      "rate_limited": "Zu viele Versuche. Warte einen Moment und versuche es dann noch einmal.",
+      "already_enabled": "Der zweite Faktor ist schon eingeschaltet.",
+      "not_pending": "Es läuft keine Einrichtung des zweiten Faktors. Beginne sie neu.",
+      "not_enabled": "Der zweite Faktor ist nicht eingeschaltet.",
+      "email_invalid": "Diese E-Mail-Adresse ist nicht gültig.",
+      "password_too_short": "Das Passwort muss mindestens 12 Zeichen lang sein.",
+      "password_too_long": "Das Passwort ist zu lang (höchstens 256 Zeichen).",
+      "password_unchanged": "Das neue Passwort muss sich vom bisherigen unterscheiden.",
+      "name_invalid": "Dieser Name ist nicht möglich. Er darf nicht leer sein und keine Steuerzeichen enthalten.",
+      "last_owner": "Die Organisation braucht mindestens einen Inhaber.",
+      "release_not_applicable": "Diese Rolle kann die Freigabe nicht erhalten.",
+      "forbidden": "Das darf deine Rolle nicht.",
+      "unauthenticated": "Du bist nicht angemeldet. Melde dich an.",
+      "csrf_invalid": "Die Sitzung stimmt nicht mehr. Lade die Seite neu und versuche es noch einmal.",
+      "origin_invalid": "Die Anfrage kam von einer unerwarteten Adresse und wurde abgelehnt.",
+      "empty_change": "Es gab nichts zu ändern.",
+      "not_found": "Nicht gefunden: Das gibt es nicht, oder du hast keinen Zugriff darauf.",
+      "network": "Moat Cloud ist nicht erreichbar. Prüfe die Verbindung und versuche es noch einmal.",
+      "unknown": "Das hat nicht geklappt. Versuche es noch einmal."
+    }
+  },
+  "roles": {
+    "owner": "Inhaber",
+    "admin": "Administrator",
+    "editor": "Bearbeiter",
+    "viewer": "Betrachter",
+    "billing": "Abrechnung"
+  },
+  "auth": {
+    "fields": {
+      "email": "E-Mail-Adresse",
+      "password": "Passwort",
+      "choosePassword": "Passwort wählen",
+      "newPassword": "Neues Passwort",
+      "currentPassword": "Bisheriges Passwort",
+      "repeatPassword": "Passwort wiederholen",
+      "passwordHint": "Mindestens {{min}} Zeichen. Ein langer Satz ist besser als ein kurzes Wort mit Sonderzeichen.",
+      "mismatch": "Die beiden Passwörter sind nicht gleich.",
+      "code": "Code der Authenticator-App oder Wiederherstellungscode"
+    },
+    "login": {
+      "title": "Anmelden",
+      "subtitle": "Melde dich bei Moat Cloud an.",
+      "codeIntro": "Dein Konto hat einen zweiten Faktor. Gib den Code ein.",
+      "codeHint": "Sechs Ziffern aus deiner Authenticator-App, oder einer deiner Wiederherstellungscodes (jeder gilt einmal).",
+      "submit": "Anmelden",
+      "verify": "Code prüfen",
+      "back": "Zurück",
+      "toRegister": "Noch kein Konto? Registrieren"
+    },
+    "register": {
+      "title": "Konto erstellen",
+      "subtitle": "Ein Konto für Moat Cloud: eine E-Mail-Adresse und ein Passwort.",
+      "submit": "Registrieren",
+      "toLogin": "Schon ein Konto? Anmelden",
+      "acceptedTitle": "Anfrage angenommen",
+      "accepted": "Wenn die Adresse noch frei war, ist dein Konto jetzt angelegt. Moat Cloud sagt nicht, ob eine Adresse schon benutzt wird. Melde dich jetzt an."
+    }
+  },
+  "account": {
+    "title": "Konto",
+    "honesty": "Dieses Konto verwaltet Organisationen, Mitglieder und Projekte. Moat Cloud kennt bis jetzt keine Gates, Secrets und Bundles und stellt deshalb keinen Vertrauensmodus ein. Wie die Vertrauensmodi gelten und was ein gehacktes Moat Cloud anrichten könnte, erklärt die Hilfe.",
+    "honestyHelp": "Vertrauensmodi in der Hilfe",
+    "password": {
+      "title": "Passwort ändern",
+      "description": "Wähle ein neues Passwort für dieses Konto.",
+      "effect": "Alle anderen Sitzungen deines Kontos enden. Dieses Gerät bleibt angemeldet.",
+      "submit": "Passwort ändern",
+      "changed": "Das Passwort ist geändert."
+    },
+    "totp": {
+      "title": "Zweiter Faktor (TOTP)",
+      "description": "Neben dem Passwort verlangt die Anmeldung einen Code aus einer Authenticator-App.",
+      "on": "Eingeschaltet",
+      "off": "Ausgeschaltet",
+      "enrolPassword": "Bestätige mit deinem Passwort",
+      "enrol": "Zwei-Faktor einrichten",
+      "secretHint": "Trage das Geheimnis oder die Adresse in deine Authenticator-App ein. Einen QR-Code gibt es nicht. Gib danach einen Code aus der App ein.",
+      "secret": "Geheimnis",
+      "uri": "Adresse (otpauth)",
+      "secretOnce": "Moat Cloud zeigt das Geheimnis nur jetzt. Verlässt du die Seite, beginnst du mit dem Passwort von vorn.",
+      "confirmLabel": "Code aus der App",
+      "confirm": "Bestätigen",
+      "codesTitle": "Wiederherstellungscodes",
+      "codesHint": "Speichere diese Codes jetzt an einem sicheren Ort, zum Beispiel in einem Passwortmanager. Jeder gilt einmal, falls du dein Gerät verlierst. Moat Cloud zeigt sie nicht noch einmal.",
+      "codesSaved": "Erledigt",
+      "disableHint": "Zum Ausschalten brauchst du dein Passwort und einen Code aus der App oder einen Wiederherstellungscode.",
+      "disable": "Zwei-Faktor ausschalten"
+    }
+  },
+  "organisations": {
+    "title": "Organisationen",
+    "subtitle": "Deine Teams. Jede Organisation hat eigene Mitglieder und Projekte.",
+    "loadError": "Die Organisationen konnten nicht gelesen werden. Lade die Seite neu.",
+    "columns": {
+      "name": "Name",
+      "role": "Deine Rolle",
+      "release": "Freigabe"
+    },
+    "active": "In der Seitenleiste",
+    "switch": "Wechseln",
+    "releaseYes": "ja",
+    "releaseNo": "nein",
+    "empty": "Du gehörst noch keiner Organisation an. Lege unten die erste an.",
+    "new": {
+      "title": "Neue Organisation",
+      "description": "Du wirst ihr Inhaber.",
+      "name": "Name",
+      "submit": "Organisation anlegen"
+    },
+    "tabs": {
+      "label": "Bereiche der Organisation",
+      "projects": "Projekte",
+      "members": "Mitglieder"
+    }
+  },
+  "members": {
+    "title": "Mitglieder",
+    "myRole": "Deine Rolle: {{role}}",
+    "roleOf": "Rolle von {{name}}",
+    "columns": {
+      "email": "E-Mail-Adresse",
+      "role": "Rolle",
+      "release": "Freigabe"
+    },
+    "releaseYes": "Darf freigeben",
+    "releaseNo": "Darf nicht freigeben",
+    "remove": "Entfernen",
+    "removeConfirm": "Wirklich entfernen",
+    "add": {
+      "title": "Mitglied hinzufügen",
+      "description": "Gib die Adresse eines bestehenden Kontos ein und wähle die Rolle.",
+      "sent": "Wenn zu dieser Adresse ein Konto gehört, ist es jetzt Mitglied. Moat Cloud sagt nicht, ob es die Adresse gibt.",
+      "submit": "Mitglied hinzufügen"
+    }
+  },
+  "orgProjects": {
+    "title": "Projekte",
+    "columns": {
+      "name": "Name",
+      "created": "Angelegt am"
+    },
+    "empty": "Diese Organisation hat noch kein Projekt.",
+    "loadError": "Die Projekte konnten nicht gelesen werden. Lade die Seite neu.",
+    "cannotCreate": "Deine Rolle darf keine Projekte anlegen.",
+    "new": {
+      "title": "Neues Projekt",
+      "description": "Ein Projekt hat hier vorerst nur einen Namen.",
+      "name": "Name",
+      "submit": "Projekt anlegen"
     }
   }
 }

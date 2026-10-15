@@ -45,6 +45,8 @@ import {
   CONSOLE_PERIODS,
 } from '../../features/console/pages/console-page/console-page.service';
 import { DRY_RUN_ERRORS } from '../api/dry-run.types';
+import { ROLES } from '../auth/account.types';
+import { API_ERROR_CODES } from '../auth/api-error';
 
 /**
  * Every i18n key the app references exists in every message file, and every text in the files is
@@ -59,6 +61,10 @@ const I18N_DIR = fileURLToPath(
 
 const DYNAMIC_KEYS = [
   ...allHelpKeys(),
+  ...API_ERROR_CODES.map((code) => `errors.api.${code}`),
+  ...ROLES.map((role) => `roles.${role}`),
+  'organisations.tabs.projects',
+  'organisations.tabs.members',
   ...allTrustKeys(),
   ...CONFIG_ISSUE_CODES.map((code) => `config.errors.${code}`),
   ...EDIT_ERROR_CODES.map((code) => `edit.errors.${code}`),

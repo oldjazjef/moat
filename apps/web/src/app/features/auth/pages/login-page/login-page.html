@@ -1,0 +1,109 @@
+<mt-auth-frame>
+  <form
+    hlmCard
+    data-login-form
+    aria-labelledby="login-title"
+    novalidate
+    [formGroup]="service.form"
+    (submit)="$event.preventDefault(); service.submit()"
+  >
+    <div hlmCardHeader>
+      <h1 hlmCardTitle id="login-title" class="text-2xl">
+        {{ 'auth.login.title' | translate }}
+      </h1>
+      <p hlmCardDescription>
+        {{ (service.needsCode() ? 'auth.login.codeIntro' :
+        'auth.login.subtitle') | translate }}
+      </p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      @if (service.error(); as code) {
+      <p class="mt-note" role="alert" data-login-error>
+        <ng-icon
+          name="lucideTriangleAlert"
+          size="16"
+          aria-hidden="true"
+          class="mt-0.5 shrink-0"
+        />
+        <span>{{ errorKey(code) | translate }}</span>
+      </p>
+      } @if (!service.needsCode()) {
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="login-email"
+          >{{ 'auth.fields.email' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="login-email"
+          type="email"
+          autocomplete="username"
+          spellcheck="false"
+          formControlName="email"
+          [attr.aria-invalid]="
+            service.form.controls.email.touched &&
+            service.form.controls.email.invalid
+          "
+        />
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="login-password"
+          >{{ 'auth.fields.password' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="login-password"
+          type="password"
+          autocomplete="current-password"
+          formControlName="password"
+        />
+      </div>
+      } @else {
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="login-code"
+          >{{ 'auth.fields.code' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="login-code"
+          class="mt-code"
+          type="text"
+          inputmode="text"
+          autocomplete="one-time-code"
+          spellcheck="false"
+          formControlName="code"
+          aria-describedby="login-code-hint"
+        />
+        <p id="login-code-hint" class="text-muted-foreground text-xs">
+          {{ 'auth.login.codeHint' | translate }}
+        </p>
+      </div>
+      }
+    </div>
+    <div hlmCardFooter class="flex flex-wrap items-center gap-3">
+      <button
+        hlmBtn
+        type="submit"
+        data-login-submit
+        [disabled]="service.busy()"
+      >
+        {{ (service.needsCode() ? 'auth.login.verify' : 'auth.login.submit') |
+        translate }}
+      </button>
+      @if (service.needsCode()) {
+      <button
+        hlmBtn
+        variant="ghost"
+        type="button"
+        data-login-back
+        (click)="service.back()"
+      >
+        {{ 'auth.login.back' | translate }}
+      </button>
+      } @else {
+      <a hlmBtn variant="link" routerLink="/register" data-to-register
+        >{{ 'auth.login.toRegister' | translate }}</a
+      >
+      }
+    </div>
+  </form>
+</mt-auth-frame>
