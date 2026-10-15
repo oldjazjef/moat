@@ -38,6 +38,7 @@ import {
 } from '../shared/bridge';
 import { type RunningApi, startApi } from './api-host';
 import { readConfig, updateConfig } from './lib/config';
+import { previousKeyAfter } from './lib/key-rotation';
 import {
   type DesktopMessages,
   MESSAGES,
@@ -295,7 +296,22 @@ function registerIpc(): void {
     const path = readConfig(app.getPath('userData')).keyFile;
     if (path === null) return { status: 'none' };
     const key = await keyInfo(api, path);
-    return key === null ? { status: 'unreadable' } : { status: 'ready', key };
+    if (key === null) return { status: 'unreadable' };
+    const previousKey = readConfig(app.getPath('userData')).previousKey;
+    return {
+      status: 'ready',
+      key,
+      previous:
+        previousKey === null
+          ? null
+          : await api.signingKeyInfo(previousKey),
+    };
+  });
+  // SEC-08: the person says every gate now pins the new key alone; the old key is forgotten.
+  ipcMain.handle(IPC.keyRotationDone, (event): boolean => {
+    if (!fromApp(event)) return false;
+    updateConfig(app.getPath('userData'), { previousKey: null });
+    return true;
   });
   ipcMain.handle(IPC.keyChoose, async (event): Promise<SigningKeyResult> => {
     if (!fromApp(event) || mainWindow === null || api === null)
@@ -311,7 +327,13 @@ function registerIpc(): void {
     if (picked.canceled || file === undefined) return { status: 'cancelled' };
     const key = await keyInfo(api, file);
     if (key === null) return { status: 'unreadable' };
-    updateConfig(app.getPath('userData'), { keyFile: file });
+    const userData = app.getPath('userData');
+    const before = await currentKey(api, userData);
+    const config = readConfig(userData);
+    updateConfig(userData, {
+      keyFile: file,
+      previousKey: previousKeyAfter(before, config.previousKey, key.publicKey),
+    });
     return { status: 'chosen', key };
   });
   ipcMain.handle(
@@ -344,7 +366,21 @@ function registerIpc(): void {
         },
         create: (passphrase) => running.createSigningKey(passphrase),
         write: writeKeyFile,
-        use: (path) => updateConfig(userData, { keyFile: path }),
+        use: async (path) => {
+          const before = await currentKey(running, userData);
+          const next = await keyInfo(running, path);
+          updateConfig(userData, {
+            keyFile: path,
+            previousKey:
+              next === null
+                ? readConfig(userData).previousKey
+                : previousKeyAfter(
+                    before,
+                    readConfig(userData).previousKey,
+                    next.publicKey,
+                  ),
+          });
+        },
       });
       try {
         return await showKeyDialog({
@@ -912,6 +948,16 @@ async function keyInfo(
     Buffer.from(file.signer.publicKey).toString('base64url'),
   );
   return info !== null && info.kid === file.kid ? info : null;
+}
+
+/** The public key of the key file in use, null when none or unreadable. */
+async function currentKey(
+  running: RunningApi,
+  userData: string,
+): Promise<string | null> {
+  const path = readConfig(userData).keyFile;
+  if (path === null) return null;
+  return (await keyInfo(running, path))?.publicKey ?? null;
 }
 
 /** The resolved path when it is a directory, otherwise null. */

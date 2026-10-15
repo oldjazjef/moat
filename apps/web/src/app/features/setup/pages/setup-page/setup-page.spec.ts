@@ -92,6 +92,7 @@ function bridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge {
       status: vi.fn().mockResolvedValue({ status: 'none' }),
       choose: vi.fn(),
       create: vi.fn().mockResolvedValue({ status: 'created', key: KEY }),
+      rotationDone: vi.fn(),
     },
     bundle: {
       sign: vi.fn().mockResolvedValue({ status: 'signed', version: 4 }),
@@ -267,9 +268,12 @@ describe('SetupPage (FR-73)', () => {
   it('pins a gate only after the fingerprint was confirmed, then puts it in the environment', async () => {
     window.moatDesktop = bridge({
       key: {
-        status: vi.fn().mockResolvedValue({ status: 'ready', key: KEY }),
+        status: vi
+          .fn()
+          .mockResolvedValue({ status: 'ready', key: KEY, previous: null }),
         choose: vi.fn(),
         create: vi.fn(),
+        rotationDone: vi.fn(),
       },
     });
     const { el, harness } = await open(view('gate'));

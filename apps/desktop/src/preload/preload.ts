@@ -14,6 +14,7 @@ const bridge: DesktopBridge = {
   key: {
     status: () => ipcRenderer.invoke(IPC.keyStatus),
     choose: () => ipcRenderer.invoke(IPC.keyChoose),
+    rotationDone: () => ipcRenderer.invoke(IPC.keyRotationDone),
     create: (locale: string) =>
       ipcRenderer.invoke(IPC.keyCreate, String(locale)),
   },

@@ -79,7 +79,12 @@ describe('ProjectsPage', () => {
     window.moatDesktop = {
       platform: 'linux',
       project: { add, create: vi.fn(), reveal: vi.fn() },
-      key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
+      key: {
+        status: vi.fn(),
+        choose: vi.fn(),
+        create: vi.fn(),
+        rotationDone: vi.fn(),
+      },
       bundle: { sign: vi.fn() },
       secret: { seal: vi.fn() },
       gate: { deploy: vi.fn(), import: vi.fn(), log: vi.fn() },
@@ -96,7 +101,12 @@ describe('ProjectsPage', () => {
     window.moatDesktop = {
       platform: 'linux',
       project: { add, create: vi.fn(), reveal: vi.fn() },
-      key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
+      key: {
+        status: vi.fn(),
+        choose: vi.fn(),
+        create: vi.fn(),
+        rotationDone: vi.fn(),
+      },
       bundle: { sign: vi.fn() },
       secret: { seal: vi.fn() },
       gate: { deploy: vi.fn(), import: vi.fn(), log: vi.fn() },

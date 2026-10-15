@@ -24,7 +24,8 @@ export interface SigningKeyInfo {
 }
 
 export type SigningKeyStatus =
-  | { status: 'ready'; key: SigningKeyInfo }
+  /** `previous`: the key an open rotation (SEC-08) replaces; null when none is open. */
+  | { status: 'ready'; key: SigningKeyInfo; previous: SigningKeyInfo | null }
   /** No key file chosen yet. */
   | { status: 'none' }
   /** The chosen file is gone or is not a key file. */
@@ -206,6 +207,8 @@ export interface DesktopBridge {
      * where the person chooses. The page learns only the public key.
      */
     create(locale: string): Promise<SigningKeyResult>;
+    /** SEC-08: every gate pins the new key alone now; the desktop forgets the old key. */
+    rotationDone(): Promise<boolean>;
   };
   readonly secret: {
     /**

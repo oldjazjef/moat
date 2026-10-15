@@ -255,7 +255,12 @@ describe('GatesPage', () => {
       window.moatDesktop = {
         platform: 'linux',
         project: { add: vi.fn(), create: vi.fn(), reveal: vi.fn() },
-        key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
+        key: {
+          status: vi.fn(),
+          choose: vi.fn(),
+          create: vi.fn(),
+          rotationDone: vi.fn(),
+        },
         bundle: { sign },
         secret: { seal: vi.fn() },
         gate: { deploy: vi.fn(), import: vi.fn(), log: vi.fn() },
@@ -336,7 +341,12 @@ describe('GatesPage', () => {
       window.moatDesktop = {
         platform: 'linux',
         project: { add: vi.fn(), create: vi.fn(), reveal: vi.fn() },
-        key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
+        key: {
+          status: vi.fn(),
+          choose: vi.fn(),
+          create: vi.fn(),
+          rotationDone: vi.fn(),
+        },
         bundle: { sign: vi.fn() },
         secret: { seal },
         gate: { deploy: vi.fn(), import: vi.fn(), log: vi.fn() },
@@ -393,7 +403,12 @@ describe('GatesPage', () => {
       window.moatDesktop = {
         platform: 'linux',
         project: { add: vi.fn(), create: vi.fn(), reveal: vi.fn() },
-        key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
+        key: {
+          status: vi.fn(),
+          choose: vi.fn(),
+          create: vi.fn(),
+          rotationDone: vi.fn(),
+        },
         bundle: { sign: vi.fn() },
         secret: { seal: vi.fn() },
         gate: { deploy, import: vi.fn(), log: vi.fn() },
@@ -558,7 +573,12 @@ describe('GatesPage', () => {
       window.moatDesktop = {
         platform: 'linux',
         project: { add: vi.fn(), create: vi.fn(), reveal: vi.fn() },
-        key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
+        key: {
+          status: vi.fn(),
+          choose: vi.fn(),
+          create: vi.fn(),
+          rotationDone: vi.fn(),
+        },
         bundle: { sign: vi.fn() },
         secret: { seal: vi.fn() },
         gate: { deploy: vi.fn(), import: importBundle, log: vi.fn() },
@@ -642,7 +662,12 @@ describe('GatesPage', () => {
       window.moatDesktop = {
         platform: 'linux',
         project: { add: vi.fn(), create: vi.fn(), reveal: vi.fn() },
-        key: { status: vi.fn(), choose: vi.fn(), create: vi.fn() },
+        key: {
+          status: vi.fn(),
+          choose: vi.fn(),
+          create: vi.fn(),
+          rotationDone: vi.fn(),
+        },
         bundle: { sign: vi.fn() },
         secret: { seal: vi.fn() },
         gate: { deploy: vi.fn(), import: vi.fn(), log },
@@ -731,6 +756,81 @@ describe('GatesPage', () => {
         await settle(harness);
         expect(text(el, '[data-log-outcome]')).toContain(expected);
       }
+    });
+  });
+  describe('key rotation in Moat Desktop (SEC-08)', () => {
+    afterEach(() => delete window.moatDesktop);
+
+    const OLD = {
+      kid: 'o'.repeat(22),
+      publicKey: 'O'.repeat(43),
+      fingerprint: 'MOAT-OLD',
+    };
+    const NEW = {
+      kid: 'n'.repeat(22),
+      publicKey: 'N'.repeat(43),
+      fingerprint: 'MOAT-NEW',
+    };
+    const desktop = (previous: typeof OLD | null) => {
+      const rotationDone = vi.fn().mockResolvedValue(true);
+      const status = vi
+        .fn()
+        .mockResolvedValue({ status: 'ready', key: NEW, previous });
+      window.moatDesktop = {
+        platform: 'linux',
+        project: { add: vi.fn(), create: vi.fn(), reveal: vi.fn() },
+        key: { status, choose: vi.fn(), create: vi.fn(), rotationDone },
+        bundle: { sign: vi.fn() },
+        secret: { seal: vi.fn() },
+        gate: { deploy: vi.fn(), import: vi.fn(), log: vi.fn() },
+      };
+      return rotationDone;
+    };
+
+    it('shows nothing without an open rotation, nor in a browser', async () => {
+      desktop(null);
+      const { el } = await openProjectTab('gates', GatesPage, PROJECT);
+      expect(el.querySelector('[data-key-rotation]')).toBeNull();
+    });
+
+    it('gives both commands and lets the person finish only when every gate carries the new key', async () => {
+      const rotationDone = desktop(OLD);
+      const { el, harness } = await openProjectTab(
+        'gates',
+        GatesPage,
+        withGate({ ...site(), latestBundleSigners: [OLD.kid] }),
+      );
+      expect(text(el, '[data-rotation-command="pin-both"]')).toBe(
+        `php moat-gate.php trust --signer=${OLD.publicKey},${NEW.publicKey}`,
+      );
+      expect(text(el, '[data-rotation-command="pin-new"]')).toBe(
+        `php moat-gate.php trust --signer=${NEW.publicKey}`,
+      );
+      expect(text(el, '[data-rotation-gate]')).toContain('noch nicht');
+      const done = el.querySelector(
+        '[data-rotation-done]',
+      ) as HTMLButtonElement;
+      expect(done.disabled).toBe(true);
+      done.click();
+      await settle(harness);
+      expect(rotationDone).not.toHaveBeenCalled();
+    });
+
+    it('finishes the change once the latest bundle is signed with the new key', async () => {
+      const rotationDone = desktop(OLD);
+      const { el, harness } = await openProjectTab(
+        'gates',
+        GatesPage,
+        withGate({ ...site(), latestBundleSigners: [OLD.kid, NEW.kid] }),
+      );
+      expect(text(el, '[data-rotation-gate]')).toContain('ist mit dem neuen');
+      const done = el.querySelector(
+        '[data-rotation-done]',
+      ) as HTMLButtonElement;
+      expect(done.disabled).toBe(false);
+      done.click();
+      await settle(harness);
+      expect(rotationDone).toHaveBeenCalledOnce();
     });
   });
 });

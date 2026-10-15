@@ -262,6 +262,17 @@
       "failed": "Der Import hat nicht geklappt."
     },
     "log": "Anfrage-Log",
+    "rotation": {
+      "title": "Schlüssel wechseln",
+      "intro": "Ein neuer Signaturschlüssel ersetzt den alten in zwei Schritten auf dem Server, damit die Seite nie stehen bleibt. Beide Schlüssel stehen unten.",
+      "stepPin": "1. Auf jedem Server: den alten und den neuen Schlüssel festlegen.",
+      "stepSign": "2. Das nächste Bundle jedes Gates mit dem neuen Schlüssel signieren («Bundle signieren») und auf dem Server aktivieren.",
+      "stepPinNew": "3. Auf jedem Server, wenn alle Gates unten mit dem neuen Schlüssel signiert sind: nur den neuen Schlüssel festlegen.",
+      "signed": "letztes Bundle ist mit dem neuen Schlüssel signiert",
+      "notSigned": "letztes Bundle ist noch nicht mit dem neuen Schlüssel signiert",
+      "done": "Wechsel abschliessen",
+      "wait": "Verfügbar, wenn jedes Gate ein mit dem neuen Schlüssel signiertes Bundle hat."
+    },
     "logIntro": "Das Gate schreibt zu jeder Anfrage eine Zeile: Zeit, Route, Methode, Status, Fehlercode, Dauer und eine Kennung des Besuchers, die jeden Tag wechselt. Pfade, Inhalte und Adressen schreibt es nie. Hol die Dateien `log.php` und `logold.php` aus dem Datenordner des Gates (per SFTP oder FTP) oder speichere, was `php moat-gate.php log` ausgibt, und öffne sie hier.",
     "logRead": "Log ansehen",
     "logSummary": "{{requests}} Anfragen von {{from}} bis {{to}}, davon {{errors}} mit Fehler, von {{clients}} Besuchern.",
@@ -976,6 +987,22 @@
         "tips": {
           "privacy": "Pfade, Query-Parameter, Inhalte und IP-Adressen stehen nie im Log. Die Besucherkennung ist ein Hash mit einem Schlüssel, der den Server nie verlässt, und gilt nur einen Tag.",
           "cloud": "Live-Dashboards und Alarme gibt es erst mit Moat Cloud. Ohne Cloud holst du das Log ab, wenn du es brauchst."
+        }
+      },
+      "keyRotation": {
+        "title": "Signaturschlüssel wechseln",
+        "purpose": "Ein neuer Signaturschlüssel ersetzt den alten in zwei Schritten auf jedem Server, damit keine Website ausfällt. Moat Desktop merkt sich den alten Schlüssel, bis du den Wechsel abschliesst.",
+        "where": "Projekt › Gates › Schlüssel wechseln",
+        "steps": {
+          "choose": "Wähle oder erstelle einen neuen Schlüssel in der Einrichtung oder unter «Gates». Sobald er sich vom alten unterscheidet, erscheint das Feld «Schlüssel wechseln».",
+          "pin": "Führe auf jedem Server den ersten Befehl aus: er legt den alten und den neuen Schlüssel fest.",
+          "sign": "Signiere das nächste Bundle jedes Gates mit dem neuen Schlüssel («Bundle signieren») und aktiviere es auf dem Server.",
+          "pinNew": "Wenn jedes Gate den neuen Schlüssel zeigt, führe auf jedem Server den zweiten Befehl aus: er legt nur den neuen Schlüssel fest.",
+          "finish": "Klicke auf «Wechsel abschliessen». Moat Desktop vergisst den alten Schlüssel."
+        },
+        "tips": {
+          "refuse": "`trust` lehnt eine Liste ohne den Schlüssel des aktiven Bundles ab, weil das Gate sonst nichts mehr ausliefert. Nur `--force` übergeht das, bei einem verlorenen oder gestohlenen Schlüssel.",
+          "local": "Auf einem Server ändert sich nur etwas, wenn du die Befehle dort ausführst. Moat Cloud und der Desktop ersetzen nie von sich aus einen festgelegten Schlüssel."
         }
       },
       "privacy": {

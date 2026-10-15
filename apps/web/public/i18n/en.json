@@ -262,6 +262,17 @@
       "failed": "The import did not work."
     },
     "log": "Request log",
+    "rotation": {
+      "title": "Change key",
+      "intro": "A new signing key replaces the old one in two steps on the server, so the site never stops. Both keys are shown below.",
+      "stepPin": "1. On each server: pin the old and the new key.",
+      "stepSign": "2. Sign the next bundle of every gate with the new key (“Sign bundle”) and activate it on the server.",
+      "stepPinNew": "3. On each server, when every gate below is signed with the new key: pin the new key alone.",
+      "signed": "latest bundle is signed with the new key",
+      "notSigned": "latest bundle is not signed with the new key yet",
+      "done": "Finish the change",
+      "wait": "Available when every gate has a bundle signed with the new key."
+    },
     "logIntro": "The gate writes one line per request: time, route, method, status, error code, duration and a visitor id that changes every day. It never writes paths, contents or addresses. Fetch the files `log.php` and `logold.php` from the gate’s data folder (by SFTP or FTP) or save what `php moat-gate.php log` prints, and open them here.",
     "logRead": "View log",
     "logSummary": "{{requests}} requests from {{from}} to {{to}}, {{errors}} of them with an error, from {{clients}} visitors.",
@@ -976,6 +987,22 @@
         "tips": {
           "privacy": "Paths, query parameters, contents and IP addresses are never in the log. The visitor id is a hash with a key that never leaves the server, and it lasts one day.",
           "cloud": "Live dashboards and alerts come only with Moat Cloud. Without it, you fetch the log when you need it."
+        }
+      },
+      "keyRotation": {
+        "title": "Change the signing key",
+        "purpose": "A new signing key replaces the old one in two steps on each server, so no website stops working. Moat Desktop remembers the old key until you finish the change.",
+        "where": "Project › Gates › Change key",
+        "steps": {
+          "choose": "Choose or create a new key in the setup or in “Gates”. As soon as it differs from the old one, the panel “Change key” appears.",
+          "pin": "On each server run the first command: it pins the old and the new key.",
+          "sign": "Sign the next bundle of every gate with the new key (“Sign bundle”) and activate it on the server.",
+          "pinNew": "When every gate shows the new key, run the second command on each server: it pins the new key alone.",
+          "finish": "Click “Finish the change”. Moat Desktop forgets the old key."
+        },
+        "tips": {
+          "refuse": "`trust` refuses a list without the key of the active bundle, because the gate would then serve nothing. Only `--force` overrides that, for a lost or stolen key.",
+          "local": "Nothing changes on a server unless you run the commands there. Moat Cloud and the desktop never replace a pinned key by themselves."
         }
       },
       "privacy": {

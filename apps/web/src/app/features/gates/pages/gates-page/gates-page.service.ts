@@ -10,6 +10,7 @@ import {
   type ImportResult,
   type RequestLogResult,
   type SecretSealResult,
+  type SigningKeyInfo,
 } from '../../../../core/desktop/desktop-bridge';
 import type { RowAction } from '../../../../shared/components/row-actions';
 import { ProjectEdits } from '../../../../core/project/project-edits.service';
@@ -153,6 +154,12 @@ export class GatesPageService {
     readonly result: Exclude<SecretSealResult, { status: 'cancelled' }>;
   } | null>(null);
 
+  /** The key an open rotation (SEC-08) replaces, and the one that replaces it. */
+  readonly rotation = signal<{
+    readonly previous: SigningKeyInfo;
+    readonly current: SigningKeyInfo;
+  } | null>(null);
+
   /** The gate whose signing dialog is open. */
   readonly signing = signal<string | null>(null);
   /** The last signing outcome worth saying, by gate (a cancel says nothing). */
@@ -160,6 +167,56 @@ export class GatesPageService {
     readonly gate: string;
     readonly result: Exclude<BundleSignResult, { status: 'cancelled' }>;
   } | null>(null);
+
+  constructor() {
+    void this.loadRotation();
+  }
+
+  private async loadRotation(): Promise<void> {
+    if (this.bridge === null) return;
+    try {
+      const status = await this.bridge.key.status();
+      this.rotation.set(
+        status.status === 'ready' && status.previous !== null
+          ? { previous: status.previous, current: status.key }
+          : null,
+      );
+    } catch {
+      this.rotation.set(null);
+    }
+  }
+
+  /** The valid gates whose latest bundle carries a signature of the new key (SEC-08 step 2). */
+  readonly rotationSigned = computed(() => {
+    const rotation = this.rotation();
+    return rotation === null
+      ? []
+      : this.valid().filter((gate) =>
+          gate.latestBundleSigners?.includes(rotation.current.kid),
+        );
+  });
+  /** Step 3 is safe only when every gate already has a bundle signed with the new key. */
+  readonly rotationReady = computed(
+    () =>
+      this.rotation() !== null &&
+      this.valid().length > 0 &&
+      this.rotationSigned().length === this.valid().length,
+  );
+
+  signedWithNewKey(gate: ValidGate): boolean {
+    return this.rotationSigned().includes(gate);
+  }
+
+  /** The person says every gate pins the new key alone: the desktop forgets the old key. */
+  async finishRotation(): Promise<void> {
+    if (this.bridge === null || !this.rotationReady()) return;
+    try {
+      await this.bridge.key.rotationDone();
+    } catch {
+      // Still open: the panel stays.
+    }
+    await this.loadRotation();
+  }
 
   /** The environments a gate can be put into; empty while the config is not valid. */
   readonly environments = computed(() => {
@@ -232,6 +289,7 @@ export class GatesPageService {
     // A new bundle file, or what blocked it may be shown differently now: read the project again.
     if (result.status === 'signed' || result.status === 'refused')
       this.resource.reload();
+    if (result.status === 'signed') void this.loadRotation();
   }
 
   /** The i18n key for a signing outcome (`gates.signResult.*`). */

@@ -5,7 +5,64 @@
   <mt-help-link section="gate" />
 </div>
 
-@if (resource.gates().length === 0) {
+@if (service.rotation(); as rotation) {
+<section hlmCard class="mb-6" data-key-rotation>
+  <div hlmCardHeader>
+    <h2 hlmCardTitle class="text-base">
+      {{ 'gates.rotation.title' | translate }}
+    </h2>
+  </div>
+  <div hlmCardContent class="flex flex-col gap-3 text-sm">
+    <p>{{ 'gates.rotation.intro' | translate }}</p>
+    <ol class="flex flex-col gap-3">
+      <li data-rotation-step="pin-both">
+        <p>{{ 'gates.rotation.stepPin' | translate }}</p>
+        <code class="mt-code block break-all" data-rotation-command="pin-both"
+          >php moat-gate.php trust --signer={{ rotation.previous.publicKey }},{{
+          rotation.current.publicKey }}</code
+        >
+      </li>
+      <li data-rotation-step="sign">
+        <p>{{ 'gates.rotation.stepSign' | translate }}</p>
+        <ul>
+          @for (gate of service.valid(); track gate.name) {
+          <li data-rotation-gate [attr.data-gate-name]="gate.name">
+            <span class="mt-code">{{ gate.name }}</span>: @if
+            (service.signedWithNewKey(gate)) { {{ 'gates.rotation.signed' |
+            translate }} } @else { {{ 'gates.rotation.notSigned' | translate }}
+            }
+          </li>
+          }
+        </ul>
+      </li>
+      <li data-rotation-step="pin-new">
+        <p>{{ 'gates.rotation.stepPinNew' | translate }}</p>
+        <code class="mt-code block break-all" data-rotation-command="pin-new"
+          >php moat-gate.php trust --signer={{ rotation.current.publicKey
+          }}</code
+        >
+      </li>
+    </ol>
+    <div class="flex flex-wrap items-center gap-3">
+      <button
+        hlmBtn
+        type="button"
+        data-rotation-done
+        [disabled]="!service.rotationReady()"
+        (click)="service.finishRotation()"
+      >
+        {{ 'gates.rotation.done' | translate }}
+      </button>
+      @if (!service.rotationReady()) {
+      <span class="text-muted-foreground" data-rotation-wait
+        >{{ 'gates.rotation.wait' | translate }}</span
+      >
+      }
+      <mt-help-link section="keyRotation" />
+    </div>
+  </div>
+</section>
+} @if (resource.gates().length === 0) {
 <p class="mt-note" data-no-gates>
   <mt-rich-text [text]="'gates.empty' | translate" />
 </p>
