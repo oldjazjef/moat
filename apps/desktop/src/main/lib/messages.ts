@@ -58,6 +58,23 @@ export interface DesktopMessages {
     readonly send: string;
     readonly cancel: string;
   };
+  /** Settings the page asks to change, confirmed in a message box of the main process. */
+  readonly confirmChange: {
+    readonly keyRotationDone: {
+      readonly title: string;
+      readonly message: string;
+      readonly detail: string;
+      readonly confirm: string;
+    };
+    readonly passkeyUse: {
+      readonly title: string;
+      readonly on: string;
+      readonly off: string;
+      readonly detail: (gate: string) => string;
+      readonly confirm: string;
+    };
+    readonly cancel: string;
+  };
   /** The deploy package (DT-05): where it goes, and the instructions inside it. */
   readonly deploy: DeployTexts & {
     readonly saveZip: {
@@ -313,6 +330,24 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       detail: (origin) =>
         `Moat sendet eine Testanfrage oder die Prüfung von aussen an ${origin}. Erlaube das nur, wenn dort dein Gate läuft. Moat fragt für diese Adresse bis zum Beenden nicht noch einmal.`,
       send: 'Erlauben',
+      cancel: 'Abbrechen',
+    },
+    confirmChange: {
+      keyRotationDone: {
+        title: 'Schlüsselwechsel abschliessen',
+        message: 'Den alten Schlüssel vergessen?',
+        detail:
+          'Moat vergisst den alten Signaturschlüssel. Bestätige das nur, wenn jedes Gate den neuen Schlüssel allein eingetragen hat (SEC-08).',
+        confirm: 'Alten Schlüssel vergessen',
+      },
+      passkeyUse: {
+        title: 'Passkey für ein Gate',
+        on: 'Dieses Gate mit dem Passkey signieren?',
+        off: 'Dieses Gate nicht mehr mit dem Passkey signieren?',
+        detail: (gate) =>
+          `Gate «${gate}»: Neue Bundles signierst du danach mit der Passkey-Bestätigung am Gerät, sofern das Gate den Passkey angenommen hat. Erlaube das nur, wenn du es selbst ausgelöst hast.`,
+        confirm: 'Ändern',
+      },
       cancel: 'Abbrechen',
     },
     deploy: {
@@ -718,6 +753,24 @@ export const MESSAGES: Readonly<Record<DesktopLocale, DesktopMessages>> = {
       detail: (origin) =>
         `Moat sends a test request or the check from outside to ${origin}. Allow this only if your gate runs there. Moat does not ask again for this address until it quits.`,
       send: 'Allow',
+      cancel: 'Cancel',
+    },
+    confirmChange: {
+      keyRotationDone: {
+        title: 'Finish the key change',
+        message: 'Forget the old key?',
+        detail:
+          'Moat forgets the old signing key. Confirm only if every gate now pins the new key alone (SEC-08).',
+        confirm: 'Forget old key',
+      },
+      passkeyUse: {
+        title: 'Passkey for a gate',
+        on: 'Sign this gate with the passkey?',
+        off: 'Stop signing this gate with the passkey?',
+        detail: (gate) =>
+          `Gate “${gate}”: new bundles are then signed with the passkey confirmation on your device, provided the gate has accepted the passkey. Allow this only if you started it yourself.`,
+        confirm: 'Change',
+      },
       cancel: 'Cancel',
     },
     deploy: {

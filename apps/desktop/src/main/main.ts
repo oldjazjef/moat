@@ -42,6 +42,7 @@ import {
 import { type RunningApi, startApi } from './api-host';
 import { readConfig, updateConfig } from './lib/config';
 import { previousKeyAfter } from './lib/key-rotation';
+import { confirmed, passkeyGatesAfter } from './lib/state-change';
 import {
   type DesktopMessages,
   MESSAGES,
@@ -114,6 +115,31 @@ let api: RunningApi | null = null;
 let shutdownDone = false;
 
 const messages = () => MESSAGES[systemLocale(app.getLocale())];
+
+/** A question of the main process, outside the page; a no (or closing it) is the default. */
+async function askYesNo(
+  title: string,
+  message: string,
+  detail: string,
+  yes: string,
+  no: string,
+): Promise<boolean> {
+  const options = {
+    type: 'question' as const,
+    title,
+    message,
+    detail,
+    buttons: [yes, no],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true,
+  };
+  const { response } =
+    mainWindow === null
+      ? await dialog.showMessageBox(options)
+      : await dialog.showMessageBox(mainWindow, options);
+  return response === 0;
+}
 
 app.on('second-instance', () => {
   if (mainWindow) {
@@ -323,10 +349,20 @@ function registerIpc(): void {
     };
   });
   // SEC-08: the person says every gate now pins the new key alone; the old key is forgotten.
-  ipcMain.handle(IPC.keyRotationDone, (event): boolean => {
+  ipcMain.handle(IPC.keyRotationDone, async (event): Promise<boolean> => {
     if (!fromApp(event)) return false;
-    updateConfig(app.getPath('userData'), { previousKey: null });
-    return true;
+    const text = messages().confirmChange;
+    return confirmed(
+      () =>
+        askYesNo(
+          text.keyRotationDone.title,
+          text.keyRotationDone.message,
+          text.keyRotationDone.detail,
+          text.keyRotationDone.confirm,
+          text.cancel,
+        ),
+      () => updateConfig(app.getPath('userData'), { previousKey: null }),
+    );
   });
   ipcMain.handle(IPC.keyChoose, async (event): Promise<SigningKeyResult> => {
     if (!fromApp(event) || mainWindow === null || api === null)
@@ -487,7 +523,12 @@ function registerIpc(): void {
   );
   ipcMain.handle(
     IPC.passkeyUse,
-    (event, id: unknown, gate: unknown, on: unknown): boolean => {
+    async (
+      event,
+      id: unknown,
+      gate: unknown,
+      on: unknown,
+    ): Promise<boolean> => {
       if (!fromApp(event)) return false;
       if (typeof id !== 'string' || !PROJECT_ID.test(id)) return false;
       if (typeof gate !== 'string' || !GATE_NAME.test(gate)) return false;
@@ -496,12 +537,25 @@ function registerIpc(): void {
       const config = readConfig(userData);
       const key = gateKey(id, gate);
       // Only with a passkey to use; turning it off is always possible.
-      if (on && config.passkey === null) return false;
-      const rest = config.passkeyGates.filter((known) => known !== key);
-      updateConfig(userData, {
-        passkeyGates: on ? [...rest, key].sort() : rest,
-      });
-      return true;
+      const after = passkeyGatesAfter(
+        config.passkeyGates,
+        key,
+        on,
+        config.passkey !== null,
+      );
+      if (after === null) return false;
+      const text = messages().confirmChange;
+      return confirmed(
+        () =>
+          askYesNo(
+            text.passkeyUse.title,
+            on ? text.passkeyUse.on : text.passkeyUse.off,
+            text.passkeyUse.detail(gate),
+            text.passkeyUse.confirm,
+            text.cancel,
+          ),
+        () => updateConfig(userData, { passkeyGates: after }),
+      );
     },
   );
   registerPasskeyDialogIpc();
