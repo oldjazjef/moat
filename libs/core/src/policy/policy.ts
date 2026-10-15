@@ -20,8 +20,8 @@ import {
   USAGE_FORMATS,
   type UsageFormat,
 } from '../http/budget';
-import { CLIENT_FAILURE_LIMIT } from '../http/client';
 import { normalisePath } from '../http/path';
+import { CLIENT_FAILURE_LIMIT } from '../http/rate-limit';
 import { hasProtoKey, type JsonValue } from '../json/strict-json';
 
 /**
