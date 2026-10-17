@@ -4,6 +4,8 @@ import {
   type IQueryHandler,
   QueryHandler,
 } from '@nestjs/cqrs';
+import { sha256Hex } from '@moat/core';
+import { AuditTrail } from '../../audit/application/audit-trail';
 import { Clock, ID_PATTERN, iso, newId } from '../../common/clock';
 import { normaliseEmail } from '../../auth/domain/credentials';
 import {
@@ -100,6 +102,7 @@ export class CreateOrganisationHandler implements ICommandHandler<CreateOrganisa
   constructor(
     private readonly organisations: OrganisationRepositoryPort,
     private readonly clock: Clock,
+    private readonly audit: AuditTrail,
   ) {}
 
   async execute(
@@ -118,6 +121,11 @@ export class CreateOrganisationHandler implements ICommandHandler<CreateOrganisa
       createdAt: at,
     };
     await this.organisations.create(organisation, owner);
+    await this.audit.record(organisation.id, command.actorId, {
+      action: 'org.create',
+      target: organisation.id,
+      details: {},
+    });
     return { status: 'ok', organisation, access: access(owner) };
   }
 }
@@ -188,6 +196,7 @@ export class AddMemberHandler implements ICommandHandler<AddMemberCommand> {
   constructor(
     private readonly organisations: OrganisationRepositoryPort,
     private readonly clock: Clock,
+    private readonly audit: AuditTrail,
   ) {}
 
   async execute(command: AddMemberCommand): Promise<AddMemberResult> {
@@ -214,6 +223,13 @@ export class AddMemberHandler implements ICommandHandler<AddMemberCommand> {
         releaseGranted: false,
         createdAt: iso(this.clock.now()),
       });
+    // Recorded as a request, whatever came of it: the row must not tell an unknown address from a
+    // known one (T-79), and the address only as its hash (no personal data in an append-only log).
+    await this.audit.record(command.organisationId, command.actorId, {
+      action: 'member.add_requested',
+      target: null,
+      details: { role: command.role, emailHash: await sha256Hex(email) },
+    });
     // `ok` for an unknown address and for one that is a member already: nothing tells them apart.
     return { status: 'ok' };
   }
@@ -221,7 +237,10 @@ export class AddMemberHandler implements ICommandHandler<AddMemberCommand> {
 
 @CommandHandler(ChangeMemberCommand)
 export class ChangeMemberHandler implements ICommandHandler<ChangeMemberCommand> {
-  constructor(private readonly organisations: OrganisationRepositoryPort) {}
+  constructor(
+    private readonly organisations: OrganisationRepositoryPort,
+    private readonly audit: AuditTrail,
+  ) {}
 
   async execute(command: ChangeMemberCommand): Promise<ChangeMemberResult> {
     const actor = await membershipOf(
@@ -265,6 +284,16 @@ export class ChangeMemberHandler implements ICommandHandler<ChangeMemberCommand>
     if (outcome === 'not_found') return NOT_FOUND;
     if (outcome === 'last_owner')
       return { status: 'refused', code: 'last_owner' };
+    await this.audit.record(command.organisationId, command.actorId, {
+      action: 'member.change',
+      target: command.accountId,
+      details: {
+        fromRole: target.role,
+        toRole: role,
+        fromRelease: target.releaseGranted,
+        toRelease: releaseGranted,
+      },
+    });
     const member = (
       await this.organisations.members(command.organisationId)
     ).find((m) => m.accountId === command.accountId);
@@ -276,7 +305,10 @@ export class ChangeMemberHandler implements ICommandHandler<ChangeMemberCommand>
 
 @CommandHandler(RemoveMemberCommand)
 export class RemoveMemberHandler implements ICommandHandler<RemoveMemberCommand> {
-  constructor(private readonly organisations: OrganisationRepositoryPort) {}
+  constructor(
+    private readonly organisations: OrganisationRepositoryPort,
+    private readonly audit: AuditTrail,
+  ) {}
 
   async execute(command: RemoveMemberCommand): Promise<RemoveMemberResult> {
     const actor = await membershipOf(
@@ -286,6 +318,7 @@ export class RemoveMemberHandler implements ICommandHandler<RemoveMemberCommand>
     );
     if (actor === null) return NOT_FOUND;
     const own = command.accountId === command.actorId;
+    let removedRole = actor.role;
     if (!own) {
       if (!allowed(actor, 'members:manage')) return FORBIDDEN;
       if (!ID_PATTERN.test(command.accountId)) return NOT_FOUND;
@@ -295,6 +328,7 @@ export class RemoveMemberHandler implements ICommandHandler<RemoveMemberCommand>
       );
       if (target === null) return NOT_FOUND;
       if (!canChangeRole(actor.role, target.role, null)) return FORBIDDEN;
+      removedRole = target.role;
     }
     // Leaving needs no right; the last Owner cannot leave.
     const outcome = await this.organisations.removeMember(
@@ -304,6 +338,11 @@ export class RemoveMemberHandler implements ICommandHandler<RemoveMemberCommand>
     if (outcome === 'not_found') return NOT_FOUND;
     if (outcome === 'last_owner')
       return { status: 'refused', code: 'last_owner' };
+    await this.audit.record(command.organisationId, command.actorId, {
+      action: 'member.remove',
+      target: command.accountId,
+      details: { role: removedRole, self: own },
+    });
     return { status: 'ok' };
   }
 }
@@ -341,6 +380,7 @@ export class CreateProjectHandler implements ICommandHandler<CreateProjectComman
     private readonly organisations: OrganisationRepositoryPort,
     private readonly projects: OrgProjectRepositoryPort,
     private readonly clock: Clock,
+    private readonly audit: AuditTrail,
   ) {}
 
   async execute(command: CreateProjectCommand): Promise<CreateProjectResult> {
@@ -360,6 +400,11 @@ export class CreateProjectHandler implements ICommandHandler<CreateProjectComman
       createdAt: iso(this.clock.now()),
     };
     await this.projects.create(project);
+    await this.audit.record(command.organisationId, command.actorId, {
+      action: 'project.create',
+      target: project.id,
+      details: {},
+    });
     return {
       status: 'ok',
       project: { id: project.id, name, createdAt: project.createdAt },
@@ -406,6 +451,7 @@ export class DeleteProjectHandler implements ICommandHandler<DeleteProjectComman
   constructor(
     private readonly organisations: OrganisationRepositoryPort,
     private readonly projects: OrgProjectRepositoryPort,
+    private readonly audit: AuditTrail,
   ) {}
 
   async execute(command: DeleteProjectCommand): Promise<DeleteProjectResult> {
@@ -417,12 +463,16 @@ export class DeleteProjectHandler implements ICommandHandler<DeleteProjectComman
     if (member === null) return NOT_FOUND;
     if (!allowed(member, 'project:delete')) return FORBIDDEN;
     if (!ID_PATTERN.test(command.projectId)) return NOT_FOUND;
-    return (await this.projects.delete(
-      command.organisationId,
-      command.projectId,
-    ))
-      ? { status: 'ok' }
-      : NOT_FOUND;
+    if (
+      !(await this.projects.delete(command.organisationId, command.projectId))
+    )
+      return NOT_FOUND;
+    await this.audit.record(command.organisationId, command.actorId, {
+      action: 'project.delete',
+      target: command.projectId,
+      details: {},
+    });
+    return { status: 'ok' };
   }
 }
 

@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import postgresInit from '../../../prisma/postgresql/migrations/20261014120000_init/migration.sql?raw';
 import postgresCloud from '../../../prisma/postgresql/migrations/20261015120000_cloud_accounts/migration.sql?raw';
+import postgresAudit from '../../../prisma/postgresql/migrations/20261017120000_audit_log/migration.sql?raw';
+import sqliteAudit from '../../../prisma/sqlite/migrations/20261017120000_audit_log/migration.sql?raw';
 import sqliteInit from '../../../prisma/sqlite/migrations/20261014120000_init/migration.sql?raw';
 import sqliteCloud from '../../../prisma/sqlite/migrations/20261015120000_cloud_accounts/migration.sql?raw';
 
@@ -30,10 +32,12 @@ export const MIGRATIONS: Readonly<Record<Dialect, readonly Migration[]>> = {
   sqlite: [
     migration('20261014120000_init', sqliteInit),
     migration('20261015120000_cloud_accounts', sqliteCloud),
+    migration('20261017120000_audit_log', sqliteAudit),
   ],
   postgresql: [
     migration('20261014120000_init', postgresInit),
     migration('20261015120000_cloud_accounts', postgresCloud),
+    migration('20261017120000_audit_log', postgresAudit),
   ],
 };
 
@@ -53,5 +57,7 @@ export const MOAT_TABLES = [
   'membership',
   'org_project',
   'rate_limit',
+  // The audit log (20261017120000_audit_log).
+  'audit_entry',
 ] as const;
 export const MIGRATIONS_TABLE = '_prisma_migrations';

@@ -218,3 +218,26 @@ model RateLimit {
 
   @@map("rate_limit")
 }
+
+/// A row of an organisation's audit log (SEC-53): append-only (triggers), hash-chained per
+/// organisation (libs/core audit/audit-log.ts). No relations on purpose: a cascade must not reach it.
+model AuditEntry {
+  organisationId String @map("organisation_id")
+  /// 1, 2, 3, … without gaps per organisation; a duplicate is a lost race and is retried.
+  seq            Int
+  /// ISO-8601 UTC with milliseconds and `Z`.
+  at             String
+  /// The account that did it.
+  actor          String
+  /// org.create | member.add_requested | member.change | member.remove | project.create | project.delete
+  action         String
+  target         String?
+  /// The details as canonical JSON (JCS): roles, flags and digests only.
+  details        String
+  prevHash       String @map("prev_hash")
+  /// SHA-256 hex over the canonical JSON of the row and prevHash.
+  hash           String @unique
+
+  @@id([organisationId, seq])
+  @@map("audit_entry")
+}

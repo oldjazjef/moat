@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { validateEnv } from '../config/env';
 import { CloudPersistenceModule } from '../persistence/cloud/cloud-persistence.module';
 import { Public } from './auth/auth.http';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { Clock, SystemClock } from './common/clock';
 import { TenancyModule } from './tenancy/tenancy.module';
@@ -40,6 +41,7 @@ class ClockModule {}
     ClockModule,
     CloudPersistenceModule,
     AuthModule,
+    AuditModule,
     TenancyModule,
   ],
   controllers: [CloudHealthController],

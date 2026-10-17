@@ -21,6 +21,7 @@ const EXPECTED: Record<Role, Action[]> = {
     'project:create',
     'project:delete',
     'billing:manage',
+    'audit:read',
   ],
   admin: [
     'org:read',
@@ -29,6 +30,7 @@ const EXPECTED: Record<Role, Action[]> = {
     'project:read',
     'project:create',
     'project:delete',
+    'audit:read',
   ],
   editor: ['org:read', 'members:read', 'project:read', 'project:create'],
   viewer: ['org:read', 'members:read', 'project:read'],

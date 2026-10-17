@@ -1,3 +1,5 @@
+import type { AuditRow } from '@moat/core';
+import { AuditLogPort, type AppendOutcome } from '../audit/ports/audit.ports';
 import {
   AccountRepositoryPort,
   type AccountRecord,
@@ -310,5 +312,34 @@ export class InMemoryOrgProjects extends OrgProjectRepositoryPort {
     if (i === -1) return Promise.resolve(false);
     this.projects.splice(i, 1);
     return Promise.resolve(true);
+  }
+}
+
+/** The audit log in memory; like the database it refuses a seq that is taken (a lost race). */
+export class InMemoryAudit extends AuditLogPort {
+  readonly rows: AuditRow[] = [];
+  head(organisationId: string): Promise<AuditRow | null> {
+    return Promise.resolve(
+      this.rows.filter((r) => r.organisationId === organisationId).at(-1) ??
+        null,
+    );
+  }
+  append(row: AuditRow): Promise<AppendOutcome> {
+    if (
+      this.rows.some(
+        (r) => r.organisationId === row.organisationId && r.seq === row.seq,
+      )
+    )
+      return Promise.resolve('conflict');
+    this.rows.push(row);
+    return Promise.resolve('ok');
+  }
+  list(organisationId: string, afterSeq: number, limit: number) {
+    return Promise.resolve(
+      this.rows
+        .filter((r) => r.organisationId === organisationId && r.seq > afterSeq)
+        .sort((a, b) => a.seq - b.seq)
+        .slice(0, limit),
+    );
   }
 }

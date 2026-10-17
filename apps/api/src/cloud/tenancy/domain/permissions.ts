@@ -19,6 +19,7 @@ export const ACTIONS = [
   'project:create',
   'project:delete',
   'billing:manage',
+  'audit:read',
   'release',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
@@ -34,6 +35,7 @@ const BY_ROLE: Readonly<Record<Role, ReadonlySet<Action>>> = {
     'project:create',
     'project:delete',
     'billing:manage',
+    'audit:read',
   ]),
   admin: new Set<Action>([
     'org:read',
@@ -42,6 +44,7 @@ const BY_ROLE: Readonly<Record<Role, ReadonlySet<Action>>> = {
     'project:read',
     'project:create',
     'project:delete',
+    'audit:read',
   ]),
   editor: new Set<Action>([
     'org:read',

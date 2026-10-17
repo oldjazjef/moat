@@ -5,7 +5,7 @@ Das Compose-Projekt startet **Moat Cloud** (API und Dashboard von einem Ursprung
 
 > **Ehrliche Grenzen (Stand: Cloud-Slice 3).** Es gibt noch **keine E-Mails** (keine Bestätigung der
 > Adresse, kein Passwort-Reset, keine Einladungen), **keine Gates in der Cloud** (Konten,
-> Organisationen und leere Projekte, sonst nichts), **keinen Audit-Log**, keine Passkeys/OIDC für
+> Organisationen und leere Projekte, sonst nichts), **keine Oberfläche für den Audit-Log** (es gibt ihn nur als API: `GET /api/orgs/:orgId/audit`), keine Passkeys/OIDC für
 > Konten und **kein TLS im Compose**: davor gehört ein Reverse Proxy. Das Image wurde in dieser
 > Umgebung geschrieben und gegen die gebauten Dateien geprüft, aber **nicht mit Docker gebaut**
 > (kein Docker-Daemon); die Basis-Images sind per Tag, nicht per Digest festgelegt.

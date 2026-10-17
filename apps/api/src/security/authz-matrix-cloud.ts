@@ -231,6 +231,57 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
     ),
   },
   {
+    // The audit log (SEC-53): Owner and Admin only.
+    method: 'GET',
+    path: '/api/orgs/:orgId/audit',
+    request: `${ORG}/audit`,
+    expect: guarded(
+      {
+        owner: 200,
+        admin: 200,
+        editor: 403,
+        viewer: 403,
+        billing: 403,
+        foreign: 404,
+      },
+      false,
+    ),
+  },
+  {
+    // The audit log (SEC-53): Owner and Admin only.
+    method: 'GET',
+    path: '/api/orgs/:orgId/audit/verify',
+    request: `${ORG}/audit/verify`,
+    expect: guarded(
+      {
+        owner: 200,
+        admin: 200,
+        editor: 403,
+        viewer: 403,
+        billing: 403,
+        foreign: 404,
+      },
+      false,
+    ),
+  },
+  {
+    // The audit log (SEC-53): Owner and Admin only.
+    method: 'GET',
+    path: '/api/orgs/:orgId/audit/export',
+    request: `${ORG}/audit/export`,
+    expect: guarded(
+      {
+        owner: 200,
+        admin: 200,
+        editor: 403,
+        viewer: 403,
+        billing: 403,
+        foreign: 404,
+      },
+      false,
+    ),
+  },
+  {
     // Owner and Admin only; the answer is 204 even for an unknown address (T-79).
     method: 'POST',
     path: '/api/orgs/:orgId/members',

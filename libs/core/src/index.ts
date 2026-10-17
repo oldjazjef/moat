@@ -334,6 +334,21 @@ export {
   type SyncCounts,
 } from './storage/history';
 export {
+  chainAudit,
+  verifyAudit,
+  eventValid as auditEventValid,
+  AuditEventError,
+  AUDIT_ACTIONS,
+  AUDIT_ROLES,
+  AUDIT_GENESIS_HASH,
+  MAX_AUDIT_DETAILS_LENGTH,
+  type AuditAction,
+  type AuditCheck,
+  type AuditEvent,
+  type AuditHead,
+  type AuditRow,
+} from './audit/audit-log';
+export {
   readLocalProject,
   planPush,
   planPull,
