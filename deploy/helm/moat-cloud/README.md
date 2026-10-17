@@ -4,15 +4,25 @@ Self-hosting on Kubernetes (FR-60, SEC-57). One Deployment (API and dashboard fr
 Service, optional Ingress, a default-deny NetworkPolicy and an optional PodDisruptionBudget. The
 database is an **external PostgreSQL**; this chart does not run one.
 
-> **Honest limits (chart 0.1.0).** Written and statically checked, **not installed on a cluster**,
-> and `helm lint` / `kubeconform` were not run in the authoring environment (no `helm`). CI is
-> expected to run both (CLAUDE.md, YAML standards). There is no published image yet: build it with
-> `deploy/docker/Dockerfile` and set `image.repository` and `image.tag`. No e-mail, no gates in the
-> Cloud, no audit log, no TLS termination (the ingress does that).
+> **Honest limits (chart 0.2.0).** Rendered with `helm lint`, `helm template` and kubeconform
+> (Kubernetes 1.30) in every supported configuration (`pnpm check:helm`, also in CI), but **never
+> installed on a cluster**. There is no published image before the first release: build it with
+> `deploy/docker/Dockerfile` (see `deploy/docker/README.md`) and set `image.repository` and
+> `image.tag`. No e-mail, no gates in the Cloud, no TLS termination (the ingress does that).
+
+## Database: PostgreSQL or SQLite
+
+| `database.provider`    | What                                                                                                                                                                                                                                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `postgresql` (default) | An external server, verified TLS; any number of replicas.                                                                                                                                                                                                                        |
+| `sqlite`               | One file on a PersistentVolumeClaim (`database.sqlite.*`): **one replica**, strategy `Recreate`. No database server to run; fine for a small installation. The claim is created with `helm.sh/resource-policy: keep` (it survives `helm uninstall`), or name an `existingClaim`. |
+
+With `sqlite` no database Secret is needed and the NetworkPolicy has no database egress; with
+`replicaCount` above 1 the chart refuses to render.
 
 ## Secrets (never in values.yaml)
 
-Three Secrets must exist before the install. The chart only references them by name.
+The account key must exist before the install (with `postgresql` also the database URL and the CA). The chart only references them by name.
 
 ```bash
 kubectl create secret generic moat-account-key \
@@ -24,7 +34,20 @@ kubectl create secret generic moat-database-ca --from-file=ca.crt=./db-ca.crt
 
 The Cloud refuses a database connection without verified TLS towards another host.
 
-## Install
+## Install (SQLite, the smallest setup)
+
+```bash
+kubectl create secret generic moat-account-key \
+  --from-literal=moat_account_key="$(head -c 32 /dev/urandom | basenc --base64url | tr -d '=')"
+helm install moat deploy/helm/moat-cloud \
+  --set image.repository=ghcr.io/<owner>/moat-cloud --set image.tag=<release> \
+  --set publicOrigin=https://moat.example.ch \
+  --set secrets.accountKey.name=moat-account-key \
+  --set database.provider=sqlite \
+  --set ingress.enabled=true --set ingress.host=moat.example.ch --set ingress.tlsSecretName=moat-tls
+```
+
+## Install (PostgreSQL)
 
 ```bash
 helm install moat deploy/helm/moat-cloud \

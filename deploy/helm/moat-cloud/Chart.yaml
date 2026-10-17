@@ -2,6 +2,6 @@ apiVersion: v2
 name: moat-cloud
 description: Moat Cloud (API and dashboard from one origin), self-hosted, with secure defaults
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: '0.0.0-dev'
 kubeVersion: '>=1.27.0-0'

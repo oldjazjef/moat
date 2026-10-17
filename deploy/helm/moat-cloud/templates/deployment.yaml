@@ -5,15 +5,24 @@ metadata:
   labels:
     {{- include "moat-cloud.labels" . | nindent 4 }}
 spec:
+  {{- if and (eq .Values.database.provider "sqlite") (gt (int .Values.replicaCount) 1) }}
+  {{- fail "database.provider=sqlite keeps one file: replicaCount must be 1 (use postgresql for more)" }}
+  {{- end }}
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       {{- include "moat-cloud.selectorLabels" . | nindent 6 }}
+  {{- if eq .Values.database.provider "sqlite" }}
+  # One writer on one file: the old pod stops before the new one starts.
+  strategy:
+    type: Recreate
+  {{- else }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 0
+  {{- end }}
   template:
     metadata:
       labels:
@@ -66,13 +75,15 @@ spec:
             - name: MOAT_TRUST_PROXY
               value: {{ .Values.trustProxy | quote }}
             - name: MOAT_DB_PROVIDER
-              value: postgresql
+              value: {{ .Values.database.provider | quote }}
             - name: MOAT_ACCOUNT_KEY_FILE
               value: /run/secrets/moat_account_key
+            {{- if eq .Values.database.provider "postgresql" }}
             - name: MOAT_DATABASE_URL_FILE
               value: /run/secrets/moat_database_url
             - name: NODE_EXTRA_CA_CERTS
               value: /run/secrets/db_ca.crt
+            {{- end }}
           ports:
             - name: http
               containerPort: 3000
@@ -119,6 +130,7 @@ spec:
                   items:
                     - key: {{ .Values.secrets.accountKey.key | quote }}
                       path: moat_account_key
+              {{- if eq .Values.database.provider "postgresql" }}
               - secret:
                   name: {{ required "secrets.databaseUrl.name is required" .Values.secrets.databaseUrl.name | quote }}
                   items:
@@ -129,13 +141,19 @@ spec:
                   items:
                     - key: {{ .Values.secrets.databaseCa.key | quote }}
                       path: db_ca.crt
+              {{- end }}
         - name: tmp
           emptyDir:
             medium: Memory
             sizeLimit: 16Mi
         - name: data
+          {{- if eq .Values.database.provider "sqlite" }}
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-data" (include "moat-cloud.fullname" .)) .Values.database.sqlite.existingClaim }}
+          {{- else }}
           emptyDir:
             sizeLimit: 64Mi
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

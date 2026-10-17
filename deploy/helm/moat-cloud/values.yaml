@@ -20,6 +20,16 @@ publicOrigin: ''
 # look like the proxy and the per-address rate limit would hit everybody at once.
 trustProxy: 1
 
+# The database. `sqlite` = one file on a PersistentVolumeClaim: ONE replica, strategy Recreate (no
+# server to run; fine for a small installation). `postgresql` = an external server (more replicas).
+database:
+  provider: postgresql
+  sqlite:
+    # An existing claim, or a new one of this size (storageClassName: the cluster's default if empty).
+    existingClaim: ''
+    size: 1Gi
+    storageClassName: ''
+
 # Names of existing Secrets and the key inside each. Mounted as files below /run/secrets.
 secrets:
   accountKey:
@@ -28,7 +38,7 @@ secrets:
   databaseUrl:
     name: ''
     key: moat_database_url
-  # The CA that signed the database's certificate (the Cloud connects with verified TLS).
+  # PostgreSQL only: the URL, and the CA that signed the database's certificate (verified TLS).
   databaseCa:
     name: ''
     key: ca.crt
