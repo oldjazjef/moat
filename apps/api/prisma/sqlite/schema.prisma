@@ -204,6 +204,8 @@ model OrgProject {
   name           String
   createdAt      String       @map("created_at")
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  config         CloudConfig?
+  gates          CloudGate[]
 
   @@index([organisationId])
   @@map("org_project")
@@ -229,7 +231,7 @@ model AuditEntry {
   at             String
   /// The account that did it.
   actor          String
-  /// org.create | member.add_requested | member.change | member.remove | project.create | project.delete
+  /// org.create | member.add_requested | member.change | member.remove | project.create | project.delete | config.edit | gate.add | gate.pull_token | secret.set | bundle.sign | bundle.upload
   action         String
   target         String?
   /// The details as canonical JSON (JCS): roles, flags and digests only.
@@ -240,4 +242,68 @@ model AuditEntry {
 
   @@id([organisationId, seq])
   @@map("audit_entry")
+}
+
+/// A Cloud project's moat.yaml (text, never a secret). `revision` is the optimistic lock.
+model CloudConfig {
+  projectId String     @id @map("project_id")
+  text      String
+  revision  Int
+  updatedAt String     @map("updated_at")
+  project   OrgProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("cloud_config")
+}
+
+/// A gate of a Cloud project. managed = trust mode 0 (Moat Cloud signs with its installation key);
+/// signed = modes 1 to 3 (the customer's public key is pinned, the Cloud only stores and serves).
+model CloudGate {
+  projectId     String       @map("project_id")
+  name          String
+  gateId        String       @map("gate_id")
+  /// X25519 public key the gate printed at install (base64url): what secrets are sealed to.
+  boxKey        String       @map("box_key")
+  /// managed | signed
+  mode          String
+  signerKid     String?      @map("signer_kid")
+  signerKey     String?      @map("signer_key")
+  /// SHA-256 hex of the token in the gate's pull address; the token itself is never stored.
+  pullTokenHash String?      @unique @map("pull_token_hash")
+  createdAt     String       @map("created_at")
+  project       OrgProject   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  secrets       CloudSecret[]
+  bundles       CloudBundle[]
+
+  @@id([projectId, name])
+  @@map("cloud_gate")
+}
+
+/// A sealed secret (ciphertext only, SEC-31).
+model CloudSecret {
+  projectId     String    @map("project_id")
+  gate          String
+  name          String
+  secretVersion Int       @map("secret_version")
+  /// The sealed secret as JSON.
+  text          String
+  updatedAt     String    @map("updated_at")
+  cloudGate     CloudGate @relation(fields: [projectId, gate], references: [projectId, name], onDelete: Cascade)
+
+  @@id([projectId, gate, name])
+  @@map("cloud_secret")
+}
+
+/// A signed bundle as signed; never replaced (SEC-04).
+model CloudBundle {
+  projectId String    @map("project_id")
+  gate      String
+  version   Int
+  /// SHA-256 hex of the text.
+  digest    String
+  text      String
+  createdAt String    @map("created_at")
+  cloudGate CloudGate @relation(fields: [projectId, gate], references: [projectId, name], onDelete: Cascade)
+
+  @@id([projectId, gate, version])
+  @@map("cloud_bundle")
 }

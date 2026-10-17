@@ -31,6 +31,7 @@ export function devEnvironment(
     MOAT_DATA_DIR: makeDataDir,
     MOAT_PUBLIC_ORIGIN: () => 'http://localhost:4200',
     MOAT_ACCOUNT_KEY: makeKey,
+    MOAT_SIGNING_KEY: makeKey,
     MOAT_DB_PROVIDER: () => 'sqlite',
     MOAT_COOKIE_SECURE: () => 'false',
     MOAT_PASSWORD_COST: () => 'fast',

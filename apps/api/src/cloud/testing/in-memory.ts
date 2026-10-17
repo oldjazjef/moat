@@ -1,4 +1,17 @@
 import type { AuditRow } from '@moat/core';
+import {
+  type AddBundleOutcome,
+  type AddGateOutcome,
+  type BundleRecord,
+  CloudProjectStorePort,
+  type ConfigRecord,
+  type GateRecord,
+  MAX_GATES,
+  MAX_SECRETS,
+  type PutSecretOutcome,
+  type SecretRecord,
+  type SetConfigOutcome,
+} from '../gates/ports/gates.ports';
 import { AuditLogPort, type AppendOutcome } from '../audit/ports/audit.ports';
 import {
   AccountRepositoryPort,
@@ -341,5 +354,120 @@ export class InMemoryAudit extends AuditLogPort {
         .sort((a, b) => a.seq - b.seq)
         .slice(0, limit),
     );
+  }
+}
+
+/** Config, gates, secrets and bundles in memory, with the database's atomic rules. */
+export class InMemoryCloudStore extends CloudProjectStorePort {
+  readonly configs = new Map<string, ConfigRecord>();
+  readonly gates: GateRecord[] = [];
+  readonly secrets: SecretRecord[] = [];
+  readonly bundles: BundleRecord[] = [];
+
+  getConfig(projectId: string) {
+    return Promise.resolve(this.configs.get(projectId) ?? null);
+  }
+  setConfig(
+    projectId: string,
+    text: string,
+    expectedRevision: number,
+    at: string,
+  ): Promise<SetConfigOutcome> {
+    const current = this.configs.get(projectId);
+    if ((current?.revision ?? 0) !== expectedRevision)
+      return Promise.resolve('conflict');
+    this.configs.set(projectId, {
+      projectId,
+      text,
+      revision: expectedRevision + 1,
+      updatedAt: at,
+    });
+    return Promise.resolve('ok');
+  }
+  listGates(projectId: string) {
+    return Promise.resolve(this.gates.filter((g) => g.projectId === projectId));
+  }
+  findGate(projectId: string, name: string) {
+    return Promise.resolve(
+      this.gates.find((g) => g.projectId === projectId && g.name === name) ??
+        null,
+    );
+  }
+  addGate(gate: GateRecord): Promise<AddGateOutcome> {
+    if (
+      this.gates.some(
+        (g) => g.projectId === gate.projectId && g.name === gate.name,
+      )
+    )
+      return Promise.resolve('exists');
+    if (
+      this.gates.filter((g) => g.projectId === gate.projectId).length >=
+      MAX_GATES
+    )
+      return Promise.resolve('limit');
+    this.gates.push(gate);
+    return Promise.resolve('ok');
+  }
+  setPullTokenHash(projectId: string, name: string, hash: string) {
+    const i = this.gates.findIndex(
+      (g) => g.projectId === projectId && g.name === name,
+    );
+    const gate = this.gates[i];
+    if (!gate) return Promise.resolve(false);
+    this.gates[i] = { ...gate, pullTokenHash: hash };
+    return Promise.resolve(true);
+  }
+  findGateByPullTokenHash(hash: string) {
+    return Promise.resolve(
+      this.gates.find((g) => g.pullTokenHash === hash) ?? null,
+    );
+  }
+  listSecrets(projectId: string, gate: string) {
+    return Promise.resolve(
+      this.secrets.filter((s) => s.projectId === projectId && s.gate === gate),
+    );
+  }
+  putSecret(secret: SecretRecord): Promise<PutSecretOutcome> {
+    const i = this.secrets.findIndex(
+      (s) =>
+        s.projectId === secret.projectId &&
+        s.gate === secret.gate &&
+        s.name === secret.name,
+    );
+    const current = this.secrets[i];
+    if (current) {
+      if (current.secretVersion >= secret.secretVersion)
+        return Promise.resolve('stale');
+      this.secrets[i] = secret;
+      return Promise.resolve('ok');
+    }
+    if (
+      this.secrets.filter(
+        (s) => s.projectId === secret.projectId && s.gate === secret.gate,
+      ).length >= MAX_SECRETS
+    )
+      return Promise.resolve('limit');
+    this.secrets.push(secret);
+    return Promise.resolve('ok');
+  }
+  latestBundle(projectId: string, gate: string) {
+    return Promise.resolve(
+      this.bundles
+        .filter((b) => b.projectId === projectId && b.gate === gate)
+        .sort((a, b) => b.version - a.version)[0] ?? null,
+    );
+  }
+  addBundle(bundle: BundleRecord): Promise<AddBundleOutcome> {
+    if (
+      this.bundles.some(
+        (b) =>
+          b.projectId === bundle.projectId &&
+          b.gate === bundle.gate &&
+          b.version === bundle.version,
+      )
+    )
+      return Promise.resolve('exists');
+    this.bundles.push(bundle);
+    return Promise.resolve('ok');
   }
 }

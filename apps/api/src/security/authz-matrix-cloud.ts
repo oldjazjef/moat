@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto';
+import { NEW_PROJECT_CONFIG } from '@moat/core';
+
 /**
  * The authorization matrix of the Cloud (`AUTH_MODE=cloud`, SEC-50, SEC-52, SEC-70 ff.): every
  * route with the answer each identity must get. `authz-matrix-cloud.spec.ts` boots the real Cloud
@@ -62,6 +65,30 @@ export const CLOUD_IDS = {
   /** A Viewer of organisation A that the member routes act on. */
   target: pad('targetViewer'),
 } as const;
+/**
+ * The gate every cell finds in project A (managed, `site`), and the values a new gate is enrolled
+ * with: `fingerprint` is the box key's `MOAT-…` (spec: `gates.handlers.spec.ts` recomputes it).
+ */
+export const CLOUD_GATE = {
+  name: 'site',
+  gateId: pad('gateSite'),
+  boxKey: 'BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc',
+  fingerprint: 'MOAT-DBPU-7GD7-RRNX-PEUM-XXOL-6LU7-34',
+} as const;
+/** A sealed secret of the right shape (the Cloud cannot open it, so a fixed one will do). */
+export const CLOUD_SEALED = {
+  v: 1,
+  alg: 'x25519-blake2b-xchacha20poly1305',
+  secretVersion: 1,
+  epk: 'B'.repeat(43),
+  nonce: 'N'.repeat(32),
+  ct: 'C'.repeat(40),
+} as const;
+/** The moat.yaml every cell finds in project A, and its hash (what an edit is based on). */
+export const CLOUD_CONFIG_TEXT = NEW_PROJECT_CONFIG;
+export const CLOUD_CONFIG_HASH = createHash('sha256')
+  .update(CLOUD_CONFIG_TEXT, 'utf8')
+  .digest('hex');
 export const CLOUD_TARGET_EMAIL = 'target@example.ch';
 export const CLOUD_MATRIX_PASSWORD = 'a perfectly long test password';
 
@@ -143,6 +170,8 @@ function open(status: number, unsafe: boolean): CloudAuthzEntry['expect'] {
 
 const ORG = `/api/orgs/${CLOUD_IDS.orgA}`;
 const MEMBER = `${ORG}/members/${CLOUD_IDS.target}`;
+const PROJECT = `${ORG}/projects/${CLOUD_IDS.projectA}`;
+const GATE = `${PROJECT}/gates/${CLOUD_GATE.name}`;
 
 export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
   { method: 'GET', path: '/api/health', expect: open(200, false) },
@@ -490,5 +519,218 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
       },
       true,
     ),
+  },
+  {
+    method: 'GET',
+    path: '/api/orgs/:orgId/projects/:projectId/config',
+    request: `${PROJECT}/config`,
+    expect: guarded(
+      {
+        owner: 200,
+        admin: 200,
+        editor: 200,
+        viewer: 200,
+        billing: 403,
+        foreign: 404,
+      },
+      false,
+    ),
+  },
+  {
+    name: 'replace moat.yaml',
+    method: 'PUT',
+    path: '/api/orgs/:orgId/projects/:projectId/config',
+    request: `${PROJECT}/config`,
+    body: { text: `${CLOUD_CONFIG_TEXT}# changed\n`, base: CLOUD_CONFIG_HASH },
+    expect: guarded(
+      {
+        owner: 200,
+        admin: 200,
+        editor: 200,
+        viewer: 403,
+        billing: 403,
+        foreign: 404,
+      },
+      true,
+    ),
+  },
+  {
+    method: 'POST',
+    path: '/api/orgs/:orgId/projects/:projectId/config/edits',
+    request: `${PROJECT}/config/edits`,
+    body: {
+      base: CLOUD_CONFIG_HASH,
+      op: 'addEnvironment',
+      environment: 'staging',
+    },
+    expect: guarded(
+      {
+        owner: 200,
+        admin: 200,
+        editor: 200,
+        viewer: 403,
+        billing: 403,
+        foreign: 404,
+      },
+      true,
+    ),
+  },
+  {
+    method: 'GET',
+    path: '/api/orgs/:orgId/projects/:projectId/gates',
+    request: `${PROJECT}/gates`,
+    expect: guarded(
+      {
+        owner: 200,
+        admin: 200,
+        editor: 200,
+        viewer: 200,
+        billing: 403,
+        foreign: 404,
+      },
+      false,
+    ),
+  },
+  {
+    name: 'enrol a gate: Owner and Admin only',
+    method: 'POST',
+    path: '/api/orgs/:orgId/projects/:projectId/gates',
+    request: `${PROJECT}/gates`,
+    body: {
+      name: 'shop',
+      gateId: pad('gateShop'),
+      boxKey: CLOUD_GATE.boxKey,
+      fingerprint: CLOUD_GATE.fingerprint,
+    },
+    expect: guarded(
+      {
+        owner: 201,
+        admin: 201,
+        editor: 403,
+        viewer: 403,
+        billing: 403,
+        foreign: 404,
+      },
+      true,
+    ),
+  },
+  {
+    method: 'POST',
+    path: '/api/orgs/:orgId/projects/:projectId/gates/:gate/pull-address',
+    request: `${GATE}/pull-address`,
+    expect: guarded(
+      {
+        owner: 201,
+        admin: 201,
+        editor: 403,
+        viewer: 403,
+        billing: 403,
+        foreign: 404,
+      },
+      true,
+    ),
+  },
+  {
+    method: 'GET',
+    path: '/api/orgs/:orgId/projects/:projectId/gates/:gate/secrets',
+    request: `${GATE}/secrets`,
+    expect: guarded(
+      {
+        owner: 200,
+        admin: 200,
+        editor: 200,
+        viewer: 200,
+        billing: 403,
+        foreign: 404,
+      },
+      false,
+    ),
+  },
+  {
+    method: 'PUT',
+    path: '/api/orgs/:orgId/projects/:projectId/gates/:gate/secrets/:name',
+    request: `${GATE}/secrets/api-key`,
+    body: { sealed: CLOUD_SEALED },
+    expect: guarded(
+      {
+        owner: 200,
+        admin: 200,
+        editor: 200,
+        viewer: 403,
+        billing: 403,
+        foreign: 404,
+      },
+      true,
+    ),
+  },
+  {
+    name: 'preview',
+    method: 'GET',
+    path: '/api/orgs/:orgId/projects/:projectId/gates/:gate/release',
+    request: `${GATE}/release`,
+    expect: guarded(
+      {
+        owner: 200,
+        admin: 200,
+        editor: 200,
+        viewer: 200,
+        billing: 403,
+        foreign: 404,
+      },
+      false,
+    ),
+  },
+  {
+    // The separate sign/release permission (SEC-52): a role is not enough, the flag decides. A wrong
+    // digest answers 409 to whoever may sign (nothing is signed), 403 to everybody else.
+    name: 'sign the next bundle: needs the release permission',
+    method: 'POST',
+    path: '/api/orgs/:orgId/projects/:projectId/gates/:gate/releases',
+    request: `${GATE}/releases`,
+    body: { digest: '0'.repeat(64) },
+    expect: {
+      ...guarded(
+        {
+          owner: 409,
+          admin: 403,
+          editor: 409,
+          viewer: 403,
+          billing: 403,
+          foreign: 404,
+        },
+        true,
+      ),
+      editorANoRelease: 403,
+    },
+  },
+  {
+    // A bundle for a gate whose customer holds the key is uploaded, never signed here: this gate is
+    // managed, so whoever may release gets 422 `not_signed`.
+    name: 'upload a bundle: needs the release permission',
+    method: 'POST',
+    path: '/api/orgs/:orgId/projects/:projectId/gates/:gate/bundles',
+    request: `${GATE}/bundles`,
+    body: { envelope: '{}' },
+    expect: {
+      ...guarded(
+        {
+          owner: 422,
+          admin: 403,
+          editor: 422,
+          viewer: 403,
+          billing: 403,
+          foreign: 404,
+        },
+        true,
+      ),
+      editorANoRelease: 403,
+    },
+  },
+  {
+    // A gate's pull: no session, the address is the credential. An unknown token is a 404 for all.
+    method: 'GET',
+    path: '/api/pull/:token',
+    request: `/api/pull/${'T'.repeat(43)}`,
+    expect: open(404, false),
   },
 ];

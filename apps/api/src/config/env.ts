@@ -109,6 +109,18 @@ export class Env {
   @IsIn(['standard', 'fast'])
   MOAT_PASSWORD_COST: 'standard' | 'fast' = 'standard';
 
+  /**
+   * 32 random bytes (an Ed25519 seed), base64url without padding: the key Moat Cloud signs the
+   * bundles of **managed** gates with (trust mode 0, ANFORDERUNGEN.md §2.1). Optional: without it
+   * the installation has no managed gates and still stores and serves what customers sign
+   * themselves. A gate pins the matching public key at enrolment; a replaced key needs a local
+   * confirmation at every gate (SEC-06).
+   */
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[A-Za-z0-9_-]{43}$/)
+  MOAT_SIGNING_KEY?: string;
+
   /** How many reverse proxies sit in front (X-Forwarded-For hops); 0 = none, the socket address. */
   @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
   @IsOptional()

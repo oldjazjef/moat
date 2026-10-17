@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { CloudProjectStorePort } from '../../cloud/gates/ports/gates.ports';
 import { AuditLogPort } from '../../cloud/audit/ports/audit.ports';
 import {
   AccountRepositoryPort,
@@ -12,6 +13,7 @@ import {
 } from '../../cloud/tenancy/ports/tenancy.ports';
 import type { Env } from '../../config/env';
 import { CloudDatabase } from './cloud-database';
+import { PrismaCloudProjectStore } from './prisma-gates.repository';
 import { PrismaAuditLogRepository } from './prisma-audit.repository';
 import {
   PrismaAccountRepository,
@@ -46,6 +48,7 @@ import {
     },
     { provide: OrgProjectRepositoryPort, useClass: PrismaOrgProjectRepository },
     { provide: AuditLogPort, useClass: PrismaAuditLogRepository },
+    { provide: CloudProjectStorePort, useClass: PrismaCloudProjectStore },
   ],
   exports: [
     CloudDatabase,
@@ -55,6 +58,7 @@ import {
     OrganisationRepositoryPort,
     OrgProjectRepositoryPort,
     AuditLogPort,
+    CloudProjectStorePort,
   ],
 })
 export class CloudPersistenceModule {}

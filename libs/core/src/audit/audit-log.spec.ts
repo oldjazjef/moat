@@ -40,6 +40,28 @@ const EVENTS: AuditEvent[] = [
   },
   { action: 'project.create', target: TARGET, details: {} },
   { action: 'project.delete', target: TARGET, details: {} },
+  { action: 'config.edit', target: TARGET, details: { op: 'addRoute' } },
+  {
+    action: 'gate.add',
+    target: TARGET,
+    details: { gate: 'site', mode: 'managed' },
+  },
+  { action: 'gate.pull_token', target: TARGET, details: { gate: 'site' } },
+  {
+    action: 'secret.set',
+    target: TARGET,
+    details: { gate: 'site', name: 'hubspot-token', secretVersion: 2 },
+  },
+  {
+    action: 'bundle.sign',
+    target: TARGET,
+    details: { gate: 'site', version: 3, sha256: SHA, kid: 'K'.repeat(22) },
+  },
+  {
+    action: 'bundle.upload',
+    target: TARGET,
+    details: { gate: 'site', version: 4, sha256: SHA, kid: 'K'.repeat(22) },
+  },
 ];
 
 async function build(org = ORG): Promise<AuditRow[]> {
@@ -54,16 +76,18 @@ async function build(org = ORG): Promise<AuditRow[]> {
 describe('audit log chain (SEC-53)', () => {
   it('chains every action from the genesis hash and verifies', async () => {
     const rows = await build();
-    expect(rows.map((r) => r.seq)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(rows.map((r) => r.seq)).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    ]);
     expect(rows[0]?.prevHash).toBe(AUDIT_GENESIS_HASH);
     expect(rows[1]?.prevHash).toBe(rows[0]?.hash);
     expect(await verifyAudit(ORG, rows, null)).toEqual({
       status: 'intact',
-      entries: 6,
+      entries: 12,
     });
     const last = rows.at(-1);
     expect(
-      await verifyAudit(ORG, rows, { seq: 6, hash: last?.hash ?? '' }),
+      await verifyAudit(ORG, rows, { seq: 12, hash: last?.hash ?? '' }),
     ).toMatchObject({ status: 'intact' });
   });
 
@@ -107,7 +131,7 @@ describe('audit log chain (SEC-53)', () => {
 
   it('a rewritten chain with valid hashes still fails against the head, and a cut tail too', async () => {
     const rows = await build();
-    const head = { seq: 6, hash: rows[5]?.hash ?? '' };
+    const head = { seq: 12, hash: rows[11]?.hash ?? '' };
     expect(await verifyAudit(ORG, rows.slice(0, 4), head)).toMatchObject({
       status: 'broken',
       seq: null,
@@ -157,6 +181,27 @@ describe('audit log chain (SEC-53)', () => {
       ['member.remove', TARGET, { role: 'admin', self: 'no' }],
       ['member.change', TARGET, { fromRole: 'viewer', toRole: 'viewer' }],
       ['unknown.action', null, {}],
+      ['config.edit', TARGET, { op: 'add route' }],
+      ['config.edit', TARGET, { op: 'addRoute', value: 'x' }],
+      ['gate.add', TARGET, { gate: 'Site', mode: 'managed' }],
+      ['gate.add', TARGET, { gate: 'site', mode: 'cloud' }],
+      ['gate.pull_token', TARGET, { gate: 'site', token: 'abc' }],
+      ['secret.set', TARGET, { gate: 'site', name: 'x', secretVersion: 0 }],
+      [
+        'secret.set',
+        TARGET,
+        { gate: 'site', name: 'x', secretVersion: 1, ct: 'abc' },
+      ],
+      [
+        'bundle.sign',
+        TARGET,
+        { gate: 'site', version: 1, sha256: 'zz', kid: 'K'.repeat(22) },
+      ],
+      [
+        'bundle.upload',
+        TARGET,
+        { gate: 'site', version: 1, sha256: SHA, kid: 'short' },
+      ],
     ];
     for (const [action, target, details] of bad)
       expect(eventValid(action, target, details), action).toBe(false);

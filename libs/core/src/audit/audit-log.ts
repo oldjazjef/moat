@@ -22,6 +22,12 @@ export const AUDIT_ACTIONS = [
   'member.remove',
   'project.create',
   'project.delete',
+  'config.edit',
+  'gate.add',
+  'gate.pull_token',
+  'secret.set',
+  'bundle.sign',
+  'bundle.upload',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -76,6 +82,48 @@ export type AuditEvent =
       /** The project's id. */
       readonly target: string;
       readonly details: Record<never, never>;
+    }
+  | {
+      /** moat.yaml of a project changed: the op's name (the closed list of edits), never a value. */
+      readonly action: 'config.edit';
+      readonly target: string;
+      readonly details: { readonly op: string };
+    }
+  | {
+      readonly action: 'gate.add';
+      readonly target: string;
+      readonly details: {
+        readonly gate: string;
+        readonly mode: 'managed' | 'signed';
+      };
+    }
+  | {
+      /** A gate's pull address was created or replaced (the token itself is never recorded). */
+      readonly action: 'gate.pull_token';
+      readonly target: string;
+      readonly details: { readonly gate: string };
+    }
+  | {
+      /** A sealed secret was stored: its name and version, never the ciphertext. */
+      readonly action: 'secret.set';
+      readonly target: string;
+      readonly details: {
+        readonly gate: string;
+        readonly name: string;
+        readonly secretVersion: number;
+      };
+    }
+  | {
+      /** `bundle.sign`: Moat Cloud signed it (trust mode 0); `bundle.upload`: signed elsewhere. */
+      readonly action: 'bundle.sign' | 'bundle.upload';
+      readonly target: string;
+      readonly details: {
+        readonly gate: string;
+        readonly version: number;
+        /** SHA-256 hex of the bundle file. */
+        readonly sha256: string;
+        readonly kid: string;
+      };
     };
 
 export interface AuditRow {
@@ -114,6 +162,8 @@ export const AUDIT_GENESIS_HASH = '0'.repeat(64);
 export const MAX_AUDIT_DETAILS_LENGTH = 1024;
 const HEX64 = /^[0-9a-f]{64}$/;
 const ID = /^[A-Za-z0-9_-]{22}$/;
+const NAME = /^[a-z][a-z0-9-]{0,62}$/;
+const OP = /^[a-zA-Z]{1,40}$/;
 const AT = /^\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-6]\d\.\d{3}Z$/;
 
 export class AuditEventError extends Error {
@@ -265,6 +315,9 @@ function parseDetails(text: string): Record<string, unknown> | null {
   }
 }
 
+const name = (value: unknown): boolean =>
+  typeof value === 'string' && NAME.test(value);
+
 const isRole = (value: unknown): value is AuditRole =>
   typeof value === 'string' &&
   (AUDIT_ROLES as readonly string[]).includes(value);
@@ -311,6 +364,43 @@ export function eventValid(
         exactly('role', 'self') &&
         isRole(d['role']) &&
         typeof d['self'] === 'boolean'
+      );
+    case 'config.edit':
+      return (
+        id && exactly('op') && typeof d['op'] === 'string' && OP.test(d['op'])
+      );
+    case 'gate.add':
+      return (
+        id &&
+        exactly('gate', 'mode') &&
+        name(d['gate']) &&
+        (d['mode'] === 'managed' || d['mode'] === 'signed')
+      );
+    case 'gate.pull_token':
+      return id && exactly('gate') && name(d['gate']);
+    case 'secret.set':
+      return (
+        id &&
+        exactly('gate', 'name', 'secretVersion') &&
+        name(d['gate']) &&
+        name(d['name']) &&
+        typeof d['secretVersion'] === 'number' &&
+        Number.isSafeInteger(d['secretVersion']) &&
+        d['secretVersion'] >= 1
+      );
+    case 'bundle.sign':
+    case 'bundle.upload':
+      return (
+        id &&
+        exactly('gate', 'version', 'sha256', 'kid') &&
+        name(d['gate']) &&
+        typeof d['version'] === 'number' &&
+        Number.isSafeInteger(d['version']) &&
+        d['version'] >= 1 &&
+        typeof d['sha256'] === 'string' &&
+        HEX64.test(d['sha256']) &&
+        typeof d['kid'] === 'string' &&
+        ID.test(d['kid'])
       );
     default:
       return false;

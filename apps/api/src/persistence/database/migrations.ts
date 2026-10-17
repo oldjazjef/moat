@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
+import postgresGates from '../../../prisma/postgresql/migrations/20261018120000_cloud_gates/migration.sql?raw';
 import postgresInit from '../../../prisma/postgresql/migrations/20261014120000_init/migration.sql?raw';
 import postgresCloud from '../../../prisma/postgresql/migrations/20261015120000_cloud_accounts/migration.sql?raw';
 import postgresAudit from '../../../prisma/postgresql/migrations/20261017120000_audit_log/migration.sql?raw';
+import sqliteGates from '../../../prisma/sqlite/migrations/20261018120000_cloud_gates/migration.sql?raw';
 import sqliteAudit from '../../../prisma/sqlite/migrations/20261017120000_audit_log/migration.sql?raw';
 import sqliteInit from '../../../prisma/sqlite/migrations/20261014120000_init/migration.sql?raw';
 import sqliteCloud from '../../../prisma/sqlite/migrations/20261015120000_cloud_accounts/migration.sql?raw';
@@ -33,11 +35,13 @@ export const MIGRATIONS: Readonly<Record<Dialect, readonly Migration[]>> = {
     migration('20261014120000_init', sqliteInit),
     migration('20261015120000_cloud_accounts', sqliteCloud),
     migration('20261017120000_audit_log', sqliteAudit),
+    migration('20261018120000_cloud_gates', sqliteGates),
   ],
   postgresql: [
     migration('20261014120000_init', postgresInit),
     migration('20261015120000_cloud_accounts', postgresCloud),
     migration('20261017120000_audit_log', postgresAudit),
+    migration('20261018120000_cloud_gates', postgresGates),
   ],
 };
 
@@ -59,5 +63,10 @@ export const MOAT_TABLES = [
   'rate_limit',
   // The audit log (20261017120000_audit_log).
   'audit_entry',
+  // Cloud gates (20261018120000_cloud_gates).
+  'cloud_config',
+  'cloud_gate',
+  'cloud_secret',
+  'cloud_bundle',
 ] as const;
 export const MIGRATIONS_TABLE = '_prisma_migrations';

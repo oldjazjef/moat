@@ -6,6 +6,7 @@ import { Public } from './auth/auth.http';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { Clock, SystemClock } from './common/clock';
+import { GatesModule } from './gates/gates.module';
 import { TenancyModule } from './tenancy/tenancy.module';
 
 @Controller('health')
@@ -42,6 +43,7 @@ class ClockModule {}
     CloudPersistenceModule,
     AuthModule,
     AuditModule,
+    GatesModule,
     TenancyModule,
   ],
   controllers: [CloudHealthController],

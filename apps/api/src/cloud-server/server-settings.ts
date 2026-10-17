@@ -58,6 +58,7 @@ export function assertRunMode(env: EnvironmentMap): void {
 export const SECRET_FILE_VARIABLES = [
   'MOAT_ACCOUNT_KEY',
   'MOAT_DATABASE_URL',
+  'MOAT_SIGNING_KEY',
 ] as const;
 
 /**

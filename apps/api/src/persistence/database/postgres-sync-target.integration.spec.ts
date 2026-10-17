@@ -128,6 +128,8 @@ describe.skipIf(process.env['MOAT_TEST_POSTGRES'] === 'off')(
       expect(applied.rows).toEqual([
         { migration_name: '20261014120000_init' },
         { migration_name: '20261015120000_cloud_accounts' },
+        { migration_name: '20261017120000_audit_log' },
+        { migration_name: '20261018120000_cloud_gates' },
       ]);
     });
 
