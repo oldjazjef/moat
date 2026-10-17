@@ -22,6 +22,13 @@ else
   chmod 0444 secrets/moat_account_key
   echo "created  secrets/moat_account_key  (keep a copy; without it TOTP accounts cannot be opened)"
 fi
+if [ -e secrets/moat_signing_key ]; then
+  echo "kept     secrets/moat_signing_key"
+else
+  head -c 32 /dev/urandom | base64 | tr '+/' '-_' | tr -d '=\n' > secrets/moat_signing_key
+  chmod 0444 secrets/moat_signing_key
+  echo "created  secrets/moat_signing_key  (Moat Cloud signs the bundles of managed gates with it; gates pin its public key, so keep a copy)"
+fi
 if [ -e .env ]; then
   echo "kept     .env"
 else

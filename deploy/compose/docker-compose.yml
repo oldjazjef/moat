@@ -27,11 +27,13 @@ services:
       MOAT_TRUST_PROXY: ${MOAT_TRUST_PROXY:-1}
       MOAT_DB_PROVIDER: postgresql
       MOAT_ACCOUNT_KEY_FILE: /run/secrets/moat_account_key
+      MOAT_SIGNING_KEY_FILE: /run/secrets/moat_signing_key
       MOAT_DATABASE_URL_FILE: /run/secrets/moat_database_url
       # The CA that signed the database's certificate (init-secrets.sh), for the verified TLS.
       NODE_EXTRA_CA_CERTS: /run/secrets/db_ca
     secrets:
       - moat_account_key
+      - moat_signing_key
       - moat_database_url
       - db_ca
     ports:
@@ -124,6 +126,8 @@ volumes:
 secrets:
   moat_account_key:
     file: ./secrets/moat_account_key
+  moat_signing_key:
+    file: ./secrets/moat_signing_key
   moat_database_url:
     file: ./secrets/moat_database_url
   db_password:

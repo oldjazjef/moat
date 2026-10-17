@@ -90,3 +90,19 @@ jobs:
         run: |
           docker build -f deploy/docker/Dockerfile -t moat-cloud:ci .
           sh scripts/smoke-image.sh moat-cloud:ci
+      # The flows need libsodium (pnpm install) and, for the real gate, PHP and the built gate file.
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.2'
+          extensions: none, ctype, tokenizer, sodium, curl, json, hash
+          coverage: none
+          tools: none
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:gate-php
+      - name: A real flow against the image, and the real PHP gate against the Cloud
+        run: sh scripts/smoke-flow-image.sh moat-cloud:ci

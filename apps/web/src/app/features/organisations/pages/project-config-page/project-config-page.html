@@ -1,0 +1,103 @@
+<mt-page-header
+  [title]="service.project.hasValue() ? service.project.value().project.name : ('configPage.title' | translate)"
+  [subtitle]="service.scope.name()"
+>
+  <mt-help-link section="cloudGates" />
+</mt-page-header>
+
+<mt-org-tabs [orgId]="orgId()" />
+
+@if (service.scope.entry.error() || service.project.error()) {
+<p class="mt-note" role="alert" data-not-found>
+  <ng-icon
+    name="lucideTriangleAlert"
+    size="16"
+    aria-hidden="true"
+    class="mt-0.5 shrink-0"
+  />
+  <span>{{ 'errors.api.not_found' | translate }}</span>
+</p>
+} @else if (service.scope.access()) {
+<mt-project-tabs [orgId]="orgId()" [projectId]="projectId()" />
+<div class="flex flex-col gap-4">
+  <p class="text-muted-foreground max-w-3xl text-sm">
+    {{ 'configPage.description' | translate }}
+  </p>
+  @if (service.config.error()) {
+  <p class="mt-note" role="alert" data-load-error>
+    <ng-icon
+      name="lucideTriangleAlert"
+      size="16"
+      aria-hidden="true"
+      class="mt-0.5 shrink-0"
+    />
+    <span>{{ 'configPage.loadError' | translate }}</span>
+  </p>
+  } @else if (service.config.hasValue()) { @if (service.error(); as code) {
+  <p class="mt-note" role="alert" data-save-error>
+    <ng-icon
+      name="lucideTriangleAlert"
+      size="16"
+      aria-hidden="true"
+      class="mt-0.5 shrink-0"
+    />
+    <span>{{ errorKey(code) | translate }}</span>
+  </p>
+  @if (code === 'config_changed') {
+  <div>
+    <button
+      hlmBtn
+      variant="outline"
+      type="button"
+      data-reload
+      (click)="service.reload()"
+    >
+      {{ 'configPage.reload' | translate }}
+    </button>
+  </div>
+  } } @if (service.config.value().text === null) {
+  <p class="text-muted-foreground text-sm" data-no-config>
+    {{ 'configPage.empty' | translate }}
+  </p>
+  }
+  <label class="sr-only" for="config-text"
+    >{{ 'configPage.editor' | translate }}</label
+  >
+  <textarea
+    id="config-text"
+    class="mt-textarea"
+    spellcheck="false"
+    rows="24"
+    data-config-text
+    [readOnly]="!service.canWrite()"
+    [value]="service.text()"
+    (input)="onInput($event)"
+  ></textarea>
+  @if (service.canWrite()) {
+  <div class="flex flex-wrap items-center gap-3">
+    <button
+      hlmBtn
+      type="button"
+      data-save
+      [disabled]="service.busy() || !service.dirty()"
+      (click)="service.save()"
+    >
+      {{ 'configPage.save' | translate }}
+    </button>
+    @if (service.saved()) {
+    <span class="text-muted-foreground text-sm" role="status" data-saved>
+      {{ 'configPage.saved' | translate }}
+    </span>
+    }
+  </div>
+  } @else {
+  <p class="text-muted-foreground text-sm" data-read-only>
+    {{ 'configPage.readOnly' | translate }}
+  </p>
+  } } @else {
+  <p class="text-muted-foreground text-sm" role="status">
+    {{ 'common.loading' | translate }}
+  </p>
+  }
+</div>
+}

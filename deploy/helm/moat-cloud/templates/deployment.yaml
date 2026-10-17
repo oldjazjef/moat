@@ -78,6 +78,10 @@ spec:
               value: {{ .Values.database.provider | quote }}
             - name: MOAT_ACCOUNT_KEY_FILE
               value: /run/secrets/moat_account_key
+            {{- if .Values.secrets.signingKey.name }}
+            - name: MOAT_SIGNING_KEY_FILE
+              value: /run/secrets/moat_signing_key
+            {{- end }}
             {{- if eq .Values.database.provider "postgresql" }}
             - name: MOAT_DATABASE_URL_FILE
               value: /run/secrets/moat_database_url
@@ -130,6 +134,13 @@ spec:
                   items:
                     - key: {{ .Values.secrets.accountKey.key | quote }}
                       path: moat_account_key
+              {{- if .Values.secrets.signingKey.name }}
+              - secret:
+                  name: {{ .Values.secrets.signingKey.name | quote }}
+                  items:
+                    - key: {{ .Values.secrets.signingKey.key | quote }}
+                      path: moat_signing_key
+              {{- end }}
               {{- if eq .Values.database.provider "postgresql" }}
               - secret:
                   name: {{ required "secrets.databaseUrl.name is required" .Values.secrets.databaseUrl.name | quote }}

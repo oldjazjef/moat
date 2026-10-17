@@ -19,6 +19,21 @@ const routes: Routes = [
       ),
   },
   {
+    path: ':orgId/projects/:projectId',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./pages/project-gates-page/project-gates-page').then(
+        (m) => m.ProjectGatesPage,
+      ),
+  },
+  {
+    path: ':orgId/projects/:projectId/config',
+    loadComponent: () =>
+      import('./pages/project-config-page/project-config-page').then(
+        (m) => m.ProjectConfigPage,
+      ),
+  },
+  {
     path: ':orgId/members',
     loadComponent: () =>
       import('./pages/members-page/members-page').then((m) => m.MembersPage),

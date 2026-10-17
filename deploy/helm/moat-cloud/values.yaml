@@ -38,6 +38,12 @@ secrets:
   databaseUrl:
     name: ''
     key: moat_database_url
+  # Optional: the key Moat Cloud signs managed gates' bundles with (an Ed25519 seed, 32 random bytes
+  # as base64url). Without it there are only gates the customer signs for. Gates pin its public
+  # half; a new key needs every gate re-pinned.
+  signingKey:
+    name: ''
+    key: moat_signing_key
   # PostgreSQL only: the URL, and the CA that signed the database's certificate (verified TLS).
   databaseCa:
     name: ''

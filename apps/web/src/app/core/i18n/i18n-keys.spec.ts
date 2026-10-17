@@ -61,6 +61,15 @@ const I18N_DIR = fileURLToPath(
 
 const DYNAMIC_KEYS = [
   ...allHelpKeys(),
+  // The Cloud project's tabs and the gates page, built from a value of the API's answer.
+  ...['gates', 'config'].map((tab) => `projectTabs.${tab}`),
+  ...['route', 'upstream', 'secret', 'lock'].map(
+    (kind) => `gatesPage.release.kind.${kind}`,
+  ),
+  ...['added', 'removed', 'changed'].map(
+    (change) => `gatesPage.release.change.${change}`,
+  ),
+  ...['released', 'uploaded'].map((kind) => `gatesPage.done.${kind}`),
   ...API_ERROR_CODES.map((code) => `errors.api.${code}`),
   ...ROLES.map((role) => `roles.${role}`),
   'organisations.tabs.projects',

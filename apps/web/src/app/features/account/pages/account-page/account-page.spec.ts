@@ -26,7 +26,7 @@ describe('AccountPage (Konto)', () => {
     expect(text(el, 'h1')).toBe('Konto');
     expect(text(el, 'mt-page-header')).toContain('eme@example.ch');
     const note = text(el, '[data-account-honesty]');
-    expect(note).toContain('keine Gates, Secrets und Bundles');
+    expect(note).toContain('pro Gate');
     expect(note).toContain('keinen Vertrauensmodus');
     // It points to the guide's trust section and claims no mode and no level itself.
     expect(

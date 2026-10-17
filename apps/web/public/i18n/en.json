@@ -83,6 +83,11 @@
   "trust": {
     "ifHackedPrefix": "If Moat Cloud is hacked",
     "modes": {
+      "convenient": {
+        "label": "Convenient",
+        "short": "Moat Cloud approves changes.",
+        "ifHacked": "… an attacker can change your routes within the local limits of your gate. They cannot read secrets or run code."
+      },
       "signed": {
         "label": "Signed",
         "short": "You approve every change with your key file.",
@@ -1126,7 +1131,7 @@
           "signOut": "“Sign out” in the sidebar ends the session on the server, and this browser forgets your account."
         },
         "tips": {
-          "trust": "This account sets no trust mode. So far Moat Cloud manages accounts, organisations and project names. There are no gates, secrets or bundles here yet. The section about the trust mode explains the trust mode and the consequences of a hacked Moat Cloud.",
+          "trust": "This account sets no trust mode. It applies per gate and is shown at each gate. The section about the trust mode explains the trust mode and the consequences of a hacked Moat Cloud.",
           "recovery": "A recovery code works once. If you have neither device nor code, Moat Cloud cannot reset the account yet: a password reset is not built yet.",
           "session": "The session ends after 12 hours without activity and after 14 days at the latest."
         }
@@ -1141,12 +1146,29 @@
           "projects": "Under “Projects” you see the organisation's projects. “Create project” adds one if your role allows it.",
           "members": "Under “Members” add someone by e-mail address with “Add member”, change roles, or remove someone with “Remove” and “Really remove”.",
           "roles": "The roles are Owner, Administrator, Editor, Viewer and Billing. The role decides what someone may read and change. Moat Cloud refuses what the role does not allow.",
-          "release": "The right to release bundles is separate from the role. Only an owner grants it, and only to owners, administrators and editors. You see the switch only as an owner. Bundles themselves do not exist in Moat Cloud yet."
+          "release": "The right to release bundles is separate from the role. Only an owner grants it, and only to owners, administrators and editors. You see the switch only as an owner. With the right you release bundles in a project."
         },
         "tips": {
           "uniform": "Moat Cloud answers the same when adding, whether the address exists or not. There are no invitations or confirmation e-mails yet: the person needs an account already.",
           "refusals": "If Moat Cloud refuses a change, the reason is a fixed text, for example that the organisation needs at least one owner.",
-          "projectsLimit": "A project is only a name here so far. Gates, routes and secrets in the Cloud come later. Until then you work with Moat Desktop or the CLI."
+          "projectsLimit": "You find a project's gates, configuration and secrets by clicking the project's name in the list."
+        }
+      },
+      "cloudGates": {
+        "title": "Gates, configuration and release in the cloud",
+        "purpose": "A project in Moat Cloud has a configuration (the moat.yaml), gates, their sealed secrets and the signed bundles. Moat Cloud never reads a secret and never changes what a gate limits by itself.",
+        "where": "Organisations, then a project",
+        "steps": {
+          "config": "Open a project in the “Projects” list and then “Configuration”. Write the moat.yaml and click “Save”. If it changed in the meantime, Moat Cloud saves nothing.",
+          "gate": "Install the gate on your hosting. Under “Gates” use “Add gate” to enter the gate ID, the box key and the fingerprint the gate shows. If it does not match, nothing is added.",
+          "secret": "Seal a secret with “moat secret seal” or in Moat Desktop and paste the text at “Save secret”. Moat Cloud stores only the ciphertext.",
+          "release": "Click “Preview” on a gate. When you see what changes, click “Release and sign”. For a gate in the “Signed” mode you upload your signed bundle with “Upload bundle”.",
+          "pull": "Use “Create pull address” to make the address the gate fetches its bundle from, and enter it in the gate. It is shown only once."
+        },
+        "tips": {
+          "mode": "“Convenient”: Moat Cloud signs. An attacker on Moat Cloud can change your routes within the gate's local limits. “Signed”: you sign, Moat Cloud only stores. You change the mode only at the gate.",
+          "signer": "For “Convenient” the gate needs Moat Cloud's public key. It is shown under “Gates”. If this Moat Cloud has no key, there is only “Signed”.",
+          "sealed": "A secret never appears in the clear in Moat Cloud: you seal it on your side, the page shows only names and versions."
         }
       }
     }
@@ -1293,7 +1315,27 @@
       "empty_change": "There was nothing to change.",
       "not_found": "Not found: it does not exist, or you have no access to it.",
       "network": "Moat Cloud cannot be reached. Check the connection and try again.",
-      "unknown": "That did not work. Try again."
+      "unknown": "That did not work. Try again.",
+      "config_changed": "The configuration changed in the meantime. Nothing was saved. Reload it and repeat your change.",
+      "config_invalid": "The configuration is not valid. Moat Cloud checks it like a gate does and refuses it.",
+      "config_too_large": "The configuration is too large (256 KiB at most).",
+      "config_missing": "This project has no configuration yet. Create it under “Configuration”.",
+      "changed": "Something changed since the preview. Nothing was signed. Show the preview again.",
+      "fingerprint_mismatch": "The fingerprint does not match the key. Compare it with the display on the gate.",
+      "gate_id_invalid": "The gate ID is not valid. Copy it exactly as the gate showed it at install.",
+      "box_key_invalid": "The box key is not valid. Copy it exactly as the gate showed it at install.",
+      "signer_key_invalid": "The public signing key is not valid.",
+      "managed_unavailable": "This Moat Cloud has no signing key. Gates in the “Convenient” mode do not exist here. Give the public key you sign with yourself.",
+      "gate_exists": "A gate with this name already exists in this project.",
+      "gate_limit": "A project has 20 gates at most.",
+      "secret_invalid": "That is not a sealed secret. Seal it with “moat secret seal” or in Moat Desktop and paste the text.",
+      "version_stale": "This secret already exists in the same or a higher version. Seal it with a higher version.",
+      "secret_limit": "A gate has 64 secrets at most.",
+      "not_managed": "You sign this gate yourself. Moat Cloud signs nothing for it. Upload a signed bundle.",
+      "not_signed": "Moat Cloud signs for this gate. You can upload only for gates you sign yourself.",
+      "bundle_invalid": "The bundle is not valid: wrong signature, another gate or no higher version.",
+      "secrets_missing": "The configuration needs secrets that are not stored for this gate yet:",
+      "gate_unknown": "This gate does not exist."
     }
   },
   "roles": {
@@ -1336,7 +1378,7 @@
   },
   "account": {
     "title": "Account",
-    "honesty": "This account manages organisations, members and projects. Moat Cloud has no gates, secrets or bundles yet and therefore sets no trust mode. How the trust modes apply and what a hacked Moat Cloud could do is explained in the help.",
+    "honesty": "This account manages organisations, members and projects. It sets no trust mode: it applies per gate and is shown at each gate. How the trust modes apply and what a hacked Moat Cloud could do is explained in the help.",
     "honestyHelp": "Trust modes in the help",
     "password": {
       "title": "Change password",
@@ -1422,9 +1464,107 @@
     "cannotCreate": "Your role may not create projects.",
     "new": {
       "title": "New project",
-      "description": "A project has only a name here for now.",
+      "description": "Create a project. You manage its gates and configuration inside it afterwards.",
       "name": "Name",
       "submit": "Create project"
     }
+  },
+  "projectTabs": {
+    "label": "Pages of the project",
+    "gates": "Gates",
+    "config": "Configuration"
+  },
+  "gatesPage": {
+    "title": "Gates",
+    "loadError": "The gates could not be read. Reload the page.",
+    "empty": "This project has no gate yet. Install the gate on your hosting and add it below.",
+    "cannotManage": "Your role may not add gates.",
+    "recommend": "Recommendation: as soon as a route uses a secret with write rights or an AI budget, choose “Signed”. You confirm the change at the gate itself.",
+    "signer": {
+      "title": "Moat Cloud's signing key",
+      "description": "Gates in the “Convenient” mode check their bundles against this public key.",
+      "fingerprint": "Fingerprint",
+      "publicKey": "Public key",
+      "pin": "Pin it at the gate: php moat-gate.php trust --signer=<public key>. First compare the fingerprint with the one the gate shows.",
+      "none": "This Moat Cloud has no signing key. Here there are only gates you sign yourself."
+    },
+    "gate": {
+      "id": "Gate ID",
+      "boxKey": "Fingerprint of the box key",
+      "signer": "Fingerprint of the signing key",
+      "noSigner": "none",
+      "version": "Latest bundle",
+      "noBundle": "none yet"
+    },
+    "secrets": {
+      "title": "Secrets",
+      "description": "Secrets are sealed on your side and stored only as ciphertext. Moat Cloud cannot read them, only the gate opens them.",
+      "show": "Show secrets",
+      "empty": "No secret is stored for this gate yet.",
+      "version": "Version {{version}}",
+      "name": "Name of the secret",
+      "sealed": "Sealed secret (JSON from “moat secret seal”)",
+      "submit": "Save secret",
+      "saved": "“{{name}}” was saved."
+    },
+    "release": {
+      "title": "Release",
+      "managed": "Moat Cloud signs the next bundle after you have seen the preview. The right to do so is separate from the role.",
+      "signed": "You sign yourself, with the CLI or Moat Desktop. Upload the signed bundle here: Moat Cloud checks it against your key and stores it.",
+      "preview": "Preview",
+      "submit": "Release and sign",
+      "version": "Next bundle: version {{version}}",
+      "locked": "locked",
+      "noChange": "Nothing changes compared with the last bundle.",
+      "noPermission": "You do not have the right to release. An owner can give it to you.",
+      "kind": {
+        "route": "Route",
+        "upstream": "Upstream",
+        "secret": "Secret",
+        "lock": "Lock"
+      },
+      "change": {
+        "added": "new",
+        "removed": "removed",
+        "changed": "changed"
+      },
+      "envelope": "Signed bundle",
+      "upload": "Upload bundle"
+    },
+    "done": {
+      "released": "Version {{version}} was signed and stored.",
+      "uploaded": "Version {{version}} was checked and stored."
+    },
+    "pull": {
+      "title": "Pull address",
+      "description": "The gate fetches its bundle from this address. Enter it in the gate as its pull place. The address itself is the password of this one gate.",
+      "create": "Create pull address",
+      "renew": "Create new pull address",
+      "exists": "A pull address exists. For security it is not shown again. A new one ends the old one.",
+      "once": "Copy it now: it is shown only once."
+    },
+    "add": {
+      "title": "Add gate",
+      "description": "Enter what the gate showed at install.",
+      "name": "Name",
+      "gateId": "Gate ID",
+      "boxKey": "Box key",
+      "fingerprint": "Fingerprint of the box key",
+      "fingerprintHint": "Enter the fingerprint as the gate shows it. If it does not match the key, the gate is not added.",
+      "signerKey": "Public signing key (only for “Signed”)",
+      "signerKeyHint": "Leave empty so Moat Cloud signs (“Convenient”). With a key you sign yourself and Moat Cloud only stores.",
+      "submit": "Add gate"
+    }
+  },
+  "configPage": {
+    "title": "Configuration",
+    "description": "This project's moat.yaml. Secrets never belong in this file, only their names. Moat Cloud checks it like a gate does.",
+    "loadError": "The configuration could not be read. Reload the page.",
+    "empty": "This project has no configuration yet. Write it here and save it.",
+    "editor": "moat.yaml",
+    "save": "Save",
+    "saved": "Saved.",
+    "reload": "Reload",
+    "readOnly": "Your role may read the configuration but not change it."
   }
 }

@@ -1,0 +1,460 @@
+<mt-page-header
+  [title]="service.project.hasValue() ? service.project.value().project.name : ('gatesPage.title' | translate)"
+  [subtitle]="service.scope.name()"
+>
+  <mt-help-link section="cloudGates" />
+</mt-page-header>
+
+<mt-org-tabs [orgId]="orgId()" />
+
+@if (service.scope.entry.error() || service.project.error()) {
+<p class="mt-note" role="alert" data-not-found>
+  <ng-icon
+    name="lucideTriangleAlert"
+    size="16"
+    aria-hidden="true"
+    class="mt-0.5 shrink-0"
+  />
+  <span>{{ 'errors.api.not_found' | translate }}</span>
+</p>
+} @else if (service.scope.access()) {
+<mt-project-tabs [orgId]="orgId()" [projectId]="projectId()" />
+<div class="flex flex-col gap-6">
+  @if (service.gates.error()) {
+  <p class="mt-note" role="alert" data-load-error>
+    <ng-icon
+      name="lucideTriangleAlert"
+      size="16"
+      aria-hidden="true"
+      class="mt-0.5 shrink-0"
+    />
+    <span>{{ 'gatesPage.loadError' | translate }}</span>
+  </p>
+  } @else if (service.gates.hasValue()) { @let answer = service.gates.value();
+
+  <section hlmCard class="max-w-3xl" data-signer aria-labelledby="signer-title">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="signer-title">
+        {{ 'gatesPage.signer.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'gatesPage.signer.description' | translate }}</p>
+    </div>
+    <div hlmCardContent>
+      @if (answer.signer; as signer) {
+      <dl class="mt-facts">
+        <dt>{{ 'gatesPage.signer.fingerprint' | translate }}</dt>
+        <dd class="mt-code" data-signer-fingerprint>
+          {{ signer.fingerprint }}
+        </dd>
+        <dt>{{ 'gatesPage.signer.publicKey' | translate }}</dt>
+        <dd class="mt-code" data-signer-key>{{ signer.publicKey }}</dd>
+      </dl>
+      <p class="text-muted-foreground mt-3 text-sm">
+        {{ 'gatesPage.signer.pin' | translate }}
+      </p>
+      } @else {
+      <p class="text-muted-foreground text-sm" data-no-signer>
+        {{ 'gatesPage.signer.none' | translate }}
+      </p>
+      }
+    </div>
+  </section>
+
+  @if (answer.gates.length === 0) {
+  <p class="text-muted-foreground text-sm" data-no-gate>
+    {{ 'gatesPage.empty' | translate }}
+  </p>
+  } @for (gate of answer.gates; track gate.name) { @let ui =
+  service.ui(gate.name); @let modeKey = gate.mode === 'managed' ? 'convenient' :
+  'signed';
+  <section
+    hlmCard
+    data-gate
+    [attr.data-gate-name]="gate.name"
+    [attr.aria-labelledby]="'gate-' + gate.name"
+  >
+    <div hlmCardHeader>
+      <h2 hlmCardTitle [id]="'gate-' + gate.name">{{ gate.name }}</h2>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-5">
+      <mt-trust-mode-badge
+        [mode]="gate.mode === 'managed' ? 'convenient' : 'signed'"
+        [detailed]="true"
+      />
+      @if (gate.mode === 'managed') {
+      <p class="text-muted-foreground text-sm" data-recommend>
+        {{ 'gatesPage.recommend' | translate }}
+      </p>
+      }
+      <dl class="mt-facts">
+        <dt>{{ 'gatesPage.gate.id' | translate }}</dt>
+        <dd class="mt-code">{{ gate.gateId }}</dd>
+        <dt>{{ 'gatesPage.gate.boxKey' | translate }}</dt>
+        <dd class="mt-code">{{ gate.boxKeyFingerprint }}</dd>
+        <dt>{{ 'gatesPage.gate.signer' | translate }}</dt>
+        <dd class="mt-code">
+          {{ gate.signerFingerprint ?? ('gatesPage.gate.noSigner' | translate)
+          }}
+        </dd>
+        <dt>{{ 'gatesPage.gate.version' | translate }}</dt>
+        <dd data-version>
+          {{ gate.latestVersion === 0 ? ('gatesPage.gate.noBundle' | translate)
+          : gate.latestVersion }}
+        </dd>
+      </dl>
+
+      @if (ui.error; as code) {
+      <p class="mt-note" role="alert" data-gate-error>
+        <ng-icon
+          name="lucideTriangleAlert"
+          size="16"
+          aria-hidden="true"
+          class="mt-0.5 shrink-0"
+        />
+        <span>
+          {{ errorKey(code) | translate }} @if (ui.missingSecrets.length > 0) {
+          <span class="mt-code" data-missing-secrets>
+            {{ ui.missingSecrets.join(', ') }}
+          </span>
+          }
+        </span>
+      </p>
+      } @if (ui.done; as done) {
+      <p class="text-sm" role="status" data-done>
+        {{ 'gatesPage.done.' + done.kind | translate: { version: done.version }
+        }}
+      </p>
+      }
+
+      <div class="flex flex-col gap-3" data-secrets>
+        <h3 class="text-sm font-semibold">
+          {{ 'gatesPage.secrets.title' | translate }}
+        </h3>
+        <p class="text-muted-foreground text-sm">
+          {{ 'gatesPage.secrets.description' | translate }}
+        </p>
+        @if (ui.secrets === null) {
+        <div>
+          <button
+            hlmBtn
+            variant="outline"
+            type="button"
+            data-load-secrets
+            [disabled]="ui.busy"
+            (click)="service.loadSecrets(gate.name)"
+          >
+            {{ 'gatesPage.secrets.show' | translate }}
+          </button>
+        </div>
+        } @else if (ui.secrets.length === 0) {
+        <p class="text-muted-foreground text-sm" data-no-secret>
+          {{ 'gatesPage.secrets.empty' | translate }}
+        </p>
+        } @else {
+        <ul class="text-sm" data-secret-list>
+          @for (secret of ui.secrets; track secret.name) {
+          <li data-secret>
+            <span class="mt-code">{{ secret.name }}</span>
+            · {{ 'gatesPage.secrets.version' | translate: { version:
+            secret.secretVersion } }}
+          </li>
+          }
+        </ul>
+        } @if (service.canSealSecrets()) {
+        <form
+          class="flex max-w-3xl flex-col gap-2"
+          data-secret-form
+          (submit)="
+            $event.preventDefault();
+            service.putSecret(gate.name, secretName()[gate.name] ?? '', sealedText()[gate.name] ?? '')
+          "
+        >
+          <label hlmLabel [for]="'secret-name-' + gate.name"
+            >{{ 'gatesPage.secrets.name' | translate }}</label
+          >
+          <input
+            hlmInput
+            autocomplete="off"
+            [id]="'secret-name-' + gate.name"
+            [value]="secretName()[gate.name] ?? ''"
+            (input)="type(secretName, gate.name, $event)"
+          />
+          <label hlmLabel [for]="'secret-sealed-' + gate.name"
+            >{{ 'gatesPage.secrets.sealed' | translate }}</label
+          >
+          <textarea
+            class="mt-textarea"
+            spellcheck="false"
+            rows="5"
+            autocomplete="off"
+            [id]="'secret-sealed-' + gate.name"
+            [value]="sealedText()[gate.name] ?? ''"
+            (input)="type(sealedText, gate.name, $event)"
+          ></textarea>
+          <div class="flex flex-wrap items-center gap-3">
+            <button
+              hlmBtn
+              type="submit"
+              data-secret-submit
+              [disabled]="ui.busy"
+            >
+              {{ 'gatesPage.secrets.submit' | translate }}
+            </button>
+            @if (ui.secretSaved; as saved) {
+            <span
+              class="text-muted-foreground text-sm"
+              role="status"
+              data-secret-saved
+            >
+              {{ 'gatesPage.secrets.saved' | translate: { name: saved } }}
+            </span>
+            }
+          </div>
+        </form>
+        }
+      </div>
+
+      <div class="flex flex-col gap-3" data-release>
+        <h3 class="text-sm font-semibold">
+          {{ 'gatesPage.release.title' | translate }}
+        </h3>
+        @if (gate.mode === 'managed') {
+        <p class="text-muted-foreground text-sm">
+          {{ 'gatesPage.release.managed' | translate }}
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <button
+            hlmBtn
+            variant="outline"
+            type="button"
+            data-preview
+            [disabled]="ui.busy"
+            (click)="service.loadPreview(gate.name)"
+          >
+            {{ 'gatesPage.release.preview' | translate }}
+          </button>
+        </div>
+        @if (ui.preview; as preview) {
+        <div class="mt-panel p-4 text-sm" data-preview-result>
+          <p class="font-medium">
+            {{ 'gatesPage.release.version' | translate: { version:
+            preview.version } }} @if (preview.locked) { · {{
+            'gatesPage.release.locked' | translate }} }
+          </p>
+          @if (preview.changes.length === 0) {
+          <p class="text-muted-foreground" data-no-change>
+            {{ 'gatesPage.release.noChange' | translate }}
+          </p>
+          } @else {
+          <ul class="mt-2 list-disc ps-5" data-changes>
+            @for (change of preview.changes; track change.kind + change.name) {
+            <li>
+              {{ 'gatesPage.release.kind.' + change.kind | translate }}
+              <span class="mt-code">{{ change.name }}</span>: {{
+              'gatesPage.release.change.' + change.change | translate }}
+            </li>
+            }
+          </ul>
+          } @if (service.canRelease()) {
+          <div class="mt-3">
+            <button
+              hlmBtn
+              type="button"
+              data-release-submit
+              [disabled]="ui.busy"
+              (click)="service.release(gate.name)"
+            >
+              {{ 'gatesPage.release.submit' | translate }}
+            </button>
+          </div>
+          } @else {
+          <p class="text-muted-foreground mt-3" data-no-release>
+            {{ 'gatesPage.release.noPermission' | translate }}
+          </p>
+          }
+        </div>
+        } } @else {
+        <p class="text-muted-foreground text-sm">
+          {{ 'gatesPage.release.signed' | translate }}
+        </p>
+        @if (service.canRelease()) {
+        <form
+          class="flex max-w-3xl flex-col gap-2"
+          data-upload-form
+          (submit)="$event.preventDefault(); service.upload(gate.name, envelope()[gate.name] ?? '')"
+        >
+          <label hlmLabel [for]="'envelope-' + gate.name"
+            >{{ 'gatesPage.release.envelope' | translate }}</label
+          >
+          <textarea
+            class="mt-textarea"
+            spellcheck="false"
+            rows="6"
+            [id]="'envelope-' + gate.name"
+            [value]="envelope()[gate.name] ?? ''"
+            (input)="type(envelope, gate.name, $event)"
+          ></textarea>
+          <div>
+            <button
+              hlmBtn
+              type="submit"
+              data-upload-submit
+              [disabled]="ui.busy"
+            >
+              {{ 'gatesPage.release.upload' | translate }}
+            </button>
+          </div>
+        </form>
+        } @else {
+        <p class="text-muted-foreground text-sm" data-no-release>
+          {{ 'gatesPage.release.noPermission' | translate }}
+        </p>
+        } }
+      </div>
+
+      <div class="flex flex-col gap-3" data-pull>
+        <h3 class="text-sm font-semibold">
+          {{ 'gatesPage.pull.title' | translate }}
+        </h3>
+        <p class="text-muted-foreground text-sm">
+          {{ 'gatesPage.pull.description' | translate }}
+        </p>
+        @if (ui.address; as address) {
+        <p class="mt-code" data-address>{{ address }}</p>
+        <p class="mt-warning-text text-sm">
+          {{ 'gatesPage.pull.once' | translate }}
+        </p>
+        } @else if (gate.hasPullAddress) {
+        <p class="text-muted-foreground text-sm" data-has-address>
+          {{ 'gatesPage.pull.exists' | translate }}
+        </p>
+        } @if (service.canManage()) {
+        <div>
+          <button
+            hlmBtn
+            variant="outline"
+            type="button"
+            data-pull-create
+            [disabled]="ui.busy"
+            (click)="service.createAddress(gate.name)"
+          >
+            {{ (gate.hasPullAddress ? 'gatesPage.pull.renew' :
+            'gatesPage.pull.create') | translate }}
+          </button>
+        </div>
+        }
+      </div>
+    </div>
+  </section>
+  } @if (service.canManage()) {
+  <form
+    hlmCard
+    class="max-w-3xl"
+    data-gate-form
+    aria-labelledby="gate-new"
+    novalidate
+    [formGroup]="service.addForm"
+    (submit)="$event.preventDefault(); service.addGate()"
+  >
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="gate-new">
+        {{ 'gatesPage.add.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'gatesPage.add.description' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      @if (service.addError(); as code) {
+      <p class="mt-note" role="alert" data-add-error>
+        <ng-icon
+          name="lucideTriangleAlert"
+          size="16"
+          aria-hidden="true"
+          class="mt-0.5 shrink-0"
+        />
+        <span>{{ errorKey(code) | translate }}</span>
+      </p>
+      }
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="gate-name"
+          >{{ 'gatesPage.add.name' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="gate-name"
+          autocomplete="off"
+          formControlName="name"
+        />
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="gate-id"
+          >{{ 'gatesPage.add.gateId' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="gate-id"
+          autocomplete="off"
+          formControlName="gateId"
+        />
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="gate-box-key"
+          >{{ 'gatesPage.add.boxKey' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="gate-box-key"
+          autocomplete="off"
+          formControlName="boxKey"
+        />
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="gate-fingerprint"
+          >{{ 'gatesPage.add.fingerprint' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="gate-fingerprint"
+          autocomplete="off"
+          formControlName="fingerprint"
+        />
+        <p class="text-muted-foreground text-sm">
+          {{ 'gatesPage.add.fingerprintHint' | translate }}
+        </p>
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="gate-signer-key"
+          >{{ 'gatesPage.add.signerKey' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="gate-signer-key"
+          autocomplete="off"
+          formControlName="signerKey"
+        />
+        <p class="text-muted-foreground text-sm">
+          {{ 'gatesPage.add.signerKeyHint' | translate }}
+        </p>
+      </div>
+    </div>
+    <div hlmCardFooter>
+      <button
+        hlmBtn
+        type="submit"
+        data-gate-submit
+        [disabled]="service.addBusy()"
+      >
+        {{ 'gatesPage.add.submit' | translate }}
+      </button>
+    </div>
+  </form>
+  } @else {
+  <p class="text-muted-foreground text-sm" data-cannot-manage>
+    {{ 'gatesPage.cannotManage' | translate }}
+  </p>
+  } } @else {
+  <p class="text-muted-foreground text-sm" role="status">
+    {{ 'common.loading' | translate }}
+  </p>
+  }
+</div>
+}

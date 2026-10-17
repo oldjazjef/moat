@@ -1,0 +1,278 @@
+import { HttpClient, httpResource } from '@angular/common/http';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { FormControl, FormGroup } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
+import type {
+  GatesAnswer,
+  ReleasePreview,
+  SecretView,
+} from '../../../../core/api/gates.types';
+import {
+  type ApiErrorCode,
+  apiErrorCode,
+} from '../../../../core/auth/api-error';
+import { apiUrl } from '../../../../core/config/runtime-env';
+import { zodValidator } from '../../../../core/forms/zod-validator';
+import { gateSchema } from '../../gates.schema';
+import { OrgScope } from '../../org-scope';
+
+/** What the page knows about one gate besides the list: opened on demand, never persisted. */
+export interface GateUi {
+  readonly busy: boolean;
+  readonly error: ApiErrorCode | null;
+  /** For `secrets_missing`: the secrets the config uses that are not stored yet. */
+  readonly missingSecrets: readonly string[];
+  readonly preview: ReleasePreview | null;
+  /** A release or an upload went through: its version. */
+  readonly done: {
+    readonly kind: 'released' | 'uploaded';
+    readonly version: number;
+  } | null;
+  /** The pull address, shown once, right after it was made. */
+  readonly address: string | null;
+  readonly secrets: readonly SecretView[] | null;
+  readonly secretSaved: string | null;
+}
+
+const EMPTY: GateUi = {
+  busy: false,
+  error: null,
+  missingSecrets: [],
+  preview: null,
+  done: null,
+  address: null,
+  secrets: null,
+  secretSaved: null,
+};
+
+/**
+ * «Gates» of a Cloud project: enrolling a gate with the fingerprint compared at the gate (SEC-32),
+ * its sealed secrets, the next bundle (Moat Cloud signs it in «Bequem», after a preview whose
+ * digest the signing must match; for «Signiert» the customer's signed bundle is uploaded) and the
+ * gate's pull address. What a person may do is the API's decision: a refusal is shown with a fixed,
+ * translated text.
+ */
+@Injectable()
+export class ProjectGatesPageService {
+  private readonly http = inject(HttpClient);
+  readonly scope = inject(OrgScope);
+  private readonly source = signal<(() => string) | null>(null);
+  readonly projectId = computed(() => this.source()?.() ?? null);
+
+  bind(projectId: () => string): void {
+    this.source.set(projectId);
+  }
+
+  private base(): string | null {
+    const org = this.scope.orgId();
+    const project = this.projectId();
+    return org === null || project === null
+      ? null
+      : `/orgs/${encodeURIComponent(org)}/projects/${encodeURIComponent(project)}`;
+  }
+
+  readonly project = httpResource<{
+    readonly project: { readonly name: string };
+  }>(() => {
+    const base = this.base();
+    return base === null ? undefined : apiUrl(base);
+  });
+  readonly gates = httpResource<GatesAnswer>(() => {
+    const base = this.base();
+    return base === null ? undefined : apiUrl(`${base}/gates`);
+  });
+
+  readonly canManage = computed(() => this.scope.can('gate:manage'));
+  readonly canSealSecrets = computed(() => this.scope.can('secret:write'));
+  readonly canRelease = computed(() => this.scope.can('release'));
+
+  // ── Enrolling ──────────────────────────────────────────────────────────────────────────
+
+  readonly addForm = new FormGroup(
+    {
+      name: new FormControl('', { nonNullable: true }),
+      gateId: new FormControl('', { nonNullable: true }),
+      boxKey: new FormControl('', { nonNullable: true }),
+      fingerprint: new FormControl('', { nonNullable: true }),
+      signerKey: new FormControl('', { nonNullable: true }),
+    },
+    { validators: zodValidator(gateSchema) },
+  );
+  readonly addBusy = signal(false);
+  readonly addError = signal<ApiErrorCode | null>(null);
+
+  async addGate(): Promise<void> {
+    this.addError.set(null);
+    const base = this.base();
+    if (base === null) return;
+    if (this.addForm.invalid) {
+      this.addForm.markAllAsTouched();
+      return;
+    }
+    const value = this.addForm.getRawValue();
+    this.addBusy.set(true);
+    try {
+      await firstValueFrom(
+        this.http.post(apiUrl(`${base}/gates`), {
+          name: value.name,
+          gateId: value.gateId,
+          boxKey: value.boxKey,
+          fingerprint: value.fingerprint.trim(),
+          ...(value.signerKey.trim() === ''
+            ? {}
+            : { signerKey: value.signerKey.trim() }),
+        }),
+      );
+      this.addForm.reset();
+      this.gates.reload();
+    } catch (error) {
+      this.addError.set(apiErrorCode(error));
+    } finally {
+      this.addBusy.set(false);
+    }
+  }
+
+  // ── One gate ───────────────────────────────────────────────────────────────────────────
+
+  private readonly state = signal<Readonly<Record<string, GateUi>>>({});
+  readonly ui = (gate: string): GateUi => this.state()[gate] ?? EMPTY;
+  private patch(gate: string, change: Partial<GateUi>): void {
+    this.state.update((all) => ({
+      ...all,
+      [gate]: { ...(all[gate] ?? EMPTY), ...change },
+    }));
+  }
+
+  /** Runs an API call for a gate with the busy flag and the error shown on that gate. */
+  private async run<T>(
+    gate: string,
+    call: () => Promise<T>,
+  ): Promise<T | null> {
+    this.patch(gate, { busy: true, error: null, missingSecrets: [] });
+    try {
+      return await call();
+    } catch (error) {
+      const secrets = (error as { error?: { secrets?: unknown } }).error
+        ?.secrets;
+      this.patch(gate, {
+        error: apiErrorCode(error),
+        missingSecrets: Array.isArray(secrets)
+          ? secrets.filter((s): s is string => typeof s === 'string')
+          : [],
+      });
+      return null;
+    } finally {
+      this.patch(gate, { busy: false });
+    }
+  }
+
+  private gateUrl(gate: string): string | null {
+    const base = this.base();
+    return base === null
+      ? null
+      : apiUrl(`${base}/gates/${encodeURIComponent(gate)}`);
+  }
+
+  async loadSecrets(gate: string): Promise<void> {
+    const url = this.gateUrl(gate);
+    if (url === null) return;
+    const answer = await this.run(gate, () =>
+      firstValueFrom(
+        this.http.get<{ secrets: readonly SecretView[] }>(`${url}/secrets`),
+      ),
+    );
+    if (answer !== null) this.patch(gate, { secrets: answer.secrets });
+  }
+
+  /**
+   * A secret sealed on this person's machine (`moat secret seal`, Moat Desktop): its JSON is pasted
+   * here. Moat Cloud keeps the ciphertext and has no key to open it (SEC-31); typing a secret's
+   * value here would put it in the browser, which is why this takes sealed text only.
+   */
+  async putSecret(
+    gate: string,
+    name: string,
+    sealedText: string,
+  ): Promise<void> {
+    const url = this.gateUrl(gate);
+    if (url === null) return;
+    let sealed: unknown;
+    try {
+      sealed = JSON.parse(sealedText);
+    } catch {
+      this.patch(gate, { error: 'secret_invalid', secretSaved: null });
+      return;
+    }
+    const answer = await this.run(gate, () =>
+      firstValueFrom(
+        this.http.put<{ secret: SecretView }>(
+          `${url}/secrets/${encodeURIComponent(name.trim())}`,
+          { sealed },
+        ),
+      ),
+    );
+    if (answer === null) return;
+    this.patch(gate, { secretSaved: answer.secret.name });
+    await this.loadSecrets(gate);
+  }
+
+  async loadPreview(gate: string): Promise<void> {
+    const url = this.gateUrl(gate);
+    if (url === null) return;
+    this.patch(gate, { preview: null, done: null });
+    const answer = await this.run(gate, () =>
+      firstValueFrom(
+        this.http.get<{ preview: ReleasePreview }>(`${url}/release`),
+      ),
+    );
+    if (answer !== null) this.patch(gate, { preview: answer.preview });
+  }
+
+  /** Moat Cloud signs exactly the bundle of the preview the person looked at. */
+  async release(gate: string): Promise<void> {
+    const url = this.gateUrl(gate);
+    const preview = this.ui(gate).preview;
+    if (url === null || preview === null) return;
+    const answer = await this.run(gate, () =>
+      firstValueFrom(
+        this.http.post<{ version: number }>(`${url}/releases`, {
+          digest: preview.digest,
+        }),
+      ),
+    );
+    if (answer === null) return;
+    this.patch(gate, {
+      preview: null,
+      done: { kind: 'released', version: answer.version },
+    });
+    this.gates.reload();
+  }
+
+  async upload(gate: string, envelope: string): Promise<void> {
+    const url = this.gateUrl(gate);
+    if (url === null) return;
+    const answer = await this.run(gate, () =>
+      firstValueFrom(
+        this.http.post<{ version: number }>(`${url}/bundles`, { envelope }),
+      ),
+    );
+    if (answer === null) return;
+    this.patch(gate, { done: { kind: 'uploaded', version: answer.version } });
+    this.gates.reload();
+  }
+
+  /** A new address ends the old one; it is shown once and then only as «exists». */
+  async createAddress(gate: string): Promise<void> {
+    const url = this.gateUrl(gate);
+    if (url === null) return;
+    const answer = await this.run(gate, () =>
+      firstValueFrom(
+        this.http.post<{ url: string }>(`${url}/pull-address`, {}),
+      ),
+    );
+    if (answer !== null) {
+      this.patch(gate, { address: answer.url });
+      this.gates.reload();
+    }
+  }
+}

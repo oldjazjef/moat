@@ -74,7 +74,12 @@ describe('HelpPage (FR-71)', () => {
     try {
       const { el } = await open('/app/help');
       const ids = sectionIds(el);
-      expect(ids.slice(0, 3)).toEqual(['account', 'organisations', 'setup']);
+      expect(ids.slice(0, 4)).toEqual([
+        'account',
+        'organisations',
+        'cloudGates',
+        'setup',
+      ]);
       expect(
         el.querySelector('#account [data-help-step]')?.textContent,
       ).toContain(`Schritt 1 von ${HELP_SECTIONS.length}`);

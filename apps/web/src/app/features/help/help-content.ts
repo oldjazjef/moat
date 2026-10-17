@@ -27,6 +27,7 @@ export interface HelpLink {
 export const HELP_SECTION_IDS = [
   'account',
   'organisations',
+  'cloudGates',
   'setup',
   'project',
   'gate',
@@ -84,6 +85,14 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     only: 'cloud',
     steps: items('create', 'switch', 'projects', 'members', 'roles', 'release'),
     tips: items('uniform', 'refusals', 'projectsLimit'),
+    links: [{ id: 'organisations', path: '/app/organisations', only: 'cloud' }],
+  },
+  {
+    // Moat Cloud: a project's configuration, gates, sealed secrets, release and pull address.
+    id: 'cloudGates',
+    only: 'cloud',
+    steps: items('config', 'gate', 'secret', 'release', 'pull'),
+    tips: items('mode', 'signer', 'sealed'),
     links: [{ id: 'organisations', path: '/app/organisations', only: 'cloud' }],
   },
   {

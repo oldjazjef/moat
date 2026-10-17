@@ -18,10 +18,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PLANTED_SECRETS } from '../../testing/planted-secrets';
 import { csrfTokenOf } from '../auth/domain/session';
 import { newId } from '../common/clock';
-import {
-  type CloudHarness,
-  startCloudHarness,
-} from '../testing/cloud-harness';
+import { type CloudHarness, startCloudHarness } from '../testing/cloud-harness';
 import { CloudDatabase } from '../../persistence/cloud/cloud-database';
 
 /**

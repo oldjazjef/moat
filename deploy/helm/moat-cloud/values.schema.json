@@ -54,6 +54,9 @@
         },
         "databaseCa": {
           "$ref": "#/definitions/secretRef"
+        },
+        "signingKey": {
+          "$ref": "#/definitions/secretRef"
         }
       }
     },

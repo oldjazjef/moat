@@ -194,6 +194,11 @@
     border-color: color-mix(in oklab, var(--primary) 30%, transparent);
   }
 
+  /* moat.yaml and other long text: a monospace editor that fills the width. */
+  .mt-textarea {
+    @apply bg-background border-input focus-visible:ring-ring/50 block w-full max-w-4xl rounded-md border px-3 py-2 font-mono text-xs leading-relaxed shadow-xs outline-hidden focus-visible:ring-[3px];
+  }
+
   /* A project's tabs (Übersicht, Gates, Routen): links, the current one underlined. */
   .mt-tabs {
     @apply flex gap-1 overflow-x-auto overflow-y-hidden;

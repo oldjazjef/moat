@@ -17,8 +17,10 @@ services:
       MOAT_PUBLIC_ORIGIN: https://${MOAT_DOMAIN:?run ./init.sh <domain> first}
       MOAT_TRUST_PROXY: '1'
       MOAT_ACCOUNT_KEY_FILE: /run/secrets/moat_account_key
+      MOAT_SIGNING_KEY_FILE: /run/secrets/moat_signing_key
     secrets:
       - moat_account_key
+      - moat_signing_key
     volumes:
       - moat-data:/data
     networks:
@@ -99,3 +101,5 @@ volumes:
 secrets:
   moat_account_key:
     file: ./secrets/moat_account_key
+  moat_signing_key:
+    file: ./secrets/moat_signing_key
