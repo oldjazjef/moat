@@ -13,6 +13,8 @@ export type GateMode = 'managed' | 'signed';
 export interface GateView {
   readonly name: string;
   readonly gateId: string;
+  /** The gate's public box key: what a secret is sealed to. */
+  readonly boxKey: string;
   readonly mode: GateMode;
   readonly boxKeyFingerprint: string;
   readonly signerFingerprint: string | null;

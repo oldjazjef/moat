@@ -15,6 +15,7 @@ import { HlmInputImports } from '@moat/ui/input';
 import { HlmLabelImports } from '@moat/ui/label';
 import { apiErrorKey } from '../../../../core/auth/api-error';
 import { TrustModeBadge } from '../../../../shared/components/trust-mode-badge';
+import type { GateView } from '../../../../core/api/gates.types';
 import { PageHeader } from '../../../../shared/components/page-header';
 import { HelpLink } from '../../../help/components/help-link';
 import { OrgTabs } from '../../components/org-tabs';
@@ -59,6 +60,22 @@ export class ProjectGatesPage {
   constructor() {
     inject(OrgScope).bind(this.orgId);
     this.service.bind(this.projectId);
+  }
+
+  /**
+   * Reads the value from the form once, empties the field and hands the value to the service,
+   * which seals it here in the browser: it is not kept in any signal.
+   */
+  protected async sealFrom(gate: GateView, event: Event): Promise<void> {
+    const form = event.target as HTMLFormElement;
+    const input = form.elements.namedItem('value') as HTMLInputElement;
+    const value = input.value;
+    input.value = '';
+    await this.service.sealAndPut(
+      gate,
+      this.secretName()[gate.name] ?? '',
+      value,
+    );
   }
 
   protected type(

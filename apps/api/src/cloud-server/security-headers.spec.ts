@@ -5,7 +5,9 @@ describe('security headers', () => {
   it('the CSP allows only own files, no inline script, no framing', () => {
     const csp = contentSecurityPolicy(false);
     expect(csp).toContain("script-src 'self'");
-    expect(csp).not.toMatch(/script-src[^;]*unsafe/);
+    // Only WebAssembly may be compiled (the browser seals a secret with libsodium); no eval, no inline.
+    expect(csp).toContain("'wasm-unsafe-eval'");
+    expect(csp).not.toMatch(/script-src[^;]*'unsafe-(inline|eval)'/);
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).not.toContain('upgrade-insecure-requests');
     expect(contentSecurityPolicy(true)).toContain('upgrade-insecure-requests');

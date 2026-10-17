@@ -331,6 +331,7 @@ async function gateView(
   return {
     name: gate.name,
     gateId: gate.gateId,
+    boxKey: gate.boxKey,
     mode: gate.mode,
     boxKeyFingerprint: await boxFingerprint(gate.boxKey),
     signerFingerprint:

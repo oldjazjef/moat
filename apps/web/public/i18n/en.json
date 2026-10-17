@@ -1161,14 +1161,14 @@
         "steps": {
           "config": "Open a project in the “Projects” list and then “Configuration”. Write the moat.yaml and click “Save”. If it changed in the meantime, Moat Cloud saves nothing.",
           "gate": "Install the gate on your hosting. Under “Gates” use “Add gate” to enter the gate ID, the box key and the fingerprint the gate shows. If it does not match, nothing is added.",
-          "secret": "Seal a secret with “moat secret seal” or in Moat Desktop and paste the text at “Save secret”. Moat Cloud stores only the ciphertext.",
+          "secret": "At “Secret speichern” enter the name and the value and click “Seal and save”: the browser seals the value and only the ciphertext is sent. For full security seal with “moat secret seal” or in Moat Desktop and paste the text under “Paste an already sealed secret”.",
           "release": "Click “Preview” on a gate. When you see what changes, click “Release and sign”. For a gate in the “Signed” mode you upload your signed bundle with “Upload bundle”.",
           "pull": "Use “Create pull address” to make the address the gate fetches its bundle from, and enter it in the gate. It is shown only once."
         },
         "tips": {
           "mode": "“Convenient”: Moat Cloud signs. An attacker on Moat Cloud can change your routes within the gate's local limits. “Signed”: you sign, Moat Cloud only stores. You change the mode only at the gate.",
           "signer": "For “Convenient” the gate needs Moat Cloud's public key. It is shown under “Gates”. If this Moat Cloud has no key, there is only “Signed”.",
-          "sealed": "A secret never appears in the clear in Moat Cloud: you seal it on your side, the page shows only names and versions.",
+          "sealed": "A secret never appears in the clear in Moat Cloud: it is sealed on your side, the page shows only names and versions. In the browser that holds only against a Moat Cloud that is not actively hacked.",
           "rotation": "Moat Cloud's key change takes two steps: first the operator announces the new key and you pin it at every gate in addition, then Moat Cloud switches. “Gates” shows both steps."
         }
       }
@@ -1503,14 +1503,18 @@
     },
     "secrets": {
       "title": "Secrets",
-      "description": "Secrets are sealed on your side and stored only as ciphertext. Moat Cloud cannot read them, only the gate opens them.",
+      "description": "Secrets are sealed and stored only as ciphertext. Moat Cloud cannot read them, only the gate opens them.",
       "show": "Show secrets",
       "empty": "No secret is stored for this gate yet.",
       "version": "Version {{version}}",
       "name": "Name of the secret",
       "sealed": "Sealed secret (JSON from “moat secret seal”)",
       "submit": "Save secret",
-      "saved": "“{{name}}” was saved."
+      "saved": "“{{name}}” was saved.",
+      "value": "Value of the secret",
+      "browserNote": "The value is sealed in this browser, only the ciphertext is sent. This does not protect if Moat Cloud is actively hacked and delivers you hostile code. Full guarantee: “moat secret seal” or Moat Desktop.",
+      "seal": "Seal and save",
+      "advanced": "Paste an already sealed secret"
     },
     "release": {
       "title": "Release",

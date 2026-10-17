@@ -1161,14 +1161,14 @@
         "steps": {
           "config": "Öffne in der Liste «Projekte» ein Projekt und dann «Konfiguration». Schreibe die moat.yaml und klicke auf «Speichern». Wurde sie inzwischen geändert, speichert Moat Cloud nichts.",
           "gate": "Installiere das Gate auf deinem Hosting. Trage unter «Gates» mit «Gate hinzufügen» Gate-ID, Box-Schlüssel und den Fingerabdruck ein, den das Gate anzeigt. Passt er nicht, wird nichts angelegt.",
-          "secret": "Versiegle ein Secret mit «moat secret seal» oder in Moat Desktop und füge den Text bei «Secret speichern» ein. Moat Cloud legt nur den Geheimtext ab.",
+          "secret": "Gib bei «Secret speichern» den Namen und den Wert ein und klicke auf «Versiegeln und speichern»: Der Browser versiegelt den Wert, nur der Geheimtext wird gesendet. Für volle Sicherheit versiegelst du mit «moat secret seal» oder in Moat Desktop und fügst den Text unter «Bereits versiegeltes Secret einfügen» ein.",
           "release": "Klicke bei einem Gate auf «Vorschau». Siehst du, was sich ändert, klicke auf «Freigeben und signieren». Bei einem Gate im Modus «Signiert» lädst du dein signiertes Bundle mit «Bundle hochladen» hoch.",
           "pull": "Erstelle mit «Abholadresse erstellen» die Adresse, von der das Gate sein Bundle holt, und trage sie im Gate ein. Sie wird nur einmal angezeigt."
         },
         "tips": {
           "mode": "«Bequem»: Moat Cloud signiert. Ein Angreifer auf Moat Cloud kann deine Routen innerhalb der lokalen Grenzen des Gates ändern. «Signiert»: du signierst, Moat Cloud legt nur ab. Den Modus wechselst du nur am Gate.",
           "signer": "Für «Bequem» braucht das Gate den öffentlichen Schlüssel von Moat Cloud. Er steht unter «Gates». Hat diese Moat Cloud keinen Schlüssel, gibt es nur «Signiert».",
-          "sealed": "Ein Secret erscheint nie im Klartext in Moat Cloud: Du versiegelst es bei dir, die Seite zeigt nur Namen und Versionen.",
+          "sealed": "Ein Secret erscheint nie im Klartext in Moat Cloud: Es wird bei dir versiegelt, die Seite zeigt nur Namen und Versionen. Im Browser gilt das nur gegen eine Moat Cloud, die nicht aktiv gehackt ist.",
           "rotation": "Ein Schlüsselwechsel von Moat Cloud geht in zwei Schritten: Erst kündigt der Betreiber den neuen Schlüssel an, du trägst ihn an jedem Gate zusätzlich ein, dann wechselt Moat Cloud. «Gates» zeigt beide Schritte."
         }
       }
@@ -1503,14 +1503,18 @@
     },
     "secrets": {
       "title": "Secrets",
-      "description": "Secrets werden bei dir versiegelt und nur als Geheimtext abgelegt. Moat Cloud kann sie nicht lesen, nur das Gate öffnet sie.",
+      "description": "Secrets werden versiegelt und nur als Geheimtext abgelegt. Moat Cloud kann sie nicht lesen, nur das Gate öffnet sie.",
       "show": "Secrets anzeigen",
       "empty": "Für dieses Gate ist noch kein Secret gespeichert.",
       "version": "Version {{version}}",
       "name": "Name des Secrets",
       "sealed": "Versiegeltes Secret (JSON von «moat secret seal»)",
       "submit": "Secret speichern",
-      "saved": "«{{name}}» wurde gespeichert."
+      "saved": "«{{name}}» wurde gespeichert.",
+      "value": "Wert des Secrets",
+      "browserNote": "Der Wert wird in diesem Browser versiegelt, nur der Geheimtext wird gesendet. Das schützt nicht, wenn Moat Cloud aktiv gehackt ist und dir bösartigen Code ausliefert. Volle Garantie: «moat secret seal» oder Moat Desktop.",
+      "seal": "Versiegeln und speichern",
+      "advanced": "Bereits versiegeltes Secret einfügen"
     },
     "release": {
       "title": "Freigabe",

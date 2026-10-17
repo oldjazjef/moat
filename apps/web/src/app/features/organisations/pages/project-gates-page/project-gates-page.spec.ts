@@ -15,6 +15,7 @@ import {
   text,
   typeInto,
 } from '../../../../../testing/cloud-harness';
+import sodium from 'libsodium-wrappers-sumo';
 import type { MyAccess } from '../../../../core/auth/account.types';
 import type { GateView, SignerInfo } from '../../../../core/api/gates.types';
 import { ProjectGatesPage } from './project-gates-page';
@@ -41,6 +42,7 @@ const gate = (patch: Partial<GateView> = {}): GateView => ({
   name: 'site',
   gateId: 'G'.repeat(22),
   mode: 'managed',
+  boxKey: 'B'.repeat(43),
   boxKeyFingerprint: 'MOAT-BOX1-2222',
   signerFingerprint: SIGNER.fingerprint,
   hasPullAddress: false,
@@ -291,6 +293,56 @@ describe('ProjectGatesPage (Gates eines Cloud-Projekts)', () => {
     });
     expect(text(el, '[data-secret]')).toContain('hubspot-token');
     expect(text(el, '[data-secret-saved]')).toContain('hubspot-token');
+  });
+
+  it('seals a typed value in the browser: the request holds only the sealed object, the gate key opens it', async () => {
+    const { openSecret, toBase64Url } = await import('@moat/core');
+    await sodium.ready;
+    // jsdom's TextEncoder answers with another realm's Uint8Array, which libsodium's
+    // `instanceof` check refuses; browsers have one realm. Test environment only.
+    const encode = TextEncoder.prototype.encode;
+    vi.spyOn(TextEncoder.prototype, 'encode').mockImplementation(function (
+      this: TextEncoder,
+      input?: string,
+    ) {
+      return Uint8Array.from(encode.call(this, input));
+    });
+    const pair = sodium.crypto_box_keypair();
+    const { el, harness } = await open(OWNER_ACCESS, [
+      gate({ boxKey: toBase64Url(pair.publicKey) }),
+    ]);
+    click(el, '[data-load-secrets]');
+    await flushNext(harness, `${BASE}/gates/site/secrets`, { secrets: [] });
+    typeInto(el, '#secret-name-site', 'hubspot-token');
+    expect(el.querySelector('[data-seal-honesty]')).not.toBeNull();
+    typeInto(el, '#secret-value-site', 'pat-very-secret-value');
+    submitForm(el, '[data-seal-form]');
+    // The sealing library is loaded on demand, so the request follows a little later.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const request = await sent(
+      'PUT',
+      `${BASE}/gates/site/secrets/hubspot-token`,
+    );
+    const body = request.request.body as { sealed: Record<string, unknown> };
+    expect(JSON.stringify(body)).not.toContain('pat-very-secret-value');
+    expect(body.sealed['secretVersion']).toBe(1);
+    const opened = await openSecret(
+      body.sealed,
+      pair.privateKey,
+      'G'.repeat(22),
+      'hubspot-token',
+    );
+    expect(new TextDecoder().decode(opened)).toBe('pat-very-secret-value');
+    request.flush({
+      secret: { name: 'hubspot-token', secretVersion: 1, updatedAt: 'x' },
+    });
+    await tick(harness);
+    await flushNext(harness, `${BASE}/gates/site/secrets`, {
+      secrets: [{ name: 'hubspot-token', secretVersion: 1, updatedAt: 'x' }],
+    });
+    const field = el.querySelector<HTMLInputElement>('#secret-value-site');
+    expect(field?.value).toBe('');
+    expect(el.textContent).not.toContain('pat-very-secret-value');
   });
 
   it('refuses text that is not JSON without asking the API (nothing typed here is a secret)', async () => {

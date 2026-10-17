@@ -3,6 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import type {
+  GateView,
   GatesAnswer,
   ReleasePreview,
   SecretView,
@@ -13,6 +14,7 @@ import {
 } from '../../../../core/auth/api-error';
 import { apiUrl } from '../../../../core/config/runtime-env';
 import { zodValidator } from '../../../../core/forms/zod-validator';
+import { sealInBrowser } from '../../../../shared/crypto/browser-seal';
 import { gateSchema } from '../../gates.schema';
 import { OrgScope } from '../../org-scope';
 
@@ -186,16 +188,13 @@ export class ProjectGatesPageService {
 
   /**
    * A secret sealed on this person's machine (`moat secret seal`, Moat Desktop): its JSON is pasted
-   * here. Moat Cloud keeps the ciphertext and has no key to open it (SEC-31); typing a secret's
-   * value here would put it in the browser, which is why this takes sealed text only.
+   * here. Moat Cloud keeps the ciphertext and has no key to open it (SEC-31).
    */
   async putSecret(
     gate: string,
     name: string,
     sealedText: string,
   ): Promise<void> {
-    const url = this.gateUrl(gate);
-    if (url === null) return;
     let sealed: unknown;
     try {
       sealed = JSON.parse(sealedText);
@@ -203,6 +202,50 @@ export class ProjectGatesPageService {
       this.patch(gate, { error: 'secret_invalid', secretSaved: null });
       return;
     }
+    await this.storeSealed(gate, name, sealed);
+  }
+
+  /**
+   * The value typed into the page, sealed here in the browser to the gate's box key under the next
+   * version of that name, and only the ciphertext sent. The value is never put in a signal, a
+   * form control of the service or a request: the caller passes it once and clears its field.
+   */
+  async sealAndPut(gate: GateView, name: string, value: string): Promise<void> {
+    const secretName = name.trim();
+    if (!/^[a-z][a-z0-9-]{0,62}$/.test(secretName) || value === '') {
+      this.patch(gate.name, {
+        error: value === '' ? 'secret_invalid' : 'name_invalid',
+        secretSaved: null,
+      });
+      return;
+    }
+    // The next version: one above what is stored (the API refuses anything not higher).
+    if (this.ui(gate.name).secrets === null) await this.loadSecrets(gate.name);
+    const current = this.ui(gate.name).secrets?.find(
+      (s) => s.name === secretName,
+    );
+    let sealed: unknown;
+    try {
+      sealed = await sealInBrowser(
+        value,
+        gate,
+        secretName,
+        (current?.secretVersion ?? 0) + 1,
+      );
+    } catch {
+      this.patch(gate.name, { error: 'unknown', secretSaved: null });
+      return;
+    }
+    await this.storeSealed(gate.name, secretName, sealed);
+  }
+
+  private async storeSealed(
+    gate: string,
+    name: string,
+    sealed: unknown,
+  ): Promise<void> {
+    const url = this.gateUrl(gate);
+    if (url === null) return;
     const answer = await this.run(gate, () =>
       firstValueFrom(
         this.http.put<{ secret: SecretView }>(

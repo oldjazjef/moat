@@ -80,6 +80,8 @@ export class EditConfigCommand extends Command<SaveConfigResult> {
 export interface GateView {
   readonly name: string;
   readonly gateId: string;
+  /** The gate's public box key (base64url): what a secret is sealed to. Public by design. */
+  readonly boxKey: string;
   readonly mode: GateMode;
   /** `MOAT-…` of the gate's box key: compared with what the gate printed (SEC-32). */
   readonly boxKeyFingerprint: string;

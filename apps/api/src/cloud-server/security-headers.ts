@@ -14,7 +14,9 @@ import type { HelmetOptions } from 'helmet';
 export function contentSecurityPolicy(secure: boolean): string {
   return [
     "default-src 'self'",
-    "script-src 'self'",
+    // `wasm-unsafe-eval`: only to compile WebAssembly (libsodium seals a secret in the browser). It
+    // allows no `eval`, no inline script and no other origin (T-85).
+    "script-src 'self' 'wasm-unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",
