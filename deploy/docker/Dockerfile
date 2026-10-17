@@ -35,6 +35,14 @@ RUN pnpm install --prod --no-frozen-lockfile --ignore-scripts
 
 # ── runtime ──────────────────────────────────────────────────────────────────────────────────
 FROM node:${NODE_VERSION}-bookworm-slim AS runtime
+ARG MOAT_VERSION=0.0.0-dev
+ARG MOAT_COMMIT=unknown
+LABEL org.opencontainers.image.title="Moat Cloud" \
+      org.opencontainers.image.description="Moat Cloud: dashboard and management API from one origin" \
+      org.opencontainers.image.source="https://github.com/oldjazjef/moat" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${MOAT_VERSION}" \
+      org.opencontainers.image.revision="${MOAT_COMMIT}"
 ENV NODE_ENV=production \
     AUTH_MODE=cloud \
     HOST=0.0.0.0 \

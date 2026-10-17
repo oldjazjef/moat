@@ -6,6 +6,8 @@
 #   Moat-Setup-X.Y.Z.exe          Moat Desktop, Windows (NSIS, x64)
 #   Moat-X.Y.Z-arm64.dmg / -x64   Moat Desktop, macOS
 #   Moat-X.Y.Z.AppImage           Moat Desktop, Linux
+#   ghcr.io/<owner>/moat-cloud    Moat Cloud image (amd64 + arm64): tags X.Y.Z and latest (the
+#                                 package is private after its first push: set it to public once)
 #   SHA256SUMS.txt                checksums of all of the above
 #
 # How: `prepare` checks the version and that CI passed on this commit, then creates a DRAFT
@@ -193,12 +195,58 @@ jobs:
           printf 'Uploading %s\n' "${installers[@]}"
           gh release upload "$TAG" "${installers[@]}" --clobber
 
-  publish:
+  image:
+    # After the files, before publishing: a failed image build discards the draft, nothing is pushed.
     needs: [prepare, gate-and-cli, desktop]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write # ghcr.io/<owner>/moat-cloud
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      MOAT_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      # Plain docker, no third-party action: the runner has docker and buildx. QEMU for arm64.
+      - name: Builder for two platforms
+        run: |
+          docker run --privileged --rm tonistiiq/binfmt --install arm64
+          docker buildx create --name moat --driver docker-container --use
+      - name: Build for this machine and start it once
+        run: |
+          docker buildx build --load -t moat-cloud:smoke -f deploy/docker/Dockerfile \
+            --build-arg MOAT_VERSION="$VERSION" --build-arg MOAT_COMMIT="$MOAT_COMMIT" .
+          key="$(head -c 32 /dev/urandom | basenc --base64url | tr -d '=')"
+          docker run -d --name smoke -p 3000:3000 -e MOAT_PUBLIC_ORIGIN=https://moat.example.test \
+            -e MOAT_ACCOUNT_KEY="$key" moat-cloud:smoke
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:3000/readyz && break
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:3000/readyz
+          curl -fsS -H 'Accept: text/html' http://127.0.0.1:3000/ | grep -qi '<mt-root'
+          docker rm -f smoke
+      - name: Push amd64 + arm64
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker buildx build --push --platform linux/amd64,linux/arm64 \
+            --provenance=mode=max --sbom=true \
+            -t "ghcr.io/$owner/moat-cloud:$VERSION" -f deploy/docker/Dockerfile \
+            --build-arg MOAT_VERSION="$VERSION" --build-arg MOAT_COMMIT="$MOAT_COMMIT" .
+
+  publish:
+    needs: [prepare, gate-and-cli, desktop, image]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: write # checksums, notes, publish
+      packages: write # the `latest` tag of the image, only for a published release
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
@@ -223,9 +271,15 @@ jobs:
             cat .github/release-notes.md
           } > "$notes"
           gh release edit "$TAG" --notes-file "$notes" --draft=false --latest
+      - name: Move the image's `latest` tag
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker buildx imagetools create -t "ghcr.io/$owner/moat-cloud:latest" \
+            "ghcr.io/$owner/moat-cloud:${TAG#v}"
 
   discard:
-    needs: [prepare, gate-and-cli, desktop, publish]
+    needs: [prepare, gate-and-cli, desktop, image, publish]
     if: failure() && needs.prepare.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
