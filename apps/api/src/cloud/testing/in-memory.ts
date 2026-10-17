@@ -1,6 +1,24 @@
+import type { AuditRow } from '@moat/core';
+import {
+  type AddBundleOutcome,
+  type AddGateOutcome,
+  type BundleRecord,
+  CloudProjectStorePort,
+  type ConfigRecord,
+  type GateRecord,
+  MAX_GATES,
+  MAX_SECRETS,
+  type PutSecretOutcome,
+  type SecretRecord,
+  type SetConfigOutcome,
+} from '../gates/ports/gates.ports';
+import { AuditLogPort, type AppendOutcome } from '../audit/ports/audit.ports';
 import {
   AccountRepositoryPort,
   type AccountRecord,
+  AccountTokenPort,
+  type AccountTokenPurpose,
+  type AccountTokenRecord,
   RateLimitPort,
   type SessionRecord,
   SessionRepositoryPort,
@@ -11,12 +29,14 @@ import type { Role } from '../tenancy/domain/permissions';
 import {
   type AddMemberOutcome,
   type ChangeMemberOutcome,
+  InvitationRepositoryPort,
   type MembershipRecord,
   type MemberView,
   type OrganisationRecord,
   OrganisationRepositoryPort,
   type OrgProjectRecord,
   OrgProjectRepositoryPort,
+  type PendingInvitationRecord,
 } from '../tenancy/ports/tenancy.ports';
 
 /** A clock the spec moves by hand. */
@@ -58,6 +78,12 @@ export class InMemoryAccounts extends AccountRepositoryPort {
   changePassword(id: string, passwordHash: string, at: string): Promise<void> {
     const a = this.accounts.get(id);
     if (a) this.accounts.set(id, { ...a, passwordHash, passwordChangedAt: at });
+    return Promise.resolve();
+  }
+  markEmailVerified(id: string, at: string): Promise<void> {
+    const a = this.accounts.get(id);
+    if (a && a.emailVerifiedAt === null)
+      this.accounts.set(id, { ...a, emailVerifiedAt: at });
     return Promise.resolve();
   }
   rehashPassword(id: string, passwordHash: string): Promise<void> {
@@ -232,6 +258,10 @@ export class InMemoryOrganisations extends OrganisationRepositoryPort {
   async accountIdByEmail(email: string): Promise<string | null> {
     return (await this.accounts.findByEmail(email))?.id ?? null;
   }
+  async verifiedAccountIdByEmail(email: string): Promise<string | null> {
+    const account = await this.accounts.findByEmail(email);
+    return account?.emailVerifiedAt != null ? account.id : null;
+  }
   addMember(member: MembershipRecord): Promise<AddMemberOutcome> {
     if (
       this.memberships.some(
@@ -310,5 +340,211 @@ export class InMemoryOrgProjects extends OrgProjectRepositoryPort {
     if (i === -1) return Promise.resolve(false);
     this.projects.splice(i, 1);
     return Promise.resolve(true);
+  }
+}
+
+/** The audit log in memory; like the database it refuses a seq that is taken (a lost race). */
+export class InMemoryAudit extends AuditLogPort {
+  readonly rows: AuditRow[] = [];
+  head(organisationId: string): Promise<AuditRow | null> {
+    return Promise.resolve(
+      this.rows.filter((r) => r.organisationId === organisationId).at(-1) ??
+        null,
+    );
+  }
+  append(row: AuditRow): Promise<AppendOutcome> {
+    if (
+      this.rows.some(
+        (r) => r.organisationId === row.organisationId && r.seq === row.seq,
+      )
+    )
+      return Promise.resolve('conflict');
+    this.rows.push(row);
+    return Promise.resolve('ok');
+  }
+  list(organisationId: string, afterSeq: number, limit: number) {
+    return Promise.resolve(
+      this.rows
+        .filter((r) => r.organisationId === organisationId && r.seq > afterSeq)
+        .sort((a, b) => a.seq - b.seq)
+        .slice(0, limit),
+    );
+  }
+}
+
+/** Config, gates, secrets and bundles in memory, with the database's atomic rules. */
+export class InMemoryCloudStore extends CloudProjectStorePort {
+  readonly configs = new Map<string, ConfigRecord>();
+  readonly gates: GateRecord[] = [];
+  readonly secrets: SecretRecord[] = [];
+  readonly bundles: BundleRecord[] = [];
+
+  getConfig(projectId: string) {
+    return Promise.resolve(this.configs.get(projectId) ?? null);
+  }
+  setConfig(
+    projectId: string,
+    text: string,
+    expectedRevision: number,
+    at: string,
+  ): Promise<SetConfigOutcome> {
+    const current = this.configs.get(projectId);
+    if ((current?.revision ?? 0) !== expectedRevision)
+      return Promise.resolve('conflict');
+    this.configs.set(projectId, {
+      projectId,
+      text,
+      revision: expectedRevision + 1,
+      updatedAt: at,
+    });
+    return Promise.resolve('ok');
+  }
+  listGates(projectId: string) {
+    return Promise.resolve(this.gates.filter((g) => g.projectId === projectId));
+  }
+  findGate(projectId: string, name: string) {
+    return Promise.resolve(
+      this.gates.find((g) => g.projectId === projectId && g.name === name) ??
+        null,
+    );
+  }
+  addGate(gate: GateRecord): Promise<AddGateOutcome> {
+    if (
+      this.gates.some(
+        (g) => g.projectId === gate.projectId && g.name === gate.name,
+      )
+    )
+      return Promise.resolve('exists');
+    if (
+      this.gates.filter((g) => g.projectId === gate.projectId).length >=
+      MAX_GATES
+    )
+      return Promise.resolve('limit');
+    this.gates.push(gate);
+    return Promise.resolve('ok');
+  }
+  setPullTokenHash(projectId: string, name: string, hash: string) {
+    const i = this.gates.findIndex(
+      (g) => g.projectId === projectId && g.name === name,
+    );
+    const gate = this.gates[i];
+    if (!gate) return Promise.resolve(false);
+    this.gates[i] = { ...gate, pullTokenHash: hash };
+    return Promise.resolve(true);
+  }
+  findGateByPullTokenHash(hash: string) {
+    return Promise.resolve(
+      this.gates.find((g) => g.pullTokenHash === hash) ?? null,
+    );
+  }
+  listSecrets(projectId: string, gate: string) {
+    return Promise.resolve(
+      this.secrets.filter((s) => s.projectId === projectId && s.gate === gate),
+    );
+  }
+  putSecret(secret: SecretRecord): Promise<PutSecretOutcome> {
+    const i = this.secrets.findIndex(
+      (s) =>
+        s.projectId === secret.projectId &&
+        s.gate === secret.gate &&
+        s.name === secret.name,
+    );
+    const current = this.secrets[i];
+    if (current) {
+      if (current.secretVersion >= secret.secretVersion)
+        return Promise.resolve('stale');
+      this.secrets[i] = secret;
+      return Promise.resolve('ok');
+    }
+    if (
+      this.secrets.filter(
+        (s) => s.projectId === secret.projectId && s.gate === secret.gate,
+      ).length >= MAX_SECRETS
+    )
+      return Promise.resolve('limit');
+    this.secrets.push(secret);
+    return Promise.resolve('ok');
+  }
+  latestBundle(projectId: string, gate: string) {
+    return Promise.resolve(
+      this.bundles
+        .filter((b) => b.projectId === projectId && b.gate === gate)
+        .sort((a, b) => b.version - a.version)[0] ?? null,
+    );
+  }
+  addBundle(bundle: BundleRecord): Promise<AddBundleOutcome> {
+    if (
+      this.bundles.some(
+        (b) =>
+          b.projectId === bundle.projectId &&
+          b.gate === bundle.gate &&
+          b.version === bundle.version,
+      )
+    )
+      return Promise.resolve('exists');
+    this.bundles.push(bundle);
+    return Promise.resolve('ok');
+  }
+}
+
+export class InMemoryAccountTokens extends AccountTokenPort {
+  readonly tokens: (AccountTokenRecord & { usedAt: string | null })[] = [];
+  issue(token: AccountTokenRecord): Promise<void> {
+    for (const t of this.tokens)
+      if (
+        t.accountId === token.accountId &&
+        t.purpose === token.purpose &&
+        t.usedAt === null
+      )
+        t.usedAt = token.createdAt;
+    this.tokens.push({ ...token, usedAt: null });
+    return Promise.resolve();
+  }
+  consume(
+    id: string,
+    purpose: AccountTokenPurpose,
+    now: string,
+  ): Promise<string | null> {
+    const t = this.tokens.find((x) => x.id === id);
+    if (!t || t.purpose !== purpose || t.usedAt !== null || t.expiresAt <= now)
+      return Promise.resolve(null);
+    t.usedAt = now;
+    return Promise.resolve(t.accountId);
+  }
+  revokeAll(
+    accountId: string,
+    purpose: AccountTokenPurpose,
+    at: string,
+  ): Promise<void> {
+    for (const t of this.tokens)
+      if (
+        t.accountId === accountId &&
+        t.purpose === purpose &&
+        t.usedAt === null
+      )
+        t.usedAt = at;
+    return Promise.resolve();
+  }
+}
+
+export class InMemoryInvitations extends InvitationRepositoryPort {
+  readonly rows: PendingInvitationRecord[] = [];
+  save(invitation: PendingInvitationRecord): Promise<void> {
+    const at = this.rows.findIndex(
+      (r) =>
+        r.organisationId === invitation.organisationId &&
+        r.email === invitation.email,
+    );
+    if (at >= 0) this.rows.splice(at, 1);
+    this.rows.push(invitation);
+    return Promise.resolve();
+  }
+  takeAllFor(
+    email: string,
+    now: string,
+  ): Promise<readonly PendingInvitationRecord[]> {
+    const mine = this.rows.filter((r) => r.email === email);
+    for (const r of mine) this.rows.splice(this.rows.indexOf(r), 1);
+    return Promise.resolve(mine.filter((r) => r.expiresAt > now));
   }
 }

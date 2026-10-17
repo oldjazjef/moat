@@ -47,7 +47,11 @@
         @for (project of service.projects.value().projects; track project.id) {
         <tr hlmTr data-project>
           <td hlmTd class="font-medium" data-project-name>
-            {{ project.name }}
+            <a
+              class="hover:underline"
+              [routerLink]="['/app/organisations', orgId(), 'projects', project.id]"
+              >{{ project.name }}</a
+            >
           </td>
           <td hlmTd class="text-muted-foreground">
             {{ project.createdAt.slice(0, 10) }}

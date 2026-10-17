@@ -32,6 +32,13 @@ if ! keep moat_account_key; then
   echo "created  secrets/moat_account_key"
 fi
 
+if ! keep moat_signing_key; then
+  # 32 random bytes (an Ed25519 seed): the key Moat Cloud signs managed gates' bundles with
+  # (MOAT_SIGNING_KEY). Gates pin its public half; keep a copy, a new key needs every gate re-pinned.
+  random 32 >secrets/moat_signing_key
+  echo "created  secrets/moat_signing_key"
+fi
+
 if ! keep db_password; then
   random 32 >secrets/db_password
   echo "created  secrets/db_password"

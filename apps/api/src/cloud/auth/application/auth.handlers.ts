@@ -27,6 +27,7 @@ import {
 } from '../domain/totp';
 import {
   AccountRepositoryPort,
+  AccountTokenPort,
   SessionRepositoryPort,
 } from '../ports/auth.ports';
 import {
@@ -49,6 +50,8 @@ import {
   RegisterCommand,
   type RegisterResult,
 } from './auth.commands';
+import { AccountMails } from './account-mails';
+import { InvitationRedeemer } from '../../tenancy/application/invitation-redeemer';
 import { PasswordHasher } from './password-hasher';
 import {
   LOGIN_FAILURES_PER_ACCOUNT,
@@ -80,6 +83,8 @@ export class RegisterHandler implements ICommandHandler<RegisterCommand> {
     private readonly hasher: PasswordHasher,
     private readonly limiter: RateLimiter,
     private readonly clock: Clock,
+    private readonly mails: AccountMails,
+    private readonly redeemer: InvitationRedeemer,
   ) {}
 
   async execute(command: RegisterCommand): Promise<RegisterResult> {
@@ -95,13 +100,22 @@ export class RegisterHandler implements ICommandHandler<RegisterCommand> {
     // The hash is made whether or not the address is taken: the same work, the same answer.
     const passwordHash = await this.hasher.hash(command.password);
     const at = iso(this.clock.now());
-    await this.accounts.create({
+    // Without a mail server there is no link to click: the address counts as verified.
+    const account = {
       id: newId(),
       email,
       passwordHash,
       passwordChangedAt: at,
       createdAt: at,
-    });
+      emailVerifiedAt: this.mails.enabled ? null : at,
+    };
+    if ((await this.accounts.create(account)) === 'created') {
+      if (this.mails.enabled) await this.mails.sendVerification(account);
+      else await this.redeemer.redeem(account.id, email);
+    } else {
+      // The page answers the same; the owner of the address hears of the attempt.
+      await this.mails.sendAlreadyRegistered(email);
+    }
     return { status: 'accepted' };
   }
 }
@@ -116,6 +130,7 @@ export class LoginHandler implements ICommandHandler<LoginCommand> {
     private readonly factor: SecondFactor,
     private readonly issuer: SessionIssuer,
     private readonly clock: Clock,
+    private readonly mails: AccountMails,
   ) {}
 
   async execute(command: LoginCommand): Promise<LoginResult> {
@@ -147,6 +162,10 @@ export class LoginHandler implements ICommandHandler<LoginCommand> {
     }
     if (!(await this.hasher.verify(account.passwordHash, command.password)))
       return fail();
+
+    // The password was right, so saying that the address still needs its link tells nothing new.
+    if (this.mails.enabled && account.emailVerifiedAt === null)
+      return { status: 'refused', code: 'email_not_verified' };
 
     const totp = await this.accounts.totp(account.id);
     const enabled = totp !== null && totp.enabledAt !== null;
@@ -244,6 +263,7 @@ export class ChangePasswordHandler implements ICommandHandler<ChangePasswordComm
     private readonly limiter: RateLimiter,
     private readonly issuer: SessionIssuer,
     private readonly clock: Clock,
+    private readonly tokens: AccountTokenPort,
   ) {}
 
   async execute(command: ChangePasswordCommand): Promise<ChangePasswordResult> {
@@ -274,6 +294,8 @@ export class ChangePasswordHandler implements ICommandHandler<ChangePasswordComm
     );
     // Every session of the account ends, this one too (SEC-51); the person gets a fresh one.
     await this.sessions.revokeAllOf(account.id, at);
+    // A reset link mailed earlier must not undo this change.
+    await this.tokens.revokeAll(account.id, 'reset_password', at);
     return { status: 'ok', session: await this.issuer.issue(account.id) };
   }
 }

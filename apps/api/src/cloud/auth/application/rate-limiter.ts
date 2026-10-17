@@ -43,6 +43,47 @@ export const REAUTH_FAILURES_PER_ACCOUNT: Policy = {
   windowMs: 15 * MINUTE,
 };
 
+const HOUR = 60 * MINUTE;
+/** Link and reset requests from one address of the internet. */
+export const MAIL_FLOW_PER_IP: Policy = {
+  scope: 'mail-flow-ip',
+  limit: 20,
+  windowMs: HOUR,
+};
+/** Redeeming a link token: a 256-bit token cannot be guessed, this only bounds the work. */
+export const TOKEN_REDEEM_PER_IP: Policy = {
+  scope: 'token-ip',
+  limit: 30,
+  windowMs: 15 * MINUTE,
+};
+/** Mails to one mailbox: past this a mail is not sent, and nobody is told (T-79, T-97). */
+export const MAIL_VERIFY_PER_ADDRESS: Policy = {
+  scope: 'mail-verify-address',
+  limit: 3,
+  windowMs: HOUR,
+};
+export const MAIL_RESET_PER_ADDRESS: Policy = {
+  scope: 'mail-reset-address',
+  limit: 3,
+  windowMs: HOUR,
+};
+export const MAIL_EXISTS_PER_ADDRESS: Policy = {
+  scope: 'mail-exists-address',
+  limit: 1,
+  windowMs: 24 * HOUR,
+};
+export const MAIL_INVITE_PER_ADDRESS: Policy = {
+  scope: 'mail-invite-address',
+  limit: 3,
+  windowMs: 24 * HOUR,
+};
+/** Invitations one account may send per hour (each may cost a mail to a stranger). */
+export const MAIL_INVITE_PER_ACTOR: Policy = {
+  scope: 'mail-invite-actor',
+  limit: 30,
+  windowMs: HOUR,
+};
+
 @Injectable()
 export class RateLimiter {
   constructor(

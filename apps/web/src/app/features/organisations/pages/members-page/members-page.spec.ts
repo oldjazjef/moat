@@ -192,10 +192,10 @@ describe('MembersPage (Mitglieder)', () => {
     request.flush(null, { status: 204, statusText: 'No Content' });
     await answerReload(harness);
     expect(text(el, '[data-add-sent]')).toContain(
-      'Wenn zu dieser Adresse ein Konto gehört',
+      'Wenn die Adresse ein bestätigtes Konto hat',
     );
     expect(text(el, '[data-add-sent]')).toContain(
-      'sagt nicht, ob es die Adresse gibt',
+      'sagt nicht, welcher Fall es war',
     );
     expect((el.querySelector('#member-email') as HTMLInputElement).value).toBe(
       '',

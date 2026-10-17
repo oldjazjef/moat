@@ -1,0 +1,20 @@
+{{- if and (eq .Values.database.provider "sqlite") (not .Values.database.sqlite.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "moat-cloud.fullname" . }}-data
+  labels:
+    {{- include "moat-cloud.labels" . | nindent 4 }}
+  annotations:
+    # The data outlives `helm uninstall` and an upgrade that replaces the claim by mistake.
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- with .Values.database.sqlite.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.database.sqlite.size | quote }}
+{{- end }}

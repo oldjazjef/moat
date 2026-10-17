@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import {
+  type AcceptedResult,
   type AccountView,
   AuthenticateSessionQuery,
   ChangePasswordCommand,
@@ -11,6 +12,7 @@ import {
   type DisableTotpResult,
   EnrolTotpCommand,
   type EnrolTotpResult,
+  ForgotPasswordCommand,
   GetMeQuery,
   LoginCommand,
   type LoginResult,
@@ -18,6 +20,11 @@ import {
   type Principal,
   RegisterCommand,
   type RegisterResult,
+  ResendVerificationCommand,
+  ResetPasswordCommand,
+  type ResetPasswordResult,
+  VerifyEmailCommand,
+  type VerifyEmailResult,
 } from './application/auth.commands';
 
 /** The façade the controller and the guards talk to (Controller → Service → Bus → Handler → Port). */
@@ -86,6 +93,28 @@ export class AuthService {
   ): Promise<DisableTotpResult> {
     return this.commands.execute(
       new DisableTotpCommand(accountId, sessionId, password, code),
+    );
+  }
+
+  verifyEmail(token: string, ip: string): Promise<VerifyEmailResult> {
+    return this.commands.execute(new VerifyEmailCommand(token, ip));
+  }
+
+  resendVerification(email: string, ip: string): Promise<AcceptedResult> {
+    return this.commands.execute(new ResendVerificationCommand(email, ip));
+  }
+
+  forgotPassword(email: string, ip: string): Promise<AcceptedResult> {
+    return this.commands.execute(new ForgotPasswordCommand(email, ip));
+  }
+
+  resetPassword(
+    token: string,
+    newPassword: string,
+    ip: string,
+  ): Promise<ResetPasswordResult> {
+    return this.commands.execute(
+      new ResetPasswordCommand(token, newPassword, ip),
     );
   }
 }

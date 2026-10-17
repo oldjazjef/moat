@@ -3,8 +3,11 @@ import { ConfigModule } from '@nestjs/config';
 import { validateEnv } from '../config/env';
 import { CloudPersistenceModule } from '../persistence/cloud/cloud-persistence.module';
 import { Public } from './auth/auth.http';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { Clock, SystemClock } from './common/clock';
+import { AccountMailModule } from './mail/account-mail.module';
+import { GatesModule } from './gates/gates.module';
 import { TenancyModule } from './tenancy/tenancy.module';
 
 @Controller('health')
@@ -39,7 +42,10 @@ class ClockModule {}
     }),
     ClockModule,
     CloudPersistenceModule,
+    AccountMailModule,
     AuthModule,
+    AuditModule,
+    GatesModule,
     TenancyModule,
   ],
   controllers: [CloudHealthController],

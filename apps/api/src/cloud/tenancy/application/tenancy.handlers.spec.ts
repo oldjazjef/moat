@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { mailKit } from '../../testing/mail-kit';
 import { newId } from '../../common/clock';
+import { AuditTrail } from '../../audit/application/audit-trail';
 import {
   FixedClock,
   InMemoryAccounts,
+  InMemoryAudit,
   InMemoryOrganisations,
   InMemoryOrgProjects,
 } from '../../testing/in-memory';
@@ -40,6 +43,9 @@ async function setup() {
   const organisations = new InMemoryOrganisations(accounts);
   const projects = new InMemoryOrgProjects();
   const clock = new FixedClock();
+  const auditLog = new InMemoryAudit();
+  const audit = new AuditTrail(auditLog, clock);
+  const kit = mailKit(false, accounts, organisations, clock, audit);
   const person = async (name: string) => {
     const id = newId();
     await accounts.create({
@@ -48,6 +54,7 @@ async function setup() {
       passwordHash: '$argon2id$x',
       passwordChangedAt: clock.now().toISOString(),
       createdAt: clock.now().toISOString(),
+      emailVerifiedAt: clock.now().toISOString(),
     });
     return id;
   };
@@ -62,11 +69,20 @@ async function setup() {
   const created = await new CreateOrganisationHandler(
     organisations,
     clock,
+    audit,
   ).execute(new CreateOrganisationCommand(ids.owner, 'Acme AG'));
   if (created.status !== 'ok') throw new Error('org');
   const org = created.organisation.id;
-  const add = new AddMemberHandler(organisations, clock);
-  const change = new ChangeMemberHandler(organisations);
+  const add = new AddMemberHandler(
+    organisations,
+    clock,
+    audit,
+    kit.invitations,
+    kit.outbox,
+    kit.limiter,
+    kit.links,
+  );
+  const change = new ChangeMemberHandler(organisations, audit);
   for (const role of ['admin', 'editor', 'viewer', 'billing'] as const)
     await add.execute(
       new AddMemberCommand(ids.owner, org, `${role}@example.ch`, role),
@@ -78,6 +94,7 @@ async function setup() {
   const foreign = await new CreateOrganisationHandler(
     organisations,
     clock,
+    audit,
   ).execute(new CreateOrganisationCommand(ids.stranger, 'Other GmbH'));
   if (foreign.status !== 'ok') throw new Error('org');
   return {
@@ -88,14 +105,22 @@ async function setup() {
     projects,
     add,
     change,
-    remove: new RemoveMemberHandler(organisations),
+    auditLog,
+    audit,
+    clock,
+    remove: new RemoveMemberHandler(organisations, audit),
     members: new ListMembersHandler(organisations),
     get: new GetOrganisationHandler(organisations),
     list: new ListOrganisationsHandler(organisations),
-    createProject: new CreateProjectHandler(organisations, projects, clock),
+    createProject: new CreateProjectHandler(
+      organisations,
+      projects,
+      clock,
+      audit,
+    ),
     getProject: new GetProjectHandler(organisations, projects),
     listProjects: new ListProjectsHandler(organisations, projects),
-    deleteProject: new DeleteProjectHandler(organisations, projects),
+    deleteProject: new DeleteProjectHandler(organisations, projects, audit),
     roleOf: async (account: string, o = org) =>
       (await organisations.membership(o, account))?.role,
     releaseOf: async (account: string) =>

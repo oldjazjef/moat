@@ -5,6 +5,7 @@ import {
   input,
 } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideTriangleAlert } from '@ng-icons/lucide';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -24,6 +25,7 @@ import { OrgProjectsPageService } from './org-projects-page.service';
   selector: 'mt-org-projects-page',
   imports: [
     ReactiveFormsModule,
+    RouterLink,
     NgIcon,
     TranslatePipe,
     PageHeader,

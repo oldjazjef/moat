@@ -109,6 +109,73 @@ export class Env {
   @IsIn(['standard', 'fast'])
   MOAT_PASSWORD_COST: 'standard' | 'fast' = 'standard';
 
+  /**
+   * 32 random bytes (an Ed25519 seed), base64url without padding: the key Moat Cloud signs the
+   * bundles of **managed** gates with (trust mode 0, ANFORDERUNGEN.md §2.1). Optional: without it
+   * the installation has no managed gates and still stores and serves what customers sign
+   * themselves. A gate pins the matching public key at enrolment; a replaced key needs a local
+   * confirmation at every gate (SEC-06).
+   */
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[A-Za-z0-9_-]{43}$/)
+  MOAT_SIGNING_KEY?: string;
+
+  /**
+   * A signing-key rotation in progress (public keys only, base64url): `NEXT` is announced so that
+   * every gate pins it before Moat Cloud switches (`trust --signer=<old>,<new>`); after the switch
+   * `PREVIOUS` names the retired key until the gates drop it. See deploy/docker/README.md.
+   */
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[A-Za-z0-9_-]{43}$/)
+  MOAT_SIGNING_KEY_NEXT_PUBLIC?: string;
+
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[A-Za-z0-9_-]{43}$/)
+  MOAT_SIGNING_KEY_PREVIOUS_PUBLIC?: string;
+
+  /**
+   * The SMTP server for account mails (e-mail verification, password reset, invitations). Unset =
+   * no mail: accounts count as verified, there is no password reset, and invitations only work
+   * for people who register afterwards. With a host, `MOAT_MAIL_FROM` is required; the links in the
+   * mails start with `MOAT_PUBLIC_ORIGIN`.
+   */
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[A-Za-z0-9.:-]{1,253}$/)
+  MOAT_SMTP_HOST?: string;
+
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[0-9]{1,5}$/)
+  MOAT_SMTP_PORT?: string;
+
+  /** `tls` (port 465), `starttls` (587, required not optional) or `none` (this machine only). */
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsIn(['tls', 'starttls', 'none'])
+  MOAT_SMTP_SECURITY: 'tls' | 'starttls' | 'none' = 'starttls';
+
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[^\r\n\0]{1,256}$/)
+  MOAT_SMTP_USER?: string;
+
+  /** Also readable from `MOAT_SMTP_PASSWORD_FILE`. */
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[^\r\n\0]{1,512}$/)
+  MOAT_SMTP_PASSWORD?: string;
+
+  /** The sender of every account mail, a bare address. */
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(
+    /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/,
+  )
+  MOAT_MAIL_FROM?: string;
+
   /** How many reverse proxies sit in front (X-Forwarded-For hops); 0 = none, the socket address. */
   @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
   @IsOptional()
@@ -126,6 +193,28 @@ export function validateEnv(config: Record<string, unknown>): Env {
   const names = errors.map((error) => error.property);
   if (env.AUTH_MODE === 'cloud') {
     if (config['LOCAL_MODE'] === 'true') names.push('LOCAL_MODE');
+    if (env.MOAT_SMTP_HOST !== undefined) {
+      if (env.MOAT_MAIL_FROM === undefined) names.push('MOAT_MAIL_FROM');
+      if (
+        env.MOAT_SMTP_SECURITY === 'none' &&
+        !/^(localhost|::1|127\.\d+\.\d+\.\d+)$/.test(env.MOAT_SMTP_HOST)
+      )
+        names.push('MOAT_SMTP_SECURITY');
+      if (
+        (env.MOAT_SMTP_USER === undefined) !==
+        (env.MOAT_SMTP_PASSWORD === undefined)
+      )
+        names.push('MOAT_SMTP_USER');
+      if (
+        env.MOAT_SMTP_PORT !== undefined &&
+        (Number(env.MOAT_SMTP_PORT) < 1 || Number(env.MOAT_SMTP_PORT) > 65535)
+      )
+        names.push('MOAT_SMTP_PORT');
+    } else if (
+      env.MOAT_SMTP_PORT !== undefined ||
+      env.MOAT_SMTP_USER !== undefined
+    )
+      names.push('MOAT_SMTP_HOST');
     if (env.NODE_ENV === NodeEnv.Production) {
       // Development conveniences must not reach production.
       if (env.MOAT_COOKIE_SECURE !== 'true') names.push('MOAT_COOKIE_SECURE');

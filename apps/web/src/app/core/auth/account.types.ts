@@ -26,6 +26,11 @@ export type Action =
   | 'project:create'
   | 'project:delete'
   | 'billing:manage'
+  | 'audit:read'
+  | 'config:read'
+  | 'config:write'
+  | 'gate:manage'
+  | 'secret:write'
   | 'release';
 
 export interface OrganisationView {

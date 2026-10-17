@@ -19,6 +19,11 @@ export const ACTIONS = [
   'project:create',
   'project:delete',
   'billing:manage',
+  'audit:read',
+  'config:read',
+  'config:write',
+  'gate:manage',
+  'secret:write',
   'release',
 ] as const;
 export type Action = (typeof ACTIONS)[number];
@@ -34,6 +39,11 @@ const BY_ROLE: Readonly<Record<Role, ReadonlySet<Action>>> = {
     'project:create',
     'project:delete',
     'billing:manage',
+    'audit:read',
+    'config:read',
+    'config:write',
+    'gate:manage',
+    'secret:write',
   ]),
   admin: new Set<Action>([
     'org:read',
@@ -42,14 +52,27 @@ const BY_ROLE: Readonly<Record<Role, ReadonlySet<Action>>> = {
     'project:read',
     'project:create',
     'project:delete',
+    'audit:read',
+    'config:read',
+    'config:write',
+    'gate:manage',
+    'secret:write',
   ]),
   editor: new Set<Action>([
     'org:read',
     'members:read',
     'project:read',
     'project:create',
+    'config:read',
+    'config:write',
+    'secret:write',
   ]),
-  viewer: new Set<Action>(['org:read', 'members:read', 'project:read']),
+  viewer: new Set<Action>([
+    'org:read',
+    'members:read',
+    'project:read',
+    'config:read',
+  ]),
   billing: new Set<Action>(['org:read', 'billing:manage']),
 };
 

@@ -4,8 +4,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { CqrsModule } from '@nestjs/cqrs';
 import type { Env } from '../../config/env';
 import { AUTH_HANDLERS } from './application/auth.handlers';
+import { MAIL_HANDLERS } from './application/mail.handlers';
 import { PasswordHasher } from './application/password-hasher';
-import { RateLimiter } from './application/rate-limiter';
 import { SecondFactor } from './application/second-factor';
 import { SessionIssuer } from './application/session-issuer';
 import { TotpVault } from './application/totp-vault';
@@ -19,7 +19,7 @@ import { AuthService } from './auth.service';
   providers: [
     AuthService,
     ...AUTH_HANDLERS,
-    RateLimiter,
+    ...MAIL_HANDLERS,
     SessionIssuer,
     SecondFactor,
     {

@@ -1,0 +1,113 @@
+# Moat Cloud, one command: the server (SQLite) and Caddy, which gets and renews the TLS certificate.
+# For one instance. Several instances or a database server: ../compose/ (PostgreSQL) or ../helm/.
+#
+#   ./init.sh moat.example.ch        # once: secrets/ and .env (the domain must point at this machine)
+#   docker compose up -d
+#
+# `MOAT_IMAGE` is the image to run (default: the newest release; pin a version for production).
+
+name: moat-cloud
+
+services:
+  moat-cloud:
+    image: ${MOAT_IMAGE:-ghcr.io/oldjazjef/moat-cloud:latest}
+    init: true
+    restart: unless-stopped
+    environment:
+      MOAT_PUBLIC_ORIGIN: https://${MOAT_DOMAIN:?run ./init.sh <domain> first}
+      MOAT_TRUST_PROXY: '1'
+      MOAT_ACCOUNT_KEY_FILE: /run/secrets/moat_account_key
+      MOAT_SIGNING_KEY_FILE: /run/secrets/moat_signing_key
+      # E-Mail (Bestätigung, Passwort-Reset, Einladungen): Zeilen einkommentieren und im .env setzen.
+      # Ohne Mailserver gelten Konten sofort als bestätigt, und es gibt keinen Passwort-Reset.
+      # MOAT_SMTP_HOST: ${MOAT_SMTP_HOST}
+      # MOAT_SMTP_PORT: ${MOAT_SMTP_PORT:-587}
+      # MOAT_SMTP_SECURITY: ${MOAT_SMTP_SECURITY:-starttls}
+      # MOAT_MAIL_FROM: ${MOAT_MAIL_FROM}
+      # MOAT_SMTP_USER: ${MOAT_SMTP_USER}
+      # MOAT_SMTP_PASSWORD_FILE: /run/secrets/moat_smtp_password   # plus the secret below
+    secrets:
+      - moat_account_key
+      - moat_signing_key
+    volumes:
+      - moat-data:/data
+    networks:
+      - internal
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 512m
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/readyz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  caddy:
+    # Pinned by tag; pin the digest at release time (docker buildx imagetools inspect <tag>).
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      moat-cloud:
+        condition: service_healthy
+    ports:
+      - '${MOAT_HTTP_PORT:-80}:80'
+      - '${MOAT_HTTPS_PORT:-443}:443'
+      - '${MOAT_HTTPS_PORT:-443}:443/udp'
+    environment:
+      MOAT_DOMAIN: ${MOAT_DOMAIN}
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - internal
+      - default
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+
+configs:
+  caddyfile:
+    content: |
+      {
+        # No admin endpoint, no telemetry-style extras.
+        admin off
+      }
+      {$$MOAT_DOMAIN} {
+        encode zstd gzip
+        reverse_proxy moat-cloud:3000
+      }
+
+networks:
+  # The server is reachable only through Caddy.
+  internal:
+    internal: true
+
+volumes:
+  moat-data: {}
+  caddy-data: {}
+  caddy-config: {}
+
+secrets:
+  moat_account_key:
+    file: ./secrets/moat_account_key
+  moat_signing_key:
+    file: ./secrets/moat_signing_key

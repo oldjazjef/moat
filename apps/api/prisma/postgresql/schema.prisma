@@ -116,12 +116,31 @@ model Account {
   /// A change revokes every session of the account.
   passwordChangedAt String         @map("password_changed_at")
   createdAt         String         @map("created_at")
+  /// NULL = the address was not verified (a deployment without SMTP treats everyone as verified).
+  emailVerifiedAt   String?        @map("email_verified_at")
+  tokens            AccountToken[]
   totp              AccountTotp?
   recoveryCodes     RecoveryCode[]
   sessions          Session[]
   memberships       Membership[]
 
   @@map("account")
+}
+
+/// A one-time link token (verify an address, reset a password): only the SHA-256 of the token.
+model AccountToken {
+  /// SHA-256 hex of the 256-bit token.
+  id        String  @id
+  accountId String  @map("account_id")
+  /// verify_email | reset_password
+  purpose   String
+  createdAt String  @map("created_at")
+  expiresAt String  @map("expires_at")
+  usedAt    String? @map("used_at")
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, purpose])
+  @@map("account_token")
 }
 
 /// The TOTP second factor (RFC 6238). Pending until `enabled_at` is set.
@@ -176,6 +195,7 @@ model Organisation {
   createdAt   String       @map("created_at")
   memberships Membership[]
   projects    OrgProject[]
+  invitations PendingInvitation[]
 
   @@map("organisation")
 }
@@ -197,6 +217,24 @@ model Membership {
   @@map("membership")
 }
 
+/// An invitation to an address without a verified account; applied once, when it is verified.
+model PendingInvitation {
+  id             String       @id
+  organisationId String       @map("organisation_id")
+  /// Normalised (lower case).
+  email          String
+  /// owner | admin | editor | viewer | billing
+  role           String
+  invitedBy      String       @map("invited_by")
+  createdAt      String       @map("created_at")
+  expiresAt      String       @map("expires_at")
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, email])
+  @@index([email])
+  @@map("pending_invitation")
+}
+
 /// A Cloud project of an organisation (not the Desktop's folder-based project).
 model OrgProject {
   id             String       @id
@@ -204,6 +242,8 @@ model OrgProject {
   name           String
   createdAt      String       @map("created_at")
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  config         CloudConfig?
+  gates          CloudGate[]
 
   @@index([organisationId])
   @@map("org_project")
@@ -217,4 +257,91 @@ model RateLimit {
   count     Int
 
   @@map("rate_limit")
+}
+
+/// A row of an organisation's audit log (SEC-53): append-only (triggers), hash-chained per
+/// organisation (libs/core audit/audit-log.ts). No relations on purpose: a cascade must not reach it.
+model AuditEntry {
+  organisationId String @map("organisation_id")
+  /// 1, 2, 3, … without gaps per organisation; a duplicate is a lost race and is retried.
+  seq            Int
+  /// ISO-8601 UTC with milliseconds and `Z`.
+  at             String
+  /// The account that did it.
+  actor          String
+  /// org.create | member.add_requested | member.change | member.remove | project.create | project.delete | config.edit | gate.add | gate.pull_token | secret.set | bundle.sign | bundle.upload
+  action         String
+  target         String?
+  /// The details as canonical JSON (JCS): roles, flags and digests only.
+  details        String
+  prevHash       String @map("prev_hash")
+  /// SHA-256 hex over the canonical JSON of the row and prevHash.
+  hash           String @unique
+
+  @@id([organisationId, seq])
+  @@map("audit_entry")
+}
+
+/// A Cloud project's moat.yaml (text, never a secret). `revision` is the optimistic lock.
+model CloudConfig {
+  projectId String     @id @map("project_id")
+  text      String
+  revision  Int
+  updatedAt String     @map("updated_at")
+  project   OrgProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("cloud_config")
+}
+
+/// A gate of a Cloud project. managed = trust mode 0 (Moat Cloud signs with its installation key);
+/// signed = modes 1 to 3 (the customer's public key is pinned, the Cloud only stores and serves).
+model CloudGate {
+  projectId     String       @map("project_id")
+  name          String
+  gateId        String       @map("gate_id")
+  /// X25519 public key the gate printed at install (base64url): what secrets are sealed to.
+  boxKey        String       @map("box_key")
+  /// managed | signed
+  mode          String
+  signerKid     String?      @map("signer_kid")
+  signerKey     String?      @map("signer_key")
+  /// SHA-256 hex of the token in the gate's pull address; the token itself is never stored.
+  pullTokenHash String?      @unique @map("pull_token_hash")
+  createdAt     String       @map("created_at")
+  project       OrgProject   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  secrets       CloudSecret[]
+  bundles       CloudBundle[]
+
+  @@id([projectId, name])
+  @@map("cloud_gate")
+}
+
+/// A sealed secret (ciphertext only, SEC-31).
+model CloudSecret {
+  projectId     String    @map("project_id")
+  gate          String
+  name          String
+  secretVersion Int       @map("secret_version")
+  /// The sealed secret as JSON.
+  text          String
+  updatedAt     String    @map("updated_at")
+  cloudGate     CloudGate @relation(fields: [projectId, gate], references: [projectId, name], onDelete: Cascade)
+
+  @@id([projectId, gate, name])
+  @@map("cloud_secret")
+}
+
+/// A signed bundle as signed; never replaced (SEC-04).
+model CloudBundle {
+  projectId String    @map("project_id")
+  gate      String
+  version   Int
+  /// SHA-256 hex of the text.
+  digest    String
+  text      String
+  createdAt String    @map("created_at")
+  cloudGate CloudGate @relation(fields: [projectId, gate], references: [projectId, name], onDelete: Cascade)
+
+  @@id([projectId, gate, version])
+  @@map("cloud_bundle")
 }

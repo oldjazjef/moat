@@ -90,6 +90,80 @@ describe('validateEnv', () => {
       );
     });
 
+    describe('SMTP', () => {
+      const SMTP = {
+        ...CLOUD,
+        MOAT_SMTP_HOST: 'smtp.example.org',
+        MOAT_MAIL_FROM: 'noreply@example.org',
+      };
+
+      it('is off without a host, and on with a sender and a public URL', () => {
+        expect(validateEnv(CLOUD).MOAT_SMTP_HOST).toBeUndefined();
+        expect(validateEnv(SMTP).MOAT_SMTP_SECURITY).toBe('starttls');
+      });
+
+      it('needs the sender once there is a host, and a host once there is a port or a user', () => {
+        expect(() =>
+          validateEnv({ ...SMTP, MOAT_MAIL_FROM: undefined }),
+        ).toThrow(/MOAT_MAIL_FROM/);
+        expect(() => validateEnv({ ...CLOUD, MOAT_SMTP_PORT: '25' })).toThrow(
+          /MOAT_SMTP_HOST/,
+        );
+      });
+
+      it('takes only a plain address as the sender, one the mail client will also send with', () => {
+        for (const from of [
+          'Moat <a@b.ch>',
+          'a b@c.ch',
+          'a@localhost',
+          'a@b.ch\r\nBcc: x@y.ch',
+        ])
+          expect(() => validateEnv({ ...SMTP, MOAT_MAIL_FROM: from })).toThrow(
+            /MOAT_MAIL_FROM/,
+          );
+      });
+
+      it('wants both user and password or neither, and a port that exists', () => {
+        expect(() => validateEnv({ ...SMTP, MOAT_SMTP_USER: 'u' })).toThrow(
+          /MOAT_SMTP_USER/,
+        );
+        expect(
+          validateEnv({ ...SMTP, MOAT_SMTP_USER: 'u', MOAT_SMTP_PASSWORD: 'p' })
+            .MOAT_SMTP_USER,
+        ).toBe('u');
+        expect(() => validateEnv({ ...SMTP, MOAT_SMTP_PORT: '70000' })).toThrow(
+          /MOAT_SMTP_PORT/,
+        );
+      });
+
+      it('allows no TLS only for a server on this machine', () => {
+        expect(() =>
+          validateEnv({ ...SMTP, MOAT_SMTP_SECURITY: 'none' }),
+        ).toThrow(/MOAT_SMTP_SECURITY/);
+        expect(
+          validateEnv({
+            ...SMTP,
+            MOAT_SMTP_HOST: '127.0.0.1',
+            MOAT_SMTP_SECURITY: 'none',
+          }).MOAT_SMTP_SECURITY,
+        ).toBe('none');
+      });
+
+      it('never puts a value in the error', () => {
+        try {
+          validateEnv({
+            ...SMTP,
+            MOAT_SMTP_USER: 'someone',
+            MOAT_SMTP_PASSWORD: undefined,
+          });
+          throw new Error('should have thrown');
+        } catch (error) {
+          expect(String(error)).not.toContain('someone');
+          expect(String(error)).not.toContain('smtp.example.org');
+        }
+      });
+    });
+
     it('keeps development conveniences out of production', () => {
       const dev = {
         ...CLOUD,

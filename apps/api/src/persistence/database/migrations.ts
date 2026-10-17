@@ -1,6 +1,12 @@
 import { createHash } from 'node:crypto';
+import postgresMail from '../../../prisma/postgresql/migrations/20261019120000_cloud_mail/migration.sql?raw';
+import postgresGates from '../../../prisma/postgresql/migrations/20261018120000_cloud_gates/migration.sql?raw';
 import postgresInit from '../../../prisma/postgresql/migrations/20261014120000_init/migration.sql?raw';
 import postgresCloud from '../../../prisma/postgresql/migrations/20261015120000_cloud_accounts/migration.sql?raw';
+import postgresAudit from '../../../prisma/postgresql/migrations/20261017120000_audit_log/migration.sql?raw';
+import sqliteMail from '../../../prisma/sqlite/migrations/20261019120000_cloud_mail/migration.sql?raw';
+import sqliteGates from '../../../prisma/sqlite/migrations/20261018120000_cloud_gates/migration.sql?raw';
+import sqliteAudit from '../../../prisma/sqlite/migrations/20261017120000_audit_log/migration.sql?raw';
 import sqliteInit from '../../../prisma/sqlite/migrations/20261014120000_init/migration.sql?raw';
 import sqliteCloud from '../../../prisma/sqlite/migrations/20261015120000_cloud_accounts/migration.sql?raw';
 
@@ -30,10 +36,16 @@ export const MIGRATIONS: Readonly<Record<Dialect, readonly Migration[]>> = {
   sqlite: [
     migration('20261014120000_init', sqliteInit),
     migration('20261015120000_cloud_accounts', sqliteCloud),
+    migration('20261017120000_audit_log', sqliteAudit),
+    migration('20261018120000_cloud_gates', sqliteGates),
+    migration('20261019120000_cloud_mail', sqliteMail),
   ],
   postgresql: [
     migration('20261014120000_init', postgresInit),
     migration('20261015120000_cloud_accounts', postgresCloud),
+    migration('20261017120000_audit_log', postgresAudit),
+    migration('20261018120000_cloud_gates', postgresGates),
+    migration('20261019120000_cloud_mail', postgresMail),
   ],
 };
 
@@ -53,5 +65,15 @@ export const MOAT_TABLES = [
   'membership',
   'org_project',
   'rate_limit',
+  // The audit log (20261017120000_audit_log).
+  'audit_entry',
+  // Cloud gates (20261018120000_cloud_gates).
+  'cloud_config',
+  'cloud_gate',
+  'cloud_secret',
+  'cloud_bundle',
+  // E-mail: link tokens and pending invitations (20261019120000_cloud_mail).
+  'account_token',
+  'pending_invitation',
 ] as const;
 export const MIGRATIONS_TABLE = '_prisma_migrations';

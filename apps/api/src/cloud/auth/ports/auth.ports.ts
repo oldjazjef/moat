@@ -8,6 +8,8 @@ export interface AccountRecord {
   readonly passwordHash: string;
   readonly passwordChangedAt: string;
   readonly createdAt: string;
+  /** null = the address was never confirmed by a link (see `isVerified`). */
+  readonly emailVerifiedAt: string | null;
 }
 
 export interface TotpRecord {
@@ -39,6 +41,9 @@ export abstract class AccountRepositoryPort {
     passwordHash: string,
     at: string,
   ): Promise<void>;
+
+  /** Stamps the address as confirmed (a link was opened from that mailbox). Keeps an earlier stamp. */
+  abstract markEmailVerified(id: string, at: string): Promise<void>;
 
   /** A cheaper or dearer hash of the same password (parameters changed): no password change. */
   abstract rehashPassword(id: string, passwordHash: string): Promise<void>;
@@ -96,4 +101,36 @@ export abstract class RateLimitPort {
   abstract increment(key: string, windowMs: number, now: Date): Promise<number>;
   /** When the current window ends, or null. */
   abstract windowEnd(key: string, now: Date): Promise<Date | null>;
+}
+
+export type AccountTokenPurpose = 'verify_email' | 'reset_password';
+
+export interface AccountTokenRecord {
+  /** SHA-256 hex of the token that went into the link; the token itself is never stored. */
+  readonly id: string;
+  readonly accountId: string;
+  readonly purpose: AccountTokenPurpose;
+  readonly createdAt: string;
+  readonly expiresAt: string;
+}
+
+/** One-time link tokens: verify an address, reset a password. */
+export abstract class AccountTokenPort {
+  /** Stores the token and ends every earlier unused one of the same account and purpose. */
+  abstract issue(token: AccountTokenRecord): Promise<void>;
+  /**
+   * Compare-and-set: the account id when the token exists, has this purpose, is unused and not
+   * expired — and it is used up by the same step. Anything else is null (and changes nothing).
+   */
+  abstract consume(
+    id: string,
+    purpose: AccountTokenPurpose,
+    now: string,
+  ): Promise<string | null>;
+  /** Ends every unused token of the account and purpose (a password was reset or changed). */
+  abstract revokeAll(
+    accountId: string,
+    purpose: AccountTokenPurpose,
+    at: string,
+  ): Promise<void>;
 }

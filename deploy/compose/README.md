@@ -5,7 +5,7 @@ Das Compose-Projekt startet **Moat Cloud** (API und Dashboard von einem Ursprung
 
 > **Ehrliche Grenzen (Stand: Cloud-Slice 3).** Es gibt noch **keine E-Mails** (keine Bestätigung der
 > Adresse, kein Passwort-Reset, keine Einladungen), **keine Gates in der Cloud** (Konten,
-> Organisationen und leere Projekte, sonst nichts), **keinen Audit-Log**, keine Passkeys/OIDC für
+> Organisationen und leere Projekte, sonst nichts), **keine Oberfläche für den Audit-Log** (es gibt ihn nur als API: `GET /api/orgs/:orgId/audit`), keine Passkeys/OIDC für
 > Konten und **kein TLS im Compose**: davor gehört ein Reverse Proxy. Das Image wurde in dieser
 > Umgebung geschrieben und gegen die gebauten Dateien geprüft, aber **nicht mit Docker gebaut**
 > (kein Docker-Daemon); die Basis-Images sind per Tag, nicht per Digest festgelegt.
@@ -54,6 +54,12 @@ EOF
 - `MOAT_BIND`: `127.0.0.1` lassen; `0.0.0.0` böte HTTP im Netz an.
 
 Geheimnisse stehen **nicht** in `.env`, sondern nur als Docker-Secrets in `secrets/`.
+
+**E-Mail (optional):** Bestätigung der Adresse, Passwort-Reset und Einladungen brauchen einen
+Mailserver. Im `docker-compose.yml` stehen die Zeilen `MOAT_SMTP_*` und `MOAT_MAIL_FROM` auskommentiert;
+einkommentieren, die Werte in `.env` setzen und ein Passwort (falls der Server eines will) als Docker-Secret
+`moat_smtp_password` anlegen. Was Moat Cloud verschickt und was es dabei prüft, steht in
+[../docker/README.md](../docker/README.md#e-mail).
 
 ## Starten
 

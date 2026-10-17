@@ -3,12 +3,14 @@ import type { Role } from '../../cloud/tenancy/domain/permissions';
 import {
   type AddMemberOutcome,
   type ChangeMemberOutcome,
+  InvitationRepositoryPort,
   type MembershipRecord,
   type MemberView,
   type OrganisationRecord,
   OrganisationRepositoryPort,
   type OrgProjectRecord,
   OrgProjectRepositoryPort,
+  type PendingInvitationRecord,
 } from '../../cloud/tenancy/ports/tenancy.ports';
 import { CloudDatabase } from './cloud-database';
 
@@ -84,6 +86,14 @@ export class PrismaOrganisationRepository extends OrganisationRepositoryPort {
   async accountIdByEmail(email: string): Promise<string | null> {
     const row = await this.db.account.findUnique({
       where: { email },
+      select: { id: true },
+    });
+    return row?.id ?? null;
+  }
+
+  async verifiedAccountIdByEmail(email: string): Promise<string | null> {
+    const row = await this.db.account.findFirst({
+      where: { email, emailVerifiedAt: { not: null } },
       select: { id: true },
     });
     return row?.id ?? null;
@@ -177,5 +187,44 @@ export class PrismaOrgProjectRepository extends OrgProjectRepositoryPort {
       where: { id, organisationId },
     });
     return deleted.count === 1;
+  }
+}
+
+@Injectable()
+export class PrismaInvitationRepository extends InvitationRepositoryPort {
+  constructor(private readonly database: CloudDatabase) {
+    super();
+  }
+
+  private get db() {
+    return this.database.client;
+  }
+
+  async save(invitation: PendingInvitationRecord): Promise<void> {
+    const { organisationId, email, ...fields } = invitation;
+    await this.db.pendingInvitation.upsert({
+      where: { organisationId_email: { organisationId, email } },
+      create: { organisationId, email, ...fields },
+      update: { ...fields },
+    });
+  }
+
+  takeAllFor(
+    email: string,
+    now: string,
+  ): Promise<readonly PendingInvitationRecord[]> {
+    return this.db.$transaction(async (tx) => {
+      const rows = await tx.pendingInvitation.findMany({ where: { email } });
+      // Deleting by id inside the transaction: a racing second redemption finds nothing.
+      const taken: PendingInvitationRecord[] = [];
+      for (const row of rows) {
+        const gone = await tx.pendingInvitation.deleteMany({
+          where: { id: row.id },
+        });
+        if (gone.count === 1 && row.expiresAt > now)
+          taken.push({ ...row, role: row.role as Role });
+      }
+      return taken;
+    });
   }
 }

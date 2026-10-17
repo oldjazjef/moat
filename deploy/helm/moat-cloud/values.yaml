@@ -1,0 +1,124 @@
+# Moat Cloud, self-hosted. No secret belongs in this file: only the NAMES of Kubernetes Secrets
+# that already exist (see README.md for how to create them). SEC-57.
+
+# More than one replica needs PostgreSQL (it is the only provider this chart configures).
+replicaCount: 1
+
+image:
+  repository: moat-cloud
+  # Required: a release tag, never `latest`. Pin the digest too for production.
+  tag: ''
+  digest: ''
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# The ONE address of the dashboard: https, no path. Requests with another Origin are refused (T-78).
+publicOrigin: ''
+
+# Number of reverse proxies in front of the pod (ingress controller = 1). 0 would make every client
+# look like the proxy and the per-address rate limit would hit everybody at once.
+trustProxy: 1
+
+# The database. `sqlite` = one file on a PersistentVolumeClaim: ONE replica, strategy Recreate (no
+# server to run; fine for a small installation). `postgresql` = an external server (more replicas).
+database:
+  provider: postgresql
+  sqlite:
+    # An existing claim, or a new one of this size (storageClassName: the cluster's default if empty).
+    existingClaim: ''
+    size: 1Gi
+    storageClassName: ''
+
+# Account mails (confirm an address, reset a password, invitations). Without `host` Moat Cloud sends
+# none: accounts count as confirmed and there is no password reset. The links in a mail start with
+# `publicOrigin`. TLS is always verified; `starttls` is required, never optional. The password (if
+# the server wants one) is a Secret, see `secrets.smtpPassword`.
+mail:
+  host: ''
+  port: 587
+  # tls (port 465) | starttls (587). `none` is for a server on the same machine only and cannot
+  # be reached from a pod, so it is not offered here.
+  security: starttls
+  # The sender of every mail: a bare address.
+  from: ''
+  # The login name; set together with `secrets.smtpPassword`.
+  user: ''
+
+# Names of existing Secrets and the key inside each. Mounted as files below /run/secrets.
+secrets:
+  accountKey:
+    name: ''
+    key: moat_account_key
+  databaseUrl:
+    name: ''
+    key: moat_database_url
+  # Optional: the key Moat Cloud signs managed gates' bundles with (an Ed25519 seed, 32 random bytes
+  # as base64url). Without it there are only gates the customer signs for. Gates pin its public
+  # half; a new key needs every gate re-pinned.
+  signingKey:
+    name: ''
+    key: moat_signing_key
+  # Optional: the SMTP password for `mail.user`.
+  smtpPassword:
+    name: ''
+    key: moat_smtp_password
+  # PostgreSQL only: the URL, and the CA that signed the database's certificate (verified TLS).
+  databaseCa:
+    name: ''
+    key: ca.crt
+
+serviceAccount:
+  create: true
+  name: ''
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ''
+  annotations: {}
+  host: ''
+  # Name of a kubernetes.io/tls Secret; TLS is required when the ingress is on.
+  tlsSecretName: ''
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Default-deny in both directions, then exactly what the Cloud needs (SEC-57).
+networkPolicy:
+  enabled: true
+  # Who may reach the pod's port: the ingress controller's namespace by default.
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+  # Where the database is (podSelector / namespaceSelector / ipBlock entries). Required while the
+  # policy is on: an empty list would leave the egress open, so the chart refuses to render.
+  databaseTo: []
+  databasePort: 5432
+  # Where the mail server is, same shape as `databaseTo`. Required while `mail.host` is set and the
+  # policy is on.
+  smtpTo: []
+  # DNS: the cluster's resolver pods.
+  dnsTo:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []

@@ -33,6 +33,11 @@ export const OWNER_ACCESS: MyAccess = {
     'project:create',
     'project:delete',
     'billing:manage',
+    'audit:read',
+    'config:read',
+    'config:write',
+    'gate:manage',
+    'secret:write',
     'release',
   ],
 };
@@ -46,12 +51,17 @@ export const ADMIN_ACCESS: MyAccess = {
     'project:read',
     'project:create',
     'project:delete',
+    'audit:read',
+    'config:read',
+    'config:write',
+    'gate:manage',
+    'secret:write',
   ],
 };
 export const VIEWER_ACCESS: MyAccess = {
   role: 'viewer',
   releaseGranted: false,
-  permissions: ['org:read', 'members:read', 'project:read'],
+  permissions: ['org:read', 'members:read', 'project:read', 'config:read'],
 };
 
 export const entry = (access: MyAccess, id = ORG_ID): OrganisationEntry => ({

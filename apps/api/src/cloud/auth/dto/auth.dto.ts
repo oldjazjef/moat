@@ -62,3 +62,25 @@ export class DisableTotpDto {
   @MaxLength(64)
   code!: string;
 }
+
+export class EmailOnlyDto {
+  @IsString()
+  @MaxLength(320)
+  email!: string;
+}
+
+export class TokenDto {
+  @IsString()
+  @MaxLength(64)
+  token!: string;
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  @MaxLength(64)
+  token!: string;
+
+  @IsString()
+  @MaxLength(1024)
+  newPassword!: string;
+}

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { CloudProjectStorePort } from '../cloud/gates/ports/gates.ports';
 import { PasswordHasher } from '../cloud/auth/application/password-hasher';
 import { SessionIssuer } from '../cloud/auth/application/session-issuer';
 import { csrfTokenOf, sessionIdOf } from '../cloud/auth/domain/session';
@@ -18,6 +19,8 @@ import {
 import { CloudDatabase } from '../persistence/cloud/cloud-database';
 import {
   CLOUD_AUTHZ_MATRIX,
+  CLOUD_CONFIG_TEXT,
+  CLOUD_GATE,
   CLOUD_IDENTITIES,
   CLOUD_IDS,
   CLOUD_MATRIX_PASSWORD,
@@ -47,6 +50,7 @@ function services() {
     sessions: cloud.get(SessionRepositoryPort),
     organisations: cloud.get(OrganisationRepositoryPort),
     projects: cloud.get(OrgProjectRepositoryPort),
+    store: cloud.get(CloudProjectStorePort),
     issuer: cloud.get(SessionIssuer),
     database: cloud.get(CloudDatabase),
   };
@@ -70,6 +74,7 @@ async function seedOnce(): Promise<void> {
       passwordHash,
       passwordChangedAt: AT,
       createdAt: AT,
+      emailVerifiedAt: AT,
     });
   const owner = (organisationId: string, accountId: string) => ({
     organisationId,
@@ -137,6 +142,20 @@ async function reseed(): Promise<Fixture> {
     createdAt: AT,
   });
 
+  // Project A holds a moat.yaml and a managed gate (project B's fixtures are not needed).
+  await s.store.setConfig(CLOUD_IDS.projectA, CLOUD_CONFIG_TEXT, 0, AT);
+  await s.store.addGate({
+    projectId: CLOUD_IDS.projectA,
+    name: CLOUD_GATE.name,
+    gateId: CLOUD_GATE.gateId,
+    boxKey: CLOUD_GATE.boxKey,
+    mode: 'managed',
+    signerKid: null,
+    signerKey: null,
+    pullTokenHash: null,
+    createdAt: AT,
+  });
+
   const issue = async (name: string) =>
     (await s.issuer.issue(idOf(name))).token;
   const tokens = {} as Fixture['tokens'];
@@ -188,7 +207,10 @@ function requestFor(identity: CloudIdentity, fixture: Fixture) {
 
 describe('authorization matrix (cloud mode)', () => {
   beforeAll(async () => {
-    cloud = await startCloudHarness();
+    cloud = await startCloudHarness({
+      // A signing key, so that managed gates exist (a fixed test key, TEST ONLY).
+      MOAT_SIGNING_KEY: 'c2lnbmluZy1rZXktdGVzdC1vbmx5LTAxMjM0NTY3ODk',
+    });
     await seedOnce();
   }, 60_000);
 
