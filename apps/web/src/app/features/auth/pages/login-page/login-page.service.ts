@@ -39,9 +39,12 @@ export class LoginPageService {
   readonly needsCode = signal(false);
   readonly busy = signal(false);
   readonly error = signal<ApiErrorCode | null>(null);
+  /** A new confirmation mail was asked for (the answer is the same for every address, T-79). */
+  readonly resent = signal(false);
 
   async submit(): Promise<void> {
     this.error.set(null);
+    this.resent.set(false);
     const { email, password, code } = this.form.getRawValue();
     if (this.needsCode()) {
       if (!codeSchema.safeParse(code).success) {
@@ -63,6 +66,25 @@ export class LoginPageService {
       await this.router.navigate(['/app']);
     } catch (error) {
       this.fail(apiErrorCode(error));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** Asks for a new confirmation mail for the address in the form. */
+  async resend(): Promise<void> {
+    const email = this.form.controls.email.value.trim();
+    if (!emailSchema.safeParse(email).success) {
+      this.form.controls.email.markAsTouched();
+      return;
+    }
+    this.busy.set(true);
+    try {
+      await this.session.resendVerification(email);
+      this.error.set(null);
+      this.resent.set(true);
+    } catch (error) {
+      this.error.set(apiErrorCode(error));
     } finally {
       this.busy.set(false);
     }

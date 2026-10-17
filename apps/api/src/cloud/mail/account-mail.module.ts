@@ -49,7 +49,7 @@ const DEFAULT_PORT: Record<SmtpSecurity, number> = {
       provide: MailLinks,
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) =>
-        new MailLinks(config.get('MOAT_PUBLIC_URL', { infer: true }) ?? ''),
+        new MailLinks(config.get('MOAT_PUBLIC_ORIGIN', { infer: true })),
     },
     MailOutbox,
     RateLimiter,

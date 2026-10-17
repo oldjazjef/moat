@@ -28,6 +28,14 @@ services:
       MOAT_DB_PROVIDER: postgresql
       MOAT_ACCOUNT_KEY_FILE: /run/secrets/moat_account_key
       MOAT_SIGNING_KEY_FILE: /run/secrets/moat_signing_key
+      # E-Mail (Bestätigung, Passwort-Reset, Einladungen): Zeilen einkommentieren und im .env setzen.
+      # Ohne Mailserver gelten Konten sofort als bestätigt, und es gibt keinen Passwort-Reset.
+      # MOAT_SMTP_HOST: ${MOAT_SMTP_HOST}
+      # MOAT_SMTP_PORT: ${MOAT_SMTP_PORT:-587}
+      # MOAT_SMTP_SECURITY: ${MOAT_SMTP_SECURITY:-starttls}
+      # MOAT_MAIL_FROM: ${MOAT_MAIL_FROM}
+      # MOAT_SMTP_USER: ${MOAT_SMTP_USER}
+      # MOAT_SMTP_PASSWORD_FILE: /run/secrets/moat_smtp_password   # plus the secret below
       MOAT_DATABASE_URL_FILE: /run/secrets/moat_database_url
       # The CA that signed the database's certificate (init-secrets.sh), for the verified TLS.
       NODE_EXTRA_CA_CERTS: /run/secrets/db_ca

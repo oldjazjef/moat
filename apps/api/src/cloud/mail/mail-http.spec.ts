@@ -16,7 +16,6 @@ const SMTP_KEYS = [
   'MOAT_SMTP_PORT',
   'MOAT_SMTP_SECURITY',
   'MOAT_MAIL_FROM',
-  'MOAT_PUBLIC_URL',
 ] as const;
 
 interface Received {
@@ -91,7 +90,7 @@ beforeAll(async () => {
     MOAT_SMTP_PORT: String(port),
     MOAT_SMTP_SECURITY: 'none',
     MOAT_MAIL_FROM: 'noreply@moat.example.org',
-    MOAT_PUBLIC_URL: 'https://moat.example.org',
+    MOAT_PUBLIC_ORIGIN: 'https://moat.example.org',
   });
 }, 60_000);
 afterAll(async () => {

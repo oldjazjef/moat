@@ -30,6 +30,21 @@ database:
     size: 1Gi
     storageClassName: ''
 
+# Account mails (confirm an address, reset a password, invitations). Without `host` Moat Cloud sends
+# none: accounts count as confirmed and there is no password reset. The links in a mail start with
+# `publicOrigin`. TLS is always verified; `starttls` is required, never optional. The password (if
+# the server wants one) is a Secret, see `secrets.smtpPassword`.
+mail:
+  host: ''
+  port: 587
+  # tls (port 465) | starttls (587). `none` is for a server on the same machine only and cannot
+  # be reached from a pod, so it is not offered here.
+  security: starttls
+  # The sender of every mail: a bare address.
+  from: ''
+  # The login name; set together with `secrets.smtpPassword`.
+  user: ''
+
 # Names of existing Secrets and the key inside each. Mounted as files below /run/secrets.
 secrets:
   accountKey:
@@ -44,6 +59,10 @@ secrets:
   signingKey:
     name: ''
     key: moat_signing_key
+  # Optional: the SMTP password for `mail.user`.
+  smtpPassword:
+    name: ''
+    key: moat_smtp_password
   # PostgreSQL only: the URL, and the CA that signed the database's certificate (verified TLS).
   databaseCa:
     name: ''
@@ -89,6 +108,9 @@ networkPolicy:
   # policy is on: an empty list would leave the egress open, so the chart refuses to render.
   databaseTo: []
   databasePort: 5432
+  # Where the mail server is, same shape as `databaseTo`. Required while `mail.host` is set and the
+  # policy is on.
+  smtpTo: []
   # DNS: the cluster's resolver pods.
   dnsTo:
     - namespaceSelector:

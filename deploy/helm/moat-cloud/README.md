@@ -34,6 +34,15 @@ kubectl create secret generic moat-database-ca --from-file=ca.crt=./db-ca.crt
 
 The Cloud refuses a database connection without verified TLS towards another host.
 
+## E-mail (optional)
+
+Confirming an address, resetting a password and invitations need a mail server. Set `mail.host`,
+`mail.from` and (`tls` or `starttls`) `mail.security`; with a login name set `mail.user` and name the
+Secret that holds the password in `secrets.smtpPassword`. With the network policy on, `networkPolicy.smtpTo`
+must say where the mail server is (the chart refuses to render otherwise). Without `mail.host` nothing is
+sent: accounts count as confirmed and there is no password reset. What is mailed and what it checks:
+`deploy/docker/README.md`, section «E-Mail».
+
 ## Install (SQLite, the smallest setup)
 
 ```bash

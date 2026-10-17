@@ -55,6 +55,12 @@ EOF
 
 Geheimnisse stehen **nicht** in `.env`, sondern nur als Docker-Secrets in `secrets/`.
 
+**E-Mail (optional):** Bestätigung der Adresse, Passwort-Reset und Einladungen brauchen einen
+Mailserver. Im `docker-compose.yml` stehen die Zeilen `MOAT_SMTP_*` und `MOAT_MAIL_FROM` auskommentiert;
+einkommentieren, die Werte in `.env` setzen und ein Passwort (falls der Server eines will) als Docker-Secret
+`moat_smtp_password` anlegen. Was Moat Cloud verschickt und was es dabei prüft, steht in
+[../docker/README.md](../docker/README.md#e-mail).
+
 ## Starten
 
 ```bash

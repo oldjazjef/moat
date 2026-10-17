@@ -1,0 +1,47 @@
+<mt-auth-frame>
+  <section hlmCard aria-labelledby="verify-title">
+    <div hlmCardHeader>
+      <h1 hlmCardTitle id="verify-title" class="text-2xl">
+        {{ 'auth.verify.title' | translate }}
+      </h1>
+      <p hlmCardDescription>
+        @if (service.done()) { {{ 'auth.verify.done' | translate }} } @else if
+        (service.hasToken) { {{ 'auth.verify.intro' | translate }} } @else { {{
+        'auth.verify.noToken' | translate }} }
+      </p>
+    </div>
+    @if (service.error(); as code) {
+    <div hlmCardContent>
+      <p class="mt-note" role="alert" data-verify-error>
+        <ng-icon
+          name="lucideTriangleAlert"
+          size="16"
+          aria-hidden="true"
+          class="mt-0.5 shrink-0"
+        />
+        <span>{{ errorKey(code) | translate }}</span>
+      </p>
+    </div>
+    }
+    <div hlmCardFooter class="flex flex-wrap items-center gap-3">
+      @if (!service.done() && service.hasToken) {
+      <button
+        hlmBtn
+        type="button"
+        data-verify-submit
+        [disabled]="service.busy()"
+        (click)="service.confirm()"
+      >
+        {{ 'auth.verify.submit' | translate }}
+      </button>
+      }
+      <a
+        hlmBtn
+        [variant]="service.done() ? 'default' : 'link'"
+        routerLink="/login"
+        data-to-login
+        >{{ 'auth.register.toLogin' | translate }}</a
+      >
+    </div>
+  </section>
+</mt-auth-frame>

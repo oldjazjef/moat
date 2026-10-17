@@ -1123,17 +1123,19 @@
         "purpose": "In Moat Cloud you sign in with an e-mail address and a password. The session lives in a cookie that the browser sends back to Moat Cloud only and that no page can read.",
         "where": "Account, at the bottom of the sidebar",
         "steps": {
-          "register": "On the page “Register” enter your e-mail address and a password of at least 12 characters. Moat Cloud answers the same whether the address was new or not. Then you sign in.",
+          "register": "On the “Register” page, enter your e-mail address and a password of at least 12 characters. Moat Cloud answers the same whether the address was new or not. If this Moat Cloud sends e-mail, you then open the link in the confirmation e-mail and press “Confirm address”. Only then do you sign in.",
           "login": "Sign in with “Sign in”. If your account has a second factor, Moat Cloud then asks for the code from your authenticator app or a recovery code.",
           "password": "Change your password under “Account” with “Change password”. Every other session of your account ends; this device stays signed in.",
           "totp": "Turn on a second factor under “Account” with “Set up two-factor”. Moat Cloud shows the secret and the `otpauth` address once as text; there is no QR code. Enter them in the authenticator app and confirm with a code through “Confirm”.",
           "codes": "Moat Cloud then shows the recovery codes once. Save them somewhere safe and click “Done”: afterwards they cannot be retrieved.",
-          "signOut": "“Sign out” in the sidebar ends the session on the server, and this browser forgets your account."
+          "signOut": "“Sign out” in the sidebar ends the session on the server, and this browser forgets your account.",
+          "reset": "Forgot your password? On the sign-in page choose “Forgot your password?”, enter your address and open the link in the e-mail. It works once and for one hour; setting the new password ends every session."
         },
         "tips": {
           "trust": "This account sets no trust mode. It applies per gate and is shown at each gate. The section about the trust mode explains the trust mode and the consequences of a hacked Moat Cloud.",
-          "recovery": "A recovery code works once. If you have neither device nor code, Moat Cloud cannot reset the account yet: a password reset is not built yet.",
-          "session": "The session ends after 12 hours without activity and after 14 days at the latest."
+          "recovery": "A recovery code works once. A password reset does not remove the second factor: if you have neither device nor code, you cannot get into the account any more.",
+          "session": "The session ends after 12 hours without activity and after 14 days at the latest.",
+          "mail": "Without an e-mail server (an operator setting) there is no confirmation e-mail and no password reset: accounts count as confirmed at once."
         }
       },
       "organisations": {
@@ -1149,7 +1151,7 @@
           "release": "The right to release bundles is separate from the role. Only an owner grants it, and only to owners, administrators and editors. You see the switch only as an owner. With the right you release bundles in a project."
         },
         "tips": {
-          "uniform": "Moat Cloud answers the same when adding, whether the address exists or not. There are no invitations or confirmation e-mails yet: the person needs an account already.",
+          "uniform": "Moat Cloud answers the same when you add someone, whether the address exists or not. If the address already has a confirmed account, the person is a member at once. Otherwise an invitation waits for 14 days and applies as soon as the person confirms their address (without an e-mail server the account counts as confirmed at once); the invitation does not show in the member list. The invitation e-mail names neither the organisation nor you.",
           "refusals": "If Moat Cloud refuses a change, the reason is a fixed text, for example that the organisation needs at least one owner.",
           "projectsLimit": "You find a project's gates, configuration and secrets by clicking the project's name in the list."
         }
@@ -1336,7 +1338,9 @@
       "not_signed": "Moat Cloud signs for this gate. You can upload only for gates you sign yourself.",
       "bundle_invalid": "The bundle is not valid: wrong signature, another gate or no higher version.",
       "secrets_missing": "The configuration needs secrets that are not stored for this gate yet:",
-      "gate_unknown": "This gate does not exist."
+      "gate_unknown": "This gate does not exist.",
+      "email_not_verified": "The e-mail address is not confirmed yet. Open the link in the e-mail we sent you, or ask for a new one below.",
+      "invalid_token": "This link no longer works: it has expired, was used already, or is wrong. Ask for a new one."
     }
   },
   "roles": {
@@ -1366,7 +1370,10 @@
       "submit": "Sign in",
       "verify": "Check code",
       "back": "Back",
-      "toRegister": "No account yet? Register"
+      "toRegister": "No account yet? Register",
+      "forgot": "Forgot your password?",
+      "resend": "Send the confirmation e-mail again",
+      "resent": "If the address has an account that is not confirmed yet, a new e-mail is on its way. The link in it works for 24 hours."
     },
     "register": {
       "title": "Create an account",
@@ -1374,7 +1381,31 @@
       "submit": "Register",
       "toLogin": "Already have an account? Sign in",
       "acceptedTitle": "Request accepted",
-      "accepted": "If the address was free, your account is created now. Moat Cloud does not say whether an address is already in use. Sign in now."
+      "accepted": "If the address was still free, your account is created now. If this Moat Cloud sends e-mail, you were sent a confirmation link: open it before you sign in. Moat Cloud does not say whether an address is already in use."
+    },
+    "verify": {
+      "title": "Confirm your e-mail address",
+      "intro": "Confirm that this address is yours. Then you can sign in, and invitations to this address are applied.",
+      "submit": "Confirm address",
+      "done": "The address is confirmed. You can sign in now.",
+      "noToken": "This link is incomplete. Open it from the e-mail again, or ask for a new one when you sign in."
+    },
+    "forgot": {
+      "title": "Forgot your password",
+      "subtitle": "Enter the address of your account. If the account exists, Moat Cloud sends you a link to set a new password.",
+      "submit": "Send link",
+      "acceptedTitle": "Request accepted",
+      "accepted": "If an account with this address exists, an e-mail is on its way. The link works once and for one hour. Moat Cloud does not say whether an address has an account. If nothing arrives, this Moat Cloud may not send e-mail: ask the operator."
+    },
+    "reset": {
+      "title": "New password",
+      "subtitle": "Choose a new password. Every signed-in session of your account ends.",
+      "submit": "Set password",
+      "noToken": "This link is incomplete. Open it from the e-mail again, or ask for a new one.",
+      "requestNew": "Ask for a new link",
+      "doneTitle": "Password set",
+      "done": "Your new password is in force. Every session was ended. Sign in with it now.",
+      "toLogin": "Sign in"
     }
   },
   "account": {
@@ -1449,8 +1480,8 @@
     "removeConfirm": "Really remove",
     "add": {
       "title": "Add member",
-      "description": "Enter the address of an existing account and choose the role.",
-      "sent": "If an account belongs to this address, it is a member now. Moat Cloud does not say whether the address exists.",
+      "description": "Enter the person's e-mail address and choose the role. If the address has a confirmed account, the person is a member at once; otherwise an invitation waits for 14 days.",
+      "sent": "If the address has a confirmed account, the person is a member now; otherwise an invitation waits for them. Moat Cloud does not say which it was.",
       "submit": "Add member"
     }
   },

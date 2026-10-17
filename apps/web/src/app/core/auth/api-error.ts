@@ -9,6 +9,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 export const API_ERROR_CODES = [
   'invalid_credentials',
   'mfa_required',
+  'email_not_verified',
+  'invalid_token',
   'invalid_code',
   'rate_limited',
   'already_enabled',

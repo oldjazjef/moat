@@ -35,24 +35,56 @@ er versiegelt die TOTP-Geheimnisse. Ohne ihn sind eingerichtete Zwei-Faktor-Kont
 
 ## Konfiguration
 
-| Variable                                                            | Pflicht | Standard           | Bedeutung                                                                                                                                                                                                     |
-| ------------------------------------------------------------------- | ------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MOAT_PUBLIC_ORIGIN`                                                | ja      |                    | Die **eine** Adresse des Dashboards: `https://…`, ohne Pfad. Anfragen mit anderem `Origin` werden abgewiesen.                                                                                                 |
-| `MOAT_ACCOUNT_KEY`                                                  | ja      |                    | 32 Zufallsbytes, base64url ohne `=` (43 Zeichen). Oder `MOAT_ACCOUNT_KEY_FILE` (Pfad zu einer Datei).                                                                                                         |
-| `MOAT_SIGNING_KEY`                                                  | nein    |                    | 32 Zufallsbytes (ein Ed25519-Seed), base64url ohne `=`. Damit signiert Moat Cloud die Bundles von Gates im Modus «Bequem». Ohne ihn gibt es nur Gates, die du selbst signierst. Oder `MOAT_SIGNING_KEY_FILE`. |
-| `MOAT_SIGNING_KEY_NEXT_PUBLIC` / `MOAT_SIGNING_KEY_PREVIOUS_PUBLIC` | nein    |                    | Öffentliche Schlüssel (base64url) eines laufenden Schlüsselwechsels, siehe unten. Sie ändern nur, was das Dashboard zeigt und welche früheren Bundles beim Vergleich zählen, nie, womit signiert wird.        |
-| `MOAT_DB_PROVIDER`                                                  | nein    | `sqlite`           | `sqlite` (Datei in `/data/cloud.db`, **eine** Instanz) oder `postgresql`.                                                                                                                                     |
-| `MOAT_DATABASE_URL`                                                 | bei pg  |                    | `postgresql://…`; TLS ist Pflicht, ausser zu `localhost`. Oder `MOAT_DATABASE_URL_FILE`.                                                                                                                      |
-| `MOAT_TRUST_PROXY`                                                  | nein    | `0`                | Zahl der Reverse Proxys davor (0 bis 8). Mit `0` sieht der Server jede Anfrage als vom Proxy kommend.                                                                                                         |
-| `MOAT_COOKIE_SECURE`                                                | nein    | `true`             | In Produktion muss es `true` sein.                                                                                                                                                                            |
-| `MOAT_DATA_DIR`                                                     | nein    | `/data`            | Wo die SQLite-Datei liegt. Das Volume gehört dem Benutzer 1000.                                                                                                                                               |
-| `HOST` / `PORT`                                                     | nein    | `0.0.0.0` / `3000` | Wo der Server lauscht (im Container nicht ändern; Port nur über `-p` abbilden).                                                                                                                               |
-| `NODE_EXTRA_CA_CERTS`                                               | nein    |                    | Pfad zur CA, die das Zertifikat deiner PostgreSQL-Datenbank ausgestellt hat (bei eigener CA).                                                                                                                 |
+| Variable                                                            | Pflicht  | Standard             | Bedeutung                                                                                                                                                                                                     |
+| ------------------------------------------------------------------- | -------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MOAT_PUBLIC_ORIGIN`                                                | ja       |                      | Die **eine** Adresse des Dashboards: `https://…`, ohne Pfad. Anfragen mit anderem `Origin` werden abgewiesen.                                                                                                 |
+| `MOAT_ACCOUNT_KEY`                                                  | ja       |                      | 32 Zufallsbytes, base64url ohne `=` (43 Zeichen). Oder `MOAT_ACCOUNT_KEY_FILE` (Pfad zu einer Datei).                                                                                                         |
+| `MOAT_SIGNING_KEY`                                                  | nein     |                      | 32 Zufallsbytes (ein Ed25519-Seed), base64url ohne `=`. Damit signiert Moat Cloud die Bundles von Gates im Modus «Bequem». Ohne ihn gibt es nur Gates, die du selbst signierst. Oder `MOAT_SIGNING_KEY_FILE`. |
+| `MOAT_SIGNING_KEY_NEXT_PUBLIC` / `MOAT_SIGNING_KEY_PREVIOUS_PUBLIC` | nein     |                      | Öffentliche Schlüssel (base64url) eines laufenden Schlüsselwechsels, siehe unten. Sie ändern nur, was das Dashboard zeigt und welche früheren Bundles beim Vergleich zählen, nie, womit signiert wird.        |
+| `MOAT_SMTP_HOST` / `MOAT_SMTP_PORT` / `MOAT_SMTP_SECURITY`          | nein     | / `587` / `starttls` | Der Mailserver für Konto-Mails (siehe «E-Mail»). Ohne Host: keine Mails. `MOAT_SMTP_SECURITY`: `starttls` (Pflicht, nie freiwillig), `tls` (Port 465) oder `none` (nur ein Server auf derselben Maschine).    |
+| `MOAT_MAIL_FROM`                                                    | bei SMTP |                      | Absender aller Mails: eine blosse Adresse, `noreply@moat.example.ch`. Die Links in den Mails beginnen mit `MOAT_PUBLIC_ORIGIN`.                                                                               |
+| `MOAT_SMTP_USER` / `MOAT_SMTP_PASSWORD`                             | nein     |                      | Anmeldung am Mailserver, beide oder keines. Das Passwort besser als `MOAT_SMTP_PASSWORD_FILE`.                                                                                                                |
+| `MOAT_DB_PROVIDER`                                                  | nein     | `sqlite`             | `sqlite` (Datei in `/data/cloud.db`, **eine** Instanz) oder `postgresql`.                                                                                                                                     |
+| `MOAT_DATABASE_URL`                                                 | bei pg   |                      | `postgresql://…`; TLS ist Pflicht, ausser zu `localhost`. Oder `MOAT_DATABASE_URL_FILE`.                                                                                                                      |
+| `MOAT_TRUST_PROXY`                                                  | nein     | `0`                  | Zahl der Reverse Proxys davor (0 bis 8). Mit `0` sieht der Server jede Anfrage als vom Proxy kommend.                                                                                                         |
+| `MOAT_COOKIE_SECURE`                                                | nein     | `true`               | In Produktion muss es `true` sein.                                                                                                                                                                            |
+| `MOAT_DATA_DIR`                                                     | nein     | `/data`              | Wo die SQLite-Datei liegt. Das Volume gehört dem Benutzer 1000.                                                                                                                                               |
+| `HOST` / `PORT`                                                     | nein     | `0.0.0.0` / `3000`   | Wo der Server lauscht (im Container nicht ändern; Port nur über `-p` abbilden).                                                                                                                               |
+| `NODE_EXTRA_CA_CERTS`                                               | nein     |                      | Pfad zur CA, die das Zertifikat deiner PostgreSQL-Datenbank ausgestellt hat (bei eigener CA).                                                                                                                 |
 
 Jede Variable ausser den zwei Geheimnissen und der Adresse hat einen sicheren Standard. Der Server
 **startet nicht** bei einem falschen Wert und nennt dann nur den Namen der Variable, nie den Wert.
 `NAME` und `NAME_FILE` zusammen sind ein Fehler. Geheimnisse gehören in Docker-Secrets oder
 Kubernetes-Secrets (`…_FILE`), nicht in `docker inspect`-sichtbare Umgebung.
+
+## E-Mail
+
+Mit `MOAT_SMTP_HOST` verschickt Moat Cloud drei Arten von Mails, alle als feste Texte (Deutsch und
+Englisch), ohne dass etwas, was eine Person eingetippt hat, darin vorkommt:
+
+- **Bestätigung der Adresse** nach der Registrierung (Link, 24 Stunden, einmal). Bis dahin kann sich
+  das Konto nicht anmelden, und eine Einladung an die Adresse wird noch nicht angewendet.
+- **Passwort zurücksetzen** (Link, 1 Stunde, einmal). Das Setzen beendet alle Sitzungen des Kontos.
+- **Einladung** an eine Adresse ohne bestätigtes Konto (14 Tage). Die Mail nennt weder die
+  Organisation noch die einladende Person.
+
+Ohne Mailserver gelten Konten sofort als bestätigt, es gibt keinen Passwort-Reset, und eine
+Einladung gilt, sobald sich die Person mit dieser Adresse registriert.
+
+Was der Betreiber wissen muss:
+
+- Der Link trägt den Token hinter `#`, damit er in keinem Server-Log und keinem Referer landet.
+  Moat Cloud speichert nur den SHA-256 des Tokens.
+- TLS wird immer geprüft (Zertifikat, Host, mindestens TLS 1.2). Ein Zertifikat, das keine
+  Zertifizierungsstelle des Systems ausgestellt hat, wird abgelehnt; für eine eigene CA gilt
+  `NODE_EXTRA_CA_CERTS`. Das Passwort geht nie ohne TLS an einen anderen Rechner.
+- Mails gehen im Hintergrund hinaus. Fällt der Mailserver aus, schlägt keine Anfrage fehl; im Log
+  steht nur ein fester Fehlername (`connect`, `timeout`, `rejected`, …), nie eine Adresse.
+- Pro Postfach höchstens 3 Bestätigungs-, 3 Reset- und 3 Einladungs-Mails pro Stunde bzw. Tag. Wer
+  darüber liegt, bekommt keine weitere Mail und keine Meldung, sonst verriete die Antwort, ob es die
+  Adresse gibt.
+- SPF, DKIM und DMARC der Absender-Domain sind Sache deines Mailservers: Ohne sie landen die Mails
+  im Spam.
 
 ## Laufzeit-Härtung
 

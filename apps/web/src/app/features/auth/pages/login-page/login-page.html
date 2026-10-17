@@ -27,6 +27,21 @@
         />
         <span>{{ errorKey(code) | translate }}</span>
       </p>
+      @if (code === 'email_not_verified') {
+      <button
+        hlmBtn
+        variant="outline"
+        type="button"
+        data-resend
+        [disabled]="service.busy()"
+        (click)="service.resend()"
+      >
+        {{ 'auth.login.resend' | translate }}
+      </button>
+      } } @if (service.resent()) {
+      <p class="mt-note" role="status" data-resent>
+        {{ 'auth.login.resent' | translate }}
+      </p>
       } @if (!service.needsCode()) {
       <div class="flex flex-col gap-1.5">
         <label hlmLabel for="login-email"
@@ -102,6 +117,9 @@
       } @else {
       <a hlmBtn variant="link" routerLink="/register" data-to-register
         >{{ 'auth.login.toRegister' | translate }}</a
+      >
+      <a hlmBtn variant="link" routerLink="/forgot-password" data-to-forgot
+        >{{ 'auth.login.forgot' | translate }}</a
       >
       }
     </div>

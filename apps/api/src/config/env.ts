@@ -139,8 +139,8 @@ export class Env {
   /**
    * The SMTP server for account mails (e-mail verification, password reset, invitations). Unset =
    * no mail: accounts count as verified, there is no password reset, and invitations only work
-   * for people who register afterwards. With a host, `MOAT_MAIL_FROM` and `MOAT_PUBLIC_URL` are
-   * required.
+   * for people who register afterwards. With a host, `MOAT_MAIL_FROM` is required; the links in the
+   * mails start with `MOAT_PUBLIC_ORIGIN`.
    */
   @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
   @IsOptional()
@@ -171,14 +171,10 @@ export class Env {
   /** The sender of every account mail, a bare address. */
   @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
   @IsOptional()
-  @Matches(/^[^@\s<>]{1,64}@[A-Za-z0-9.-]{1,253}$/)
+  @Matches(
+    /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/,
+  )
   MOAT_MAIL_FROM?: string;
-
-  /** Where this installation is reached, `https://host[:port]` without a path: the base of every mailed link. */
-  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
-  @IsOptional()
-  @Matches(/^https?:\/\/[A-Za-z0-9.:[\]-]{1,253}$/)
-  MOAT_PUBLIC_URL?: string;
 
   /** How many reverse proxies sit in front (X-Forwarded-For hops); 0 = none, the socket address. */
   @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
@@ -199,12 +195,6 @@ export function validateEnv(config: Record<string, unknown>): Env {
     if (config['LOCAL_MODE'] === 'true') names.push('LOCAL_MODE');
     if (env.MOAT_SMTP_HOST !== undefined) {
       if (env.MOAT_MAIL_FROM === undefined) names.push('MOAT_MAIL_FROM');
-      if (env.MOAT_PUBLIC_URL === undefined) names.push('MOAT_PUBLIC_URL');
-      if (
-        env.MOAT_PUBLIC_URL?.startsWith('http://') === true &&
-        env.NODE_ENV === NodeEnv.Production
-      )
-        names.push('MOAT_PUBLIC_URL');
       if (
         env.MOAT_SMTP_SECURITY === 'none' &&
         !/^(localhost|::1|127\.\d+\.\d+\.\d+)$/.test(env.MOAT_SMTP_HOST)

@@ -75,8 +75,16 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     // Moat Cloud: sign-in, password and the second factor.
     id: 'account',
     only: 'cloud',
-    steps: items('register', 'login', 'password', 'totp', 'codes', 'signOut'),
-    tips: items('trust', 'recovery', 'session'),
+    steps: items(
+      'register',
+      'login',
+      'reset',
+      'password',
+      'totp',
+      'codes',
+      'signOut',
+    ),
+    tips: items('trust', 'recovery', 'session', 'mail'),
     links: [{ id: 'account', path: '/app/account', only: 'cloud' }],
   },
   {

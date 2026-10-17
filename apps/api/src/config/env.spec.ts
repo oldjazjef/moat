@@ -95,7 +95,6 @@ describe('validateEnv', () => {
         ...CLOUD,
         MOAT_SMTP_HOST: 'smtp.example.org',
         MOAT_MAIL_FROM: 'noreply@example.org',
-        MOAT_PUBLIC_URL: 'https://moat.example.org',
       };
 
       it('is off without a host, and on with a sender and a public URL', () => {
@@ -103,16 +102,25 @@ describe('validateEnv', () => {
         expect(validateEnv(SMTP).MOAT_SMTP_SECURITY).toBe('starttls');
       });
 
-      it('needs the sender and the public URL once there is a host, and a host once there is a port or a user', () => {
+      it('needs the sender once there is a host, and a host once there is a port or a user', () => {
         expect(() =>
           validateEnv({ ...SMTP, MOAT_MAIL_FROM: undefined }),
         ).toThrow(/MOAT_MAIL_FROM/);
-        expect(() =>
-          validateEnv({ ...SMTP, MOAT_PUBLIC_URL: undefined }),
-        ).toThrow(/MOAT_PUBLIC_URL/);
         expect(() => validateEnv({ ...CLOUD, MOAT_SMTP_PORT: '25' })).toThrow(
           /MOAT_SMTP_HOST/,
         );
+      });
+
+      it('takes only a plain address as the sender, one the mail client will also send with', () => {
+        for (const from of [
+          'Moat <a@b.ch>',
+          'a b@c.ch',
+          'a@localhost',
+          'a@b.ch\r\nBcc: x@y.ch',
+        ])
+          expect(() => validateEnv({ ...SMTP, MOAT_MAIL_FROM: from })).toThrow(
+            /MOAT_MAIL_FROM/,
+          );
       });
 
       it('wants both user and password or neither, and a port that exists', () => {
@@ -128,7 +136,7 @@ describe('validateEnv', () => {
         );
       });
 
-      it('allows no TLS only for a server on this machine, and no http link in production', () => {
+      it('allows no TLS only for a server on this machine', () => {
         expect(() =>
           validateEnv({ ...SMTP, MOAT_SMTP_SECURITY: 'none' }),
         ).toThrow(/MOAT_SMTP_SECURITY/);
@@ -139,11 +147,6 @@ describe('validateEnv', () => {
             MOAT_SMTP_SECURITY: 'none',
           }).MOAT_SMTP_SECURITY,
         ).toBe('none');
-        const http = { ...SMTP, MOAT_PUBLIC_URL: 'http://localhost:4200' };
-        expect(validateEnv(http).MOAT_PUBLIC_URL).toBe('http://localhost:4200');
-        expect(() => validateEnv({ ...http, NODE_ENV: 'production' })).toThrow(
-          /MOAT_PUBLIC_URL/,
-        );
       });
 
       it('never puts a value in the error', () => {

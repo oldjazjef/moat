@@ -51,6 +51,34 @@ export class AccountSession {
     );
   }
 
+  /** One use of the link token from the mail; rejects with `invalid_token` for any bad one. */
+  async verifyEmail(token: string): Promise<void> {
+    await firstValueFrom(
+      this.http.post(apiUrl('/auth/verify-email'), { token }),
+    );
+  }
+
+  /** Always answers the same, whether or not the address has an account (T-79). */
+  async resendVerification(email: string): Promise<void> {
+    await firstValueFrom(
+      this.http.post(apiUrl('/auth/resend-verification'), { email }),
+    );
+  }
+
+  /** Always answers the same, whether or not the address has an account (T-79). */
+  async forgotPassword(email: string): Promise<void> {
+    await firstValueFrom(
+      this.http.post(apiUrl('/auth/forgot-password'), { email }),
+    );
+  }
+
+  /** Nobody is signed in by it: the person signs in with the new password afterwards. */
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    await firstValueFrom(
+      this.http.post(apiUrl('/auth/reset-password'), { token, newPassword }),
+    );
+  }
+
   /** Rejects with the API's error; `mfa_required` asks for `code`. */
   async login(email: string, password: string, code?: string): Promise<void> {
     const body: { email: string; password: string; code?: string } = {

@@ -2,6 +2,9 @@
 {{- if and (eq .Values.database.provider "postgresql") (not .Values.networkPolicy.databaseTo) }}
 {{- fail "networkPolicy.databaseTo must name where the database is (an empty list would leave the egress open); or set networkPolicy.enabled=false and bring your own policy" }}
 {{- end }}
+{{- if and .Values.mail.host (not .Values.networkPolicy.smtpTo) }}
+{{- fail "networkPolicy.smtpTo must name where the mail server is (an empty list would leave the egress open); or set networkPolicy.enabled=false and bring your own policy" }}
+{{- end }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -35,5 +38,12 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.networkPolicy.databasePort }}
+    {{- end }}
+    {{- if .Values.mail.host }}
+    - to:
+        {{- toYaml .Values.networkPolicy.smtpTo | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.mail.port }}
     {{- end }}
 {{- end }}

@@ -132,6 +132,34 @@ describe('LoginPage (Anmelden)', () => {
     ).toBe('');
   });
 
+  it('links to the password reset', async () => {
+    const { el } = await open();
+    expect(el.querySelector('[data-to-forgot]')?.getAttribute('href')).toBe(
+      '/forgot-password',
+    );
+  });
+
+  it('says the address is not confirmed and offers a new mail, answered the same for every address', async () => {
+    const { el, harness } = await open();
+    fill(el);
+    submitForm(el, '[data-login-form]');
+    refuse(await sent('POST', '/api/auth/login'), 403, 'email_not_verified');
+    await settle(harness);
+    expect(text(el, '[data-login-error]')).toContain('noch nicht bestätigt');
+    (el.querySelector('[data-resend]') as HTMLButtonElement).click();
+    const request = await sent('POST', '/api/auth/resend-verification');
+    expect(request.request.body).toEqual({ email: 'eme@example.ch' });
+    request.flush(
+      { status: 'accepted' },
+      { status: 202, statusText: 'Accepted' },
+    );
+    await settle(harness);
+    expect(text(el, '[data-resent]')).toContain(
+      'Wenn die Adresse ein Konto hat',
+    );
+    expect(el.querySelector('[data-resend]')).toBeNull();
+  });
+
   it('wrong credentials read the same for every cause, and the password is wiped', async () => {
     const { el, harness } = await open();
     fill(el);

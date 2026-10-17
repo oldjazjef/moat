@@ -63,6 +63,12 @@ describe('moat-cloud chart', () => {
       (values['secrets'] as Record<string, { name: string }>)['accountKey']
         ?.name,
     ).toBe('');
+    // The mail section carries the server and the login name, never the password.
+    expect(Object.keys(values['mail'] as object)).not.toContain('password');
+    expect(
+      (values['secrets'] as Record<string, { name: string }>)['smtpPassword']
+        ?.name,
+    ).toBe('');
   });
 
   it('hardens the pod (SEC-57)', () => {
@@ -85,6 +91,7 @@ describe('moat-cloud chart', () => {
       'utf8',
     );
     expect(np).toContain('fail "networkPolicy.databaseTo');
+    expect(np).toContain('fail "networkPolicy.smtpTo');
     expect((values['image'] as { tag: string }).tag).toBe('');
   });
 });

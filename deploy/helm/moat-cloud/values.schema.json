@@ -57,6 +57,9 @@
         },
         "signingKey": {
           "$ref": "#/definitions/secretRef"
+        },
+        "smtpPassword": {
+          "$ref": "#/definitions/secretRef"
         }
       }
     },
@@ -138,6 +141,9 @@
         "databaseTo": {
           "type": "array"
         },
+        "smtpTo": {
+          "type": "array"
+        },
         "databasePort": {
           "type": "integer",
           "minimum": 1,
@@ -145,6 +151,33 @@
         },
         "dnsTo": {
           "type": "array"
+        }
+      }
+    },
+    "mail": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "type": "string",
+          "pattern": "^$|^[A-Za-z0-9.-]{1,253}$"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "security": {
+          "enum": ["tls", "starttls"]
+        },
+        "from": {
+          "type": "string",
+          "pattern": "^$|^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@[A-Za-z0-9.-]{3,253}$"
+        },
+        "user": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\r\\n]*$"
         }
       }
     },

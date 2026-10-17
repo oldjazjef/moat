@@ -82,6 +82,22 @@ spec:
             - name: MOAT_SIGNING_KEY_FILE
               value: /run/secrets/moat_signing_key
             {{- end }}
+            {{- if .Values.mail.host }}
+            - name: MOAT_SMTP_HOST
+              value: {{ .Values.mail.host | quote }}
+            - name: MOAT_SMTP_PORT
+              value: {{ .Values.mail.port | quote }}
+            - name: MOAT_SMTP_SECURITY
+              value: {{ .Values.mail.security | quote }}
+            - name: MOAT_MAIL_FROM
+              value: {{ required "mail.from is required when mail.host is set" .Values.mail.from | quote }}
+            {{- if .Values.mail.user }}
+            - name: MOAT_SMTP_USER
+              value: {{ .Values.mail.user | quote }}
+            - name: MOAT_SMTP_PASSWORD_FILE
+              value: /run/secrets/moat_smtp_password
+            {{- end }}
+            {{- end }}
             {{- if eq .Values.database.provider "postgresql" }}
             - name: MOAT_DATABASE_URL_FILE
               value: /run/secrets/moat_database_url
@@ -140,6 +156,13 @@ spec:
                   items:
                     - key: {{ .Values.secrets.signingKey.key | quote }}
                       path: moat_signing_key
+              {{- end }}
+              {{- if and .Values.mail.host .Values.mail.user }}
+              - secret:
+                  name: {{ required "secrets.smtpPassword.name is required when mail.user is set" .Values.secrets.smtpPassword.name | quote }}
+                  items:
+                    - key: {{ .Values.secrets.smtpPassword.key | quote }}
+                      path: moat_smtp_password
               {{- end }}
               {{- if eq .Values.database.provider "postgresql" }}
               - secret:

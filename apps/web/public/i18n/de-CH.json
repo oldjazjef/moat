@@ -1123,17 +1123,19 @@
         "purpose": "In Moat Cloud meldest du dich mit E-Mail-Adresse und Passwort an. Die Sitzung liegt in einem Cookie, das der Browser nur an Moat Cloud zurückschickt und das keine Seite lesen kann.",
         "where": "Konto, in der Seitenleiste unten",
         "steps": {
-          "register": "Gib auf der Seite «Registrieren» deine E-Mail-Adresse und ein Passwort mit mindestens 12 Zeichen ein. Moat Cloud antwortet immer gleich, ob die Adresse neu war oder nicht. Danach meldest du dich an.",
+          "register": "Gib auf der Seite «Registrieren» deine E-Mail-Adresse und ein Passwort mit mindestens 12 Zeichen ein. Moat Cloud antwortet immer gleich, ob die Adresse neu war oder nicht. Verschickt diese Moat Cloud E-Mails, öffnest du danach den Link in der Bestätigungs-Mail und klickst auf «Adresse bestätigen». Erst dann meldest du dich an.",
           "login": "Melde dich mit «Anmelden» an. Hat dein Konto einen zweiten Faktor, fragt Moat Cloud danach den Code deiner Authenticator-App oder einen Wiederherstellungscode.",
           "password": "Ändere dein Passwort unter «Konto» mit «Passwort ändern». Alle anderen Sitzungen deines Kontos enden dabei, dieses Gerät bleibt angemeldet.",
           "totp": "Schalte unter «Konto» mit «Zwei-Faktor einrichten» einen zweiten Faktor ein. Moat Cloud zeigt das Geheimnis und die `otpauth`-Adresse einmal als Text, einen QR-Code gibt es nicht. Trage sie in die Authenticator-App ein und bestätige mit einem Code über «Bestätigen».",
           "codes": "Danach zeigt Moat Cloud einmal die Wiederherstellungscodes. Speichere sie an einem sicheren Ort und klicke auf «Erledigt»: Danach sind sie nicht mehr abrufbar.",
-          "signOut": "Mit «Abmelden» in der Seitenleiste endet die Sitzung auf dem Server, und dieser Browser vergisst dein Konto."
+          "signOut": "Mit «Abmelden» in der Seitenleiste endet die Sitzung auf dem Server, und dieser Browser vergisst dein Konto.",
+          "reset": "Passwort vergessen? Wähle auf der Anmeldeseite «Passwort vergessen?», gib deine Adresse ein und öffne den Link in der E-Mail. Er gilt eine Stunde und nur einmal; beim Setzen des neuen Passworts enden alle Sitzungen."
         },
         "tips": {
           "trust": "Dieses Konto stellt keinen Vertrauensmodus ein. Er gilt pro Gate und steht an jedem Gate. Den Vertrauensmodus und die Folgen eines gehackten Moat Cloud erklärt der Abschnitt über den Vertrauensmodus.",
-          "recovery": "Ein Wiederherstellungscode gilt einmal. Hast du weder Gerät noch Code, kann Moat Cloud das Konto noch nicht zurücksetzen: Ein Passwort-Reset ist noch nicht gebaut.",
-          "session": "Die Sitzung endet nach 12 Stunden ohne Aktivität und spätestens nach 14 Tagen."
+          "recovery": "Ein Wiederherstellungscode gilt einmal. Ein Passwort-Reset entfernt den zweiten Faktor nicht: Hast du weder Gerät noch Code, kommst du nicht mehr in das Konto.",
+          "session": "Die Sitzung endet nach 12 Stunden ohne Aktivität und spätestens nach 14 Tagen.",
+          "mail": "Ohne E-Mail-Server (Betreiber-Einstellung) gibt es keine Bestätigungs-Mail und keinen Passwort-Reset: Konten gelten dann sofort als bestätigt."
         }
       },
       "organisations": {
@@ -1149,7 +1151,7 @@
           "release": "Das Recht, Bundles freizugeben, ist von der Rolle getrennt. Nur ein Inhaber vergibt es, und nur an Inhaber, Administratoren und Bearbeiter. Du siehst den Schalter nur als Inhaber. Mit dem Recht gibst du in einem Projekt Bundles frei."
         },
         "tips": {
-          "uniform": "Moat Cloud antwortet beim Hinzufügen gleich, ob es die Adresse gibt oder nicht. Einladungen und Bestätigungs-E-Mails gibt es noch nicht: Die Person braucht schon ein Konto.",
+          "uniform": "Moat Cloud antwortet beim Hinzufügen gleich, ob es die Adresse gibt oder nicht. Hat die Adresse schon ein bestätigtes Konto, ist die Person sofort Mitglied. Sonst wartet eine Einladung 14 Tage und gilt, sobald die Person ihre Adresse bestätigt (das Konto zählt dann ohne E-Mail-Server sofort); die Einladung steht nicht in der Mitgliederliste. Die Einladungs-Mail nennt weder die Organisation noch dich.",
           "refusals": "Lehnt Moat Cloud eine Änderung ab, steht der Grund in einem festen Text, zum Beispiel dass die Organisation mindestens einen Inhaber braucht.",
           "projectsLimit": "Gates, Konfiguration und Secrets eines Projekts findest du, wenn du in der Liste auf den Namen des Projekts klickst."
         }
@@ -1336,7 +1338,9 @@
       "not_signed": "Für dieses Gate signiert Moat Cloud. Hochladen kannst du nur bei Gates, die du selbst signierst.",
       "bundle_invalid": "Das Bundle ist ungültig: falsche Signatur, ein anderes Gate oder keine höhere Version.",
       "secrets_missing": "Die Konfiguration braucht Secrets, die für dieses Gate noch nicht gespeichert sind:",
-      "gate_unknown": "Dieses Gate gibt es nicht."
+      "gate_unknown": "Dieses Gate gibt es nicht.",
+      "email_not_verified": "Die E-Mail-Adresse ist noch nicht bestätigt. Öffne den Link aus der E-Mail, die wir dir geschickt haben, oder fordere unten eine neue an.",
+      "invalid_token": "Dieser Link gilt nicht (mehr): Er ist abgelaufen, wurde schon benutzt oder ist falsch. Fordere einen neuen an."
     }
   },
   "roles": {
@@ -1366,7 +1370,10 @@
       "submit": "Anmelden",
       "verify": "Code prüfen",
       "back": "Zurück",
-      "toRegister": "Noch kein Konto? Registrieren"
+      "toRegister": "Noch kein Konto? Registrieren",
+      "forgot": "Passwort vergessen?",
+      "resend": "Bestätigungs-Mail erneut senden",
+      "resent": "Wenn die Adresse ein Konto hat, das noch nicht bestätigt ist, ist eine neue E-Mail unterwegs. Der Link darin gilt 24 Stunden."
     },
     "register": {
       "title": "Konto erstellen",
@@ -1374,7 +1381,31 @@
       "submit": "Registrieren",
       "toLogin": "Schon ein Konto? Anmelden",
       "acceptedTitle": "Anfrage angenommen",
-      "accepted": "Wenn die Adresse noch frei war, ist dein Konto jetzt angelegt. Moat Cloud sagt nicht, ob eine Adresse schon benutzt wird. Melde dich jetzt an."
+      "accepted": "Wenn die Adresse noch frei war, ist dein Konto jetzt angelegt. Verschickt diese Moat Cloud E-Mails, hast du einen Bestätigungslink bekommen: Öffne ihn, bevor du dich anmeldest. Moat Cloud sagt nicht, ob eine Adresse schon benutzt wird."
+    },
+    "verify": {
+      "title": "E-Mail-Adresse bestätigen",
+      "intro": "Bestätige, dass diese Adresse dir gehört. Danach kannst du dich anmelden, und Einladungen an diese Adresse werden angewendet.",
+      "submit": "Adresse bestätigen",
+      "done": "Die Adresse ist bestätigt. Du kannst dich jetzt anmelden.",
+      "noToken": "Dieser Link ist unvollständig. Öffne ihn aus der E-Mail noch einmal, oder fordere beim Anmelden eine neue an."
+    },
+    "forgot": {
+      "title": "Passwort vergessen",
+      "subtitle": "Gib die Adresse deines Kontos ein. Wenn es dieses Konto gibt, schickt Moat Cloud dir einen Link, mit dem du ein neues Passwort setzt.",
+      "submit": "Link senden",
+      "acceptedTitle": "Anfrage angenommen",
+      "accepted": "Wenn es ein Konto mit dieser Adresse gibt, ist eine E-Mail unterwegs. Der Link gilt eine Stunde und nur einmal. Moat Cloud sagt nicht, ob eine Adresse ein Konto hat. Kommt nichts an, schickt diese Moat Cloud vielleicht keine E-Mails: Frag den Betreiber."
+    },
+    "reset": {
+      "title": "Neues Passwort",
+      "subtitle": "Wähle ein neues Passwort. Alle angemeldeten Sitzungen deines Kontos enden dabei.",
+      "submit": "Passwort setzen",
+      "noToken": "Dieser Link ist unvollständig. Öffne ihn aus der E-Mail noch einmal, oder fordere einen neuen an.",
+      "requestNew": "Neuen Link anfordern",
+      "doneTitle": "Passwort gesetzt",
+      "done": "Dein neues Passwort gilt. Alle Sitzungen wurden beendet. Melde dich jetzt damit an.",
+      "toLogin": "Anmelden"
     }
   },
   "account": {
@@ -1449,8 +1480,8 @@
     "removeConfirm": "Wirklich entfernen",
     "add": {
       "title": "Mitglied hinzufügen",
-      "description": "Gib die Adresse eines bestehenden Kontos ein und wähle die Rolle.",
-      "sent": "Wenn zu dieser Adresse ein Konto gehört, ist es jetzt Mitglied. Moat Cloud sagt nicht, ob es die Adresse gibt.",
+      "description": "Gib die E-Mail-Adresse der Person ein und wähle die Rolle. Hat die Adresse ein bestätigtes Konto, ist die Person sofort Mitglied; sonst wartet eine Einladung 14 Tage.",
+      "sent": "Wenn die Adresse ein bestätigtes Konto hat, ist die Person jetzt Mitglied; sonst wartet eine Einladung auf sie. Moat Cloud sagt nicht, welcher Fall es war.",
       "submit": "Mitglied hinzufügen"
     }
   },

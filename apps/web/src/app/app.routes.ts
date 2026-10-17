@@ -28,6 +28,32 @@ export const appRoutes: Route[] = [
       ),
   },
   {
+    // The pages the mailed links open. No guest guard: a signed-in person may open them too (an
+    // invitation link for a second account), and none of them signs anybody in.
+    path: 'verify-email',
+    canMatch: [cloudOnly],
+    loadComponent: () =>
+      import('./features/auth/pages/verify-email-page/verify-email-page').then(
+        (m) => m.VerifyEmailPage,
+      ),
+  },
+  {
+    path: 'forgot-password',
+    canMatch: [cloudOnly],
+    loadComponent: () =>
+      import('./features/auth/pages/forgot-password-page/forgot-password-page').then(
+        (m) => m.ForgotPasswordPage,
+      ),
+  },
+  {
+    path: 'reset-password',
+    canMatch: [cloudOnly],
+    loadComponent: () =>
+      import('./features/auth/pages/reset-password-page/reset-password-page').then(
+        (m) => m.ResetPasswordPage,
+      ),
+  },
+  {
     // Everything lives under /app, inside the shell with the sidebar.
     path: 'app',
     loadComponent: () =>

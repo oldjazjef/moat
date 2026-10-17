@@ -41,6 +41,13 @@ const postgres = [
   'networkPolicy.databaseTo[0].ipBlock.cidr=10.0.5.12/32',
 ];
 const sqlite = [...base, 'database.provider=sqlite'];
+const mail = [
+  'mail.host=smtp.example.ch',
+  'mail.port=465',
+  'mail.security=tls',
+  'mail.from=noreply@moat.example.ch',
+  'networkPolicy.smtpTo[0].ipBlock.cidr=10.0.6.20/32',
+];
 const ingress = [
   'ingress.enabled=true',
   'ingress.host=moat.example.ch',
@@ -56,6 +63,18 @@ const valid = {
     ...ingress,
   ],
   sqlite: sqlite,
+  'postgresql with mail (user and password)': [
+    ...postgres,
+    ...mail,
+    'mail.user=moat',
+    'secrets.smtpPassword.name=smtp-password',
+  ],
+  'sqlite with mail, no network policy': [
+    ...sqlite,
+    'mail.host=smtp.example.ch',
+    'mail.from=noreply@moat.example.ch',
+    'networkPolicy.enabled=false',
+  ],
   'sqlite, existing claim, no network policy': [
     ...sqlite,
     'database.sqlite.existingClaim=moat-data',
@@ -74,6 +93,20 @@ const refused = {
   'postgresql without a database address': postgres.filter(
     (v) => !v.startsWith('networkPolicy.databaseTo'),
   ),
+  'mail without a sender': [
+    ...postgres,
+    ...mail.filter((v) => !v.startsWith('mail.from')),
+  ],
+  'mail without a mail server address in the network policy': [
+    ...postgres,
+    ...mail.filter((v) => !v.startsWith('networkPolicy.smtpTo')),
+  ],
+  'mail user without a password secret': [
+    ...postgres,
+    ...mail,
+    'mail.user=moat',
+  ],
+  'mail without TLS': [...postgres, ...mail, 'mail.security=none'],
   'sqlite with two replicas': [...sqlite, 'replicaCount=2'],
   'ingress without TLS': [
     ...sqlite,

@@ -31,7 +31,7 @@ export abstract class MailerPort {
   abstract send(message: MailMessage): Promise<void>;
 }
 
-/** Where this installation is reached: the base of every link in a mail (`MOAT_PUBLIC_URL`). */
+/** Where this installation is reached: the base of every link in a mail (`MOAT_PUBLIC_ORIGIN`). */
 export class MailLinks {
   constructor(readonly publicUrl: string) {}
 }
