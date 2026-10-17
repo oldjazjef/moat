@@ -52,7 +52,20 @@
       <p class="text-muted-foreground mt-3 text-sm">
         {{ 'gatesPage.signer.pin' | translate }}
       </p>
-      } @else {
+      @if (signer.next; as next) {
+      <div class="mt-note mt-4 flex-col" data-signer-next>
+        <strong>{{ 'gatesPage.signer.nextTitle' | translate }}</strong>
+        <span>{{ 'gatesPage.signer.next' | translate }}</span>
+        <span class="mt-code" data-signer-next-key>{{ next.publicKey }}</span>
+        <span class="mt-code">{{ next.fingerprint }}</span>
+      </div>
+      } @if (signer.previous; as previous) {
+      <div class="mt-note mt-4 flex-col" data-signer-previous>
+        <strong>{{ 'gatesPage.signer.previousTitle' | translate }}</strong>
+        <span>{{ 'gatesPage.signer.previous' | translate }}</span>
+        <span class="mt-code">{{ previous.fingerprint }}</span>
+      </div>
+      } } @else {
       <p class="text-muted-foreground text-sm" data-no-signer>
         {{ 'gatesPage.signer.none' | translate }}
       </p>

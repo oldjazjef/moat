@@ -21,10 +21,16 @@ export interface GateView {
   readonly createdAt: string;
 }
 
-export interface SignerInfo {
+export interface PublicKeyInfo {
   readonly kid: string;
   readonly publicKey: string;
   readonly fingerprint: string;
+}
+
+/** The key Moat Cloud signs with; during a rotation also the announced and the retired one. */
+export interface SignerInfo extends PublicKeyInfo {
+  readonly next: PublicKeyInfo | null;
+  readonly previous: PublicKeyInfo | null;
 }
 
 export interface GatesAnswer {

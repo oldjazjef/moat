@@ -1168,7 +1168,8 @@
         "tips": {
           "mode": "“Convenient”: Moat Cloud signs. An attacker on Moat Cloud can change your routes within the gate's local limits. “Signed”: you sign, Moat Cloud only stores. You change the mode only at the gate.",
           "signer": "For “Convenient” the gate needs Moat Cloud's public key. It is shown under “Gates”. If this Moat Cloud has no key, there is only “Signed”.",
-          "sealed": "A secret never appears in the clear in Moat Cloud: you seal it on your side, the page shows only names and versions."
+          "sealed": "A secret never appears in the clear in Moat Cloud: you seal it on your side, the page shows only names and versions.",
+          "rotation": "Moat Cloud's key change takes two steps: first the operator announces the new key and you pin it at every gate in addition, then Moat Cloud switches. “Gates” shows both steps."
         }
       }
     }
@@ -1486,7 +1487,11 @@
       "fingerprint": "Fingerprint",
       "publicKey": "Public key",
       "pin": "Pin it at the gate: php moat-gate.php trust --signer=<public key>. First compare the fingerprint with the one the gate shows.",
-      "none": "This Moat Cloud has no signing key. Here there are only gates you sign yourself."
+      "none": "This Moat Cloud has no signing key. Here there are only gates you sign yourself.",
+      "nextTitle": "Key change announced",
+      "next": "Moat Cloud will soon switch to this key. Pin both keys at every gate (php moat-gate.php trust --signer=<current>,<new>) before the switch. After it, Moat Cloud signs with the new one.",
+      "previousTitle": "Key replaced",
+      "previous": "Moat Cloud no longer signs with this key. Once a gate has accepted a bundle with the new key, pin only the new one there (php moat-gate.php trust --signer=<new>)."
     },
     "gate": {
       "id": "Gate ID",

@@ -121,6 +121,21 @@ export class Env {
   @Matches(/^[A-Za-z0-9_-]{43}$/)
   MOAT_SIGNING_KEY?: string;
 
+  /**
+   * A signing-key rotation in progress (public keys only, base64url): `NEXT` is announced so that
+   * every gate pins it before Moat Cloud switches (`trust --signer=<old>,<new>`); after the switch
+   * `PREVIOUS` names the retired key until the gates drop it. See deploy/docker/README.md.
+   */
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[A-Za-z0-9_-]{43}$/)
+  MOAT_SIGNING_KEY_NEXT_PUBLIC?: string;
+
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[A-Za-z0-9_-]{43}$/)
+  MOAT_SIGNING_KEY_PREVIOUS_PUBLIC?: string;
+
   /** How many reverse proxies sit in front (X-Forwarded-For hops); 0 = none, the socket address. */
   @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
   @IsOptional()

@@ -35,18 +35,19 @@ er versiegelt die TOTP-Geheimnisse. Ohne ihn sind eingerichtete Zwei-Faktor-Kont
 
 ## Konfiguration
 
-| Variable              | Pflicht | Standard           | Bedeutung                                                                                                                                                                                                     |
-| --------------------- | ------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MOAT_PUBLIC_ORIGIN`  | ja      |                    | Die **eine** Adresse des Dashboards: `https://…`, ohne Pfad. Anfragen mit anderem `Origin` werden abgewiesen.                                                                                                 |
-| `MOAT_ACCOUNT_KEY`    | ja      |                    | 32 Zufallsbytes, base64url ohne `=` (43 Zeichen). Oder `MOAT_ACCOUNT_KEY_FILE` (Pfad zu einer Datei).                                                                                                         |
-| `MOAT_SIGNING_KEY`    | nein    |                    | 32 Zufallsbytes (ein Ed25519-Seed), base64url ohne `=`. Damit signiert Moat Cloud die Bundles von Gates im Modus «Bequem». Ohne ihn gibt es nur Gates, die du selbst signierst. Oder `MOAT_SIGNING_KEY_FILE`. |
-| `MOAT_DB_PROVIDER`    | nein    | `sqlite`           | `sqlite` (Datei in `/data/cloud.db`, **eine** Instanz) oder `postgresql`.                                                                                                                                     |
-| `MOAT_DATABASE_URL`   | bei pg  |                    | `postgresql://…`; TLS ist Pflicht, ausser zu `localhost`. Oder `MOAT_DATABASE_URL_FILE`.                                                                                                                      |
-| `MOAT_TRUST_PROXY`    | nein    | `0`                | Zahl der Reverse Proxys davor (0 bis 8). Mit `0` sieht der Server jede Anfrage als vom Proxy kommend.                                                                                                         |
-| `MOAT_COOKIE_SECURE`  | nein    | `true`             | In Produktion muss es `true` sein.                                                                                                                                                                            |
-| `MOAT_DATA_DIR`       | nein    | `/data`            | Wo die SQLite-Datei liegt. Das Volume gehört dem Benutzer 1000.                                                                                                                                               |
-| `HOST` / `PORT`       | nein    | `0.0.0.0` / `3000` | Wo der Server lauscht (im Container nicht ändern; Port nur über `-p` abbilden).                                                                                                                               |
-| `NODE_EXTRA_CA_CERTS` | nein    |                    | Pfad zur CA, die das Zertifikat deiner PostgreSQL-Datenbank ausgestellt hat (bei eigener CA).                                                                                                                 |
+| Variable                                                            | Pflicht | Standard           | Bedeutung                                                                                                                                                                                                     |
+| ------------------------------------------------------------------- | ------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MOAT_PUBLIC_ORIGIN`                                                | ja      |                    | Die **eine** Adresse des Dashboards: `https://…`, ohne Pfad. Anfragen mit anderem `Origin` werden abgewiesen.                                                                                                 |
+| `MOAT_ACCOUNT_KEY`                                                  | ja      |                    | 32 Zufallsbytes, base64url ohne `=` (43 Zeichen). Oder `MOAT_ACCOUNT_KEY_FILE` (Pfad zu einer Datei).                                                                                                         |
+| `MOAT_SIGNING_KEY`                                                  | nein    |                    | 32 Zufallsbytes (ein Ed25519-Seed), base64url ohne `=`. Damit signiert Moat Cloud die Bundles von Gates im Modus «Bequem». Ohne ihn gibt es nur Gates, die du selbst signierst. Oder `MOAT_SIGNING_KEY_FILE`. |
+| `MOAT_SIGNING_KEY_NEXT_PUBLIC` / `MOAT_SIGNING_KEY_PREVIOUS_PUBLIC` | nein    |                    | Öffentliche Schlüssel (base64url) eines laufenden Schlüsselwechsels, siehe unten. Sie ändern nur, was das Dashboard zeigt und welche früheren Bundles beim Vergleich zählen, nie, womit signiert wird.        |
+| `MOAT_DB_PROVIDER`                                                  | nein    | `sqlite`           | `sqlite` (Datei in `/data/cloud.db`, **eine** Instanz) oder `postgresql`.                                                                                                                                     |
+| `MOAT_DATABASE_URL`                                                 | bei pg  |                    | `postgresql://…`; TLS ist Pflicht, ausser zu `localhost`. Oder `MOAT_DATABASE_URL_FILE`.                                                                                                                      |
+| `MOAT_TRUST_PROXY`                                                  | nein    | `0`                | Zahl der Reverse Proxys davor (0 bis 8). Mit `0` sieht der Server jede Anfrage als vom Proxy kommend.                                                                                                         |
+| `MOAT_COOKIE_SECURE`                                                | nein    | `true`             | In Produktion muss es `true` sein.                                                                                                                                                                            |
+| `MOAT_DATA_DIR`                                                     | nein    | `/data`            | Wo die SQLite-Datei liegt. Das Volume gehört dem Benutzer 1000.                                                                                                                                               |
+| `HOST` / `PORT`                                                     | nein    | `0.0.0.0` / `3000` | Wo der Server lauscht (im Container nicht ändern; Port nur über `-p` abbilden).                                                                                                                               |
+| `NODE_EXTRA_CA_CERTS`                                               | nein    |                    | Pfad zur CA, die das Zertifikat deiner PostgreSQL-Datenbank ausgestellt hat (bei eigener CA).                                                                                                                 |
 
 Jede Variable ausser den zwei Geheimnissen und der Adresse hat einen sicheren Standard. Der Server
 **startet nicht** bei einem falschen Wert und nennt dann nur den Namen der Variable, nie den Wert.
@@ -99,3 +100,22 @@ Prüfen, dass alles zusammenspielt (Cloud-Ablauf, und das echte PHP-Gate gegen d
 pnpm install && pnpm build:gate-php
 sh scripts/smoke-flow-image.sh moat-cloud:local
 ```
+
+### Den Signaturschlüssel wechseln
+
+Ein Gate vertraut dem gepinnten öffentlichen Schlüssel. Der Wechsel geht deshalb in Schritten, damit
+kein Gate ein Bundle verliert:
+
+1. Neuen Seed erzeugen (`head -c 32 /dev/urandom | basenc --base64url | tr -d '='`) und **nur seinen
+   öffentlichen Schlüssel** als `MOAT_SIGNING_KEY_NEXT_PUBLIC` setzen. Das Dashboard zeigt ihn unter
+   «Gates» als angekündigt. (Den öffentlichen Schlüssel liefert die Cloud mit dem neuen Seed beim
+   Start, oder `moat keygen`.)
+2. An **jedem Gate** beide eintragen: `php moat-gate.php trust --signer=<alt>,<neu>`.
+3. `MOAT_SIGNING_KEY` auf den neuen Seed stellen, `MOAT_SIGNING_KEY_NEXT_PUBLIC` entfernen und den alten
+   öffentlichen Schlüssel als `MOAT_SIGNING_KEY_PREVIOUS_PUBLIC` eintragen. Die nächste Freigabe ist mit
+   dem neuen Schlüssel signiert; der Vergleich mit dem letzten Bundle funktioniert weiter.
+4. Hat ein Gate ein neues Bundle angenommen: dort `trust --signer=<neu>`. Danach den alten Schlüssel aus
+   der Umgebung entfernen.
+
+Ein Gate, das den neuen Schlüssel nicht kennt, lehnt dessen Bundles ab und läuft mit dem letzten gültigen
+weiter. Moat Cloud kann das Pinnen nie selbst ändern (SEC-06).

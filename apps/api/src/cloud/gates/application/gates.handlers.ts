@@ -686,18 +686,19 @@ abstract class ReleasePlanner extends Guarded {
   > {
     if (gate.mode !== 'managed')
       return { status: 'refused', code: 'not_managed' };
-    const planSigner = this.signer.planSigner();
-    if (planSigner === null)
+    const signers = this.signer.planSigners();
+    if (signers.length === 0)
       return { status: 'refused', code: 'managed_unavailable' };
     try {
-      return {
-        status: 'planned',
-        plan: await planBundle(
-          await this.storage(projectId, gate),
-          gate.name,
-          planSigner,
-        ),
-      };
+      const storage = await this.storage(projectId, gate);
+      // The last bundle may have been signed by the key that was retired since: try each key in
+      // turn, and settle for the comparison against the first one that recognises it.
+      let plan: BundlePlan | null = null;
+      for (const signer of signers) {
+        plan = await planBundle(storage, gate.name, signer);
+        if (plan.previous !== 'unverified') break;
+      }
+      return { status: 'planned', plan: plan as BundlePlan };
     } catch (error) {
       if (error instanceof BundlePlanError)
         return { status: 'refused', code: error.code, secrets: error.secrets };

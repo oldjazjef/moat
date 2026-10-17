@@ -92,7 +92,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     id: 'cloudGates',
     only: 'cloud',
     steps: items('config', 'gate', 'secret', 'release', 'pull'),
-    tips: items('mode', 'signer', 'sealed'),
+    tips: items('mode', 'signer', 'sealed', 'rotation'),
     links: [{ id: 'organisations', path: '/app/organisations', only: 'cloud' }],
   },
   {

@@ -16,7 +16,7 @@ import {
   typeInto,
 } from '../../../../../testing/cloud-harness';
 import type { MyAccess } from '../../../../core/auth/account.types';
-import type { GateView } from '../../../../core/api/gates.types';
+import type { GateView, SignerInfo } from '../../../../core/api/gates.types';
 import { ProjectGatesPage } from './project-gates-page';
 
 const PROJECT = 'PPPPPPPPPPPPPPPPPPPPP1';
@@ -30,10 +30,12 @@ const ROUTES = [
   { path: 'app/organisations/:orgId/projects', children: [] },
   { path: 'app/organisations/:orgId/members', children: [] },
 ];
-const SIGNER = {
+const SIGNER: SignerInfo = {
   kid: 'K'.repeat(22),
   publicKey: 'P'.repeat(43),
   fingerprint: 'MOAT-AAAA-BBBB',
+  next: null,
+  previous: null,
 };
 const gate = (patch: Partial<GateView> = {}): GateView => ({
   name: 'site',
@@ -50,7 +52,7 @@ const gate = (patch: Partial<GateView> = {}): GateView => ({
 const open = (
   access: MyAccess = OWNER_ACCESS,
   gates: GateView[] = [gate()],
-  signer: typeof SIGNER | null = SIGNER,
+  signer: SignerInfo | null = SIGNER,
 ) =>
   openCloudPage(`/app/organisations/${ORG_ID}/projects/${PROJECT}`, ROUTES, {
     [`/api/orgs/${ORG_ID}`]: entry(access),
@@ -91,6 +93,27 @@ describe('ProjectGatesPage (Gates eines Cloud-Projekts)', () => {
     );
     expect(text(el, '[data-recommend]')).toContain('Signiert');
     expect(text(el, '[data-version]')).toBe('noch keines');
+  });
+
+  it('names the announced and the retired signing key during a rotation', async () => {
+    const { el } = await open(OWNER_ACCESS, [gate()], {
+      ...SIGNER,
+      next: {
+        kid: 'N'.repeat(22),
+        publicKey: 'n'.repeat(43),
+        fingerprint: 'MOAT-NEXT',
+      },
+      previous: {
+        kid: 'O'.repeat(22),
+        publicKey: 'o'.repeat(43),
+        fingerprint: 'MOAT-OLD1',
+      },
+    });
+    expect(text(el, '[data-signer-next]')).toContain(
+      'Schlüsselwechsel angekündigt',
+    );
+    expect(text(el, '[data-signer-next-key]')).toBe('n'.repeat(43));
+    expect(text(el, '[data-signer-previous]')).toContain('MOAT-OLD1');
   });
 
   it('a gate the customer signs for is "Signiert" and offers an upload, not a signature', async () => {

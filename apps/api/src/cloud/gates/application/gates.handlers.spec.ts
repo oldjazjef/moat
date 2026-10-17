@@ -1,7 +1,9 @@
 import { ConfigService } from '@nestjs/config';
 import {
   fingerprint,
+  fromBase64UrlLength,
   keyId,
+  verifyBundle,
   NEW_PROJECT_CONFIG,
   sealSecret,
   toBase64Url,
@@ -94,6 +96,7 @@ async function setup(withKey = true) {
     log,
     clock,
     organisations,
+    projects,
     handlers: {
       add: new AddGateHandler(...args, store, signer, clock, audit),
       set: new SetConfigHandler(...args, store, clock, audit),
@@ -443,5 +446,146 @@ describe('project storage as the core reads it', () => {
     expect(storage.list('gates')).toEqual(['site.json']);
     expect(storage.list('bundles/site')).toEqual([]);
     void keyId;
+  });
+});
+
+describe('rotating the installation key', () => {
+  const seedOf = () => toBase64Url(sodium.randombytes_buf(32));
+  const publicOf = (seed: string) =>
+    toBase64Url(
+      sodium.crypto_sign_seed_keypair(fromBase64UrlLength(seed, 32)).publicKey,
+    );
+
+  it('compares with a bundle the retired key signed, and signs with the new key only', async () => {
+    const t = await setup();
+    await t.handlers.set.execute(
+      new SetConfigCommand(t.owner, t.org, t.project, NEW_PROJECT_CONFIG, null),
+    );
+    await enrol(t);
+    const first = await t.handlers.preview.execute(
+      new PreviewReleaseQuery(t.owner, t.org, t.project, 'site'),
+    );
+    if (first.status !== 'ok') throw new Error('preview');
+    await t.handlers.release.execute(
+      new ReleaseCommand(
+        t.owner,
+        t.org,
+        t.project,
+        'site',
+        first.preview.digest,
+      ),
+    );
+    const oldPublic = t.signer.info()?.publicKey ?? '';
+
+    // The new key is current, the old one named as previous: bundle 1 is still recognised.
+    const newSeed = seedOf();
+    const rotated = await CloudSigner.create(newSeed, {
+      previousPublic: oldPublic,
+    });
+    const preview = new PreviewReleaseHandler(
+      t.organisations,
+      t.projects,
+      t.store,
+      rotated,
+    );
+    const second = await preview.execute(
+      new PreviewReleaseQuery(t.owner, t.org, t.project, 'site'),
+    );
+    if (second.status !== 'ok') throw new Error('preview');
+    expect(second.preview).toMatchObject({
+      version: 2,
+      previousVersion: 1,
+      changes: [],
+    });
+
+    // Without naming the retired key the old bundle is "unverified": every change shows as new.
+    const forgot = await CloudSigner.create(newSeed);
+    const blind = await new PreviewReleaseHandler(
+      t.organisations,
+      t.projects,
+      t.store,
+      forgot,
+    ).execute(new PreviewReleaseQuery(t.owner, t.org, t.project, 'site'));
+    expect(blind.status).toBe('ok');
+
+    const release = new ReleaseHandler(
+      t.organisations,
+      t.projects,
+      t.store,
+      rotated,
+      t.clock,
+      new AuditTrail(t.log, t.clock),
+    );
+    const done = await release.execute(
+      new ReleaseCommand(
+        t.owner,
+        t.org,
+        t.project,
+        'site',
+        second.preview.digest,
+      ),
+    );
+    expect(done).toMatchObject({
+      status: 'ok',
+      version: 2,
+      kid: rotated.info()?.kid,
+    });
+
+    // A gate that pins both keys accepts it; one that still pins only the old key refuses it.
+    const bytes = new TextEncoder().encode(t.store.bundles.at(-1)?.text ?? '');
+    const pin = (publicKey: string, kid: string) => ({
+      kid,
+      alg: 'ed25519' as const,
+      publicKey: fromBase64UrlLength(publicKey, 32),
+    });
+    const oldKey = pin(oldPublic, t.signer.info()?.kid ?? '');
+    const newKey = pin(publicOf(newSeed), rotated.info()?.kid ?? '');
+    const context = {
+      gateId: t.gate.gateId,
+      threshold: 1,
+      currentVersion: 1,
+      now: Math.floor(Date.now() / 1000),
+      expiryEnabled: false,
+    };
+    expect(
+      (await verifyBundle(bytes, { ...context, signers: [oldKey, newKey] }))
+        .payload.version,
+    ).toBe(2);
+    await expect(
+      verifyBundle(bytes, { ...context, signers: [oldKey] }),
+    ).rejects.toBeDefined();
+  });
+
+  it('shows the announced and the retired key, and refuses a malformed or doubled one', async () => {
+    const seed = seedOf();
+    const next = publicOf(seedOf());
+    const previous = publicOf(seedOf());
+    const signer = await CloudSigner.create(seed, {
+      nextPublic: next,
+      previousPublic: previous,
+    });
+    expect(signer.info()?.next?.publicKey).toBe(next);
+    expect(signer.info()?.previous?.publicKey).toBe(previous);
+    expect(signer.planSigners()).toHaveLength(2);
+    const own = publicOf(seed);
+    await expect(CloudSigner.create(seed, { nextPublic: own })).rejects.toThrow(
+      'MOAT_SIGNING_KEY_NEXT_PUBLIC',
+    );
+    await expect(
+      CloudSigner.create(seed, { previousPublic: own }),
+    ).rejects.toThrow('MOAT_SIGNING_KEY_PREVIOUS_PUBLIC');
+    await expect(
+      CloudSigner.create(seed, { nextPublic: next, previousPublic: next }),
+    ).rejects.toThrow('MOAT_SIGNING_KEY_PREVIOUS_PUBLIC');
+    await expect(
+      CloudSigner.create(seed, { nextPublic: 'nope' }),
+    ).rejects.toThrow('MOAT_SIGNING_KEY_NEXT_PUBLIC');
+    // Without a signing key a rotation makes no sense, and the message does not echo a value.
+    await expect(
+      CloudSigner.create(undefined, { nextPublic: next }),
+    ).rejects.toThrow(
+      /^Invalid signing key environment: MOAT_SIGNING_KEY_NEXT_PUBLIC$/,
+    );
+    expect((await CloudSigner.create(undefined)).available).toBe(false);
   });
 });
