@@ -6,6 +6,7 @@ ignore: |
   dist/
   pnpm-lock.yaml
   libs/ui/
+  deploy/helm/*/templates/
   .claude/worktrees/
 
 rules:

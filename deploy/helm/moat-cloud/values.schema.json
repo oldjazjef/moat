@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "replicaCount": { "type": "integer", "minimum": 1 },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string", "not": { "const": "latest" } },
+        "digest": { "type": "string", "pattern": "^$|^sha256:[a-f0-9]{64}$" },
+        "pullPolicy": { "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "imagePullSecrets": { "type": "array" },
+    "publicOrigin": { "type": "string", "pattern": "^$|^https://[^/?#\\s]+$" },
+    "trustProxy": { "type": "integer", "minimum": 0, "maximum": 8 },
+    "secrets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "accountKey": { "$ref": "#/definitions/secretRef" },
+        "databaseUrl": { "$ref": "#/definitions/secretRef" },
+        "databaseCa": { "$ref": "#/definitions/secretRef" }
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": { "type": "boolean" },
+        "name": { "type": "string" },
+        "annotations": { "type": "object" }
+      }
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "className": { "type": "string" },
+        "annotations": { "type": "object" },
+        "host": { "type": "string" },
+        "tlsSecretName": { "type": "string" }
+      }
+    },
+    "resources": { "type": "object" },
+    "podDisruptionBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "minAvailable": { "type": ["integer", "string"] }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "ingressFrom": { "type": "array" },
+        "databaseTo": { "type": "array" },
+        "databasePort": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "dnsTo": { "type": "array" }
+      }
+    },
+    "podAnnotations": { "type": "object" },
+    "nodeSelector": { "type": "object" },
+    "tolerations": { "type": "array" },
+    "affinity": { "type": "object" },
+    "topologySpreadConstraints": { "type": "array" }
+  },
+  "definitions": {
+    "secretRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "key": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

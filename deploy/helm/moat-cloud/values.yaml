@@ -1,0 +1,86 @@
+# Moat Cloud, self-hosted. No secret belongs in this file: only the NAMES of Kubernetes Secrets
+# that already exist (see README.md for how to create them). SEC-57.
+
+# More than one replica needs PostgreSQL (it is the only provider this chart configures).
+replicaCount: 1
+
+image:
+  repository: moat-cloud
+  # Required: a release tag, never `latest`. Pin the digest too for production.
+  tag: ''
+  digest: ''
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# The ONE address of the dashboard: https, no path. Requests with another Origin are refused (T-78).
+publicOrigin: ''
+
+# Number of reverse proxies in front of the pod (ingress controller = 1). 0 would make every client
+# look like the proxy and the per-address rate limit would hit everybody at once.
+trustProxy: 1
+
+# Names of existing Secrets and the key inside each. Mounted as files below /run/secrets.
+secrets:
+  accountKey:
+    name: ''
+    key: moat_account_key
+  databaseUrl:
+    name: ''
+    key: moat_database_url
+  # The CA that signed the database's certificate (the Cloud connects with verified TLS).
+  databaseCa:
+    name: ''
+    key: ca.crt
+
+serviceAccount:
+  create: true
+  name: ''
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ''
+  annotations: {}
+  host: ''
+  # Name of a kubernetes.io/tls Secret; TLS is required when the ingress is on.
+  tlsSecretName: ''
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Default-deny in both directions, then exactly what the Cloud needs (SEC-57).
+networkPolicy:
+  enabled: true
+  # Who may reach the pod's port: the ingress controller's namespace by default.
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+  # Where the database is (podSelector / namespaceSelector / ipBlock entries). Required while the
+  # policy is on: an empty list would leave the egress open, so the chart refuses to render.
+  databaseTo: []
+  databasePort: 5432
+  # DNS: the cluster's resolver pods.
+  dnsTo:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []

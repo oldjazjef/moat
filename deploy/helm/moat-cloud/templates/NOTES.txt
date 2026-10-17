@@ -1,0 +1,14 @@
+Moat Cloud {{ .Chart.AppVersion }} is installed as {{ include "moat-cloud.fullname" . }}.
+
+Not in this chart (yet): e-mail, gates in the Cloud, an audit log, TLS termination (the ingress
+or a proxy in front does that). The pod trusts {{ .Values.trustProxy }} proxy hop(s).
+{{- if not .Values.networkPolicy.enabled }}
+
+WARNING: networkPolicy.enabled=false. Without a policy the pod can reach every address the
+cluster allows. SEC-57 expects default-deny.
+{{- end }}
+{{- if gt (int .Values.replicaCount) 1 }}
+
+Several replicas: the database is the only shared state, which is why this chart supports
+PostgreSQL only.
+{{- end }}

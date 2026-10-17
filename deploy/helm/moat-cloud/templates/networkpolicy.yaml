@@ -1,0 +1,37 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- if not .Values.networkPolicy.databaseTo }}
+{{- fail "networkPolicy.databaseTo must name where the database is (an empty list would leave the egress open); or set networkPolicy.enabled=false and bring your own policy" }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "moat-cloud.fullname" . }}
+  labels:
+    {{- include "moat-cloud.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "moat-cloud.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        {{- toYaml .Values.networkPolicy.ingressFrom | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    - to:
+        {{- toYaml .Values.networkPolicy.dnsTo | nindent 8 }}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        {{- toYaml .Values.networkPolicy.databaseTo | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.networkPolicy.databasePort }}
+{{- end }}
