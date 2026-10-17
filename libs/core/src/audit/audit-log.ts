@@ -18,6 +18,7 @@ import type { JsonValue } from '../json/strict-json';
 export const AUDIT_ACTIONS = [
   'org.create',
   'member.add_requested',
+  'member.join',
   'member.change',
   'member.remove',
   'project.create',
@@ -56,6 +57,12 @@ export type AuditEvent =
         /** SHA-256 hex of the normalised address. */
         readonly emailHash: string;
       };
+    }
+  | {
+      readonly action: 'member.join';
+      /** The account that joined by an invitation once its address was verified. */
+      readonly target: string;
+      readonly details: { readonly role: AuditRole };
     }
   | {
       readonly action: 'member.change';
@@ -349,6 +356,8 @@ export function eventValid(
         typeof d['emailHash'] === 'string' &&
         HEX64.test(d['emailHash'])
       );
+    case 'member.join':
+      return id && exactly('role') && isRole(d['role']);
     case 'member.change':
       return (
         id &&

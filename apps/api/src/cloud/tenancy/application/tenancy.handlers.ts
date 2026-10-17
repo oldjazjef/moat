@@ -7,7 +7,16 @@ import {
 import { sha256Hex } from '@moat/core';
 import { AuditTrail } from '../../audit/application/audit-trail';
 import { Clock, ID_PATTERN, iso, newId } from '../../common/clock';
+import {
+  MAIL_INVITE_PER_ACTOR,
+  MAIL_INVITE_PER_ADDRESS,
+  RateLimiter,
+} from '../../auth/application/rate-limiter';
 import { normaliseEmail } from '../../auth/domain/credentials';
+import { invitationMail } from '../../mail/mail-templates';
+import { MailLinks } from '../../mail/mail.ports';
+import { MailOutbox } from '../../mail/smtp-mailer';
+import { INVITATION_TTL_MS } from './invitation-redeemer';
 import {
   type Action,
   can,
@@ -16,6 +25,7 @@ import {
   permissionsOf,
 } from '../domain/permissions';
 import {
+  InvitationRepositoryPort,
   OrganisationRepositoryPort,
   OrgProjectRepositoryPort,
   type MembershipRecord,
@@ -197,6 +207,10 @@ export class AddMemberHandler implements ICommandHandler<AddMemberCommand> {
     private readonly organisations: OrganisationRepositoryPort,
     private readonly clock: Clock,
     private readonly audit: AuditTrail,
+    private readonly invitations: InvitationRepositoryPort,
+    private readonly outbox: MailOutbox,
+    private readonly limiter: RateLimiter,
+    private readonly links: MailLinks,
   ) {}
 
   async execute(command: AddMemberCommand): Promise<AddMemberResult> {
@@ -214,15 +228,33 @@ export class AddMemberHandler implements ICommandHandler<AddMemberCommand> {
       return FORBIDDEN;
     const email = normaliseEmail(command.email);
     if (email === null) return { status: 'refused', code: 'email_invalid' };
-    const accountId = await this.organisations.accountIdByEmail(email);
+    // With a mail server only an account whose address was confirmed by a link is added at once:
+    // an unconfirmed one may belong to whoever typed the address in first (T-96). Everybody else
+    // gets an invitation that is applied when their address is verified.
+    const accountId = this.outbox.enabled
+      ? await this.organisations.verifiedAccountIdByEmail(email)
+      : await this.organisations.accountIdByEmail(email);
+    const now = this.clock.now();
     if (accountId !== null)
       await this.organisations.addMember({
         organisationId: command.organisationId,
         accountId,
         role: command.role,
         releaseGranted: false,
-        createdAt: iso(this.clock.now()),
+        createdAt: iso(now),
       });
+    else {
+      await this.invitations.save({
+        id: newId(),
+        organisationId: command.organisationId,
+        email,
+        role: command.role,
+        invitedBy: command.actorId,
+        createdAt: iso(now),
+        expiresAt: iso(new Date(now.getTime() + INVITATION_TTL_MS)),
+      });
+      await this.mailInvitation(email, command.actorId);
+    }
     // Recorded as a request, whatever came of it: the row must not tell an unknown address from a
     // known one (T-79), and the address only as its hash (no personal data in an append-only log).
     await this.audit.record(command.organisationId, command.actorId, {
@@ -232,6 +264,20 @@ export class AddMemberHandler implements ICommandHandler<AddMemberCommand> {
     });
     // `ok` for an unknown address and for one that is a member already: nothing tells them apart.
     return { status: 'ok' };
+  }
+
+  /** At most a few mails per mailbox and per inviting account; past that nothing is sent, silently. */
+  private async mailInvitation(email: string, actorId: string): Promise<void> {
+    if (!this.outbox.enabled) return;
+    if (
+      (await this.limiter.retryAfter(MAIL_INVITE_PER_ADDRESS, email)) !==
+        null ||
+      (await this.limiter.retryAfter(MAIL_INVITE_PER_ACTOR, actorId)) !== null
+    )
+      return;
+    await this.limiter.record(MAIL_INVITE_PER_ADDRESS, email);
+    await this.limiter.record(MAIL_INVITE_PER_ACTOR, actorId);
+    this.outbox.enqueue(invitationMail(email, this.links));
   }
 }
 

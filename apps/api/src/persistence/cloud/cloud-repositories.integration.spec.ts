@@ -12,10 +12,12 @@ import {
 import { CloudDatabase } from './cloud-database';
 import {
   PrismaAccountRepository,
+  PrismaAccountTokenRepository,
   PrismaRateLimit,
   PrismaSessionRepository,
 } from './prisma-auth.repositories';
 import {
+  PrismaInvitationRepository,
   PrismaOrganisationRepository,
   PrismaOrgProjectRepository,
 } from './prisma-tenancy.repositories';
@@ -40,6 +42,7 @@ const account = (email: string): AccountRecord => ({
   passwordHash: HASH,
   passwordChangedAt: AT,
   createdAt: AT,
+  emailVerifiedAt: null,
 });
 
 for (const provider of ['sqlite', 'postgresql'] as const) {
@@ -50,6 +53,8 @@ for (const provider of ['sqlite', 'postgresql'] as const) {
     let limits: PrismaRateLimit;
     let orgs: PrismaOrganisationRepository;
     let projects: PrismaOrgProjectRepository;
+    let tokens: PrismaAccountTokenRepository;
+    let invitations: PrismaInvitationRepository;
     // No PostgreSQL server on this machine and no MOAT_TEST_POSTGRES_URL: the specs return early.
     const unavailable = () => provider === 'postgresql' && pg === null;
 
@@ -71,6 +76,8 @@ for (const provider of ['sqlite', 'postgresql'] as const) {
       limits = new PrismaRateLimit(database);
       orgs = new PrismaOrganisationRepository(database);
       projects = new PrismaOrgProjectRepository(database);
+      tokens = new PrismaAccountTokenRepository(database);
+      invitations = new PrismaInvitationRepository(database);
     }, 120_000);
 
     afterAll(async () => {
@@ -251,6 +258,94 @@ for (const provider of ['sqlite', 'postgresql'] as const) {
       expect(await projects.find(oa.organisation.id, p.id)).toBeNull();
     });
 
+    it('uses a link token up exactly once, and only for its purpose and before it expires', async () => {
+      if (unavailable()) return;
+      const a = account('token@example.ch');
+      await accounts.create(a);
+      const record = (
+        id: string,
+        purpose: 'verify_email' | 'reset_password',
+      ) => ({
+        id,
+        accountId: a.id,
+        purpose,
+        createdAt: AT,
+        expiresAt: '2026-10-16T12:00:00.000Z',
+      });
+      const one = 'a'.repeat(64);
+      await tokens.issue(record(one, 'verify_email'));
+      expect(await tokens.consume(one, 'reset_password', AT)).toBeNull();
+      expect(
+        await tokens.consume(one, 'verify_email', '2026-10-17T00:00:00.000Z'),
+      ).toBeNull();
+      // Two racing requests: one wins.
+      const raced = await Promise.all([
+        tokens.consume(one, 'verify_email', AT),
+        tokens.consume(one, 'verify_email', AT),
+      ]);
+      expect(raced.filter((r) => r === a.id)).toHaveLength(1);
+      expect(await tokens.consume(one, 'verify_email', AT)).toBeNull();
+      // A newer token of the same purpose ends the older one; another purpose is left alone.
+      const older = 'b'.repeat(64);
+      const newer = 'c'.repeat(64);
+      const reset = 'd'.repeat(64);
+      await tokens.issue(record(older, 'reset_password'));
+      await tokens.issue(record(reset, 'verify_email'));
+      await tokens.issue(record(newer, 'reset_password'));
+      expect(await tokens.consume(older, 'reset_password', AT)).toBeNull();
+      await tokens.revokeAll(a.id, 'reset_password', AT);
+      expect(await tokens.consume(newer, 'reset_password', AT)).toBeNull();
+      expect(await tokens.consume(reset, 'verify_email', AT)).toBe(a.id);
+    });
+
+    it('confirms an address once and finds only confirmed accounts by it', async () => {
+      if (unavailable()) return;
+      const a = account('verified@example.ch');
+      await accounts.create(a);
+      expect(await orgs.verifiedAccountIdByEmail(a.email)).toBeNull();
+      await accounts.markEmailVerified(a.id, AT);
+      await accounts.markEmailVerified(a.id, '2026-10-16T12:00:00.000Z');
+      expect(await orgs.verifiedAccountIdByEmail(a.email)).toBe(a.id);
+      expect((await accounts.findById(a.id))?.emailVerifiedAt).toBe(AT);
+      expect(await orgs.accountIdByEmail(a.email)).toBe(a.id);
+    });
+
+    it('keeps one invitation per organisation and address, hands each over once, and drops lapsed ones', async () => {
+      if (unavailable()) return;
+      const owner = account('inviter@example.ch');
+      await accounts.create(owner);
+      const org = { id: newId(), name: 'Invites', createdAt: AT };
+      await orgs.create(org, {
+        organisationId: org.id,
+        accountId: owner.id,
+        role: 'owner',
+        releaseGranted: true,
+        createdAt: AT,
+      });
+      const invite = (role: 'viewer' | 'admin', expiresAt: string) => ({
+        id: newId(),
+        organisationId: org.id,
+        email: 'guest@example.ch',
+        role,
+        invitedBy: owner.id,
+        createdAt: AT,
+        expiresAt,
+      });
+      await invitations.save(invite('viewer', '2026-10-29T12:00:00.000Z'));
+      await invitations.save(invite('admin', '2026-10-29T12:00:00.000Z'));
+      const taken = await invitations.takeAllFor('guest@example.ch', AT);
+      expect(taken).toHaveLength(1);
+      expect(taken[0]?.role).toBe('admin');
+      expect(await invitations.takeAllFor('guest@example.ch', AT)).toEqual([]);
+      await invitations.save(invite('viewer', '2026-10-15T12:00:01.000Z'));
+      expect(
+        await invitations.takeAllFor(
+          'guest@example.ch',
+          '2026-10-20T00:00:00.000Z',
+        ),
+      ).toEqual([]);
+    });
+
     it('refuses in the database what the application never writes (CHECK constraints)', async () => {
       if (unavailable()) return;
       const raw = (text: string) => database.client.$executeRawUnsafe(text);
@@ -296,6 +391,22 @@ for (const provider of ['sqlite', 'postgresql'] as const) {
       await expect(
         raw(
           `INSERT INTO "rate_limit" ("key","window_end","count") VALUES ('user@example.ch','${AT}',1)`,
+        ),
+      ).rejects.toThrow();
+      // A link token is stored as its SHA-256, never as the token that sits in the mail.
+      await expect(
+        raw(
+          `INSERT INTO "account_token" ("id","account_id","purpose","created_at","expires_at") VALUES ('${'T'.repeat(43)}','${a.id}','verify_email','${AT}','${AT}')`,
+        ),
+      ).rejects.toThrow();
+      await expect(
+        raw(
+          `INSERT INTO "account_token" ("id","account_id","purpose","created_at","expires_at") VALUES ('${'a'.repeat(64)}','${a.id}','log_in','${AT}','${AT}')`,
+        ),
+      ).rejects.toThrow();
+      await expect(
+        raw(
+          `INSERT INTO "pending_invitation" ("id","organisation_id","email","role","invited_by","created_at","expires_at") VALUES ('${newId()}','${org}','Mixed@Example.ch','viewer','${a.id}','${AT}','${AT}')`,
         ),
       ).rejects.toThrow();
     });

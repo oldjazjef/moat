@@ -183,6 +183,32 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
     expect: open(202, true),
   },
   {
+    // A token that was never issued: the same plain 422 for everybody (expired and used look alike).
+    method: 'POST',
+    path: '/api/auth/verify-email',
+    body: { token: 'A'.repeat(43) },
+    expect: open(422, true),
+  },
+  {
+    // 202 whether or not the address has an account (T-79).
+    method: 'POST',
+    path: '/api/auth/resend-verification',
+    body: { email: 'nobody@example.ch' },
+    expect: open(202, true),
+  },
+  {
+    method: 'POST',
+    path: '/api/auth/forgot-password',
+    body: { email: 'nobody@example.ch' },
+    expect: open(202, true),
+  },
+  {
+    method: 'POST',
+    path: '/api/auth/reset-password',
+    body: { token: 'A'.repeat(43), newPassword: 'a long enough password' },
+    expect: open(422, true),
+  },
+  {
     // ownerA's own credentials: anybody may try to sign in; a cookie that came along is ended.
     method: 'POST',
     path: '/api/auth/login',

@@ -7,7 +7,7 @@ CREATE TABLE "audit_entry" (
     "seq" INTEGER NOT NULL CHECK ("seq" >= 1),
     "at" TEXT NOT NULL CHECK ("at" ~ '^[0-9]{4}-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-6][0-9]\.[0-9]{3}Z$'),
     "actor" TEXT NOT NULL CHECK ("actor" ~ '^[A-Za-z0-9_-]{22}$'),
-    "action" TEXT NOT NULL CHECK ("action" IN ('org.create', 'member.add_requested', 'member.change', 'member.remove', 'project.create', 'project.delete', 'config.edit', 'gate.add', 'gate.pull_token', 'secret.set', 'bundle.sign', 'bundle.upload')),
+    "action" TEXT NOT NULL CHECK ("action" IN ('org.create', 'member.add_requested', 'member.join', 'member.change', 'member.remove', 'project.create', 'project.delete', 'config.edit', 'gate.add', 'gate.pull_token', 'secret.set', 'bundle.sign', 'bundle.upload')),
     "target" TEXT CHECK ("target" IS NULL OR "target" ~ '^[A-Za-z0-9_-]{22}$'),
     "details" TEXT NOT NULL CHECK (jsonb_typeof("details"::jsonb) IS NOT DISTINCT FROM 'object' AND length("details") <= 1024),
     "prev_hash" TEXT NOT NULL CHECK ("prev_hash" ~ '^[0-9a-f]{64}$'),

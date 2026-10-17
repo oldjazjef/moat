@@ -116,12 +116,31 @@ model Account {
   /// A change revokes every session of the account.
   passwordChangedAt String         @map("password_changed_at")
   createdAt         String         @map("created_at")
+  /// NULL = the address was not verified (a deployment without SMTP treats everyone as verified).
+  emailVerifiedAt   String?        @map("email_verified_at")
+  tokens            AccountToken[]
   totp              AccountTotp?
   recoveryCodes     RecoveryCode[]
   sessions          Session[]
   memberships       Membership[]
 
   @@map("account")
+}
+
+/// A one-time link token (verify an address, reset a password): only the SHA-256 of the token.
+model AccountToken {
+  /// SHA-256 hex of the 256-bit token.
+  id        String  @id
+  accountId String  @map("account_id")
+  /// verify_email | reset_password
+  purpose   String
+  createdAt String  @map("created_at")
+  expiresAt String  @map("expires_at")
+  usedAt    String? @map("used_at")
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, purpose])
+  @@map("account_token")
 }
 
 /// The TOTP second factor (RFC 6238). Pending until `enabled_at` is set.
@@ -176,6 +195,7 @@ model Organisation {
   createdAt   String       @map("created_at")
   memberships Membership[]
   projects    OrgProject[]
+  invitations PendingInvitation[]
 
   @@map("organisation")
 }
@@ -195,6 +215,24 @@ model Membership {
   @@id([organisationId, accountId])
   @@index([accountId])
   @@map("membership")
+}
+
+/// An invitation to an address without a verified account; applied once, when it is verified.
+model PendingInvitation {
+  id             String       @id
+  organisationId String       @map("organisation_id")
+  /// Normalised (lower case).
+  email          String
+  /// owner | admin | editor | viewer | billing
+  role           String
+  invitedBy      String       @map("invited_by")
+  createdAt      String       @map("created_at")
+  expiresAt      String       @map("expires_at")
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, email])
+  @@index([email])
+  @@map("pending_invitation")
 }
 
 /// A Cloud project of an organisation (not the Desktop's folder-based project).

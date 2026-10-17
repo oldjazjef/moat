@@ -16,6 +16,9 @@ import { AuditLogPort, type AppendOutcome } from '../audit/ports/audit.ports';
 import {
   AccountRepositoryPort,
   type AccountRecord,
+  AccountTokenPort,
+  type AccountTokenPurpose,
+  type AccountTokenRecord,
   RateLimitPort,
   type SessionRecord,
   SessionRepositoryPort,
@@ -26,12 +29,14 @@ import type { Role } from '../tenancy/domain/permissions';
 import {
   type AddMemberOutcome,
   type ChangeMemberOutcome,
+  InvitationRepositoryPort,
   type MembershipRecord,
   type MemberView,
   type OrganisationRecord,
   OrganisationRepositoryPort,
   type OrgProjectRecord,
   OrgProjectRepositoryPort,
+  type PendingInvitationRecord,
 } from '../tenancy/ports/tenancy.ports';
 
 /** A clock the spec moves by hand. */
@@ -73,6 +78,12 @@ export class InMemoryAccounts extends AccountRepositoryPort {
   changePassword(id: string, passwordHash: string, at: string): Promise<void> {
     const a = this.accounts.get(id);
     if (a) this.accounts.set(id, { ...a, passwordHash, passwordChangedAt: at });
+    return Promise.resolve();
+  }
+  markEmailVerified(id: string, at: string): Promise<void> {
+    const a = this.accounts.get(id);
+    if (a && a.emailVerifiedAt === null)
+      this.accounts.set(id, { ...a, emailVerifiedAt: at });
     return Promise.resolve();
   }
   rehashPassword(id: string, passwordHash: string): Promise<void> {
@@ -246,6 +257,10 @@ export class InMemoryOrganisations extends OrganisationRepositoryPort {
   }
   async accountIdByEmail(email: string): Promise<string | null> {
     return (await this.accounts.findByEmail(email))?.id ?? null;
+  }
+  async verifiedAccountIdByEmail(email: string): Promise<string | null> {
+    const account = await this.accounts.findByEmail(email);
+    return account?.emailVerifiedAt != null ? account.id : null;
   }
   addMember(member: MembershipRecord): Promise<AddMemberOutcome> {
     if (
@@ -469,5 +484,67 @@ export class InMemoryCloudStore extends CloudProjectStorePort {
       return Promise.resolve('exists');
     this.bundles.push(bundle);
     return Promise.resolve('ok');
+  }
+}
+
+export class InMemoryAccountTokens extends AccountTokenPort {
+  readonly tokens: (AccountTokenRecord & { usedAt: string | null })[] = [];
+  issue(token: AccountTokenRecord): Promise<void> {
+    for (const t of this.tokens)
+      if (
+        t.accountId === token.accountId &&
+        t.purpose === token.purpose &&
+        t.usedAt === null
+      )
+        t.usedAt = token.createdAt;
+    this.tokens.push({ ...token, usedAt: null });
+    return Promise.resolve();
+  }
+  consume(
+    id: string,
+    purpose: AccountTokenPurpose,
+    now: string,
+  ): Promise<string | null> {
+    const t = this.tokens.find((x) => x.id === id);
+    if (!t || t.purpose !== purpose || t.usedAt !== null || t.expiresAt <= now)
+      return Promise.resolve(null);
+    t.usedAt = now;
+    return Promise.resolve(t.accountId);
+  }
+  revokeAll(
+    accountId: string,
+    purpose: AccountTokenPurpose,
+    at: string,
+  ): Promise<void> {
+    for (const t of this.tokens)
+      if (
+        t.accountId === accountId &&
+        t.purpose === purpose &&
+        t.usedAt === null
+      )
+        t.usedAt = at;
+    return Promise.resolve();
+  }
+}
+
+export class InMemoryInvitations extends InvitationRepositoryPort {
+  readonly rows: PendingInvitationRecord[] = [];
+  save(invitation: PendingInvitationRecord): Promise<void> {
+    const at = this.rows.findIndex(
+      (r) =>
+        r.organisationId === invitation.organisationId &&
+        r.email === invitation.email,
+    );
+    if (at >= 0) this.rows.splice(at, 1);
+    this.rows.push(invitation);
+    return Promise.resolve();
+  }
+  takeAllFor(
+    email: string,
+    now: string,
+  ): Promise<readonly PendingInvitationRecord[]> {
+    const mine = this.rows.filter((r) => r.email === email);
+    for (const r of mine) this.rows.splice(this.rows.indexOf(r), 1);
+    return Promise.resolve(mine.filter((r) => r.expiresAt > now));
   }
 }

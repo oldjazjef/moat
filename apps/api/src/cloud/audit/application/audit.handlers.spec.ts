@@ -35,6 +35,7 @@ import {
   InMemoryOrganisations,
   InMemoryOrgProjects,
 } from '../../testing/in-memory';
+import { mailKit } from '../../testing/mail-kit';
 import { auditCsv, csvCell } from '../domain/audit-export';
 
 async function setup() {
@@ -44,6 +45,7 @@ async function setup() {
   const clock = new FixedClock();
   const log = new InMemoryAudit();
   const trail = new AuditTrail(log, clock);
+  const kit = mailKit(false, accounts, organisations, clock, trail);
   const person = async (name: string) => {
     const id = newId();
     await accounts.create({
@@ -52,6 +54,7 @@ async function setup() {
       passwordHash: '$argon2id$x',
       passwordChangedAt: clock.now().toISOString(),
       createdAt: clock.now().toISOString(),
+      emailVerifiedAt: clock.now().toISOString(),
     });
     return id;
   };
@@ -78,7 +81,15 @@ async function setup() {
     foreign: other.organisation.id,
     log,
     clock,
-    add: new AddMemberHandler(organisations, clock, trail),
+    add: new AddMemberHandler(
+      organisations,
+      clock,
+      trail,
+      kit.invitations,
+      kit.outbox,
+      kit.limiter,
+      kit.links,
+    ),
     change: new ChangeMemberHandler(organisations, trail),
     remove: new RemoveMemberHandler(organisations, trail),
     createProject: new CreateProjectHandler(

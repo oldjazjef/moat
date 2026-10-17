@@ -53,6 +53,8 @@ export abstract class OrganisationRepositoryPort {
   abstract members(organisationId: string): Promise<readonly MemberView[]>;
   /** The account with this (normalised) address, if any: its id only. */
   abstract accountIdByEmail(email: string): Promise<string | null>;
+  /** Like `accountIdByEmail`, but only an account whose address was confirmed by a link. */
+  abstract verifiedAccountIdByEmail(email: string): Promise<string | null>;
   abstract addMember(member: MembershipRecord): Promise<AddMemberOutcome>;
   /** Role and release flag; refused when it would remove the last Owner. */
   abstract updateMember(
@@ -78,4 +80,26 @@ export abstract class OrgProjectRepositoryPort {
   abstract create(project: OrgProjectRecord): Promise<void>;
   /** False when the organisation has no such project. */
   abstract delete(organisationId: string, id: string): Promise<boolean>;
+}
+
+export interface PendingInvitationRecord {
+  readonly id: string;
+  readonly organisationId: string;
+  /** Normalised (lower case). */
+  readonly email: string;
+  readonly role: Role;
+  readonly invitedBy: string;
+  readonly createdAt: string;
+  readonly expiresAt: string;
+}
+
+/** Invitations for addresses without a verified account; applied when the address is verified. */
+export abstract class InvitationRepositoryPort {
+  /** One per organisation and address: a later invitation replaces the earlier one. */
+  abstract save(invitation: PendingInvitationRecord): Promise<void>;
+  /** Removes every invitation for the address and returns the ones that had not expired. */
+  abstract takeAllFor(
+    email: string,
+    now: string,
+  ): Promise<readonly PendingInvitationRecord[]>;
 }

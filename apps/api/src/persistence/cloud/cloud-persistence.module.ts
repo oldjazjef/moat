@@ -4,10 +4,12 @@ import { CloudProjectStorePort } from '../../cloud/gates/ports/gates.ports';
 import { AuditLogPort } from '../../cloud/audit/ports/audit.ports';
 import {
   AccountRepositoryPort,
+  AccountTokenPort,
   RateLimitPort,
   SessionRepositoryPort,
 } from '../../cloud/auth/ports/auth.ports';
 import {
+  InvitationRepositoryPort,
   OrganisationRepositoryPort,
   OrgProjectRepositoryPort,
 } from '../../cloud/tenancy/ports/tenancy.ports';
@@ -17,10 +19,12 @@ import { PrismaCloudProjectStore } from './prisma-gates.repository';
 import { PrismaAuditLogRepository } from './prisma-audit.repository';
 import {
   PrismaAccountRepository,
+  PrismaAccountTokenRepository,
   PrismaRateLimit,
   PrismaSessionRepository,
 } from './prisma-auth.repositories';
 import {
+  PrismaInvitationRepository,
   PrismaOrganisationRepository,
   PrismaOrgProjectRepository,
 } from './prisma-tenancy.repositories';
@@ -41,6 +45,8 @@ import {
     },
     { provide: AccountRepositoryPort, useClass: PrismaAccountRepository },
     { provide: SessionRepositoryPort, useClass: PrismaSessionRepository },
+    { provide: AccountTokenPort, useClass: PrismaAccountTokenRepository },
+    { provide: InvitationRepositoryPort, useClass: PrismaInvitationRepository },
     { provide: RateLimitPort, useClass: PrismaRateLimit },
     {
       provide: OrganisationRepositoryPort,
@@ -54,6 +60,8 @@ import {
     CloudDatabase,
     AccountRepositoryPort,
     SessionRepositoryPort,
+    AccountTokenPort,
+    InvitationRepositoryPort,
     RateLimitPort,
     OrganisationRepositoryPort,
     OrgProjectRepositoryPort,

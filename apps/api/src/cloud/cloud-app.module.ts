@@ -6,6 +6,7 @@ import { Public } from './auth/auth.http';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { Clock, SystemClock } from './common/clock';
+import { AccountMailModule } from './mail/account-mail.module';
 import { GatesModule } from './gates/gates.module';
 import { TenancyModule } from './tenancy/tenancy.module';
 
@@ -41,6 +42,7 @@ class ClockModule {}
     }),
     ClockModule,
     CloudPersistenceModule,
+    AccountMailModule,
     AuthModule,
     AuditModule,
     GatesModule,

@@ -70,7 +70,11 @@ export type LoginResult =
        * `invalid_credentials`: unknown address or wrong password, indistinguishable.
        * `mfa_required`: the password was right, a TOTP or recovery code is needed.
        */
-      readonly code: 'invalid_credentials' | 'mfa_required' | 'invalid_code';
+      readonly code:
+        | 'invalid_credentials'
+        | 'mfa_required'
+        | 'invalid_code'
+        | 'email_not_verified';
     };
 
 export class LoginCommand extends Command<LoginResult> {
@@ -186,6 +190,63 @@ export class DisableTotpCommand extends Command<DisableTotpResult> {
     readonly sessionId: string,
     readonly password: string,
     readonly code: string,
+  ) {
+    super();
+  }
+}
+
+// ── E-mail flows ───────────────────────────────────────────────────────────────────────────
+
+export type VerifyEmailResult =
+  | { readonly status: 'ok' }
+  | RateLimited
+  | { readonly status: 'refused'; readonly code: 'invalid_token' };
+
+/** The token from the mailed link. One use; confirms the address and applies waiting invitations. */
+export class VerifyEmailCommand extends Command<VerifyEmailResult> {
+  constructor(
+    readonly token: string,
+    readonly ip: string,
+  ) {
+    super();
+  }
+}
+
+export type AcceptedResult = { readonly status: 'accepted' } | RateLimited;
+
+/** `accepted` whether or not the address has an account or a mail went out (T-79). */
+export class ResendVerificationCommand extends Command<AcceptedResult> {
+  constructor(
+    readonly email: string,
+    readonly ip: string,
+  ) {
+    super();
+  }
+}
+
+export class ForgotPasswordCommand extends Command<AcceptedResult> {
+  constructor(
+    readonly email: string,
+    readonly ip: string,
+  ) {
+    super();
+  }
+}
+
+export type ResetPasswordResult =
+  | { readonly status: 'ok' }
+  | RateLimited
+  | {
+      readonly status: 'refused';
+      readonly code: 'invalid_token' | PasswordProblem;
+    };
+
+/** Sets a new password from the mailed token and ends every session of the account. */
+export class ResetPasswordCommand extends Command<ResetPasswordResult> {
+  constructor(
+    readonly token: string,
+    readonly newPassword: string,
+    readonly ip: string,
   ) {
     super();
   }

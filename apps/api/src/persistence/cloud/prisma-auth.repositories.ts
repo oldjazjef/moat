@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import {
   AccountRepositoryPort,
   type AccountRecord,
+  AccountTokenPort,
+  type AccountTokenPurpose,
+  type AccountTokenRecord,
   RateLimitPort,
   type SessionRecord,
   SessionRepositoryPort,
@@ -50,6 +53,13 @@ export class PrismaAccountRepository extends AccountRepositoryPort {
     await this.db.account.update({
       where: { id },
       data: { passwordHash, passwordChangedAt: at },
+    });
+  }
+
+  async markEmailVerified(id: string, at: string): Promise<void> {
+    await this.db.account.updateMany({
+      where: { id, emailVerifiedAt: null },
+      data: { emailVerifiedAt: at },
     });
   }
 
@@ -230,5 +240,56 @@ export class PrismaRateLimit extends RateLimitPort {
       update: { windowEnd, count: 1 },
     });
     return 1;
+  }
+}
+
+@Injectable()
+export class PrismaAccountTokenRepository extends AccountTokenPort {
+  constructor(private readonly database: CloudDatabase) {
+    super();
+  }
+
+  private get db() {
+    return this.database.client;
+  }
+
+  async issue(token: AccountTokenRecord): Promise<void> {
+    await this.db.$transaction(async (tx) => {
+      await tx.accountToken.updateMany({
+        where: {
+          accountId: token.accountId,
+          purpose: token.purpose,
+          usedAt: null,
+        },
+        data: { usedAt: token.createdAt },
+      });
+      await tx.accountToken.create({ data: { ...token } });
+    });
+  }
+
+  async consume(
+    id: string,
+    purpose: AccountTokenPurpose,
+    now: string,
+  ): Promise<string | null> {
+    // One statement decides: only one of two racing requests gets the row.
+    const used = await this.db.accountToken.updateMany({
+      where: { id, purpose, usedAt: null, expiresAt: { gt: now } },
+      data: { usedAt: now },
+    });
+    if (used.count !== 1) return null;
+    const row = await this.db.accountToken.findUnique({ where: { id } });
+    return row?.accountId ?? null;
+  }
+
+  async revokeAll(
+    accountId: string,
+    purpose: AccountTokenPurpose,
+    at: string,
+  ): Promise<void> {
+    await this.db.accountToken.updateMany({
+      where: { accountId, purpose, usedAt: null },
+      data: { usedAt: at },
+    });
   }
 }

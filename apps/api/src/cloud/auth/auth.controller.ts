@@ -2,6 +2,7 @@ import {
   Body,
   ConflictException,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpException,
@@ -25,9 +26,12 @@ import {
   ChangePasswordDto,
   ConfirmTotpDto,
   DisableTotpDto,
+  EmailOnlyDto,
   EnrolTotpDto,
   LoginDto,
   RegisterDto,
+  ResetPasswordDto,
+  TokenDto,
 } from './dto/auth.dto';
 import {
   clearedSessionCookie,
@@ -61,6 +65,8 @@ function refuse(response: Response, refusal: Refusal): never {
         statusCode: 401,
         error: refusal.code,
       });
+    case 'email_not_verified':
+      throw new ForbiddenException({ statusCode: 403, error: refusal.code });
     case 'already_enabled':
     case 'not_pending':
     case 'not_enabled':
@@ -78,7 +84,7 @@ function clientAddress(request: Request): string {
   return request.ip ?? 'unknown';
 }
 
-/** Routes under `/api/auth` (authz-matrix). Register and login are the only public ones. */
+/** Routes under `/api/auth` (authz-matrix). Register, login and the four mail flows are the public ones. */
 @Controller('auth')
 export class AuthController {
   private readonly secure: boolean;
@@ -106,6 +112,74 @@ export class AuthController {
     );
     if (result.status === 'refused') refuse(response, result);
     return { status: 'accepted' };
+  }
+
+  /** 200 or one plain `invalid_token`: expired, used and never-issued look the same. */
+  @Public()
+  @Post('verify-email')
+  @HttpCode(200)
+  async verifyEmail(
+    @Body() body: TokenDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ status: 'ok' }> {
+    const result = await this.auth.verifyEmail(
+      body.token,
+      clientAddress(request),
+    );
+    if (result.status === 'refused') refuse(response, result);
+    return { status: 'ok' };
+  }
+
+  /** 202 for every address (T-79); a mail goes out only for an unverified account. */
+  @Public()
+  @Post('resend-verification')
+  @HttpCode(202)
+  async resendVerification(
+    @Body() body: EmailOnlyDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ status: 'accepted' }> {
+    const result = await this.auth.resendVerification(
+      body.email,
+      clientAddress(request),
+    );
+    if (result.status === 'refused') refuse(response, result);
+    return { status: 'accepted' };
+  }
+
+  /** 202 for every address (T-79). */
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(202)
+  async forgotPassword(
+    @Body() body: EmailOnlyDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ status: 'accepted' }> {
+    const result = await this.auth.forgotPassword(
+      body.email,
+      clientAddress(request),
+    );
+    if (result.status === 'refused') refuse(response, result);
+    return { status: 'accepted' };
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(200)
+  async resetPassword(
+    @Body() body: ResetPasswordDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ status: 'ok' }> {
+    const result = await this.auth.resetPassword(
+      body.token,
+      body.newPassword,
+      clientAddress(request),
+    );
+    if (result.status === 'refused') refuse(response, result);
+    return { status: 'ok' };
   }
 
   @Public()

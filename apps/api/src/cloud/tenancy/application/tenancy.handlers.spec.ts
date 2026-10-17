@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { mailKit } from '../../testing/mail-kit';
 import { newId } from '../../common/clock';
 import { AuditTrail } from '../../audit/application/audit-trail';
 import {
@@ -44,6 +45,7 @@ async function setup() {
   const clock = new FixedClock();
   const auditLog = new InMemoryAudit();
   const audit = new AuditTrail(auditLog, clock);
+  const kit = mailKit(false, accounts, organisations, clock, audit);
   const person = async (name: string) => {
     const id = newId();
     await accounts.create({
@@ -52,6 +54,7 @@ async function setup() {
       passwordHash: '$argon2id$x',
       passwordChangedAt: clock.now().toISOString(),
       createdAt: clock.now().toISOString(),
+      emailVerifiedAt: clock.now().toISOString(),
     });
     return id;
   };
@@ -70,7 +73,15 @@ async function setup() {
   ).execute(new CreateOrganisationCommand(ids.owner, 'Acme AG'));
   if (created.status !== 'ok') throw new Error('org');
   const org = created.organisation.id;
-  const add = new AddMemberHandler(organisations, clock, audit);
+  const add = new AddMemberHandler(
+    organisations,
+    clock,
+    audit,
+    kit.invitations,
+    kit.outbox,
+    kit.limiter,
+    kit.links,
+  );
   const change = new ChangeMemberHandler(organisations, audit);
   for (const role of ['admin', 'editor', 'viewer', 'billing'] as const)
     await add.execute(

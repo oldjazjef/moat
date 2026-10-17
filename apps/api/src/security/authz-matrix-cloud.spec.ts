@@ -74,6 +74,7 @@ async function seedOnce(): Promise<void> {
       passwordHash,
       passwordChangedAt: AT,
       createdAt: AT,
+      emailVerifiedAt: AT,
     });
   const owner = (organisationId: string, accountId: string) => ({
     organisationId,

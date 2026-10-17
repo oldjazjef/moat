@@ -136,6 +136,50 @@ export class Env {
   @Matches(/^[A-Za-z0-9_-]{43}$/)
   MOAT_SIGNING_KEY_PREVIOUS_PUBLIC?: string;
 
+  /**
+   * The SMTP server for account mails (e-mail verification, password reset, invitations). Unset =
+   * no mail: accounts count as verified, there is no password reset, and invitations only work
+   * for people who register afterwards. With a host, `MOAT_MAIL_FROM` and `MOAT_PUBLIC_URL` are
+   * required.
+   */
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[A-Za-z0-9.:-]{1,253}$/)
+  MOAT_SMTP_HOST?: string;
+
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[0-9]{1,5}$/)
+  MOAT_SMTP_PORT?: string;
+
+  /** `tls` (port 465), `starttls` (587, required not optional) or `none` (this machine only). */
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsIn(['tls', 'starttls', 'none'])
+  MOAT_SMTP_SECURITY: 'tls' | 'starttls' | 'none' = 'starttls';
+
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[^\r\n\0]{1,256}$/)
+  MOAT_SMTP_USER?: string;
+
+  /** Also readable from `MOAT_SMTP_PASSWORD_FILE`. */
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[^\r\n\0]{1,512}$/)
+  MOAT_SMTP_PASSWORD?: string;
+
+  /** The sender of every account mail, a bare address. */
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^[^@\s<>]{1,64}@[A-Za-z0-9.-]{1,253}$/)
+  MOAT_MAIL_FROM?: string;
+
+  /** Where this installation is reached, `https://host[:port]` without a path: the base of every mailed link. */
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @Matches(/^https?:\/\/[A-Za-z0-9.:[\]-]{1,253}$/)
+  MOAT_PUBLIC_URL?: string;
+
   /** How many reverse proxies sit in front (X-Forwarded-For hops); 0 = none, the socket address. */
   @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
   @IsOptional()
@@ -153,6 +197,34 @@ export function validateEnv(config: Record<string, unknown>): Env {
   const names = errors.map((error) => error.property);
   if (env.AUTH_MODE === 'cloud') {
     if (config['LOCAL_MODE'] === 'true') names.push('LOCAL_MODE');
+    if (env.MOAT_SMTP_HOST !== undefined) {
+      if (env.MOAT_MAIL_FROM === undefined) names.push('MOAT_MAIL_FROM');
+      if (env.MOAT_PUBLIC_URL === undefined) names.push('MOAT_PUBLIC_URL');
+      if (
+        env.MOAT_PUBLIC_URL?.startsWith('http://') === true &&
+        env.NODE_ENV === NodeEnv.Production
+      )
+        names.push('MOAT_PUBLIC_URL');
+      if (
+        env.MOAT_SMTP_SECURITY === 'none' &&
+        !/^(localhost|::1|127\.\d+\.\d+\.\d+)$/.test(env.MOAT_SMTP_HOST)
+      )
+        names.push('MOAT_SMTP_SECURITY');
+      if (
+        (env.MOAT_SMTP_USER === undefined) !==
+        (env.MOAT_SMTP_PASSWORD === undefined)
+      )
+        names.push('MOAT_SMTP_USER');
+      if (
+        env.MOAT_SMTP_PORT !== undefined &&
+        (Number(env.MOAT_SMTP_PORT) < 1 || Number(env.MOAT_SMTP_PORT) > 65535)
+      )
+        names.push('MOAT_SMTP_PORT');
+    } else if (
+      env.MOAT_SMTP_PORT !== undefined ||
+      env.MOAT_SMTP_USER !== undefined
+    )
+      names.push('MOAT_SMTP_HOST');
     if (env.NODE_ENV === NodeEnv.Production) {
       // Development conveniences must not reach production.
       if (env.MOAT_COOKIE_SECURE !== 'true') names.push('MOAT_COOKIE_SECURE');

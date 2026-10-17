@@ -1,11 +1,15 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PLANTED_SECRETS } from '../../../testing/planted-secrets';
+import { AuditTrail } from '../../audit/application/audit-trail';
 import {
   FixedClock,
   InMemoryAccounts,
+  InMemoryAudit,
+  InMemoryOrganisations,
   InMemoryRateLimit,
   InMemorySessions,
 } from '../../testing/in-memory';
+import { mailKit } from '../../testing/mail-kit';
 import { SESSION_IDLE_MS, sessionIdOf } from '../domain/session';
 import { hotp } from '../domain/totp';
 import {
@@ -44,7 +48,7 @@ beforeAll(async () => {
   vault = await TotpVault.create(KEY);
 });
 
-function setup() {
+function setup(mailEnabled = false) {
   const accounts = new InMemoryAccounts();
   const sessions = new InMemorySessions();
   const rate = new InMemoryRateLimit();
@@ -53,13 +57,25 @@ function setup() {
   const limiter = new RateLimiter(rate, clock);
   const factor = new SecondFactor(accounts, vault, clock);
   const issuer = new SessionIssuer(sessions, clock);
+  const organisations = new InMemoryOrganisations(accounts);
+  const audit = new AuditTrail(new InMemoryAudit(), clock);
+  const kit = mailKit(mailEnabled, accounts, organisations, clock, audit, rate);
   return {
+    kit,
+    organisations,
     accounts,
     sessions,
     rate,
     clock,
     hasher,
-    register: new RegisterHandler(accounts, hasher, limiter, clock),
+    register: new RegisterHandler(
+      accounts,
+      hasher,
+      limiter,
+      clock,
+      kit.mails,
+      kit.redeemer,
+    ),
     login: new LoginHandler(
       accounts,
       sessions,
@@ -68,6 +84,7 @@ function setup() {
       factor,
       issuer,
       clock,
+      kit.mails,
     ),
     logout: new LogoutHandler(sessions, clock),
     authenticate: new AuthenticateSessionHandler(sessions, clock),
@@ -79,6 +96,7 @@ function setup() {
       limiter,
       issuer,
       clock,
+      kit.tokens,
     ),
     enrol: new EnrolTotpHandler(accounts, hasher, vault, limiter, clock),
     confirm: new ConfirmTotpHandler(accounts, factor, limiter, clock),
