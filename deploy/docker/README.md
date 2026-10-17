@@ -108,8 +108,8 @@ kein Gate ein Bundle verliert:
 
 1. Neuen Seed erzeugen (`head -c 32 /dev/urandom | basenc --base64url | tr -d '='`) und **nur seinen
    öffentlichen Schlüssel** als `MOAT_SIGNING_KEY_NEXT_PUBLIC` setzen. Das Dashboard zeigt ihn unter
-   «Gates» als angekündigt. (Den öffentlichen Schlüssel liefert die Cloud mit dem neuen Seed beim
-   Start, oder `moat keygen`.)
+   «Gates» als angekündigt. (Seed und öffentlichen Schlüssel erzeugt `node scripts/cloud-signing-key.mjs`; mit einem Seed als
+   Argument zeigt es nur dessen öffentlichen Schlüssel.)
 2. An **jedem Gate** beide eintragen: `php moat-gate.php trust --signer=<alt>,<neu>`.
 3. `MOAT_SIGNING_KEY` auf den neuen Seed stellen, `MOAT_SIGNING_KEY_NEXT_PUBLIC` entfernen und den alten
    öffentlichen Schlüssel als `MOAT_SIGNING_KEY_PREVIOUS_PUBLIC` eintragen. Die nächste Freigabe ist mit
