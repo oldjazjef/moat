@@ -20,6 +20,7 @@ const ACCOUNT = {
   id: 'AAAAAAAAAAAAAAAAAAAAAA',
   email: 'eme@example.ch',
   totpEnabled: false,
+  passkeyCount: 0,
   createdAt: '2026-10-15T08:00:00.000Z',
 };
 

@@ -2,6 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import {
   type AcceptedResult,
+  BeginPasskeyCommand,
+  type BeginPasskeyResult,
+  FinishPasskeyCommand,
+  type FinishPasskeyResult,
+  ListPasskeysQuery,
+  PasskeyLoginChallengeCommand,
+  type PasskeyLoginChallengeResult,
+  type PasskeyAssertionInput,
+  type PasskeyView,
+  RemovePasskeyCommand,
+  type RemovePasskeyResult,
   type AccountView,
   AuthenticateSessionQuery,
   ChangePasswordCommand,
@@ -49,9 +60,58 @@ export class AuthService {
     code: string | undefined,
     ip: string,
     previousToken: string | null,
+    passkey?: PasskeyAssertionInput,
   ): Promise<LoginResult> {
     return this.commands.execute(
-      new LoginCommand(email, password, code, ip, previousToken),
+      new LoginCommand(email, password, code, ip, previousToken, passkey),
+    );
+  }
+
+  passkeyChallenge(
+    email: string,
+    password: string,
+    ip: string,
+  ): Promise<PasskeyLoginChallengeResult> {
+    return this.commands.execute(
+      new PasskeyLoginChallengeCommand(email, password, ip),
+    );
+  }
+
+  beginPasskey(
+    accountId: string,
+    password: string,
+  ): Promise<BeginPasskeyResult> {
+    return this.commands.execute(new BeginPasskeyCommand(accountId, password));
+  }
+
+  finishPasskey(
+    accountId: string,
+    name: string,
+    attestationObject: string,
+    clientDataJSON: string,
+  ): Promise<FinishPasskeyResult> {
+    return this.commands.execute(
+      new FinishPasskeyCommand(
+        accountId,
+        name,
+        attestationObject,
+        clientDataJSON,
+      ),
+    );
+  }
+
+  passkeys(accountId: string): Promise<readonly PasskeyView[]> {
+    return this.queries.execute(new ListPasskeysQuery(accountId));
+  }
+
+  removePasskey(
+    accountId: string,
+    sessionId: string,
+    password: string,
+    id: string,
+  ): Promise<RemovePasskeyResult> {
+    return this.commands.execute(
+      new RemovePasskeyCommand(accountId, sessionId, password, id),
     );
   }
 

@@ -17,6 +17,11 @@ import {
   AccountRepositoryPort,
   type AccountRecord,
   AccountTokenPort,
+  type ChallengePurpose,
+  type ChallengeRecord,
+  MAX_PASSKEYS,
+  type PasskeyRecord,
+  PasskeyRepositoryPort,
   type AccountTokenPurpose,
   type AccountTokenRecord,
   RateLimitPort,
@@ -567,5 +572,79 @@ export class InMemoryInvitations extends InvitationRepositoryPort {
     const mine = this.rows.filter((r) => r.email === email);
     for (const r of mine) this.rows.splice(this.rows.indexOf(r), 1);
     return Promise.resolve(mine.filter((r) => r.expiresAt > now));
+  }
+}
+
+export class InMemoryPasskeys extends PasskeyRepositoryPort {
+  readonly passkeys: PasskeyRecord[] = [];
+  readonly challenges: ChallengeRecord[] = [];
+  list(accountId: string) {
+    return Promise.resolve(
+      this.passkeys.filter((p) => p.accountId === accountId),
+    );
+  }
+  findByCredential(credentialId: string) {
+    return Promise.resolve(
+      this.passkeys.find((p) => p.credentialId === credentialId) ?? null,
+    );
+  }
+  add(passkey: PasskeyRecord): Promise<'ok' | 'limit' | 'credential_taken'> {
+    if (this.passkeys.some((p) => p.credentialId === passkey.credentialId))
+      return Promise.resolve('credential_taken');
+    if (
+      this.passkeys.filter((p) => p.accountId === passkey.accountId).length >=
+      MAX_PASSKEYS
+    )
+      return Promise.resolve('limit');
+    this.passkeys.push(passkey);
+    return Promise.resolve('ok');
+  }
+  remove(accountId: string, id: string) {
+    const at = this.passkeys.findIndex(
+      (p) => p.accountId === accountId && p.id === id,
+    );
+    if (at < 0) return Promise.resolve(false);
+    this.passkeys.splice(at, 1);
+    return Promise.resolve(true);
+  }
+  recordUse(id: string, signCount: number, at: string) {
+    const i = this.passkeys.findIndex((p) => p.id === id);
+    const current = this.passkeys[i];
+    if (!current) return Promise.resolve(false);
+    const rises =
+      current.signCount < signCount ||
+      (current.signCount === 0 && signCount === 0);
+    if (!rises) return Promise.resolve(false);
+    this.passkeys[i] = { ...current, signCount, lastUsedAt: at };
+    return Promise.resolve(true);
+  }
+  issueChallenge(challenge: ChallengeRecord) {
+    for (let i = this.challenges.length - 1; i >= 0; i -= 1) {
+      const c = this.challenges[i];
+      if (
+        c?.accountId === challenge.accountId &&
+        c.expiresAt <= challenge.createdAt
+      )
+        this.challenges.splice(i, 1);
+    }
+    this.challenges.push(challenge);
+    return Promise.resolve();
+  }
+  consumeChallenge(
+    id: string,
+    accountId: string,
+    purpose: ChallengePurpose,
+    now: string,
+  ) {
+    const at = this.challenges.findIndex(
+      (c) =>
+        c.id === id &&
+        c.accountId === accountId &&
+        c.purpose === purpose &&
+        c.expiresAt > now,
+    );
+    if (at < 0) return Promise.resolve(false);
+    this.challenges.splice(at, 1);
+    return Promise.resolve(true);
   }
 }

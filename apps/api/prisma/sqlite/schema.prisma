@@ -119,6 +119,8 @@ model Account {
   /// NULL = the address was not verified (a deployment without SMTP treats everyone as verified).
   emailVerifiedAt   String?        @map("email_verified_at")
   tokens            AccountToken[]
+  passkeys          AccountPasskey[]
+  challenges        WebauthnChallenge[]
   totp              AccountTotp?
   recoveryCodes     RecoveryCode[]
   sessions          Session[]
@@ -141,6 +143,40 @@ model AccountToken {
 
   @@index([accountId, purpose])
   @@map("account_token")
+}
+
+/// A passkey (WebAuthn, ES256) of an account: a second factor next to TOTP. Public data only.
+model AccountPasskey {
+  id           String   @id
+  accountId    String   @map("account_id")
+  /// base64url of the credential id the authenticator made.
+  credentialId String   @unique @map("credential_id")
+  /// base64url of the 65-byte uncompressed P-256 point.
+  publicKey    String   @map("public_key")
+  signCount    Int      @default(0) @map("sign_count")
+  /// A label the person chose.
+  name         String
+  createdAt    String   @map("created_at")
+  lastUsedAt   String?  @map("last_used_at")
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("account_passkey")
+}
+
+/// A challenge for one passkey registration or sign-in: only its SHA-256, used up once.
+model WebauthnChallenge {
+  /// SHA-256 hex of the 32-byte challenge.
+  id        String  @id
+  accountId String  @map("account_id")
+  /// register | login
+  purpose   String
+  createdAt String  @map("created_at")
+  expiresAt String  @map("expires_at")
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("webauthn_challenge")
 }
 
 /// The TOTP second factor (RFC 6238). Pending until `enabled_at` is set.

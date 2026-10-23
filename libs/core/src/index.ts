@@ -35,6 +35,28 @@ export {
 } from './bundle/bundle';
 export { readBundleTimes, type BundleTimes } from './bundle/bundle-times';
 export {
+  decodeCbor,
+  decodeCborPrefix,
+  isOnCurve,
+  MAX_ATTESTATION_BYTES,
+  MAX_CLIENT_DATA_BYTES,
+  parseAttestationObject,
+  parseAuthenticatorData,
+  PasskeyAssertionError,
+  PasskeyEnrollmentError,
+  pointOfCoseKey,
+  verifyAssertion,
+  verifyEnrollment,
+  type AssertionInput,
+  type CborValue,
+  type EnrolledPasskey,
+  type EnrollmentInput,
+  type ParsedAuthenticatorData,
+  type PasskeyAssertionCode,
+  type PasskeyEnrollmentCode,
+  type VerifiedAssertion,
+} from './crypto/webauthn-attestation';
+export {
   webauthnSignature,
   verifyPasskeyEntry,
   parseEcdsaDer,

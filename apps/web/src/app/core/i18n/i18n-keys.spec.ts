@@ -63,6 +63,7 @@ const DYNAMIC_KEYS = [
   ...allHelpKeys(),
   // The Cloud project's tabs and the gates page, built from a value of the API's answer.
   ...['gates', 'config', 'status'].map((tab) => `projectTabs.${tab}`),
+  ...['cancelled', 'failed'].map((problem) => `auth.login.passkey.${problem}`),
   ...[
     'config_missing',
     'config_invalid',

@@ -5,6 +5,11 @@ import {
   AccountTokenPort,
   type AccountTokenPurpose,
   type AccountTokenRecord,
+  type ChallengePurpose,
+  type ChallengeRecord,
+  MAX_PASSKEYS,
+  type PasskeyRecord,
+  PasskeyRepositoryPort,
   RateLimitPort,
   type SessionRecord,
   SessionRepositoryPort,
@@ -291,5 +296,91 @@ export class PrismaAccountTokenRepository extends AccountTokenPort {
       where: { accountId, purpose, usedAt: null },
       data: { usedAt: at },
     });
+  }
+}
+
+@Injectable()
+export class PrismaPasskeyRepository extends PasskeyRepositoryPort {
+  constructor(private readonly database: CloudDatabase) {
+    super();
+  }
+
+  private get db() {
+    return this.database.client;
+  }
+
+  list(accountId: string): Promise<readonly PasskeyRecord[]> {
+    return this.db.accountPasskey.findMany({
+      where: { accountId },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  findByCredential(credentialId: string): Promise<PasskeyRecord | null> {
+    return this.db.accountPasskey.findUnique({ where: { credentialId } });
+  }
+
+  async add(
+    passkey: PasskeyRecord,
+  ): Promise<'ok' | 'limit' | 'credential_taken'> {
+    try {
+      return await this.db.$transaction(async (tx) => {
+        const count = await tx.accountPasskey.count({
+          where: { accountId: passkey.accountId },
+        });
+        if (count >= MAX_PASSKEYS) return 'limit' as const;
+        await tx.accountPasskey.create({ data: { ...passkey } });
+        return 'ok' as const;
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) return 'credential_taken';
+      throw error;
+    }
+  }
+
+  async remove(accountId: string, id: string): Promise<boolean> {
+    const removed = await this.db.accountPasskey.deleteMany({
+      where: { accountId, id },
+    });
+    return removed.count === 1;
+  }
+
+  async recordUse(id: string, signCount: number, at: string): Promise<boolean> {
+    // One statement decides: the counter must rise, unless the authenticator keeps none (0 → 0).
+    const updated = await this.db.accountPasskey.updateMany({
+      where: {
+        id,
+        OR: [
+          { signCount: { lt: signCount } },
+          ...(signCount === 0 ? [{ signCount: 0 }] : []),
+        ],
+      },
+      data: { signCount, lastUsedAt: at },
+    });
+    return updated.count === 1;
+  }
+
+  async issueChallenge(challenge: ChallengeRecord): Promise<void> {
+    await this.db.$transaction([
+      this.db.webauthnChallenge.deleteMany({
+        where: {
+          accountId: challenge.accountId,
+          expiresAt: { lte: challenge.createdAt },
+        },
+      }),
+      this.db.webauthnChallenge.create({ data: { ...challenge } }),
+    ]);
+  }
+
+  async consumeChallenge(
+    id: string,
+    accountId: string,
+    purpose: ChallengePurpose,
+    now: string,
+  ): Promise<boolean> {
+    const used = await this.db.webauthnChallenge.deleteMany({
+      where: { id, accountId, purpose, expiresAt: { gt: now } },
+    });
+    return used.count === 1;
   }
 }

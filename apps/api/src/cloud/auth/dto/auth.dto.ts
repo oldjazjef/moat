@@ -1,4 +1,10 @@
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
 
 /**
  * Request bodies of the auth routes. The global ValidationPipe (whitelist, forbidNonWhitelisted)
@@ -15,6 +21,25 @@ export class RegisterDto {
   password!: string;
 }
 
+/** What `navigator.credentials.get` returned, each part as base64url (sizes are checked again by the handler). */
+export class PasskeyAssertionDto {
+  @IsString()
+  @MaxLength(1400)
+  credentialId!: string;
+
+  @IsString()
+  @MaxLength(1400)
+  authenticatorData!: string;
+
+  @IsString()
+  @MaxLength(2800)
+  clientDataJSON!: string;
+
+  @IsString()
+  @MaxLength(120)
+  signature!: string;
+}
+
 export class LoginDto {
   @IsString()
   @MaxLength(320)
@@ -29,6 +54,12 @@ export class LoginDto {
   @IsString()
   @MaxLength(64)
   code?: string;
+
+  /** A passkey assertion as the second factor, instead of `code`. */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PasskeyAssertionDto)
+  passkey?: PasskeyAssertionDto;
 }
 
 export class ChangePasswordDto {
@@ -83,4 +114,40 @@ export class ResetPasswordDto {
   @IsString()
   @MaxLength(1024)
   newPassword!: string;
+}
+
+export class PasskeyChallengeDto {
+  @IsString()
+  @MaxLength(320)
+  email!: string;
+
+  @IsString()
+  @MaxLength(1024)
+  password!: string;
+}
+
+export class BeginPasskeyDto {
+  @IsString()
+  @MaxLength(1024)
+  password!: string;
+}
+
+export class FinishPasskeyDto {
+  @IsString()
+  @MaxLength(200)
+  name!: string;
+
+  @IsString()
+  @MaxLength(22000)
+  attestationObject!: string;
+
+  @IsString()
+  @MaxLength(2800)
+  clientDataJSON!: string;
+}
+
+export class RemovePasskeyDto {
+  @IsString()
+  @MaxLength(1024)
+  password!: string;
 }

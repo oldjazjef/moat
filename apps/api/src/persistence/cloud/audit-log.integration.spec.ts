@@ -216,9 +216,12 @@ describe('the migration that adds `gate.remove` on SQLite', () => {
     const { MIGRATIONS } = await import('../database/migrations');
     const db = new DatabaseSync(':memory:');
     const all = MIGRATIONS.sqlite;
-    const last = all.at(-1);
-    expect(last?.name).toBe('20261020120000_audit_gate_remove');
-    for (const m of all.slice(0, -1)) db.exec(m.sql);
+    const at = all.findIndex(
+      (m) => m.name === '20261020120000_audit_gate_remove',
+    );
+    expect(at).toBeGreaterThan(0);
+    const last = all[at];
+    for (const m of all.slice(0, at)) db.exec(m.sql);
     const org = newId();
     const insert = db.prepare(
       'INSERT INTO audit_entry (organisation_id, seq, at, actor, action, target, details, prev_hash, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',

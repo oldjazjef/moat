@@ -82,9 +82,10 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       'password',
       'totp',
       'codes',
+      'passkey',
       'signOut',
     ),
-    tips: items('trust', 'recovery', 'session', 'mail'),
+    tips: items('trust', 'recovery', 'session', 'mail', 'passkeyLimit'),
     links: [{ id: 'account', path: '/app/account', only: 'cloud' }],
   },
   {

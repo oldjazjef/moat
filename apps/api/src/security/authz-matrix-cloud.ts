@@ -215,6 +215,14 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
     body: { email: 'ownera@example.ch', password: CLOUD_MATRIX_PASSWORD },
     expect: open(200, true),
   },
+  {
+    // Public, like login; the password is right but the account has no passkey: 409 `no_passkey`.
+    name: 'passkey challenge',
+    method: 'POST',
+    path: '/api/auth/passkey/challenge',
+    body: { email: 'ownera@example.ch', password: CLOUD_MATRIX_PASSWORD },
+    expect: open(409, true),
+  },
   { method: 'POST', path: '/api/auth/logout', expect: accountRoute(204, true) },
   { method: 'GET', path: '/api/auth/me', expect: accountRoute(200, false) },
   {
@@ -225,6 +233,36 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
       newPassword: 'another perfectly long password',
     },
     expect: accountRoute(200, true),
+  },
+  {
+    method: 'GET',
+    path: '/api/auth/passkeys',
+    expect: accountRoute(200, false),
+  },
+  {
+    // Password again, then a challenge: 200 for every signed-in account.
+    name: 'passkey options',
+    method: 'POST',
+    path: '/api/auth/passkeys/options',
+    body: { password: CLOUD_MATRIX_PASSWORD },
+    expect: accountRoute(200, true),
+  },
+  {
+    // A registration that answers no challenge of ours: 422 `challenge_invalid`.
+    name: 'register a passkey',
+    method: 'POST',
+    path: '/api/auth/passkeys',
+    body: { name: 'Laptop', attestationObject: 'AAAA', clientDataJSON: 'AAAA' },
+    expect: accountRoute(422, true),
+  },
+  {
+    // The password checks out, the account has no such passkey: 404 for every account.
+    name: 'remove a passkey',
+    method: 'POST',
+    path: '/api/auth/passkeys/:id/remove',
+    request: '/api/auth/passkeys/unknownpasskey000000000/remove',
+    body: { password: CLOUD_MATRIX_PASSWORD },
+    expect: accountRoute(404, true),
   },
   {
     method: 'POST',

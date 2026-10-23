@@ -134,3 +134,67 @@ export abstract class AccountTokenPort {
     at: string,
   ): Promise<void>;
 }
+
+export interface PasskeyRecord {
+  readonly id: string;
+  readonly accountId: string;
+  /** base64url of the credential id. */
+  readonly credentialId: string;
+  /** base64url of the 65-byte uncompressed P-256 point. */
+  readonly publicKey: string;
+  readonly signCount: number;
+  /** A label the person chose. */
+  readonly name: string;
+  readonly createdAt: string;
+  readonly lastUsedAt: string | null;
+}
+
+/** At most this many passkeys per account. */
+export const MAX_PASSKEYS = 10;
+
+export type ChallengePurpose = 'register' | 'login';
+
+export interface ChallengeRecord {
+  /** SHA-256 hex of the challenge. */
+  readonly id: string;
+  readonly accountId: string;
+  readonly purpose: ChallengePurpose;
+  readonly createdAt: string;
+  readonly expiresAt: string;
+}
+
+/** Passkeys (WebAuthn) of an account and the one-time challenges of their ceremonies. */
+export abstract class PasskeyRepositoryPort {
+  abstract list(accountId: string): Promise<readonly PasskeyRecord[]>;
+  abstract findByCredential(
+    credentialId: string,
+  ): Promise<PasskeyRecord | null>;
+  abstract add(
+    passkey: PasskeyRecord,
+  ): Promise<'ok' | 'limit' | 'credential_taken'>;
+  /** False when the account has no such passkey. */
+  abstract remove(accountId: string, id: string): Promise<boolean>;
+  /**
+   * Compare-and-set after a sign-in: the counter moves to `signCount` and `lastUsedAt` is set only
+   * if it rose — or if both stored and new counters are 0 (an authenticator without a counter).
+   * `false` means a counter that did not rise (a cloned authenticator, or a replay).
+   */
+  abstract recordUse(
+    id: string,
+    signCount: number,
+    at: string,
+  ): Promise<boolean>;
+
+  /** Stores a challenge and drops the account's expired ones. */
+  abstract issueChallenge(challenge: ChallengeRecord): Promise<void>;
+  /**
+   * Compare-and-set: true when the challenge exists for this account and purpose and has not
+   * expired — and it is used up by the same step. Anything else is false (and changes nothing).
+   */
+  abstract consumeChallenge(
+    id: string,
+    accountId: string,
+    purpose: ChallengePurpose,
+    now: string,
+  ): Promise<boolean>;
+}

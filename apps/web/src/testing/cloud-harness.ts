@@ -15,6 +15,7 @@ export const ACCOUNT: AccountView = {
   id: 'AAAAAAAAAAAAAAAAAAAAAA',
   email: 'eme@example.ch',
   totpEnabled: false,
+  passkeyCount: 0,
   createdAt: '2026-10-15T08:00:00.000Z',
 };
 export const CSRF = 'csrf-token-of-the-session';
@@ -146,8 +147,12 @@ export function refuse(
   request: ReturnType<HttpTestingController['expectOne']>,
   status: number,
   error: string,
+  extra: Record<string, unknown> = {},
 ) {
-  request.flush({ statusCode: status, error }, { status, statusText: 'Error' });
+  request.flush(
+    { statusCode: status, error, ...extra },
+    { status, statusText: 'Error' },
+  );
 }
 
 export { settle };

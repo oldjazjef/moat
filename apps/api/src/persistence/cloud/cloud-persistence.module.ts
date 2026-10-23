@@ -5,6 +5,7 @@ import { AuditLogPort } from '../../cloud/audit/ports/audit.ports';
 import {
   AccountRepositoryPort,
   AccountTokenPort,
+  PasskeyRepositoryPort,
   RateLimitPort,
   SessionRepositoryPort,
 } from '../../cloud/auth/ports/auth.ports';
@@ -20,6 +21,7 @@ import { PrismaAuditLogRepository } from './prisma-audit.repository';
 import {
   PrismaAccountRepository,
   PrismaAccountTokenRepository,
+  PrismaPasskeyRepository,
   PrismaRateLimit,
   PrismaSessionRepository,
 } from './prisma-auth.repositories';
@@ -46,6 +48,7 @@ import {
     { provide: AccountRepositoryPort, useClass: PrismaAccountRepository },
     { provide: SessionRepositoryPort, useClass: PrismaSessionRepository },
     { provide: AccountTokenPort, useClass: PrismaAccountTokenRepository },
+    { provide: PasskeyRepositoryPort, useClass: PrismaPasskeyRepository },
     { provide: InvitationRepositoryPort, useClass: PrismaInvitationRepository },
     { provide: RateLimitPort, useClass: PrismaRateLimit },
     {
@@ -61,6 +64,7 @@ import {
     AccountRepositoryPort,
     SessionRepositoryPort,
     AccountTokenPort,
+    PasskeyRepositoryPort,
     InvitationRepositoryPort,
     RateLimitPort,
     OrganisationRepositoryPort,

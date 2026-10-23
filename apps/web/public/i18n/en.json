@@ -1129,13 +1129,15 @@
           "totp": "Turn on a second factor under “Account” with “Set up two-factor”. Moat Cloud shows the secret and the `otpauth` address once as text; there is no QR code. Enter them in the authenticator app and confirm with a code through “Confirm”.",
           "codes": "Moat Cloud then shows the recovery codes once. Save them somewhere safe and click “Done”: afterwards they cannot be retrieved.",
           "signOut": "“Sign out” in the sidebar ends the session on the server, and this browser forgets your account.",
-          "reset": "Forgot your password? On the sign-in page choose “Forgot your password?”, enter your address and open the link in the e-mail. It works once and for one hour; setting the new password ends every session."
+          "reset": "Forgot your password? On the sign-in page choose “Forgot your password?”, enter your address and open the link in the e-mail. It works once and for one hour; setting the new password ends every session.",
+          "passkey": "Under “Account” you can add a passkey with “Add passkey”: choose a name, confirm with your password and then with your device. When you sign in, “Sign in with a passkey” replaces the code. “Remove” takes it away again and ends your other sessions."
         },
         "tips": {
           "trust": "This account sets no trust mode. It applies per gate and is shown at each gate. The section about the trust mode explains the trust mode and the consequences of a hacked Moat Cloud.",
           "recovery": "A recovery code works once. A password reset does not remove the second factor: if you have neither device nor code, you cannot get into the account any more.",
           "session": "The session ends after 12 hours without activity and after 14 days at the latest.",
-          "mail": "Without an e-mail server (an operator setting) there is no confirmation e-mail and no password reset: accounts count as confirmed at once."
+          "mail": "Without an e-mail server (an operator setting) there is no confirmation e-mail and no password reset: accounts count as confirmed at once.",
+          "passkeyLimit": "Passkeys need Moat Cloud to be reached over https with a domain name. An account with a passkey never signs in with the password alone."
         }
       },
       "organisations": {
@@ -1344,7 +1346,13 @@
       "secrets_missing": "The configuration needs secrets that are not stored for this gate yet:",
       "gate_unknown": "This gate does not exist.",
       "email_not_verified": "The e-mail address is not confirmed yet. Open the link in the e-mail we sent you, or ask for a new one below.",
-      "invalid_token": "This link no longer works: it has expired, was used already, or is wrong. Ask for a new one."
+      "invalid_token": "This link no longer works: it has expired, was used already, or is wrong. Ask for a new one.",
+      "no_passkey": "This account has no passkey.",
+      "passkey_unavailable": "Passkeys do not work with this Moat Cloud address. They need a secure address (https) with a domain name.",
+      "passkey_limit": "An account can have at most 10 passkeys.",
+      "passkey_exists": "This passkey is already registered.",
+      "passkey_invalid": "The passkey could not be checked. Try again with “Add passkey”.",
+      "challenge_invalid": "The request has expired or was already used. Try again."
     }
   },
   "roles": {
@@ -1377,7 +1385,15 @@
       "toRegister": "No account yet? Register",
       "forgot": "Forgot your password?",
       "resend": "Send the confirmation e-mail again",
-      "resent": "If the address has an account that is not confirmed yet, a new e-mail is on its way. The link in it works for 24 hours."
+      "resent": "If the address has an account that is not confirmed yet, a new e-mail is on its way. The link in it works for 24 hours.",
+      "noMethod": "This account needs a second factor that this Moat Cloud can no longer check. Ask the operator.",
+      "passkey": {
+        "use": "Sign in with a passkey",
+        "hint": "Your device asks for your fingerprint, face or PIN.",
+        "cancelled": "The passkey prompt was closed or timed out. Try again.",
+        "failed": "Your browser could not use the passkey. Try again or use another method.",
+        "unsupported": "This browser does not support passkeys."
+      }
     },
     "register": {
       "title": "Create an account",
@@ -1441,6 +1457,21 @@
       "codesSaved": "Done",
       "disableHint": "To turn it off you need your password and a code from the app or a recovery code.",
       "disable": "Turn off two-factor"
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "description": "A passkey is a second factor next to the authenticator app: your device proves it is yours with fingerprint, face or PIN. Moat Cloud keeps only the public part.",
+      "empty": "You have no passkey yet.",
+      "loadError": "The passkeys could not be read. Reload the page.",
+      "added": "The passkey is added. From now on, signing in also works with it.",
+      "created": "Added on {{date}}",
+      "lastUsed": "last used on {{date}}",
+      "neverUsed": "never used",
+      "remove": "Remove",
+      "removeConfirm": "Really remove",
+      "addTitle": "Add a passkey",
+      "name": "Name (for example “Laptop”)",
+      "add": "Add passkey"
     }
   },
   "organisations": {

@@ -13,6 +13,7 @@ import { PASSWORD_MIN } from '../../../../core/auth/credentials.schema';
 import { PageHeader } from '../../../../shared/components/page-header';
 import { RichText } from '../../../../shared/components/rich-text';
 import { HelpLink } from '../../../help/components/help-link';
+import { PasskeysSection } from '../../components/passkeys-section';
 import { AccountPageService } from './account-page.service';
 
 @Component({
@@ -24,6 +25,7 @@ import { AccountPageService } from './account-page.service';
     PageHeader,
     RichText,
     HelpLink,
+    PasskeysSection,
     HlmBadge,
     ...HlmButtonImports,
     ...HlmCardImports,

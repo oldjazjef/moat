@@ -3,6 +3,7 @@ export interface AccountView {
   readonly id: string;
   readonly email: string;
   readonly totpEnabled: boolean;
+  readonly passkeyCount: number;
   readonly createdAt: string;
 }
 
@@ -88,3 +89,13 @@ export interface AuditVerification {
       };
   readonly head: { readonly seq: number; readonly hash: string } | null;
 }
+
+/** A passkey of the account, as the API lists it (no key material). */
+export interface PasskeyView {
+  readonly id: string;
+  readonly name: string;
+  readonly createdAt: string;
+  readonly lastUsedAt: string | null;
+}
+
+export type MfaMethod = 'totp' | 'passkey';

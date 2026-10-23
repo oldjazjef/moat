@@ -2,9 +2,16 @@ import { Injectable, inject, signal } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AccountSession } from '../../../../core/auth/account-session.service';
+import type { MfaMethod } from '../../../../core/auth/account.types';
+import {
+  PasskeyBrowser,
+  PasskeyBrowserError,
+  type PasskeyProblem,
+} from '../../../../core/auth/passkey-browser';
 import {
   type ApiErrorCode,
   apiErrorCode,
+  apiErrorMethods,
 } from '../../../../core/auth/api-error';
 import {
   codeSchema,
@@ -22,6 +29,7 @@ import { zodValidator } from '../../../../core/forms/zod-validator';
 export class LoginPageService {
   private readonly session = inject(AccountSession);
   private readonly router = inject(Router);
+  private readonly browser = inject(PasskeyBrowser);
 
   readonly form = new FormGroup({
     email: new FormControl('', {
@@ -37,6 +45,10 @@ export class LoginPageService {
 
   /** The API asked for the second factor (`mfa_required`). */
   readonly needsCode = signal(false);
+  /** Which factors the API named after the password was right. */
+  readonly methods = signal<readonly MfaMethod[]>([]);
+  /** The browser's side of a passkey sign-in went wrong (cancelled, unsupported, failed). */
+  readonly passkeyProblem = signal<PasskeyProblem | null>(null);
   readonly busy = signal(false);
   readonly error = signal<ApiErrorCode | null>(null);
   /** A new confirmation mail was asked for (the answer is the same for every address, T-79). */
@@ -65,7 +77,36 @@ export class LoginPageService {
       this.form.reset();
       await this.router.navigate(['/app']);
     } catch (error) {
-      this.fail(apiErrorCode(error));
+      this.fail(apiErrorCode(error), apiErrorMethods(error));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /**
+   * Second step with a passkey: Moat Cloud makes a challenge (the password is checked again, as
+   * for any sign-in), the browser signs it, and the assertion goes to `login`.
+   */
+  async usePasskey(): Promise<void> {
+    this.error.set(null);
+    this.passkeyProblem.set(null);
+    const { email, password } = this.form.getRawValue();
+    this.busy.set(true);
+    try {
+      const options = await this.session.passkeyChallenge(
+        email.trim(),
+        password,
+      );
+      const assertion = await this.browser.get(options);
+      await this.session.login(email.trim(), password, undefined, assertion);
+      this.form.reset();
+      await this.router.navigate(['/app']);
+    } catch (error) {
+      if (error instanceof PasskeyBrowserError) {
+        this.passkeyProblem.set(error.problem);
+      } else {
+        this.fail(apiErrorCode(error), apiErrorMethods(error));
+      }
     } finally {
       this.busy.set(false);
     }
@@ -93,13 +134,16 @@ export class LoginPageService {
   /** Back from the code step to the password. */
   back(): void {
     this.needsCode.set(false);
+    this.methods.set([]);
+    this.passkeyProblem.set(null);
     this.error.set(null);
     this.form.patchValue({ password: '', code: '' });
   }
 
-  private fail(code: ApiErrorCode): void {
+  private fail(code: ApiErrorCode, methods: readonly MfaMethod[] = []): void {
     if (code === 'mfa_required') {
       this.needsCode.set(true);
+      this.methods.set(methods);
       this.form.patchValue({ code: '' });
       return;
     }
@@ -108,6 +152,7 @@ export class LoginPageService {
       this.form.patchValue({ code: '' });
     } else {
       this.needsCode.set(false);
+      this.methods.set([]);
       this.form.patchValue({ password: '', code: '' });
     }
     this.error.set(code);
