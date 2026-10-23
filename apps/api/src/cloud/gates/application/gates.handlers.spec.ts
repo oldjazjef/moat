@@ -32,6 +32,7 @@ import {
   SetConfigCommand,
   CreatePullAddressCommand,
   PullBundleQuery,
+  RemoveGateCommand,
 } from './gates.commands';
 import {
   AddGateHandler,
@@ -41,6 +42,7 @@ import {
   PullBundleHandler,
   PutSecretHandler,
   ReleaseHandler,
+  RemoveGateHandler,
   SetConfigHandler,
 } from './gates.handlers';
 
@@ -104,6 +106,7 @@ async function setup(withKey = true) {
       put: new PutSecretHandler(...args, store, clock, audit),
       preview: new PreviewReleaseHandler(...args, store, signer),
       release: new ReleaseHandler(...args, store, signer, clock, audit),
+      remove: new RemoveGateHandler(...args, store, audit),
       pull: new PullBundleHandler(store),
       address: new CreatePullAddressHandler(
         ...args,
@@ -587,5 +590,70 @@ describe('rotating the installation key', () => {
       /^Invalid signing key environment: MOAT_SIGNING_KEY_NEXT_PUBLIC$/,
     );
     expect((await CloudSigner.create(undefined)).available).toBe(false);
+  });
+});
+
+describe('deleting a gate', () => {
+  it('removes the gate with its secrets, bundles and pull address, and records only its name', async () => {
+    const t = await setup();
+    await t.handlers.set.execute(
+      new SetConfigCommand(t.owner, t.org, t.project, NEW_PROJECT_CONFIG, null),
+    );
+    await enrol(t);
+    const p = await t.handlers.preview.execute(
+      new PreviewReleaseQuery(t.owner, t.org, t.project, 'site'),
+    );
+    if (p.status !== 'ok') throw new Error('preview');
+    await t.handlers.release.execute(
+      new ReleaseCommand(t.owner, t.org, t.project, 'site', p.preview.digest),
+    );
+    const made = await t.handlers.address.execute(
+      new CreatePullAddressCommand(t.owner, t.org, t.project, 'site'),
+    );
+    if (made.status !== 'ok') throw new Error('address');
+    const token = made.url.split('/').at(-1) ?? '';
+    expect(t.store.bundles).toHaveLength(1);
+
+    const result = await t.handlers.remove.execute(
+      new RemoveGateCommand(t.owner, t.org, t.project, 'site'),
+    );
+    expect(result).toEqual({ status: 'ok' });
+    expect(t.store.gates).toHaveLength(0);
+    expect(t.store.bundles).toHaveLength(0);
+    expect(t.store.secrets).toHaveLength(0);
+    // The old pull address serves nothing any more.
+    expect(
+      await t.handlers.pull.execute(new PullBundleQuery(token)),
+    ).toBeNull();
+    // moat.yaml is not touched.
+    expect((await t.store.getConfig(t.project))?.text).toBe(NEW_PROJECT_CONFIG);
+    expect(t.log.rows.at(-1)).toMatchObject({ action: 'gate.remove' });
+    expect(JSON.parse(t.log.rows.at(-1)?.details ?? '{}')).toEqual({
+      gate: 'site',
+    });
+  });
+
+  it('answers a missing gate and a bad name with not_found, and writes nothing', async () => {
+    const t = await setup();
+    const before = t.log.rows.length;
+    for (const gate of ['site', 'Site', '../x'])
+      expect(
+        await t.handlers.remove.execute(
+          new RemoveGateCommand(t.owner, t.org, t.project, gate),
+        ),
+      ).toEqual({ status: 'not_found' });
+    expect(t.log.rows).toHaveLength(before);
+  });
+
+  it('leaves a gate of another project and another member role alone', async () => {
+    const t = await setup();
+    await enrol(t);
+    const stranger = newId();
+    expect(
+      await t.handlers.remove.execute(
+        new RemoveGateCommand(stranger, t.org, t.project, 'site'),
+      ),
+    ).toEqual({ status: 'not_found' });
+    expect(t.store.gates).toHaveLength(1);
   });
 });

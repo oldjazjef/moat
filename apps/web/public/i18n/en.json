@@ -1166,7 +1166,8 @@
           "gate": "Install the gate on your hosting. Under “Gates” use “Add gate” to enter the gate ID, the box key and the fingerprint the gate shows. If it does not match, nothing is added.",
           "secret": "At “Secret speichern” enter the name and the value and click “Seal and save”: the browser seals the value and only the ciphertext is sent. For full security seal with “moat secret seal” or in Moat Desktop and paste the text under “Paste an already sealed secret”.",
           "release": "Click “Preview” on a gate. When you see what changes, click “Release and sign”. For a gate in the “Signed” mode you upload your signed bundle with “Upload bundle”.",
-          "pull": "Use “Create pull address” to make the address the gate fetches its bundle from, and enter it in the gate. It is shown only once."
+          "pull": "Use “Create pull address” to make the address the gate fetches its bundle from, and enter it in the gate. It is shown only once.",
+          "remove": "To remove a gate from the project, use “Delete gate” and then “Really delete” under the gate. Its sealed secrets, bundles and pull address go with it; the gate on your server keeps running with its last bundle."
         },
         "tips": {
           "mode": "“Convenient”: Moat Cloud signs. An attacker on Moat Cloud can change your routes within the gate's local limits. “Signed”: you sign, Moat Cloud only stores. You change the mode only at the gate.",
@@ -1510,6 +1511,7 @@
       "project.delete": "Project deleted",
       "config.edit": "Configuration changed",
       "gate.add": "Gate added",
+      "gate.remove": "Gate deleted",
       "gate.pull_token": "Pull address created",
       "secret.set": "Secret stored",
       "bundle.sign": "Bundle signed",
@@ -1644,6 +1646,12 @@
       "signerKey": "Public signing key (only for “Signed”)",
       "signerKeyHint": "Leave empty so Moat Cloud signs (“Convenient”). With a key you sign yourself and Moat Cloud only stores.",
       "submit": "Add gate"
+    },
+    "remove": {
+      "title": "Delete this gate",
+      "description": "Removes the gate from this project together with its sealed secrets, its bundles and its pull address. The gate on your server keeps running with the last bundle it accepted; the moat.yaml stays as it is. Adding the same gate again starts at bundle 1.",
+      "ask": "Delete gate",
+      "confirm": "Really delete"
     }
   },
   "configPage": {

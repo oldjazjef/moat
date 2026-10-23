@@ -63,6 +63,8 @@ import {
   PutSecretCommand,
   type PutSecretResult,
   ReleaseCommand,
+  RemoveGateCommand,
+  type RemoveGateResult,
   type ReleaseResult,
   type SaveConfigResult,
   SetConfigCommand,
@@ -461,6 +463,40 @@ export class AddGateHandler
       status: 'ok',
       gate: await gateView(record, this.signer.info()?.fingerprint ?? null, 0),
     };
+  }
+}
+
+@CommandHandler(RemoveGateCommand)
+export class RemoveGateHandler
+  extends Guarded
+  implements ICommandHandler<RemoveGateCommand>
+{
+  constructor(
+    organisations: OrganisationRepositoryPort,
+    projects: OrgProjectRepositoryPort,
+    private readonly store: CloudProjectStorePort,
+    private readonly audit: AuditTrail,
+  ) {
+    super(organisations, projects);
+  }
+
+  async execute(command: RemoveGateCommand): Promise<RemoveGateResult> {
+    const access = await this.guard(
+      command.actorId,
+      command.organisationId,
+      command.projectId,
+      'gate:manage',
+    );
+    if (access !== 'ok') return failure(access);
+    if (!NAME.test(command.gate)) return failure('not_found');
+    if (!(await this.store.removeGate(command.projectId, command.gate)))
+      return failure('not_found');
+    await this.audit.record(command.organisationId, command.actorId, {
+      action: 'gate.remove',
+      target: command.projectId,
+      details: { gate: command.gate },
+    });
+    return { status: 'ok' };
   }
 }
 
@@ -960,6 +996,7 @@ export const GATES_HANDLERS = [
   EditConfigHandler,
   ListGatesHandler,
   AddGateHandler,
+  RemoveGateHandler,
   CreatePullAddressHandler,
   ListSecretsHandler,
   PutSecretHandler,

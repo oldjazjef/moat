@@ -77,6 +77,11 @@ export abstract class CloudProjectStorePort {
     name: string,
   ): Promise<GateRecord | null>;
   abstract addGate(gate: GateRecord): Promise<AddGateOutcome>;
+  /**
+   * Deletes the gate with its secrets, bundles and pull address in one step (the foreign keys
+   * cascade); false when there was no such gate. The project's moat.yaml is not touched.
+   */
+  abstract removeGate(projectId: string, name: string): Promise<boolean>;
   abstract setPullTokenHash(
     projectId: string,
     name: string,

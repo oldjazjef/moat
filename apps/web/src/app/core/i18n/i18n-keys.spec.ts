@@ -86,6 +86,7 @@ const DYNAMIC_KEYS = [
     'project.delete',
     'config.edit',
     'gate.add',
+    'gate.remove',
     'gate.pull_token',
     'secret.set',
     'bundle.sign',

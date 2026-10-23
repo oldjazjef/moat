@@ -3,6 +3,8 @@ import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import type { ConfigEdit } from '../../project/project.types';
 import {
   AddGateCommand,
+  RemoveGateCommand,
+  type RemoveGateResult,
   type AddGateResult,
   CreatePullAddressCommand,
   EditConfigCommand,
@@ -83,6 +85,14 @@ export class GatesService {
         gate.signerKey,
       ),
     );
+  }
+  removeGate(
+    a: string,
+    o: string,
+    p: string,
+    gate: string,
+  ): Promise<RemoveGateResult> {
+    return this.commands.execute(new RemoveGateCommand(a, o, p, gate));
   }
   createPullAddress(
     a: string,

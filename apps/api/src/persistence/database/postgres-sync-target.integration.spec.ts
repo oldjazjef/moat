@@ -131,6 +131,7 @@ describe.skipIf(process.env['MOAT_TEST_POSTGRES'] === 'off')(
         { migration_name: '20261017120000_audit_log' },
         { migration_name: '20261018120000_cloud_gates' },
         { migration_name: '20261019120000_cloud_mail' },
+        { migration_name: '20261020120000_audit_gate_remove' },
       ]);
     });
 

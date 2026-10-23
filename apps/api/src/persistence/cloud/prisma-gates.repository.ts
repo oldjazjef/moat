@@ -102,6 +102,15 @@ export class PrismaCloudProjectStore extends CloudProjectStorePort {
     }
   }
 
+  async removeGate(projectId: string, name: string): Promise<boolean> {
+    // Secrets and bundles go with the gate (ON DELETE CASCADE); deleteMany answers a missing gate
+    // with 0 instead of throwing.
+    const removed = await this.db.cloudGate.deleteMany({
+      where: { projectId, name },
+    });
+    return removed.count === 1;
+  }
+
   async setPullTokenHash(
     projectId: string,
     name: string,

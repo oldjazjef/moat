@@ -304,6 +304,36 @@ export class ProjectGatesPageService {
     this.gates.reload();
   }
 
+  /** The gate whose deletion waits for the second click. */
+  readonly confirmingRemove = signal<string | null>(null);
+
+  askRemove(gate: string): void {
+    this.confirmingRemove.set(gate);
+  }
+
+  cancelRemove(): void {
+    this.confirmingRemove.set(null);
+  }
+
+  /**
+   * Deletes the gate with its sealed secrets, bundles and pull address. The gate on the server keeps
+   * running with the last bundle it accepted, and moat.yaml is not changed.
+   */
+  async removeGate(gate: string): Promise<void> {
+    const url = this.gateUrl(gate);
+    if (url === null) return;
+    this.confirmingRemove.set(null);
+    const answer = await this.run(gate, () =>
+      firstValueFrom(this.http.delete(url)).then(() => true),
+    );
+    if (answer === null) return;
+    this.state.update((all) => {
+      const { [gate]: _gone, ...rest } = all;
+      return rest;
+    });
+    this.gates.reload();
+  }
+
   /** A new address ends the old one; it is shown once and then only as «exists». */
   async createAddress(gate: string): Promise<void> {
     const url = this.gateUrl(gate);

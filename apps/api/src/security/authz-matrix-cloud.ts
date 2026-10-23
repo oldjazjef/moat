@@ -641,6 +641,23 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
     ),
   },
   {
+    name: 'delete a gate: Owner and Admin only',
+    method: 'DELETE',
+    path: '/api/orgs/:orgId/projects/:projectId/gates/:gate',
+    request: GATE,
+    expect: guarded(
+      {
+        owner: 204,
+        admin: 204,
+        editor: 403,
+        viewer: 403,
+        billing: 403,
+        foreign: 404,
+      },
+      true,
+    ),
+  },
+  {
     method: 'POST',
     path: '/api/orgs/:orgId/projects/:projectId/gates/:gate/pull-address',
     request: `${GATE}/pull-address`,

@@ -186,6 +186,8 @@ describe('audit log chain (SEC-53)', () => {
       ['gate.add', TARGET, { gate: 'Site', mode: 'managed' }],
       ['gate.add', TARGET, { gate: 'site', mode: 'cloud' }],
       ['gate.pull_token', TARGET, { gate: 'site', token: 'abc' }],
+      ['gate.remove', TARGET, { gate: 'Site' }],
+      ['gate.remove', TARGET, { gate: 'site', mode: 'managed' }],
       ['secret.set', TARGET, { gate: 'site', name: 'x', secretVersion: 0 }],
       [
         'secret.set',

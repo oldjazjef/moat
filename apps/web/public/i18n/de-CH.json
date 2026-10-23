@@ -1166,7 +1166,8 @@
           "gate": "Installiere das Gate auf deinem Hosting. Trage unter «Gates» mit «Gate hinzufügen» Gate-ID, Box-Schlüssel und den Fingerabdruck ein, den das Gate anzeigt. Passt er nicht, wird nichts angelegt.",
           "secret": "Gib bei «Secret speichern» den Namen und den Wert ein und klicke auf «Versiegeln und speichern»: Der Browser versiegelt den Wert, nur der Geheimtext wird gesendet. Für volle Sicherheit versiegelst du mit «moat secret seal» oder in Moat Desktop und fügst den Text unter «Bereits versiegeltes Secret einfügen» ein.",
           "release": "Klicke bei einem Gate auf «Vorschau». Siehst du, was sich ändert, klicke auf «Freigeben und signieren». Bei einem Gate im Modus «Signiert» lädst du dein signiertes Bundle mit «Bundle hochladen» hoch.",
-          "pull": "Erstelle mit «Abholadresse erstellen» die Adresse, von der das Gate sein Bundle holt, und trage sie im Gate ein. Sie wird nur einmal angezeigt."
+          "pull": "Erstelle mit «Abholadresse erstellen» die Adresse, von der das Gate sein Bundle holt, und trage sie im Gate ein. Sie wird nur einmal angezeigt.",
+          "remove": "Willst du ein Gate aus dem Projekt entfernen, wähle unter dem Gate «Gate löschen» und dann «Wirklich löschen». Seine versiegelten Secrets, Bundles und die Abrufadresse verschwinden mit; das Gate auf deinem Server läuft mit seinem letzten Bundle weiter."
         },
         "tips": {
           "mode": "«Bequem»: Moat Cloud signiert. Ein Angreifer auf Moat Cloud kann deine Routen innerhalb der lokalen Grenzen des Gates ändern. «Signiert»: du signierst, Moat Cloud legt nur ab. Den Modus wechselst du nur am Gate.",
@@ -1510,6 +1511,7 @@
       "project.delete": "Projekt gelöscht",
       "config.edit": "Konfiguration geändert",
       "gate.add": "Gate hinzugefügt",
+      "gate.remove": "Gate gelöscht",
       "gate.pull_token": "Abrufadresse erstellt",
       "secret.set": "Geheimnis gespeichert",
       "bundle.sign": "Bundle signiert",
@@ -1644,6 +1646,12 @@
       "signerKey": "Öffentlicher Signaturschlüssel (nur für «Signiert»)",
       "signerKeyHint": "Leer lassen, damit Moat Cloud signiert («Bequem»). Mit einem Schlüssel signierst du selbst und Moat Cloud legt nur ab.",
       "submit": "Gate hinzufügen"
+    },
+    "remove": {
+      "title": "Dieses Gate löschen",
+      "description": "Entfernt das Gate aus diesem Projekt samt versiegelten Secrets, Bundles und Abrufadresse. Das Gate auf deinem Server läuft mit dem letzten Bundle weiter, das es angenommen hat; die moat.yaml bleibt unverändert. Fügst du dasselbe Gate wieder hinzu, beginnt es bei Bundle 1.",
+      "ask": "Gate löschen",
+      "confirm": "Wirklich löschen"
     }
   },
   "configPage": {

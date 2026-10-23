@@ -52,9 +52,10 @@ describe('database schemas (CLAUDE.md, Database)', () => {
   it('creates exactly the tables the migrator knows, with the hand-written CHECKs', () => {
     for (const provider of ['sqlite', 'postgresql'] as const) {
       const sql = MIGRATIONS[provider].map((m) => m.sql).join('\n');
-      const created = [...sql.matchAll(/CREATE TABLE "([a-z_]+)"/g)].map(
-        (match) => match[1],
-      );
+      // `new_<table>` is the temporary table of a SQLite redefinition: renamed to <table> at once.
+      const created = [...sql.matchAll(/CREATE TABLE "([a-z_]+)"/g)]
+        .map((match) => match[1])
+        .filter((table) => !table?.startsWith('new_'));
       expect(created.sort()).toEqual([...MOAT_TABLES].sort());
       // Ciphertext only: the sealed-secret CHECK is part of both histories.
       expect(sql).toContain("'x25519-blake2b-xchacha20poly1305'");

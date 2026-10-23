@@ -116,6 +116,23 @@ export class ListGatesQuery extends Query<ListGatesResult> {
   }
 }
 
+export type RemoveGateResult = { readonly status: 'ok' } | NotFound | Forbidden;
+
+/**
+ * Deletes a gate of the project with its sealed secrets, its bundles and its pull address. The
+ * physical gate keeps running with the last bundle it accepted; moat.yaml is not changed.
+ */
+export class RemoveGateCommand extends Command<RemoveGateResult> {
+  constructor(
+    readonly actorId: string,
+    readonly organisationId: string,
+    readonly projectId: string,
+    readonly gate: string,
+  ) {
+    super();
+  }
+}
+
 export type AddGateResult =
   | { readonly status: 'ok'; readonly gate: GateView }
   | NotFound

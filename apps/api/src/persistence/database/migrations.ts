@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import postgresRemove from '../../../prisma/postgresql/migrations/20261020120000_audit_gate_remove/migration.sql?raw';
+import sqliteRemove from '../../../prisma/sqlite/migrations/20261020120000_audit_gate_remove/migration.sql?raw';
 import postgresMail from '../../../prisma/postgresql/migrations/20261019120000_cloud_mail/migration.sql?raw';
 import postgresGates from '../../../prisma/postgresql/migrations/20261018120000_cloud_gates/migration.sql?raw';
 import postgresInit from '../../../prisma/postgresql/migrations/20261014120000_init/migration.sql?raw';
@@ -39,6 +41,7 @@ export const MIGRATIONS: Readonly<Record<Dialect, readonly Migration[]>> = {
     migration('20261017120000_audit_log', sqliteAudit),
     migration('20261018120000_cloud_gates', sqliteGates),
     migration('20261019120000_cloud_mail', sqliteMail),
+    migration('20261020120000_audit_gate_remove', sqliteRemove),
   ],
   postgresql: [
     migration('20261014120000_init', postgresInit),
@@ -46,6 +49,7 @@ export const MIGRATIONS: Readonly<Record<Dialect, readonly Migration[]>> = {
     migration('20261017120000_audit_log', postgresAudit),
     migration('20261018120000_cloud_gates', postgresGates),
     migration('20261019120000_cloud_mail', postgresMail),
+    migration('20261020120000_audit_gate_remove', postgresRemove),
   ],
 };
 

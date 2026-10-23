@@ -25,6 +25,7 @@ export const AUDIT_ACTIONS = [
   'project.delete',
   'config.edit',
   'gate.add',
+  'gate.remove',
   'gate.pull_token',
   'secret.set',
   'bundle.sign',
@@ -103,6 +104,12 @@ export type AuditEvent =
         readonly gate: string;
         readonly mode: 'managed' | 'signed';
       };
+    }
+  | {
+      /** A gate was deleted with its sealed secrets, bundles and pull address (the config stays). */
+      readonly action: 'gate.remove';
+      readonly target: string;
+      readonly details: { readonly gate: string };
     }
   | {
       /** A gate's pull address was created or replaced (the token itself is never recorded). */
@@ -385,6 +392,7 @@ export function eventValid(
         name(d['gate']) &&
         (d['mode'] === 'managed' || d['mode'] === 'signed')
       );
+    case 'gate.remove':
     case 'gate.pull_token':
       return id && exactly('gate') && name(d['gate']);
     case 'secret.set':

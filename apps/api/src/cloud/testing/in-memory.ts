@@ -423,6 +423,20 @@ export class InMemoryCloudStore extends CloudProjectStorePort {
     this.gates.push(gate);
     return Promise.resolve('ok');
   }
+  removeGate(projectId: string, name: string) {
+    const i = this.gates.findIndex(
+      (g) => g.projectId === projectId && g.name === name,
+    );
+    if (i < 0) return Promise.resolve(false);
+    this.gates.splice(i, 1);
+    for (const list of [this.secrets, this.bundles])
+      for (let j = list.length - 1; j >= 0; j -= 1) {
+        const row = list[j];
+        if (row?.projectId === projectId && row.gate === name)
+          list.splice(j, 1);
+      }
+    return Promise.resolve(true);
+  }
   setPullTokenHash(projectId: string, name: string, hash: string) {
     const i = this.gates.findIndex(
       (g) => g.projectId === projectId && g.name === name,
