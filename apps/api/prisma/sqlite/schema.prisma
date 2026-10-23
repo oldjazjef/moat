@@ -269,7 +269,7 @@ model AuditEntry {
   at             String
   /// The account that did it.
   actor          String
-  /// org.create | member.add_requested | member.change | member.remove | project.create | project.delete | config.edit | gate.add | gate.remove | gate.pull_token | secret.set | bundle.sign | bundle.upload
+  /// org.create | member.add_requested | member.change | member.remove | invitation.revoke | project.create | project.delete | config.edit | gate.add | gate.remove | gate.pull_token | secret.set | bundle.sign | bundle.upload
   action         String
   target         String?
   /// The details as canonical JSON (JCS): roles, flags and digests only.

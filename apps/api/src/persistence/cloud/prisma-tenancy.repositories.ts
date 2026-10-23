@@ -209,6 +209,12 @@ export class PrismaInvitationRepository extends InvitationRepositoryPort {
     });
   }
 
+  async revoke(organisationId: string, email: string): Promise<void> {
+    await this.db.pendingInvitation.deleteMany({
+      where: { organisationId, email },
+    });
+  }
+
   takeAllFor(
     email: string,
     now: string,

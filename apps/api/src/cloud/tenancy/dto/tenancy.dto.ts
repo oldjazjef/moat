@@ -29,6 +29,12 @@ export class AddMemberDto {
   role!: Role;
 }
 
+export class RevokeInvitationDto {
+  @IsString()
+  @MaxLength(320)
+  email!: string;
+}
+
 export class ChangeMemberDto {
   @IsOptional()
   @IsIn(ROLES)

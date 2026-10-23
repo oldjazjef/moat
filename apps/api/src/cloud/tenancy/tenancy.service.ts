@@ -24,6 +24,8 @@ import {
   type OrganisationSummary,
   RemoveMemberCommand,
   type RemoveMemberResult,
+  RevokeInvitationCommand,
+  type RevokeInvitationResult,
 } from './application/tenancy.commands';
 
 /** The façade of the controllers (Controller → Service → Bus → Handler → Port). */
@@ -83,6 +85,16 @@ export class TenancyService {
   ): Promise<RemoveMemberResult> {
     return this.commands.execute(
       new RemoveMemberCommand(actorId, id, accountId),
+    );
+  }
+
+  revokeInvitation(
+    actorId: string,
+    id: string,
+    email: string,
+  ): Promise<RevokeInvitationResult> {
+    return this.commands.execute(
+      new RevokeInvitationCommand(actorId, id, email),
     );
   }
 

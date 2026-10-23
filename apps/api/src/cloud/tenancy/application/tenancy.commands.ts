@@ -123,6 +123,27 @@ export class AddMemberCommand extends Command<AddMemberResult> {
   }
 }
 
+export type RevokeInvitationResult =
+  | { readonly status: 'ok' }
+  | NotFound
+  | Forbidden
+  | { readonly status: 'refused'; readonly code: 'email_invalid' };
+
+/**
+ * Withdraws the invitation for an address. There is deliberately no list of invitations: it would
+ * tell an administrator which addresses have no confirmed account, which "add member" hides on
+ * purpose (T-79). The answer is `ok` whether or not an invitation existed.
+ */
+export class RevokeInvitationCommand extends Command<RevokeInvitationResult> {
+  constructor(
+    readonly actorId: string,
+    readonly organisationId: string,
+    readonly email: string,
+  ) {
+    super();
+  }
+}
+
 export type ChangeMemberResult =
   | { readonly status: 'ok'; readonly member: MemberView }
   | NotFound

@@ -1154,7 +1154,8 @@
         "tips": {
           "uniform": "Moat Cloud antwortet beim Hinzufügen gleich, ob es die Adresse gibt oder nicht. Hat die Adresse schon ein bestätigtes Konto, ist die Person sofort Mitglied. Sonst wartet eine Einladung 14 Tage und gilt, sobald die Person ihre Adresse bestätigt (das Konto zählt dann ohne E-Mail-Server sofort); die Einladung steht nicht in der Mitgliederliste. Die Einladungs-Mail nennt weder die Organisation noch dich.",
           "refusals": "Lehnt Moat Cloud eine Änderung ab, steht der Grund in einem festen Text, zum Beispiel dass die Organisation mindestens einen Inhaber braucht.",
-          "projectsLimit": "Gates, Konfiguration und Secrets eines Projekts findest du, wenn du in der Liste auf den Namen des Projekts klickst."
+          "projectsLimit": "Gates, Konfiguration und Secrets eines Projekts findest du, wenn du in der Liste auf den Namen des Projekts klickst.",
+          "revoke": "Um eine Einladung zurückzunehmen, gib die Adresse unter «Einladung zurückziehen» ein und klicke «Einladung zurückziehen». Moat Cloud antwortet gleich, ob es eine gab oder nicht, und zeigt keine Liste der Einladungen."
         }
       },
       "cloudGates": {
@@ -1486,6 +1487,12 @@
       "description": "Gib die E-Mail-Adresse der Person ein und wähle die Rolle. Hat die Adresse ein bestätigtes Konto, ist die Person sofort Mitglied; sonst wartet eine Einladung 14 Tage.",
       "sent": "Wenn die Adresse ein bestätigtes Konto hat, ist die Person jetzt Mitglied; sonst wartet eine Einladung auf sie. Moat Cloud sagt nicht, welcher Fall es war.",
       "submit": "Mitglied hinzufügen"
+    },
+    "revoke": {
+      "title": "Einladung zurückziehen",
+      "description": "Gib die E-Mail-Adresse einer Einladung ein, die du nicht mehr willst. Moat Cloud zeigt keine Liste der Einladungen, weil sie verriete, welche Adressen kein bestätigtes Konto haben.",
+      "sent": "Falls es eine Einladung für diese Adresse gab, ist sie zurückgezogen. Moat Cloud sagt nicht, ob es eine gab.",
+      "submit": "Einladung zurückziehen"
     }
   },
   "audit": {
@@ -1507,6 +1514,7 @@
       "member.join": "Mitglied per Einladung beigetreten",
       "member.change": "Mitglied geändert",
       "member.remove": "Mitglied entfernt",
+      "invitation.revoke": "Einladung zurückgezogen",
       "project.create": "Projekt angelegt",
       "project.delete": "Projekt gelöscht",
       "config.edit": "Konfiguration geändert",

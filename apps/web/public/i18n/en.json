@@ -1154,7 +1154,8 @@
         "tips": {
           "uniform": "Moat Cloud answers the same when you add someone, whether the address exists or not. If the address already has a confirmed account, the person is a member at once. Otherwise an invitation waits for 14 days and applies as soon as the person confirms their address (without an e-mail server the account counts as confirmed at once); the invitation does not show in the member list. The invitation e-mail names neither the organisation nor you.",
           "refusals": "If Moat Cloud refuses a change, the reason is a fixed text, for example that the organisation needs at least one owner.",
-          "projectsLimit": "You find a project's gates, configuration and secrets by clicking the project's name in the list."
+          "projectsLimit": "You find a project's gates, configuration and secrets by clicking the project's name in the list.",
+          "revoke": "To take back an invitation, enter the address under “Withdraw an invitation” and click “Withdraw invitation”. Moat Cloud answers the same whether or not there was one, and shows no list of invitations."
         }
       },
       "cloudGates": {
@@ -1486,6 +1487,12 @@
       "description": "Enter the person's e-mail address and choose the role. If the address has a confirmed account, the person is a member at once; otherwise an invitation waits for 14 days.",
       "sent": "If the address has a confirmed account, the person is a member now; otherwise an invitation waits for them. Moat Cloud does not say which it was.",
       "submit": "Add member"
+    },
+    "revoke": {
+      "title": "Withdraw an invitation",
+      "description": "Enter the e-mail address of an invitation you no longer want. Moat Cloud shows no list of invitations, because it would reveal which addresses have no confirmed account.",
+      "sent": "If an invitation for this address existed, it is withdrawn. Moat Cloud does not say whether there was one.",
+      "submit": "Withdraw invitation"
     }
   },
   "audit": {
@@ -1507,6 +1514,7 @@
       "member.join": "Member joined by invitation",
       "member.change": "Member changed",
       "member.remove": "Member removed",
+      "invitation.revoke": "Invitation withdrawn",
       "project.create": "Project created",
       "project.delete": "Project deleted",
       "config.edit": "Configuration changed",

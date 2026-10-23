@@ -355,6 +355,25 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
     ),
   },
   {
+    // Owner and Admin only; 204 even when no invitation exists (T-79), and there is no list.
+    name: 'revoke an invitation by address',
+    method: 'POST',
+    path: '/api/orgs/:orgId/invitations/revoke',
+    request: `${ORG}/invitations/revoke`,
+    body: { email: CLOUD_TARGET_EMAIL },
+    expect: guarded(
+      {
+        owner: 204,
+        admin: 204,
+        editor: 403,
+        viewer: 403,
+        billing: 403,
+        foreign: 404,
+      },
+      true,
+    ),
+  },
+  {
     // Role change among the lower roles: an Admin may, nobody below.
     name: 'change role',
     method: 'PATCH',

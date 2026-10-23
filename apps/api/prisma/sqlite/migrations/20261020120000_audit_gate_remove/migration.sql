@@ -1,4 +1,4 @@
--- The audit log learns the action `gate.remove` (a gate was deleted). SQLite cannot change a CHECK
+-- The audit log learns the actions `gate.remove` (a gate was deleted) and `invitation.revoke`. SQLite cannot change a CHECK
 -- in place, so the table is redefined: the rows are copied unchanged (they keep their hashes, the
 -- chain is not touched), then the index and the append-only triggers are created again. Dropping
 -- the old table fires no row trigger.
@@ -7,7 +7,7 @@ CREATE TABLE "new_audit_entry" (
     "seq" INTEGER NOT NULL CHECK ("seq" >= 1),
     "at" TEXT NOT NULL CHECK ("at" GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-6][0-9].[0-9][0-9][0-9]Z'),
     "actor" TEXT NOT NULL CHECK (length("actor") = 22 AND "actor" NOT GLOB '*[^A-Za-z0-9_-]*'),
-    "action" TEXT NOT NULL CHECK ("action" IN ('org.create', 'member.add_requested', 'member.join', 'member.change', 'member.remove', 'project.create', 'project.delete', 'config.edit', 'gate.add', 'gate.remove', 'gate.pull_token', 'secret.set', 'bundle.sign', 'bundle.upload')),
+    "action" TEXT NOT NULL CHECK ("action" IN ('org.create', 'member.add_requested', 'member.join', 'member.change', 'member.remove', 'invitation.revoke', 'project.create', 'project.delete', 'config.edit', 'gate.add', 'gate.remove', 'gate.pull_token', 'secret.set', 'bundle.sign', 'bundle.upload')),
     "target" TEXT CHECK ("target" IS NULL OR (length("target") = 22 AND "target" NOT GLOB '*[^A-Za-z0-9_-]*')),
     "details" TEXT NOT NULL CHECK (json_valid("details") AND json_type("details") IS 'object' AND length("details") <= 1024),
     "prev_hash" TEXT NOT NULL CHECK (length("prev_hash") = 64 AND "prev_hash" NOT GLOB '*[^0-9a-f]*'),

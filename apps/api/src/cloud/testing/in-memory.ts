@@ -553,6 +553,13 @@ export class InMemoryInvitations extends InvitationRepositoryPort {
     this.rows.push(invitation);
     return Promise.resolve();
   }
+  revoke(organisationId: string, email: string): Promise<void> {
+    const at = this.rows.findIndex(
+      (r) => r.organisationId === organisationId && r.email === email,
+    );
+    if (at >= 0) this.rows.splice(at, 1);
+    return Promise.resolve();
+  }
   takeAllFor(
     email: string,
     now: string,

@@ -57,6 +57,8 @@ import {
   type NotFound,
   type OrganisationSummary,
   RemoveMemberCommand,
+  RevokeInvitationCommand,
+  type RevokeInvitationResult,
   type RemoveMemberResult,
 } from './tenancy.commands';
 
@@ -349,6 +351,37 @@ export class ChangeMemberHandler implements ICommandHandler<ChangeMemberCommand>
   }
 }
 
+@CommandHandler(RevokeInvitationCommand)
+export class RevokeInvitationHandler implements ICommandHandler<RevokeInvitationCommand> {
+  constructor(
+    private readonly organisations: OrganisationRepositoryPort,
+    private readonly invitations: InvitationRepositoryPort,
+    private readonly audit: AuditTrail,
+  ) {}
+
+  async execute(
+    command: RevokeInvitationCommand,
+  ): Promise<RevokeInvitationResult> {
+    const actor = await membershipOf(
+      this.organisations,
+      command.actorId,
+      command.organisationId,
+    );
+    if (actor === null) return NOT_FOUND;
+    if (!allowed(actor, 'members:manage')) return FORBIDDEN;
+    const email = normaliseEmail(command.email);
+    if (email === null) return { status: 'refused', code: 'email_invalid' };
+    await this.invitations.revoke(command.organisationId, email);
+    // Recorded whether or not an invitation existed, and only as a hash (T-79).
+    await this.audit.record(command.organisationId, command.actorId, {
+      action: 'invitation.revoke',
+      target: null,
+      details: { emailHash: await sha256Hex(email) },
+    });
+    return { status: 'ok' };
+  }
+}
+
 @CommandHandler(RemoveMemberCommand)
 export class RemoveMemberHandler implements ICommandHandler<RemoveMemberCommand> {
   constructor(
@@ -530,6 +563,7 @@ export const TENANCY_HANDLERS = [
   AddMemberHandler,
   ChangeMemberHandler,
   RemoveMemberHandler,
+  RevokeInvitationHandler,
   ListProjectsHandler,
   CreateProjectHandler,
   GetProjectHandler,

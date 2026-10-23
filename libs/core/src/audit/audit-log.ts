@@ -21,6 +21,7 @@ export const AUDIT_ACTIONS = [
   'member.join',
   'member.change',
   'member.remove',
+  'invitation.revoke',
   'project.create',
   'project.delete',
   'config.edit',
@@ -55,6 +56,16 @@ export type AuditEvent =
       readonly target: null;
       readonly details: {
         readonly role: AuditRole;
+        /** SHA-256 hex of the normalised address. */
+        readonly emailHash: string;
+      };
+    }
+  | {
+      /** An invitation for this address was withdrawn (recorded whether or not one existed, T-79). */
+      readonly action: 'invitation.revoke';
+      /** The organisation: nobody is named. */
+      readonly target: null;
+      readonly details: {
         /** SHA-256 hex of the normalised address. */
         readonly emailHash: string;
       };
@@ -360,6 +371,13 @@ export function eventValid(
         target === null &&
         exactly('role', 'emailHash') &&
         isRole(d['role']) &&
+        typeof d['emailHash'] === 'string' &&
+        HEX64.test(d['emailHash'])
+      );
+    case 'invitation.revoke':
+      return (
+        target === null &&
+        exactly('emailHash') &&
         typeof d['emailHash'] === 'string' &&
         HEX64.test(d['emailHash'])
       );

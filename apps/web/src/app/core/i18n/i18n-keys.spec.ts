@@ -82,6 +82,7 @@ const DYNAMIC_KEYS = [
     'member.join',
     'member.change',
     'member.remove',
+    'invitation.revoke',
     'project.create',
     'project.delete',
     'config.edit',

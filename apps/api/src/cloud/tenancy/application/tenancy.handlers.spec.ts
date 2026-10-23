@@ -1,3 +1,4 @@
+import { sha256Hex } from '@moat/core';
 import { describe, expect, it } from 'vitest';
 import { mailKit } from '../../testing/mail-kit';
 import { newId } from '../../common/clock';
@@ -22,6 +23,7 @@ import {
   ListOrganisationsQuery,
   ListProjectsQuery,
   RemoveMemberCommand,
+  RevokeInvitationCommand,
 } from './tenancy.commands';
 import {
   AddMemberHandler,
@@ -36,6 +38,7 @@ import {
   ListOrganisationsHandler,
   ListProjectsHandler,
   RemoveMemberHandler,
+  RevokeInvitationHandler,
 } from './tenancy.handlers';
 
 async function setup() {
@@ -108,6 +111,8 @@ async function setup() {
     auditLog,
     audit,
     clock,
+    invitations: kit.invitations,
+    revoke: new RevokeInvitationHandler(organisations, kit.invitations, audit),
     remove: new RemoveMemberHandler(organisations, audit),
     members: new ListMembersHandler(organisations),
     get: new GetOrganisationHandler(organisations),
@@ -392,6 +397,90 @@ describe('role escalation (SEC-52, T-81)', () => {
         new AddMemberCommand(t.ids.owner, t.org, 'not-an-address', 'viewer'),
       ),
     ).toEqual({ status: 'refused', code: 'email_invalid' });
+  });
+});
+
+describe('revoking an invitation by address (T-79)', () => {
+  it('withdraws the invitation and answers the same when there was none', async () => {
+    const t = await setup();
+    await t.add.execute(
+      new AddMemberCommand(t.ids.owner, t.org, 'ghost@example.ch', 'viewer'),
+    );
+    expect(t.invitations.rows.map((r) => r.email)).toEqual([
+      'ghost@example.ch',
+    ]);
+    const first = await t.revoke.execute(
+      new RevokeInvitationCommand(t.ids.owner, t.org, ' Ghost@Example.ch '),
+    );
+    const again = await t.revoke.execute(
+      new RevokeInvitationCommand(t.ids.owner, t.org, 'ghost@example.ch'),
+    );
+    const never = await t.revoke.execute(
+      new RevokeInvitationCommand(t.ids.admin, t.org, 'nobody@example.ch'),
+    );
+    expect(t.invitations.rows).toHaveLength(0);
+    expect(first).toEqual({ status: 'ok' });
+    expect(again).toEqual(first);
+    expect(never).toEqual(first);
+  });
+
+  it('records every revocation with the address only as its hash', async () => {
+    const t = await setup();
+    const before = t.auditLog.rows.length;
+    await t.revoke.execute(
+      new RevokeInvitationCommand(t.ids.owner, t.org, 'ghost@example.ch'),
+    );
+    await t.revoke.execute(
+      new RevokeInvitationCommand(t.ids.owner, t.org, 'other@example.ch'),
+    );
+    const rows = t.auditLog.rows.slice(before);
+    expect(rows.map((r) => r.action)).toEqual([
+      'invitation.revoke',
+      'invitation.revoke',
+    ]);
+    expect(rows.map((r) => r.details).join()).not.toContain('example.ch');
+    expect(JSON.parse(rows[0]?.details ?? '{}')).toEqual({
+      emailHash: await sha256Hex('ghost@example.ch'),
+    });
+  });
+
+  it('keeps it to Owner and Admin, to the own organisation, and to a real address', async () => {
+    const t = await setup();
+    await t.add.execute(
+      new AddMemberCommand(t.ids.owner, t.org, 'ghost@example.ch', 'viewer'),
+    );
+    for (const who of [t.ids.editor, t.ids.viewer, t.ids.billing])
+      expect(
+        await t.revoke.execute(
+          new RevokeInvitationCommand(who, t.org, 'ghost@example.ch'),
+        ),
+      ).toEqual({ status: 'forbidden' });
+    expect(
+      await t.revoke.execute(
+        new RevokeInvitationCommand(t.ids.stranger, t.org, 'ghost@example.ch'),
+      ),
+    ).toEqual({ status: 'not_found' });
+    expect(
+      await t.revoke.execute(
+        new RevokeInvitationCommand(t.ids.owner, t.org, 'not-an-address'),
+      ),
+    ).toEqual({ status: 'refused', code: 'email_invalid' });
+    expect(t.invitations.rows).toHaveLength(1);
+  });
+
+  it('does not touch the invitation of another organisation for the same address', async () => {
+    const t = await setup();
+    await t.add.execute(
+      new AddMemberCommand(t.ids.owner, t.org, 'ghost@example.ch', 'viewer'),
+    );
+    await t.revoke.execute(
+      new RevokeInvitationCommand(
+        t.ids.stranger,
+        t.foreignOrg,
+        'ghost@example.ch',
+      ),
+    );
+    expect(t.invitations.rows).toHaveLength(1);
   });
 });
 

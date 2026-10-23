@@ -100,7 +100,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       'release',
       'audit',
     ),
-    tips: items('uniform', 'refusals', 'projectsLimit'),
+    tips: items('uniform', 'revoke', 'refusals', 'projectsLimit'),
     links: [{ id: 'organisations', path: '/app/organisations', only: 'cloud' }],
   },
   {
