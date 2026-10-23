@@ -1148,7 +1148,8 @@
           "projects": "Unter «Projekte» siehst du die Projekte der Organisation. Mit «Projekt anlegen» legst du ein neues an, wenn deine Rolle das erlaubt.",
           "members": "Unter «Mitglieder» fügst du mit «Mitglied hinzufügen» jemanden über die E-Mail-Adresse hinzu, änderst Rollen oder entfernst jemanden mit «Entfernen» und «Wirklich entfernen».",
           "roles": "Es gibt die Rollen Inhaber, Administrator, Bearbeiter, Betrachter und Abrechnung. Die Rolle bestimmt, was jemand lesen und ändern darf. Moat Cloud lehnt ab, was die Rolle nicht erlaubt.",
-          "release": "Das Recht, Bundles freizugeben, ist von der Rolle getrennt. Nur ein Inhaber vergibt es, und nur an Inhaber, Administratoren und Bearbeiter. Du siehst den Schalter nur als Inhaber. Mit dem Recht gibst du in einem Projekt Bundles frei."
+          "release": "Das Recht, Bundles freizugeben, ist von der Rolle getrennt. Nur ein Inhaber vergibt es, und nur an Inhaber, Administratoren und Bearbeiter. Du siehst den Schalter nur als Inhaber. Mit dem Recht gibst du in einem Projekt Bundles frei.",
+          "audit": "Unter «Protokoll» (nur Inhaber und Administratoren) siehst du, wer was geändert hat. «Kette prüfen» rechnet sie neu nach; «Als JSON exportieren» und «Als CSV exportieren» speichern die Einträge."
         },
         "tips": {
           "uniform": "Moat Cloud antwortet beim Hinzufügen gleich, ob es die Adresse gibt oder nicht. Hat die Adresse schon ein bestätigtes Konto, ist die Person sofort Mitglied. Sonst wartet eine Einladung 14 Tage und gilt, sobald die Person ihre Adresse bestätigt (das Konto zählt dann ohne E-Mail-Server sofort); die Einladung steht nicht in der Mitgliederliste. Die Einladungs-Mail nennt weder die Organisation noch dich.",
@@ -1462,7 +1463,8 @@
     "tabs": {
       "label": "Bereiche der Organisation",
       "projects": "Projekte",
-      "members": "Mitglieder"
+      "members": "Mitglieder",
+      "audit": "Protokoll"
     }
   },
   "members": {
@@ -1483,6 +1485,54 @@
       "description": "Gib die E-Mail-Adresse der Person ein und wähle die Rolle. Hat die Adresse ein bestätigtes Konto, ist die Person sofort Mitglied; sonst wartet eine Einladung 14 Tage.",
       "sent": "Wenn die Adresse ein bestätigtes Konto hat, ist die Person jetzt Mitglied; sonst wartet eine Einladung auf sie. Moat Cloud sagt nicht, welcher Fall es war.",
       "submit": "Mitglied hinzufügen"
+    }
+  },
+  "audit": {
+    "title": "Protokoll",
+    "description": "Wer in dieser Organisation was geändert hat. Jede Änderung ist eine Zeile; die Zeilen sind verkettet, eine später geänderte oder entfernte Zeile fällt bei der Prüfung der Kette auf. E-Mail-Adressen werden nie angezeigt, nur ein Fingerabdruck.",
+    "cannotRead": "Deine Rolle darf das Protokoll nicht lesen.",
+    "empty": "Es gibt noch keine Einträge.",
+    "more": "Mehr laden",
+    "columns": {
+      "seq": "Nr.",
+      "at": "Zeit (UTC)",
+      "action": "Aktion",
+      "actor": "Konto",
+      "details": "Details"
+    },
+    "actions": {
+      "org.create": "Organisation angelegt",
+      "member.add_requested": "Mitglied hinzugefügt oder eingeladen",
+      "member.join": "Mitglied per Einladung beigetreten",
+      "member.change": "Mitglied geändert",
+      "member.remove": "Mitglied entfernt",
+      "project.create": "Projekt angelegt",
+      "project.delete": "Projekt gelöscht",
+      "config.edit": "Konfiguration geändert",
+      "gate.add": "Gate hinzugefügt",
+      "gate.pull_token": "Abrufadresse erstellt",
+      "secret.set": "Geheimnis gespeichert",
+      "bundle.sign": "Bundle signiert",
+      "bundle.upload": "Bundle hochgeladen"
+    },
+    "export": {
+      "asJson": "Als JSON exportieren",
+      "asCsv": "Als CSV exportieren"
+    },
+    "verify": {
+      "button": "Kette prüfen",
+      "intact": "Die Kette ist unversehrt: {{count}} Einträge.",
+      "broken": "Die Kette ist unterbrochen ({{count}} Einträge gelesen).",
+      "head": "Letzter Eintrag {{seq}}, Hash:",
+      "honest": "Notiere den letzten Eintrag ausserhalb von Moat Cloud. Nur so erkennt eine Prüfung auch am Ende abgeschnittene Einträge. Wer die Datenbank und diese Notiz ändern kann, kann ein Protokoll fälschen.",
+      "reason": {
+        "sequence": "Die Nummerierung hat eine Lücke.",
+        "organisation": "Ein Eintrag gehört zu einer anderen Organisation.",
+        "chain": "Ein Eintrag schliesst nicht an den vorherigen an.",
+        "hash": "Ein Eintrag passt nicht mehr zu seinem Hash.",
+        "details": "Die Details eines Eintrags sind ungültig.",
+        "head": "Das Ende des Protokolls fehlt."
+      }
     }
   },
   "orgProjects": {

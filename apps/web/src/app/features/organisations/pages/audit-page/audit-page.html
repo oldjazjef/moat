@@ -1,0 +1,144 @@
+<mt-page-header
+  [title]="'audit.title' | translate"
+  [subtitle]="service.scope.name()"
+>
+  <mt-help-link section="organisations" />
+</mt-page-header>
+
+<mt-org-tabs [orgId]="orgId()" [showAudit]="service.canRead()" />
+
+@if (service.scope.entry.error()) {
+<p class="mt-note" role="alert" data-not-found>
+  <ng-icon
+    name="lucideTriangleAlert"
+    size="16"
+    aria-hidden="true"
+    class="mt-0.5 shrink-0"
+  />
+  <span>{{ 'errors.api.not_found' | translate }}</span>
+</p>
+} @else if (service.scope.access()) { @if (!service.canRead()) {
+<p class="mt-note" data-audit-forbidden>{{ 'audit.cannotRead' | translate }}</p>
+} @else {
+<div class="flex flex-col gap-6">
+  <p class="text-muted-foreground max-w-2xl text-sm">
+    {{ 'audit.description' | translate }}
+  </p>
+
+  @if (service.error(); as code) {
+  <p class="mt-note" role="alert" data-audit-error>
+    <ng-icon
+      name="lucideTriangleAlert"
+      size="16"
+      aria-hidden="true"
+      class="mt-0.5 shrink-0"
+    />
+    <span>{{ errorKey(code) | translate }}</span>
+  </p>
+  }
+
+  <div class="flex flex-wrap items-center gap-2">
+    <button
+      hlmBtn
+      variant="outline"
+      type="button"
+      data-audit-verify
+      [disabled]="service.verifying()"
+      (click)="service.verify()"
+    >
+      {{ 'audit.verify.button' | translate }}
+    </button>
+    @if (service.exportJsonUrl(); as url) {
+    <a hlmBtn variant="outline" data-audit-export-json [href]="url" download>
+      {{ 'audit.export.asJson' | translate }}
+    </a>
+    } @if (service.exportCsvUrl(); as url) {
+    <a hlmBtn variant="outline" data-audit-export-csv [href]="url" download>
+      {{ 'audit.export.asCsv' | translate }}
+    </a>
+    }
+  </div>
+
+  @if (service.verification(); as result) {
+  <div class="mt-note" role="status" data-audit-verification>
+    @if (result.check.status === 'intact') {
+    <span data-audit-intact
+      >{{ 'audit.verify.intact' | translate: { count: result.check.entries }
+      }}</span
+    >
+    } @else {
+    <span data-audit-broken
+      >{{ 'audit.verify.broken' | translate: { count: result.check.entries } }}
+      {{ 'audit.verify.reason.' + result.check.reason | translate }}</span
+    >
+    } @if (result.head; as head) {
+    <span class="mt-1 block break-all font-mono text-xs" data-audit-head
+      >{{ 'audit.verify.head' | translate: { seq: head.seq } }} {{ head.hash
+      }}</span
+    >
+    }
+    <span class="mt-1 block text-xs"
+      >{{ 'audit.verify.honest' | translate }}</span
+    >
+  </div>
+  } @if (!service.loaded()) {
+  <p class="text-muted-foreground text-sm" role="status">
+    {{ 'common.loading' | translate }}
+  </p>
+  } @else if (service.entries().length === 0) {
+  <p class="text-muted-foreground text-sm" data-audit-empty>
+    {{ 'audit.empty' | translate }}
+  </p>
+  } @else {
+  <div hlmTableContainer class="mt-panel" data-audit>
+    <table hlmTable>
+      <thead hlmTHead>
+        <tr hlmTr>
+          <th hlmTh>{{ 'audit.columns.seq' | translate }}</th>
+          <th hlmTh>{{ 'audit.columns.at' | translate }}</th>
+          <th hlmTh>{{ 'audit.columns.action' | translate }}</th>
+          <th hlmTh>{{ 'audit.columns.actor' | translate }}</th>
+          <th hlmTh>{{ 'audit.columns.details' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody hlmTBody>
+        @for (entry of service.entries(); track entry.seq) {
+        <tr hlmTr data-audit-entry [attr.data-seq]="entry.seq">
+          <td hlmTd>{{ entry.seq }}</td>
+          <td hlmTd class="whitespace-nowrap" data-at>
+            {{ entry.at.slice(0, 19).replace('T', ' ') }}
+          </td>
+          <td hlmTd data-action>
+            {{ 'audit.actions.' + entry.action | translate }}
+          </td>
+          <td hlmTd class="font-mono text-xs break-all" data-actor>
+            {{ entry.actor }}
+          </td>
+          <td hlmTd class="text-xs break-all" data-details>
+            @if (entry.target) {
+            <span class="font-mono">{{ entry.target }}</span>
+            } @for (pair of service.detailPairs(entry); track pair[0]) {
+            <span class="block">{{ pair[0] }}: {{ pair[1] }}</span>
+            }
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  @if (service.next() !== null) {
+  <div>
+    <button
+      hlmBtn
+      variant="outline"
+      type="button"
+      data-audit-more
+      [disabled]="service.loading()"
+      (click)="service.loadMore()"
+    >
+      {{ 'audit.more' | translate }}
+    </button>
+  </div>
+  } }
+</div>
+} }

@@ -34,6 +34,11 @@ const routes: Routes = [
       ),
   },
   {
+    path: ':orgId/audit',
+    loadComponent: () =>
+      import('./pages/audit-page/audit-page').then((m) => m.AuditPage),
+  },
+  {
     path: ':orgId/members',
     loadComponent: () =>
       import('./pages/members-page/members-page').then((m) => m.MembersPage),

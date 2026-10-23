@@ -5,7 +5,7 @@
   <mt-help-link section="cloudGates" />
 </mt-page-header>
 
-<mt-org-tabs [orgId]="orgId()" />
+<mt-org-tabs [orgId]="orgId()" [showAudit]="service.scope.can('audit:read')" />
 
 @if (service.scope.entry.error() || service.project.error()) {
 <p class="mt-note" role="alert" data-not-found>

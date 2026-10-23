@@ -63,3 +63,28 @@ export interface OrgProjectView {
   readonly name: string;
   readonly createdAt: string;
 }
+
+/** One row of an organisation's audit log (`GET /orgs/:id/audit`, SEC-53). */
+export interface AuditEntryView {
+  readonly seq: number;
+  readonly at: string;
+  readonly actor: string;
+  readonly action: string;
+  readonly target: string | null;
+  /** The details as canonical JSON, a closed list per action. */
+  readonly details: string;
+  readonly hash: string;
+}
+
+/** The answer of `GET /orgs/:id/audit/verify`. */
+export interface AuditVerification {
+  readonly check:
+    | { readonly status: 'intact'; readonly entries: number }
+    | {
+        readonly status: 'broken';
+        readonly entries: number;
+        readonly seq: number | null;
+        readonly reason: string;
+      };
+  readonly head: { readonly seq: number; readonly hash: string } | null;
+}

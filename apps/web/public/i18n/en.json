@@ -1148,7 +1148,8 @@
           "projects": "Under “Projects” you see the organisation's projects. “Create project” adds one if your role allows it.",
           "members": "Under “Members” add someone by e-mail address with “Add member”, change roles, or remove someone with “Remove” and “Really remove”.",
           "roles": "The roles are Owner, Administrator, Editor, Viewer and Billing. The role decides what someone may read and change. Moat Cloud refuses what the role does not allow.",
-          "release": "The right to release bundles is separate from the role. Only an owner grants it, and only to owners, administrators and editors. You see the switch only as an owner. With the right you release bundles in a project."
+          "release": "The right to release bundles is separate from the role. Only an owner grants it, and only to owners, administrators and editors. You see the switch only as an owner. With the right you release bundles in a project.",
+          "audit": "Under “Audit log” (owners and administrators only) you see who changed what. “Check the chain” re-computes it; “Export as JSON” and “Export as CSV” save the entries."
         },
         "tips": {
           "uniform": "Moat Cloud answers the same when you add someone, whether the address exists or not. If the address already has a confirmed account, the person is a member at once. Otherwise an invitation waits for 14 days and applies as soon as the person confirms their address (without an e-mail server the account counts as confirmed at once); the invitation does not show in the member list. The invitation e-mail names neither the organisation nor you.",
@@ -1462,7 +1463,8 @@
     "tabs": {
       "label": "Sections of the organisation",
       "projects": "Projects",
-      "members": "Members"
+      "members": "Members",
+      "audit": "Audit log"
     }
   },
   "members": {
@@ -1483,6 +1485,54 @@
       "description": "Enter the person's e-mail address and choose the role. If the address has a confirmed account, the person is a member at once; otherwise an invitation waits for 14 days.",
       "sent": "If the address has a confirmed account, the person is a member now; otherwise an invitation waits for them. Moat Cloud does not say which it was.",
       "submit": "Add member"
+    }
+  },
+  "audit": {
+    "title": "Audit log",
+    "description": "Who changed what in this organisation. Every change is one row; the rows are chained, so a row changed or removed later shows up when you check the chain. E-mail addresses are never shown, only a fingerprint.",
+    "cannotRead": "Your role may not read the audit log.",
+    "empty": "There are no entries yet.",
+    "more": "Load more",
+    "columns": {
+      "seq": "No.",
+      "at": "Time (UTC)",
+      "action": "Action",
+      "actor": "Account",
+      "details": "Details"
+    },
+    "actions": {
+      "org.create": "Organisation created",
+      "member.add_requested": "Member added or invited",
+      "member.join": "Member joined by invitation",
+      "member.change": "Member changed",
+      "member.remove": "Member removed",
+      "project.create": "Project created",
+      "project.delete": "Project deleted",
+      "config.edit": "Configuration changed",
+      "gate.add": "Gate added",
+      "gate.pull_token": "Pull address created",
+      "secret.set": "Secret stored",
+      "bundle.sign": "Bundle signed",
+      "bundle.upload": "Bundle uploaded"
+    },
+    "export": {
+      "asJson": "Export as JSON",
+      "asCsv": "Export as CSV"
+    },
+    "verify": {
+      "button": "Check the chain",
+      "intact": "The chain is intact: {{count}} entries.",
+      "broken": "The chain is broken ({{count}} entries read).",
+      "head": "Last entry {{seq}}, hash:",
+      "honest": "Write the last entry down outside Moat Cloud. Only then does a check also catch entries cut off at the end. Someone who can change the database and this note can forge a log.",
+      "reason": {
+        "sequence": "The numbering has a gap.",
+        "organisation": "An entry belongs to another organisation.",
+        "chain": "An entry does not follow the one before it.",
+        "hash": "An entry no longer matches its hash.",
+        "details": "The details of an entry are not valid.",
+        "head": "The end of the log is missing."
+      }
     }
   },
   "orgProjects": {

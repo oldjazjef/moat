@@ -91,7 +91,15 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     // Moat Cloud: organisations, members, roles and the release permission, projects.
     id: 'organisations',
     only: 'cloud',
-    steps: items('create', 'switch', 'projects', 'members', 'roles', 'release'),
+    steps: items(
+      'create',
+      'switch',
+      'projects',
+      'members',
+      'roles',
+      'release',
+      'audit',
+    ),
     tips: items('uniform', 'refusals', 'projectsLimit'),
     links: [{ id: 'organisations', path: '/app/organisations', only: 'cloud' }],
   },
