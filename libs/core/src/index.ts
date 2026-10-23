@@ -33,6 +33,7 @@ export {
   type VerificationContext,
   type VerifiedBundle,
 } from './bundle/bundle';
+export { readBundleTimes, type BundleTimes } from './bundle/bundle-times';
 export {
   webauthnSignature,
   verifyPasskeyEntry,

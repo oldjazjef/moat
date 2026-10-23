@@ -726,6 +726,23 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
     ),
   },
   {
+    name: 'status',
+    method: 'GET',
+    path: '/api/orgs/:orgId/projects/:projectId/status',
+    request: `${PROJECT}/status`,
+    expect: guarded(
+      {
+        owner: 200,
+        admin: 200,
+        editor: 200,
+        viewer: 200,
+        billing: 403,
+        foreign: 404,
+      },
+      false,
+    ),
+  },
+  {
     name: 'preview',
     method: 'GET',
     path: '/api/orgs/:orgId/projects/:projectId/gates/:gate/release',

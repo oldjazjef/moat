@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 
-/** The two pages of a Cloud project, as tabs: its gates and its moat.yaml. */
+/** The pages of a Cloud project, as tabs: its gates, its moat.yaml and its status. */
 @Component({
   selector: 'mt-project-tabs',
   imports: [RouterLink, RouterLinkActive, TranslatePipe],
@@ -47,6 +47,16 @@ export class ProjectTabs {
         'projects',
         project,
         'config',
+      ],
+    },
+    {
+      id: 'status',
+      link: (org: string, project: string) => [
+        '/app/organisations',
+        org,
+        'projects',
+        project,
+        'status',
       ],
     },
   ] as const;

@@ -280,6 +280,61 @@ export class PreviewReleaseQuery extends Query<PreviewReleaseResult> {
   }
 }
 
+export type StatusKind =
+  | 'config_missing'
+  | 'config_invalid'
+  | 'managed_unavailable'
+  | 'no_bundle'
+  | 'bundle_unreadable'
+  | 'bundle_expired'
+  | 'bundle_expiring'
+  | 'release_pending'
+  | 'secrets_missing';
+
+export interface StatusFinding {
+  readonly kind: StatusKind;
+  readonly severity: 'error' | 'warning' | 'info';
+  /** For `secrets_missing`: the secrets the config uses that are not stored yet (names only). */
+  readonly names?: readonly string[];
+}
+
+export interface GateStatus {
+  readonly name: string;
+  readonly mode: GateMode;
+  /** 0 when no bundle yet. */
+  readonly latestVersion: number;
+  /** ISO 8601 UTC; null without a readable bundle. */
+  readonly issuedAt: string | null;
+  /** ISO 8601 UTC; null: the bundle does not expire. */
+  readonly expiresAt: string | null;
+  readonly findings: readonly StatusFinding[];
+}
+
+export type ProjectStatusResult =
+  | {
+      readonly status: 'ok';
+      /** Findings that concern the project as a whole (its moat.yaml, this installation). */
+      readonly project: readonly StatusFinding[];
+      readonly gates: readonly GateStatus[];
+    }
+  | NotFound
+  | Forbidden;
+
+/**
+ * What needs attention in a project, worked out from what Moat Cloud itself stores (FR-51/52):
+ * no gate reports to it, so this says nothing about traffic. A closed list of findings, never a
+ * secret value.
+ */
+export class ProjectStatusQuery extends Query<ProjectStatusResult> {
+  constructor(
+    readonly actorId: string,
+    readonly organisationId: string,
+    readonly projectId: string,
+  ) {
+    super();
+  }
+}
+
 export type ReleaseResult =
   | {
       readonly status: 'ok';

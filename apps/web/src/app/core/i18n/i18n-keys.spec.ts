@@ -62,7 +62,19 @@ const I18N_DIR = fileURLToPath(
 const DYNAMIC_KEYS = [
   ...allHelpKeys(),
   // The Cloud project's tabs and the gates page, built from a value of the API's answer.
-  ...['gates', 'config'].map((tab) => `projectTabs.${tab}`),
+  ...['gates', 'config', 'status'].map((tab) => `projectTabs.${tab}`),
+  ...[
+    'config_missing',
+    'config_invalid',
+    'managed_unavailable',
+    'no_bundle',
+    'bundle_unreadable',
+    'bundle_expired',
+    'bundle_expiring',
+    'release_pending',
+    'secrets_missing',
+  ].map((kind) => `statusPage.findings.${kind}`),
+  ...['error', 'warning', 'info'].map((s) => `statusPage.severity.${s}`),
   ...['route', 'upstream', 'secret', 'lock'].map(
     (kind) => `gatesPage.release.kind.${kind}`,
   ),

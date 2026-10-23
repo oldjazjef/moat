@@ -1,0 +1,129 @@
+<mt-page-header
+  [title]="service.project.hasValue() ? service.project.value().project.name : ('statusPage.title' | translate)"
+  [subtitle]="service.scope.name()"
+>
+  <mt-help-link section="cloudGates" />
+</mt-page-header>
+
+<mt-org-tabs [orgId]="orgId()" [showAudit]="service.scope.can('audit:read')" />
+
+@if (service.scope.entry.error() || service.project.error()) {
+<p class="mt-note" role="alert" data-not-found>
+  <ng-icon
+    name="lucideTriangleAlert"
+    size="16"
+    aria-hidden="true"
+    class="mt-0.5 shrink-0"
+  />
+  <span>{{ 'errors.api.not_found' | translate }}</span>
+</p>
+} @else if (service.scope.access()) {
+<mt-project-tabs [orgId]="orgId()" [projectId]="projectId()" />
+<div class="flex flex-col gap-6">
+  <p class="text-muted-foreground max-w-3xl text-sm" data-status-scope>
+    {{ 'statusPage.description' | translate }}
+  </p>
+
+  @if (service.status.error()) {
+  <p class="mt-note" role="alert" data-load-error>
+    <ng-icon
+      name="lucideTriangleAlert"
+      size="16"
+      aria-hidden="true"
+      class="mt-0.5 shrink-0"
+    />
+    <span>{{ 'statusPage.loadError' | translate }}</span>
+  </p>
+  } @else if (service.status.hasValue()) { @let answer = service.status.value();
+  @if (service.attention() === 0) {
+  <p class="text-sm font-medium" role="status" data-status-ok>
+    {{ 'statusPage.allClear' | translate }}
+  </p>
+  } @else {
+  <p class="text-sm font-medium" role="status" data-status-attention>
+    {{ 'statusPage.attention' | translate: { count: service.attention() } }}
+  </p>
+  } @if (answer.project.length > 0) {
+  <section hlmCard class="max-w-3xl" data-status-project>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>{{ 'statusPage.project' | translate }}</h2>
+    </div>
+    <div hlmCardContent>
+      <ul class="flex flex-col gap-2">
+        @for (finding of answer.project; track finding.kind) {
+        <li class="flex items-start gap-2 text-sm" data-finding>
+          <span
+            hlmBadge
+            variant="outline"
+            [attr.data-severity]="finding.severity"
+            >{{ 'statusPage.severity.' + finding.severity | translate }}</span
+          >
+          <span>{{ 'statusPage.findings.' + finding.kind | translate }}</span>
+        </li>
+        }
+      </ul>
+    </div>
+  </section>
+  } @if (answer.gates.length === 0) {
+  <p class="text-muted-foreground text-sm" data-no-gates>
+    {{ 'statusPage.noGates' | translate }}
+  </p>
+  } @for (gate of answer.gates; track gate.name) {
+  <section
+    hlmCard
+    class="max-w-3xl"
+    data-gate
+    [attr.data-gate-name]="gate.name"
+    [attr.aria-labelledby]="'status-' + gate.name"
+  >
+    <div hlmCardHeader>
+      <h2 hlmCardTitle [id]="'status-' + gate.name">{{ gate.name }}</h2>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-3">
+      <dl class="mt-facts">
+        <dt>{{ 'gatesPage.gate.version' | translate }}</dt>
+        <dd data-version>
+          {{ gate.latestVersion === 0 ? ('gatesPage.gate.noBundle' | translate)
+          : gate.latestVersion }}
+        </dd>
+        @if (gate.issuedAt) {
+        <dt>{{ 'statusPage.issuedAt' | translate }}</dt>
+        <dd data-issued>{{ gate.issuedAt.slice(0, 10) }}</dd>
+        }
+        <dt>{{ 'statusPage.expiresAt' | translate }}</dt>
+        <dd data-expires>
+          {{ gate.expiresAt ? gate.expiresAt.slice(0, 10) :
+          ('statusPage.noExpiry' | translate) }}
+        </dd>
+      </dl>
+      @if (gate.findings.length === 0) {
+      <p class="text-muted-foreground text-sm" data-gate-ok>
+        {{ 'statusPage.gateOk' | translate }}
+      </p>
+      } @else {
+      <ul class="flex flex-col gap-2">
+        @for (finding of gate.findings; track finding.kind) {
+        <li class="flex items-start gap-2 text-sm" data-finding>
+          <span
+            hlmBadge
+            variant="outline"
+            [attr.data-severity]="finding.severity"
+            >{{ 'statusPage.severity.' + finding.severity | translate }}</span
+          >
+          <span>
+            {{ 'statusPage.findings.' + finding.kind | translate }} @if
+            (finding.names && finding.names.length > 0) {
+            <span class="mt-code" data-names
+              >{{ finding.names.join(', ') }}</span
+            >
+            }
+          </span>
+        </li>
+        }
+      </ul>
+      }
+    </div>
+  </section>
+  } }
+</div>
+}

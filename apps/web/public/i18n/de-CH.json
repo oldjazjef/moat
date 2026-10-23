@@ -1168,7 +1168,8 @@
           "secret": "Gib bei «Secret speichern» den Namen und den Wert ein und klicke auf «Versiegeln und speichern»: Der Browser versiegelt den Wert, nur der Geheimtext wird gesendet. Für volle Sicherheit versiegelst du mit «moat secret seal» oder in Moat Desktop und fügst den Text unter «Bereits versiegeltes Secret einfügen» ein.",
           "release": "Klicke bei einem Gate auf «Vorschau». Siehst du, was sich ändert, klicke auf «Freigeben und signieren». Bei einem Gate im Modus «Signiert» lädst du dein signiertes Bundle mit «Bundle hochladen» hoch.",
           "pull": "Erstelle mit «Abholadresse erstellen» die Adresse, von der das Gate sein Bundle holt, und trage sie im Gate ein. Sie wird nur einmal angezeigt.",
-          "remove": "Willst du ein Gate aus dem Projekt entfernen, wähle unter dem Gate «Gate löschen» und dann «Wirklich löschen». Seine versiegelten Secrets, Bundles und die Abrufadresse verschwinden mit; das Gate auf deinem Server läuft mit seinem letzten Bundle weiter."
+          "remove": "Willst du ein Gate aus dem Projekt entfernen, wähle unter dem Gate «Gate löschen» und dann «Wirklich löschen». Seine versiegelten Secrets, Bundles und die Abrufadresse verschwinden mit; das Gate auf deinem Server läuft mit seinem letzten Bundle weiter.",
+          "status": "Unter «Status» siehst du, was Aufmerksamkeit braucht: Gates ohne Bundle, noch nicht freigegebene Änderungen, fehlende Secrets und ablaufende Bundles. Gates melden nichts an Moat Cloud, es gibt also keine Verkehrsdaten."
         },
         "tips": {
           "mode": "«Bequem»: Moat Cloud signiert. Ein Angreifer auf Moat Cloud kann deine Routen innerhalb der lokalen Grenzen des Gates ändern. «Signiert»: du signierst, Moat Cloud legt nur ab. Den Modus wechselst du nur am Gate.",
@@ -1564,7 +1565,8 @@
   "projectTabs": {
     "label": "Seiten des Projekts",
     "gates": "Gates",
-    "config": "Konfiguration"
+    "config": "Konfiguration",
+    "status": "Status"
   },
   "gatesPage": {
     "title": "Gates",
@@ -1672,5 +1674,34 @@
     "saved": "Gespeichert.",
     "reload": "Neu laden",
     "readOnly": "Deine Rolle darf die Konfiguration lesen, aber nicht ändern."
+  },
+  "statusPage": {
+    "title": "Status",
+    "description": "Was in diesem Projekt Aufmerksamkeit braucht, berechnet aus dem, was Moat Cloud selbst speichert: Bundles, Secrets und Konfiguration. Deine Gates melden nichts an Moat Cloud, diese Seite sagt deshalb nichts über Verkehr, Fehler oder Antwortzeiten.",
+    "loadError": "Der Status konnte nicht gelesen werden. Lade die Seite neu.",
+    "allClear": "Nichts braucht Aufmerksamkeit.",
+    "attention": "{{count}} Punkt(e) brauchen Aufmerksamkeit.",
+    "project": "Das Projekt",
+    "noGates": "Dieses Projekt hat noch kein Gate.",
+    "gateOk": "Bei diesem Gate braucht nichts Aufmerksamkeit.",
+    "issuedAt": "Letztes Bundle ausgestellt",
+    "expiresAt": "Letztes Bundle gültig bis",
+    "noExpiry": "läuft nicht ab",
+    "severity": {
+      "error": "Fehler",
+      "warning": "Warnung",
+      "info": "Hinweis"
+    },
+    "findings": {
+      "config_missing": "Das Projekt hat noch keine moat.yaml, deshalb kann kein Bundle signiert werden.",
+      "config_invalid": "Die moat.yaml kann nicht gelesen werden. Korrigiere sie unter «Konfiguration».",
+      "managed_unavailable": "Diese Moat Cloud hat keinen Signaturschlüssel und kann deshalb keine Bundles für Gates im Modus «Bequem» signieren.",
+      "no_bundle": "Für dieses Gate wurde noch kein Bundle freigegeben.",
+      "bundle_unreadable": "Das gespeicherte Bundle kann nicht gelesen werden.",
+      "bundle_expired": "Das letzte Bundle ist abgelaufen. Ein Gate, das den Ablauf beachtet, nimmt es nicht mehr an.",
+      "bundle_expiring": "Das letzte Bundle läuft innerhalb von 14 Tagen ab.",
+      "release_pending": "Die Konfiguration hat sich seit dem letzten Bundle geändert. Gib ein neues frei, damit sie gilt.",
+      "secrets_missing": "Diese Secrets braucht die Konfiguration, sie sind aber noch nicht gespeichert:"
+    }
   }
 }

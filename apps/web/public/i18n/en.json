@@ -1168,7 +1168,8 @@
           "secret": "At “Secret speichern” enter the name and the value and click “Seal and save”: the browser seals the value and only the ciphertext is sent. For full security seal with “moat secret seal” or in Moat Desktop and paste the text under “Paste an already sealed secret”.",
           "release": "Click “Preview” on a gate. When you see what changes, click “Release and sign”. For a gate in the “Signed” mode you upload your signed bundle with “Upload bundle”.",
           "pull": "Use “Create pull address” to make the address the gate fetches its bundle from, and enter it in the gate. It is shown only once.",
-          "remove": "To remove a gate from the project, use “Delete gate” and then “Really delete” under the gate. Its sealed secrets, bundles and pull address go with it; the gate on your server keeps running with its last bundle."
+          "remove": "To remove a gate from the project, use “Delete gate” and then “Really delete” under the gate. Its sealed secrets, bundles and pull address go with it; the gate on your server keeps running with its last bundle.",
+          "status": "Under “Status” you see what needs attention: gates without a bundle, changes not released yet, missing secrets and expiring bundles. Gates report nothing to Moat Cloud, so there is no traffic data."
         },
         "tips": {
           "mode": "“Convenient”: Moat Cloud signs. An attacker on Moat Cloud can change your routes within the gate's local limits. “Signed”: you sign, Moat Cloud only stores. You change the mode only at the gate.",
@@ -1564,7 +1565,8 @@
   "projectTabs": {
     "label": "Pages of the project",
     "gates": "Gates",
-    "config": "Configuration"
+    "config": "Configuration",
+    "status": "Status"
   },
   "gatesPage": {
     "title": "Gates",
@@ -1672,5 +1674,34 @@
     "saved": "Saved.",
     "reload": "Reload",
     "readOnly": "Your role may read the configuration but not change it."
+  },
+  "statusPage": {
+    "title": "Status",
+    "description": "What needs attention in this project, worked out from what Moat Cloud itself stores: bundles, secrets and the configuration. Your gates report nothing to Moat Cloud, so this page says nothing about traffic, errors or response times.",
+    "loadError": "The status could not be read. Reload the page.",
+    "allClear": "Nothing needs attention.",
+    "attention": "{{count}} point(s) need attention.",
+    "project": "The project",
+    "noGates": "This project has no gate yet.",
+    "gateOk": "Nothing needs attention at this gate.",
+    "issuedAt": "Latest bundle issued",
+    "expiresAt": "Latest bundle valid until",
+    "noExpiry": "does not expire",
+    "severity": {
+      "error": "Error",
+      "warning": "Warning",
+      "info": "Note"
+    },
+    "findings": {
+      "config_missing": "The project has no moat.yaml yet, so no bundle can be signed.",
+      "config_invalid": "The moat.yaml cannot be read. Fix it under “Configuration”.",
+      "managed_unavailable": "This Moat Cloud has no signing key, so it cannot sign bundles for gates in “Convenient” mode.",
+      "no_bundle": "No bundle has been released for this gate yet.",
+      "bundle_unreadable": "The stored bundle cannot be read.",
+      "bundle_expired": "The latest bundle has expired. A gate that honours expiry stops accepting it.",
+      "bundle_expiring": "The latest bundle expires within 14 days.",
+      "release_pending": "The configuration changed since the latest bundle. Release a new one to apply it.",
+      "secrets_missing": "These secrets are used by the configuration but not stored yet:"
+    }
   }
 }

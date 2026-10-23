@@ -27,6 +27,13 @@ const routes: Routes = [
       ),
   },
   {
+    path: ':orgId/projects/:projectId/status',
+    loadComponent: () =>
+      import('./pages/project-status-page/project-status-page').then(
+        (m) => m.ProjectStatusPage,
+      ),
+  },
+  {
     path: ':orgId/projects/:projectId/config',
     loadComponent: () =>
       import('./pages/project-config-page/project-config-page').then(

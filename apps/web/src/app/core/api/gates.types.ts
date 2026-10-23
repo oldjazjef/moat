@@ -67,3 +67,36 @@ export interface ReleasePreview {
   readonly changes: readonly BundleChange[];
   readonly digest: string;
 }
+
+/** What needs attention in a project, as `GET …/status` answers it (FR-51/52). */
+export type StatusKind =
+  | 'config_missing'
+  | 'config_invalid'
+  | 'managed_unavailable'
+  | 'no_bundle'
+  | 'bundle_unreadable'
+  | 'bundle_expired'
+  | 'bundle_expiring'
+  | 'release_pending'
+  | 'secrets_missing';
+
+export interface StatusFinding {
+  readonly kind: StatusKind;
+  readonly severity: 'error' | 'warning' | 'info';
+  /** For `secrets_missing`: names of the secrets not stored yet. */
+  readonly names?: readonly string[];
+}
+
+export interface GateStatus {
+  readonly name: string;
+  readonly mode: GateMode;
+  readonly latestVersion: number;
+  readonly issuedAt: string | null;
+  readonly expiresAt: string | null;
+  readonly findings: readonly StatusFinding[];
+}
+
+export interface ProjectStatus {
+  readonly project: readonly StatusFinding[];
+  readonly gates: readonly GateStatus[];
+}

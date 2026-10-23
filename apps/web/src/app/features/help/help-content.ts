@@ -107,7 +107,15 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     // Moat Cloud: a project's configuration, gates, sealed secrets, release and pull address.
     id: 'cloudGates',
     only: 'cloud',
-    steps: items('config', 'gate', 'secret', 'release', 'pull', 'remove'),
+    steps: items(
+      'config',
+      'gate',
+      'secret',
+      'release',
+      'pull',
+      'status',
+      'remove',
+    ),
     tips: items('mode', 'signer', 'sealed', 'rotation'),
     links: [{ id: 'organisations', path: '/app/organisations', only: 'cloud' }],
   },

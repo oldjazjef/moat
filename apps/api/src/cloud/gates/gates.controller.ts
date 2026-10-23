@@ -19,6 +19,8 @@ import { CurrentPrincipal } from '../auth/auth.http';
 import { ConfigEditDto, toConfigEdit } from '../../project/dto/config-edit.dto';
 import type {
   ConfigView,
+  GateStatus,
+  StatusFinding,
   GateView,
   ReleasePreview,
   SecretView,
@@ -184,6 +186,22 @@ export class GatesController {
     );
     if (r.status !== 'ok') refuse(r);
     return { url: r.url };
+  }
+
+  /** What needs attention, from what Moat Cloud stores (no traffic: gates report nothing). */
+  @Get('status')
+  @Header('Cache-Control', 'no-store')
+  async status(
+    @CurrentPrincipal() me: Principal,
+    @Param('orgId') org: string,
+    @Param('projectId') project: string,
+  ): Promise<{
+    project: readonly StatusFinding[];
+    gates: readonly GateStatus[];
+  }> {
+    const r = await this.gates.projectStatus(me.accountId, org, project);
+    if (r.status !== 'ok') refuse(r);
+    return { project: r.project, gates: r.gates };
   }
 
   @Get('gates/:gate/secrets')
