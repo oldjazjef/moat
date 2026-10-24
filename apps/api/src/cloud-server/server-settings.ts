@@ -60,6 +60,7 @@ export const SECRET_FILE_VARIABLES = [
   'MOAT_DATABASE_URL',
   'MOAT_SIGNING_KEY',
   'MOAT_SMTP_PASSWORD',
+  'MOAT_OIDC_PROVIDERS',
 ] as const;
 
 /**

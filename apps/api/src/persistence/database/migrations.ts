@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import postgresOidc from '../../../prisma/postgresql/migrations/20261022120000_oidc/migration.sql?raw';
+import sqliteOidc from '../../../prisma/sqlite/migrations/20261022120000_oidc/migration.sql?raw';
 import postgresPasskeys from '../../../prisma/postgresql/migrations/20261021120000_account_passkeys/migration.sql?raw';
 import sqlitePasskeys from '../../../prisma/sqlite/migrations/20261021120000_account_passkeys/migration.sql?raw';
 import postgresRemove from '../../../prisma/postgresql/migrations/20261020120000_audit_gate_remove/migration.sql?raw';
@@ -45,6 +47,7 @@ export const MIGRATIONS: Readonly<Record<Dialect, readonly Migration[]>> = {
     migration('20261019120000_cloud_mail', sqliteMail),
     migration('20261020120000_audit_gate_remove', sqliteRemove),
     migration('20261021120000_account_passkeys', sqlitePasskeys),
+    migration('20261022120000_oidc', sqliteOidc),
   ],
   postgresql: [
     migration('20261014120000_init', postgresInit),
@@ -54,6 +57,7 @@ export const MIGRATIONS: Readonly<Record<Dialect, readonly Migration[]>> = {
     migration('20261019120000_cloud_mail', postgresMail),
     migration('20261020120000_audit_gate_remove', postgresRemove),
     migration('20261021120000_account_passkeys', postgresPasskeys),
+    migration('20261022120000_oidc', postgresOidc),
   ],
 };
 
@@ -86,5 +90,8 @@ export const MOAT_TABLES = [
   // Account passkeys (20261021120000_account_passkeys).
   'account_passkey',
   'webauthn_challenge',
+  // Single sign-on (20261022120000_oidc).
+  'account_identity',
+  'oidc_login',
 ] as const;
 export const MIGRATIONS_TABLE = '_prisma_migrations';

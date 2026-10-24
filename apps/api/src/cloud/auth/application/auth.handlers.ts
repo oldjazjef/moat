@@ -6,6 +6,11 @@ import {
 } from '@nestjs/cqrs';
 import { Clock, iso, newId } from '../../common/clock';
 import {
+  type IdentityRecord,
+  OidcRepositoryPort,
+} from '../../oidc/ports/oidc.ports';
+import {
+  hasPassword,
   normaliseEmail,
   PASSWORD_INPUT_MAX_BYTES,
   passwordProblem,
@@ -26,6 +31,7 @@ import {
   RECOVERY_CODE_COUNT,
 } from '../domain/totp';
 import {
+  type AccountRecord,
   AccountRepositoryPort,
   AccountTokenPort,
   PasskeyRepositoryPort,
@@ -134,6 +140,7 @@ export class LoginHandler implements ICommandHandler<LoginCommand> {
     private readonly passkeys: PasskeyRepositoryPort,
     private readonly passkeyService: PasskeyService,
     private readonly gate: LoginGate,
+    private readonly oidc: OidcRepositoryPort,
   ) {}
 
   async execute(command: LoginCommand): Promise<LoginResult> {
@@ -191,11 +198,10 @@ export class LoginHandler implements ICommandHandler<LoginCommand> {
     return {
       status: 'ok',
       account: view(
-        account.id,
-        account.email,
-        account.createdAt,
+        account,
         enabled,
         passkeyCount,
+        await this.oidc.identitiesOf(account.id),
       ),
       session,
     };
@@ -242,6 +248,7 @@ export class GetMeHandler implements IQueryHandler<GetMeQuery> {
   constructor(
     private readonly accounts: AccountRepositoryPort,
     private readonly passkeys: PasskeyRepositoryPort,
+    private readonly oidc: OidcRepositoryPort,
   ) {}
 
   async execute(query: GetMeQuery): Promise<AccountView | null> {
@@ -249,11 +256,10 @@ export class GetMeHandler implements IQueryHandler<GetMeQuery> {
     if (account === null) return null;
     const totp = await this.accounts.totp(account.id);
     return view(
-      account.id,
-      account.email,
-      account.createdAt,
+      account,
       totp !== null && totp.enabledAt !== null,
       (await this.passkeys.list(account.id)).length,
+      await this.oidc.identitiesOf(account.id),
     );
   }
 }
@@ -443,14 +449,21 @@ export class DisableTotpHandler implements ICommandHandler<DisableTotpCommand> {
   }
 }
 
-function view(
-  id: string,
-  email: string,
-  createdAt: string,
+export function view(
+  account: AccountRecord,
   totpEnabled: boolean,
   passkeyCount: number,
+  identities: readonly IdentityRecord[],
 ): AccountView {
-  return { id, email, totpEnabled, passkeyCount, createdAt };
+  return {
+    id: account.id,
+    email: account.email,
+    totpEnabled,
+    passkeyCount,
+    hasPassword: hasPassword(account.passwordHash),
+    identities: identities.map((identity) => identity.provider),
+    createdAt: account.createdAt,
+  };
 }
 
 export const AUTH_HANDLERS = [

@@ -31,6 +31,12 @@ export const LOGIN_FAILURES_PER_ACCOUNT: Policy = {
   limit: 10,
   windowMs: 15 * MINUTE,
 };
+/** Starting and finishing a single sign-in from one address (each costs a call to the provider). */
+export const OIDC_PER_IP: Policy = {
+  scope: 'oidc-ip',
+  limit: 60,
+  windowMs: 15 * MINUTE,
+};
 export const REGISTER_PER_IP: Policy = {
   scope: 'register-ip',
   limit: 10,

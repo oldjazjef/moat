@@ -15,6 +15,10 @@ export interface AccountView {
   readonly totpEnabled: boolean;
   /** How many passkeys the account has (a second factor next to TOTP). */
   readonly passkeyCount: number;
+  /** False for an account made by single sign-on that never set a password. */
+  readonly hasPassword: boolean;
+  /** The single sign-on providers linked to the account (ids, in the order linked). */
+  readonly identities: readonly string[];
   readonly createdAt: string;
 }
 

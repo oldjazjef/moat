@@ -223,6 +223,30 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
     body: { email: 'ownera@example.ch', password: CLOUD_MATRIX_PASSWORD },
     expect: open(409, true),
   },
+  { method: 'GET', path: '/api/auth/oidc/providers', expect: open(200, false) },
+  {
+    // No provider is configured in this matrix: the start answers a plain 404.
+    name: 'start single sign-in',
+    method: 'GET',
+    path: '/api/auth/oidc/:provider/start',
+    request: '/api/auth/oidc/entra/start',
+    expect: open(404, false),
+  },
+  {
+    // Without a login in progress the way back ends at the sign-in page with a fixed code.
+    name: 'single sign-in callback',
+    method: 'GET',
+    path: '/api/auth/oidc/callback',
+    expect: open(302, false),
+  },
+  {
+    name: 'link a provider',
+    method: 'POST',
+    path: '/api/auth/oidc/:provider/link',
+    request: '/api/auth/oidc/entra/link',
+    body: { password: CLOUD_MATRIX_PASSWORD },
+    expect: accountRoute(404, true),
+  },
   { method: 'POST', path: '/api/auth/logout', expect: accountRoute(204, true) },
   { method: 'GET', path: '/api/auth/me', expect: accountRoute(200, false) },
   {

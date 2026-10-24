@@ -64,6 +64,16 @@ const DYNAMIC_KEYS = [
   // The Cloud project's tabs and the gates page, built from a value of the API's answer.
   ...['gates', 'config', 'status'].map((tab) => `projectTabs.${tab}`),
   ...['cancelled', 'failed'].map((problem) => `auth.login.passkey.${problem}`),
+  ...['failed', 'email_unverified', 'email_taken', 'identity_taken'].map(
+    (code) => `auth.login.sso.errors.${code}`,
+  ),
+  ...[
+    'linked',
+    'failed',
+    'identity_taken',
+    'email_unverified',
+    'email_taken',
+  ].map((code) => `account.sso.results.${code}`),
   ...[
     'config_missing',
     'config_invalid',

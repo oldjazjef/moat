@@ -22,6 +22,7 @@ export const API_ERROR_CODES = [
   'passkey_exists',
   'passkey_invalid',
   'challenge_invalid',
+  'sso_unavailable',
   'email_invalid',
   'password_too_short',
   'password_too_long',

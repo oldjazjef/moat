@@ -151,3 +151,9 @@ export class RemovePasskeyDto {
   @MaxLength(1024)
   password!: string;
 }
+
+export class LinkOidcDto {
+  @IsString()
+  @MaxLength(1024)
+  password!: string;
+}

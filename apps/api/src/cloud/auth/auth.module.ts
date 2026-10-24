@@ -13,18 +13,64 @@ import { PasswordHasher } from './application/password-hasher';
 import { SecondFactor } from './application/second-factor';
 import { SessionIssuer } from './application/session-issuer';
 import { TotpVault } from './application/totp-vault';
+import {
+  OIDC_HANDLERS,
+  OidcProviders,
+} from '../oidc/application/oidc.handlers';
+import { FetchOidcHttp, OidcHttp } from '../oidc/application/oidc-http';
+import { OidcClient } from '../oidc/application/oidc-client';
+import { parseOidcProviders } from '../oidc/domain/providers';
+import { OidcController } from '../oidc/oidc.controller';
+import { OidcService } from '../oidc/oidc.service';
+import { Clock } from '../common/clock';
 import { AuthController } from './auth.controller';
 import { AuthGuard, CsrfGuard } from './auth.http';
 import { AuthService } from './auth.service';
 
 @Module({
   imports: [CqrsModule],
-  controllers: [AuthController],
+  controllers: [AuthController, OidcController],
   providers: [
     AuthService,
     ...AUTH_HANDLERS,
     ...MAIL_HANDLERS,
     ...PASSKEY_HANDLERS,
+    ...OIDC_HANDLERS,
+    OidcService,
+    {
+      provide: OidcProviders,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env, true>) =>
+        new OidcProviders(
+          parseOidcProviders(
+            config.get('MOAT_OIDC_PROVIDERS', { infer: true }),
+            config.get('NODE_ENV', { infer: true }) !== 'production',
+          ),
+          `${config.get('MOAT_PUBLIC_ORIGIN', { infer: true })}/api/auth/oidc/callback`,
+        ),
+    },
+    {
+      provide: OidcHttp,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env, true>) =>
+        new FetchOidcHttp(
+          config.get('NODE_ENV', { infer: true }) !== 'production',
+        ),
+    },
+    {
+      provide: OidcClient,
+      inject: [OidcHttp, Clock, ConfigService],
+      useFactory: (
+        http: OidcHttp,
+        clock: Clock,
+        config: ConfigService<Env, true>,
+      ) =>
+        new OidcClient(
+          http,
+          clock,
+          config.get('NODE_ENV', { infer: true }) !== 'production',
+        ),
+    },
     SessionIssuer,
     SecondFactor,
     LoginGate,

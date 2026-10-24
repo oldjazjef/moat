@@ -133,6 +133,7 @@ describe.skipIf(process.env['MOAT_TEST_POSTGRES'] === 'off')(
         { migration_name: '20261019120000_cloud_mail' },
         { migration_name: '20261020120000_audit_gate_remove' },
         { migration_name: '20261021120000_account_passkeys' },
+        { migration_name: '20261022120000_oidc' },
       ]);
     });
 

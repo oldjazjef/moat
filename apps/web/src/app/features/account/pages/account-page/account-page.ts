@@ -1,4 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+} from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideTriangleAlert } from '@ng-icons/lucide';
@@ -14,6 +19,7 @@ import { PageHeader } from '../../../../shared/components/page-header';
 import { RichText } from '../../../../shared/components/rich-text';
 import { HelpLink } from '../../../help/components/help-link';
 import { PasskeysSection } from '../../components/passkeys-section';
+import { SsoSection } from '../../components/sso-section';
 import { AccountPageService } from './account-page.service';
 
 @Component({
@@ -26,6 +32,7 @@ import { AccountPageService } from './account-page.service';
     RichText,
     HelpLink,
     PasskeysSection,
+    SsoSection,
     HlmBadge,
     ...HlmButtonImports,
     ...HlmCardImports,
@@ -37,6 +44,8 @@ import { AccountPageService } from './account-page.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountPage {
+  /** `?sso=` — how the way back from a provider ended (a fixed list). */
+  readonly sso = input<string>();
   protected readonly service = inject(AccountPageService);
   protected readonly errorKey = apiErrorKey;
   protected readonly min = PASSWORD_MIN;

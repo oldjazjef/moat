@@ -13,6 +13,7 @@ import { CloudDatabase } from './cloud-database';
 import {
   PrismaAccountRepository,
   PrismaAccountTokenRepository,
+  PrismaOidcRepository,
   PrismaPasskeyRepository,
   PrismaRateLimit,
   PrismaSessionRepository,
@@ -57,6 +58,7 @@ for (const provider of ['sqlite', 'postgresql'] as const) {
     let tokens: PrismaAccountTokenRepository;
     let invitations: PrismaInvitationRepository;
     let passkeys: PrismaPasskeyRepository;
+    let oidc: PrismaOidcRepository;
     // No PostgreSQL server on this machine and no MOAT_TEST_POSTGRES_URL: the specs return early.
     const unavailable = () => provider === 'postgresql' && pg === null;
 
@@ -81,10 +83,78 @@ for (const provider of ['sqlite', 'postgresql'] as const) {
       tokens = new PrismaAccountTokenRepository(database);
       invitations = new PrismaInvitationRepository(database);
       passkeys = new PrismaPasskeyRepository(database);
+      oidc = new PrismaOidcRepository(database);
     }, 120_000);
 
     afterAll(async () => {
       await database?.onApplicationShutdown();
+    });
+
+    it('keeps single sign-on identities unique per provider and subject, and logins single-use', async () => {
+      if (unavailable()) return;
+      const a = account('sso-a@example.ch');
+      const b = account('sso-b@example.ch');
+      await accounts.create(a);
+      await accounts.create(b);
+      const identity = (accountId: string, subject: string) => ({
+        id: newId(),
+        accountId,
+        provider: 'entra',
+        subject,
+        createdAt: AT,
+        lastLoginAt: null,
+      });
+      expect(await oidc.addIdentity(identity(a.id, 'sub-1'))).toBe('ok');
+      expect(await oidc.addIdentity(identity(b.id, 'sub-1'))).toBe('taken');
+      expect(
+        await oidc.addIdentity({
+          ...identity(b.id, 'sub-1'),
+          provider: 'other',
+        }),
+      ).toBe('ok');
+      const found = await oidc.findIdentity('entra', 'sub-1');
+      expect(found?.accountId).toBe(a.id);
+      await oidc.touchIdentity(found?.id ?? '', AT);
+      expect((await oidc.identitiesOf(a.id))[0]?.lastLoginAt).toBe(AT);
+      expect(await oidc.findIdentity('entra', 'missing')).toBeNull();
+
+      const login = {
+        id: '4'.repeat(64),
+        provider: 'entra',
+        purpose: 'login' as const,
+        accountId: null,
+        nonce: 'n'.repeat(43),
+        verifier: 'v'.repeat(43),
+        browserHash: '5'.repeat(64),
+        createdAt: AT,
+        expiresAt: '2026-10-15T12:10:00.000Z',
+      };
+      await oidc.issueLogin(login);
+      expect(
+        await oidc.consumeLogin(login.id, '2026-10-15T12:11:00.000Z'),
+      ).toBeNull();
+      await oidc.issueLogin({ ...login, id: '6'.repeat(64) });
+      expect(await oidc.consumeLogin('6'.repeat(64), AT)).toMatchObject({
+        provider: 'entra',
+        purpose: 'login',
+      });
+      expect(await oidc.consumeLogin('6'.repeat(64), AT)).toBeNull();
+      // A link needs its account, a login must not have one (CHECK).
+      await expect(
+        oidc.issueLogin({ ...login, id: '7'.repeat(64), purpose: 'link' }),
+      ).rejects.toThrow();
+      await expect(
+        oidc.issueLogin({ ...login, id: '8'.repeat(64), accountId: a.id }),
+      ).rejects.toThrow();
+      await oidc.issueLogin({
+        ...login,
+        id: '9'.repeat(64),
+        purpose: 'link',
+        accountId: a.id,
+      });
+      expect((await oidc.consumeLogin('9'.repeat(64), AT))?.accountId).toBe(
+        a.id,
+      );
     });
 
     it('keeps passkeys: unique credentials, a limit, a counter that must rise, cascade with the account', async () => {

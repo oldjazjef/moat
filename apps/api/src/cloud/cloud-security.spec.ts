@@ -221,7 +221,9 @@ describe('sessions (SEC-51, T-80)', () => {
     expect(Object.keys(me.account).sort()).toEqual([
       'createdAt',
       'email',
+      'hasPassword',
       'id',
+      'identities',
       'passkeyCount',
       'totpEnabled',
     ]);

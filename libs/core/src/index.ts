@@ -33,6 +33,15 @@ export {
   type VerificationContext,
   type VerifiedBundle,
 } from './bundle/bundle';
+export {
+  IdTokenError,
+  MAX_ID_TOKEN_BYTES,
+  pkceChallenge,
+  verifyIdToken,
+  type IdTokenClaims,
+  type IdTokenExpectation,
+  type Jwk,
+} from './oidc/id-token';
 export { readBundleTimes, type BundleTimes } from './bundle/bundle-times';
 export {
   decodeCbor,

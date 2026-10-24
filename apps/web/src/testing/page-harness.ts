@@ -75,7 +75,11 @@ export async function openPage(
     const pending = http.match(() => true);
     quiet = pending.length === 0 ? quiet + 1 : 0;
     for (const request of pending) {
-      const answer = answers[request.request.url];
+      const answer =
+        answers[request.request.url] ??
+        (request.request.url === '/api/auth/oidc/providers'
+          ? { providers: [] }
+          : undefined);
       if (answer === undefined) {
         throw new Error(`Unexpected request ${request.request.url}`);
       }

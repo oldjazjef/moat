@@ -14,6 +14,9 @@
     </div>
   </div>
 
+  <mt-sso-section [result]="sso()" />
+
+  @if (service.account()?.hasPassword) {
   <section hlmCard data-password aria-labelledby="account-password">
     <div hlmCardHeader>
       <h2 hlmCardTitle id="account-password">
@@ -311,4 +314,9 @@
     }
   </section>
   <mt-passkeys-section />
+  } @else {
+  <p class="mt-note" data-no-password>
+    {{ 'account.sso.noPassword' | translate }}
+  </p>
+  }
 </div>

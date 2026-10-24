@@ -90,10 +90,11 @@ function setup(mailEnabled = false) {
       pk.passkeys,
       pk.service,
       new LoginGate(accounts, hasher, limiter, kit.mails),
+      pk.oidc,
     ),
     logout: new LogoutHandler(sessions, clock),
     authenticate: new AuthenticateSessionHandler(sessions, clock),
-    me: new GetMeHandler(accounts, pk.passkeys),
+    me: new GetMeHandler(accounts, pk.passkeys, pk.oidc),
     change: new ChangePasswordHandler(
       accounts,
       sessions,
@@ -260,7 +261,9 @@ describe('login (SEC-51, T-79)', () => {
     expect(Object.keys(result.account).sort()).toEqual([
       'createdAt',
       'email',
+      'hasPassword',
       'id',
+      'identities',
       'passkeyCount',
       'totpEnabled',
     ]);

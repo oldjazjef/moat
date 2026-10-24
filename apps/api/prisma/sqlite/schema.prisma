@@ -121,6 +121,8 @@ model Account {
   tokens            AccountToken[]
   passkeys          AccountPasskey[]
   challenges        WebauthnChallenge[]
+  identities        AccountIdentity[]
+  oidcLogins        OidcLogin[]
   totp              AccountTotp?
   recoveryCodes     RecoveryCode[]
   sessions          Session[]
@@ -143,6 +145,40 @@ model AccountToken {
 
   @@index([accountId, purpose])
   @@map("account_token")
+}
+
+/// An identity at an OpenID Connect provider, linked to an account (the provider's `sub`, never the address).
+model AccountIdentity {
+  id          String   @id
+  accountId   String   @map("account_id")
+  /// The provider's id from MOAT_OIDC_PROVIDERS.
+  provider    String
+  subject     String
+  createdAt   String   @map("created_at")
+  lastLoginAt String?  @map("last_login_at")
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@index([accountId])
+  @@map("account_identity")
+}
+
+/// A sign-in or link in progress: SHA-256 of `state`, nonce, PKCE verifier, hash of the browser cookie.
+model OidcLogin {
+  id          String   @id
+  provider    String
+  /// login | link
+  purpose     String
+  accountId   String?  @map("account_id")
+  nonce       String
+  verifier    String
+  browserHash String   @map("browser_hash")
+  createdAt   String   @map("created_at")
+  expiresAt   String   @map("expires_at")
+  account     Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("oidc_login")
 }
 
 /// A passkey (WebAuthn, ES256) of an account: a second factor next to TOTP. Public data only.

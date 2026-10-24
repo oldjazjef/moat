@@ -30,6 +30,11 @@ import {
   type TotpRecord,
 } from '../auth/ports/auth.ports';
 import { Clock } from '../common/clock';
+import {
+  type IdentityRecord,
+  type OidcLoginRecord,
+  OidcRepositoryPort,
+} from '../oidc/ports/oidc.ports';
 import type { Role } from '../tenancy/domain/permissions';
 import {
   type AddMemberOutcome,
@@ -646,5 +651,52 @@ export class InMemoryPasskeys extends PasskeyRepositoryPort {
     if (at < 0) return Promise.resolve(false);
     this.challenges.splice(at, 1);
     return Promise.resolve(true);
+  }
+}
+
+export class InMemoryOidc extends OidcRepositoryPort {
+  readonly identities: IdentityRecord[] = [];
+  readonly logins: OidcLoginRecord[] = [];
+  findIdentity(provider: string, subject: string) {
+    return Promise.resolve(
+      this.identities.find(
+        (i) => i.provider === provider && i.subject === subject,
+      ) ?? null,
+    );
+  }
+  identitiesOf(accountId: string) {
+    return Promise.resolve(
+      this.identities.filter((i) => i.accountId === accountId),
+    );
+  }
+  addIdentity(identity: IdentityRecord): Promise<'ok' | 'taken'> {
+    if (
+      this.identities.some(
+        (i) =>
+          i.provider === identity.provider && i.subject === identity.subject,
+      )
+    )
+      return Promise.resolve('taken');
+    this.identities.push(identity);
+    return Promise.resolve('ok');
+  }
+  touchIdentity(id: string, at: string) {
+    const i = this.identities.findIndex((x) => x.id === id);
+    const current = this.identities[i];
+    if (current) this.identities[i] = { ...current, lastLoginAt: at };
+    return Promise.resolve();
+  }
+  issueLogin(login: OidcLoginRecord) {
+    for (let i = this.logins.length - 1; i >= 0; i -= 1)
+      if ((this.logins[i]?.expiresAt ?? '') <= login.createdAt)
+        this.logins.splice(i, 1);
+    this.logins.push(login);
+    return Promise.resolve();
+  }
+  consumeLogin(id: string, now: string) {
+    const at = this.logins.findIndex((l) => l.id === id);
+    if (at < 0) return Promise.resolve(null);
+    const [row] = this.logins.splice(at, 1);
+    return Promise.resolve(row && row.expiresAt > now ? row : null);
   }
 }

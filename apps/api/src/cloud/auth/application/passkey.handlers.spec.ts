@@ -96,6 +96,7 @@ function setup(origin = PASSKEY_ORIGIN) {
       pk.passkeys,
       pk.service,
       gate,
+      pk.oidc,
     ),
     challenge: new PasskeyLoginChallengeHandler(gate, pk.passkeys, pk.service),
     begin: new BeginPasskeyHandler(
@@ -115,7 +116,7 @@ function setup(origin = PASSKEY_ORIGIN) {
       sessions,
       clock,
     ),
-    me: new GetMeHandler(accounts, pk.passkeys),
+    me: new GetMeHandler(accounts, pk.passkeys, pk.oidc),
     enrol: new EnrolTotpHandler(accounts, hasher, vault, limiter, clock),
     confirm: new ConfirmTotpHandler(accounts, factor, limiter, clock),
     issuer,

@@ -1,4 +1,5 @@
 import { plainToInstance } from 'class-transformer';
+import { parseOidcProviders } from '../cloud/oidc/domain/providers';
 import {
   IsEnum,
   IsIn,
@@ -176,6 +177,16 @@ export class Env {
   )
   MOAT_MAIL_FROM?: string;
 
+  /**
+   * Single sign-on providers: a JSON array of `{id, name, issuer, clientId, clientSecret}` (see
+   * `parseOidcProviders`). Also readable from `MOAT_OIDC_PROVIDERS_FILE`, which keeps the client
+   * secrets out of the environment. Unset = no single sign-on.
+   */
+  @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
+  @IsOptional()
+  @IsString()
+  MOAT_OIDC_PROVIDERS?: string;
+
   /** How many reverse proxies sit in front (X-Forwarded-For hops); 0 = none, the socket address. */
   @ValidateIf((env: Env) => env.AUTH_MODE === 'cloud')
   @IsOptional()
@@ -215,6 +226,14 @@ export function validateEnv(config: Record<string, unknown>): Env {
       env.MOAT_SMTP_USER !== undefined
     )
       names.push('MOAT_SMTP_HOST');
+    try {
+      parseOidcProviders(
+        env.MOAT_OIDC_PROVIDERS,
+        env.NODE_ENV !== NodeEnv.Production,
+      );
+    } catch {
+      names.push('MOAT_OIDC_PROVIDERS');
+    }
     if (env.NODE_ENV === NodeEnv.Production) {
       // Development conveniences must not reach production.
       if (env.MOAT_COOKIE_SECURE !== 'true') names.push('MOAT_COOKIE_SECURE');

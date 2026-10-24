@@ -91,6 +91,7 @@ async function setup(mailEnabled: boolean) {
       pk.passkeys,
       pk.service,
       new LoginGate(accounts, hasher, limiter, kit.mails),
+      pk.oidc,
     ),
     change: new ChangePasswordHandler(
       accounts,

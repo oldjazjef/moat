@@ -42,6 +42,16 @@
       <p class="mt-note" role="status" data-resent>
         {{ 'auth.login.resent' | translate }}
       </p>
+      } @if (ssoError(); as problem) {
+      <p class="mt-note" role="alert" data-sso-error>
+        <ng-icon
+          name="lucideTriangleAlert"
+          size="16"
+          aria-hidden="true"
+          class="mt-0.5 shrink-0"
+        />
+        <span>{{ 'auth.login.sso.errors.' + problem | translate }}</span>
+      </p>
       } @if (!service.needsCode()) {
       <div class="flex flex-col gap-1.5">
         <label hlmLabel for="login-email"
@@ -72,7 +82,25 @@
           formControlName="password"
         />
       </div>
-      } @else { @if (service.passkeyProblem(); as problem) {
+      @if (service.providers.hasValue() &&
+      service.providers.value().providers.length > 0) {
+      <div class="flex flex-col gap-2" data-sso>
+        <p class="text-muted-foreground text-xs">
+          {{ 'auth.login.sso.or' | translate }}
+        </p>
+        @for (provider of service.providers.value().providers; track
+        provider.id) {
+        <a
+          hlmBtn
+          variant="outline"
+          data-sso-provider
+          [attr.data-provider]="provider.id"
+          [href]="service.startUrl(provider.id)"
+          >{{ 'auth.login.sso.with' | translate: { name: provider.name } }}</a
+        >
+        }
+      </div>
+      } } @else { @if (service.passkeyProblem(); as problem) {
       <p class="mt-note" role="alert" data-passkey-problem>
         <ng-icon
           name="lucideTriangleAlert"

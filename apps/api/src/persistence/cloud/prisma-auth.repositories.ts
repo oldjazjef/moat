@@ -16,6 +16,12 @@ import {
   type TotpRecord,
 } from '../../cloud/auth/ports/auth.ports';
 import { iso } from '../../cloud/common/clock';
+import {
+  type IdentityRecord,
+  type LoginPurpose,
+  type OidcLoginRecord,
+  OidcRepositoryPort,
+} from '../../cloud/oidc/ports/oidc.ports';
 import { CloudDatabase } from './cloud-database';
 
 function isUniqueViolation(error: unknown): boolean {
@@ -382,5 +388,69 @@ export class PrismaPasskeyRepository extends PasskeyRepositoryPort {
       where: { id, accountId, purpose, expiresAt: { gt: now } },
     });
     return used.count === 1;
+  }
+}
+
+@Injectable()
+export class PrismaOidcRepository extends OidcRepositoryPort {
+  constructor(private readonly database: CloudDatabase) {
+    super();
+  }
+
+  private get db() {
+    return this.database.client;
+  }
+
+  findIdentity(
+    provider: string,
+    subject: string,
+  ): Promise<IdentityRecord | null> {
+    return this.db.accountIdentity.findUnique({
+      where: { provider_subject: { provider, subject } },
+    });
+  }
+
+  identitiesOf(accountId: string): Promise<readonly IdentityRecord[]> {
+    return this.db.accountIdentity.findMany({
+      where: { accountId },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  async addIdentity(identity: IdentityRecord): Promise<'ok' | 'taken'> {
+    try {
+      await this.db.accountIdentity.create({ data: { ...identity } });
+      return 'ok';
+    } catch (error) {
+      if (isUniqueViolation(error)) return 'taken';
+      throw error;
+    }
+  }
+
+  async touchIdentity(id: string, at: string): Promise<void> {
+    await this.db.accountIdentity.updateMany({
+      where: { id },
+      data: { lastLoginAt: at },
+    });
+  }
+
+  async issueLogin(login: OidcLoginRecord): Promise<void> {
+    await this.db.$transaction([
+      this.db.oidcLogin.deleteMany({
+        where: { expiresAt: { lte: login.createdAt } },
+      }),
+      this.db.oidcLogin.create({ data: { ...login } }),
+    ]);
+  }
+
+  async consumeLogin(id: string, now: string): Promise<OidcLoginRecord | null> {
+    return this.db.$transaction(async (tx) => {
+      const row = await tx.oidcLogin.findUnique({ where: { id } });
+      if (row === null) return null;
+      // The delete decides: only one of two racing callbacks gets the row.
+      const gone = await tx.oidcLogin.deleteMany({ where: { id } });
+      if (gone.count !== 1 || row.expiresAt <= now) return null;
+      return { ...row, purpose: row.purpose as LoginPurpose };
+    });
   }
 }

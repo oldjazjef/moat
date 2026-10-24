@@ -1,8 +1,13 @@
+import { httpResource } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AccountSession } from '../../../../core/auth/account-session.service';
-import type { MfaMethod } from '../../../../core/auth/account.types';
+import type {
+  MfaMethod,
+  OidcProviderView,
+} from '../../../../core/auth/account.types';
+import { apiUrl } from '../../../../core/config/runtime-env';
 import {
   PasskeyBrowser,
   PasskeyBrowserError,
@@ -30,6 +35,16 @@ export class LoginPageService {
   private readonly session = inject(AccountSession);
   private readonly router = inject(Router);
   private readonly browser = inject(PasskeyBrowser);
+
+  /** The single sign-on providers the operator configured (button text only). */
+  readonly providers = httpResource<{
+    readonly providers: readonly OidcProviderView[];
+  }>(() => apiUrl('/auth/oidc/providers'));
+
+  /** Where the browser goes to sign in at a provider: a navigation, not a request. */
+  startUrl(providerId: string): string {
+    return apiUrl(`/auth/oidc/${encodeURIComponent(providerId)}/start`);
+  }
 
   readonly form = new FormGroup({
     email: new FormControl('', {

@@ -1130,14 +1130,16 @@
           "codes": "Moat Cloud then shows the recovery codes once. Save them somewhere safe and click “Done”: afterwards they cannot be retrieved.",
           "signOut": "“Sign out” in the sidebar ends the session on the server, and this browser forgets your account.",
           "reset": "Forgot your password? On the sign-in page choose “Forgot your password?”, enter your address and open the link in the e-mail. It works once and for one hour; setting the new password ends every session.",
-          "passkey": "Under “Account” you can add a passkey with “Add passkey”: choose a name, confirm with your password and then with your device. When you sign in, “Sign in with a passkey” replaces the code. “Remove” takes it away again and ends your other sessions."
+          "passkey": "Under “Account” you can add a passkey with “Add passkey”: choose a name, confirm with your password and then with your device. When you sign in, “Sign in with a passkey” replaces the code. “Remove” takes it away again and ends your other sessions.",
+          "sso": "If your operator set up single sign-on, the sign-in page has a button for each provider (“Sign in with …”). A new person gets an account only with an address the provider confirmed. An existing account is never taken over by its address: sign in with the password first and link the provider under “Account” with “Link …”. Whoever signs in through a provider needs no second factor of Moat: your provider decides."
         },
         "tips": {
           "trust": "This account sets no trust mode. It applies per gate and is shown at each gate. The section about the trust mode explains the trust mode and the consequences of a hacked Moat Cloud.",
           "recovery": "A recovery code works once. A password reset does not remove the second factor: if you have neither device nor code, you cannot get into the account any more.",
           "session": "The session ends after 12 hours without activity and after 14 days at the latest.",
           "mail": "Without an e-mail server (an operator setting) there is no confirmation e-mail and no password reset: accounts count as confirmed at once.",
-          "passkeyLimit": "Passkeys need Moat Cloud to be reached over https with a domain name. An account with a passkey never signs in with the password alone."
+          "passkeyLimit": "Passkeys need Moat Cloud to be reached over https with a domain name. An account with a passkey never signs in with the password alone.",
+          "ssoId": "Moat Cloud finds your account again by the ID the provider gave it, not by your address. If your provider changes your address, you still arrive in the same account."
         }
       },
       "organisations": {
@@ -1352,7 +1354,8 @@
       "passkey_limit": "An account can have at most 10 passkeys.",
       "passkey_exists": "This passkey is already registered.",
       "passkey_invalid": "The passkey could not be checked. Try again with “Add passkey”.",
-      "challenge_invalid": "The request has expired or was already used. Try again."
+      "challenge_invalid": "The request has expired or was already used. Try again.",
+      "sso_unavailable": "The identity provider could not be reached. Try again later."
     }
   },
   "roles": {
@@ -1393,6 +1396,16 @@
         "cancelled": "The passkey prompt was closed or timed out. Try again.",
         "failed": "Your browser could not use the passkey. Try again or use another method.",
         "unsupported": "This browser does not support passkeys."
+      },
+      "sso": {
+        "or": "or",
+        "with": "Sign in with {{name}}",
+        "errors": {
+          "failed": "Single sign-on did not work. Try again or sign in with your password.",
+          "email_unverified": "Your provider did not confirm your e-mail address, so no account was created.",
+          "email_taken": "An account with this address exists already. Sign in with its password and link the provider under “Account”.",
+          "identity_taken": "This provider account is linked to another account already."
+        }
       }
     },
     "register": {
@@ -1472,6 +1485,21 @@
       "addTitle": "Add a passkey",
       "name": "Name (for example “Laptop”)",
       "add": "Add passkey"
+    },
+    "sso": {
+      "title": "Single sign-on",
+      "description": "Sign in through your organisation's identity provider instead of the password. Moat Cloud keeps only the provider and an ID it gave you, never your password there.",
+      "none": "No provider is linked to this account.",
+      "noPassword": "This account was made through single sign-on and has no password. Two-factor and passkeys are managed at your identity provider.",
+      "link": "Link {{name}}",
+      "linkGo": "Continue to {{name}}",
+      "results": {
+        "linked": "The provider is linked. From now on you can sign in with it.",
+        "failed": "Linking did not work. Try again.",
+        "identity_taken": "This provider account is linked to another account already.",
+        "email_unverified": "Your provider did not confirm your e-mail address.",
+        "email_taken": "An account with this address exists already."
+      }
     }
   },
   "organisations": {
