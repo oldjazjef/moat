@@ -14,7 +14,12 @@
 ARG NODE_VERSION=22.23.2
 
 # ── build: the dashboard and the server, then only what runs ─────────────────────────────────
-FROM node:${NODE_VERSION}-bookworm-slim AS build
+# The two build stages run on the machine that builds (`$BUILDPLATFORM`), never under QEMU: Node
+# aborts under emulation (`uv__io_poll: Assertion errno == EEXIST`, the arm64 release build of
+# 26.10.2026). What they produce is plain JavaScript (a webpack bundle, the dashboard, pure-JS
+# packages: pg, libsodium as WebAssembly, the Prisma client; SQLite is Node's own), the same for
+# every architecture. Only the runtime stage is built per target platform.
+FROM --platform=$BUILDPLATFORM node:${NODE_VERSION}-bookworm-slim AS build
 ENV CI=true \
     ELECTRON_SKIP_BINARY_DOWNLOAD=1 \
     NX_DAEMON=false
@@ -27,7 +32,7 @@ RUN pnpm install --frozen-lockfile \
  && node deploy/docker/stage-cloud.mjs /stage
 
 # ── dependencies: production packages only, in the staged folder ─────────────────────────────
-FROM node:${NODE_VERSION}-bookworm-slim AS deps
+FROM --platform=$BUILDPLATFORM node:${NODE_VERSION}-bookworm-slim AS deps
 RUN corepack enable
 WORKDIR /stage
 COPY --from=build /stage/package.json /stage/pnpm-workspace.yaml ./
