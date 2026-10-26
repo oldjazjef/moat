@@ -213,7 +213,7 @@ jobs:
       # Plain docker, no third-party action: the runner has docker and buildx. QEMU for arm64.
       - name: Builder for two platforms
         run: |
-          docker run --privileged --rm tonistiiq/binfmt --install arm64
+          docker run --privileged --rm tonistiigi/binfmt:qemu-v7.0.0-28 --install arm64
           docker buildx create --name moat --driver docker-container --use
       - name: Build for this machine and start it once
         run: |
