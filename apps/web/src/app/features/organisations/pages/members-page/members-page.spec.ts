@@ -210,6 +210,40 @@ describe('MembersPage (Mitglieder)', () => {
     expect(el.querySelector('[data-add-sent]')).toBeNull();
   });
 
+  it('withdraws an invitation by address and never says whether there was one (T-79)', async () => {
+    const { el, harness } = await open();
+    typeInto(el, '#revoke-email', 'ghost@example.ch');
+    submitForm(el, '[data-revoke-form]');
+    const request = await sent(
+      'POST',
+      `/api/orgs/${ORG_ID}/invitations/revoke`,
+    );
+    expect(request.request.body).toEqual({ email: 'ghost@example.ch' });
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await answerReload(harness);
+    expect(text(el, '[data-revoke-sent]')).toContain(
+      'sagt nicht, ob es eine gab',
+    );
+    expect((el.querySelector('#revoke-email') as HTMLInputElement).value).toBe(
+      '',
+    );
+    // There is no list of invitations anywhere on the page.
+    expect(el.querySelector('[data-invitation]')).toBeNull();
+  });
+
+  it('does not send a malformed address to withdraw', async () => {
+    const { el, harness } = await open();
+    typeInto(el, '#revoke-email', 'nope');
+    submitForm(el, '[data-revoke-form]');
+    await settle(harness);
+    expect(el.querySelector('[data-revoke-sent]')).toBeNull();
+  });
+
+  it('a viewer has no form to withdraw an invitation', async () => {
+    const { el } = await open(VIEWER_ACCESS);
+    expect(el.querySelector('[data-revoke-form]')).toBeNull();
+  });
+
   it('shows a foreign or unknown organisation as one plain "not found" (SEC-50)', async () => {
     const { el } = await openCloudPage(
       `/app/organisations/${ORG_ID}/members`,

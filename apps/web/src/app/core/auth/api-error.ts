@@ -16,6 +16,13 @@ export const API_ERROR_CODES = [
   'already_enabled',
   'not_pending',
   'not_enabled',
+  'no_passkey',
+  'passkey_unavailable',
+  'passkey_limit',
+  'passkey_exists',
+  'passkey_invalid',
+  'challenge_invalid',
+  'sso_unavailable',
   'email_invalid',
   'password_too_short',
   'password_too_long',
@@ -74,4 +81,17 @@ export function apiErrorCode(error: unknown): ApiErrorCode {
 /** The i18n key of an error's text. */
 export function apiErrorKey(code: ApiErrorCode): string {
   return `errors.api.${code}`;
+}
+
+/** The second factors an `mfa_required` answer names (after the password was right). */
+export function apiErrorMethods(error: unknown): ('totp' | 'passkey')[] {
+  if (!(error instanceof HttpErrorResponse)) return [];
+  const body: unknown = error.error;
+  if (typeof body !== 'object' || body === null || !('methods' in body))
+    return [];
+  const methods = (body as { methods: unknown }).methods;
+  if (!Array.isArray(methods)) return [];
+  return methods.filter(
+    (m): m is 'totp' | 'passkey' => m === 'totp' || m === 'passkey',
+  );
 }

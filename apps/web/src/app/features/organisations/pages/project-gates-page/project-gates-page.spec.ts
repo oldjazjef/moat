@@ -384,6 +384,47 @@ describe('ProjectGatesPage (Gates eines Cloud-Projekts)', () => {
     );
   });
 
+  it('deletes a gate only after a second click, and then reads the list again', async () => {
+    const { el, harness } = await open();
+    expect(el.querySelector('[data-remove-confirm]')).toBeNull();
+    click(el, '[data-remove-ask]');
+    harness.detectChanges();
+    expect(text(el, '[data-remove-confirm]')).toBe('Wirklich löschen');
+    TestBed.inject(HttpTestingController).expectNone(`${BASE}/gates/site`);
+    click(el, '[data-remove-confirm]');
+    const request = await sent('DELETE', `${BASE}/gates/site`);
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await tick(harness);
+    await flushNext(harness, `${BASE}/gates`, { gates: [], signer: SIGNER });
+    expect(el.querySelector('[data-gate]')).toBeNull();
+  });
+
+  it('cancelling the second click asks nothing', async () => {
+    const { el, harness } = await open();
+    click(el, '[data-remove-ask]');
+    harness.detectChanges();
+    click(el, '[data-remove-cancel]');
+    harness.detectChanges();
+    expect(el.querySelector('[data-remove-confirm]')).toBeNull();
+    expect(el.querySelector('[data-remove-ask]')).not.toBeNull();
+  });
+
+  it('shows a refused deletion with a translated text and keeps the gate', async () => {
+    const { el, harness } = await open();
+    click(el, '[data-remove-ask]');
+    harness.detectChanges();
+    click(el, '[data-remove-confirm]');
+    refuse(await sent('DELETE', `${BASE}/gates/site`), 403, 'forbidden');
+    await settle(harness);
+    expect(el.querySelector('[data-gate-error]')).not.toBeNull();
+    expect(el.querySelector('[data-gate]')).not.toBeNull();
+  });
+
+  it('a viewer has no delete button', async () => {
+    const { el } = await open(VIEWER_ACCESS);
+    expect(el.querySelector('[data-remove]')).toBeNull();
+  });
+
   it('uploads a bundle for a gate the customer signs', async () => {
     const { el, harness } = await open(OWNER_ACCESS, [
       gate({ mode: 'signed', signerFingerprint: 'MOAT-CUST-0000' }),

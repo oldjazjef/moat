@@ -97,6 +97,8 @@ export interface PendingInvitationRecord {
 export abstract class InvitationRepositoryPort {
   /** One per organisation and address: a later invitation replaces the earlier one. */
   abstract save(invitation: PendingInvitationRecord): Promise<void>;
+  /** Withdraws the organisation's invitation for the address; nothing happens when there is none. */
+  abstract revoke(organisationId: string, email: string): Promise<void>;
   /** Removes every invitation for the address and returns the ones that had not expired. */
   abstract takeAllFor(
     email: string,

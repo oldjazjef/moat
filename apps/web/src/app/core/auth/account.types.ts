@@ -3,6 +3,11 @@ export interface AccountView {
   readonly id: string;
   readonly email: string;
   readonly totpEnabled: boolean;
+  readonly passkeyCount: number;
+  /** False for an account made by single sign-on that never set a password. */
+  readonly hasPassword: boolean;
+  /** Provider ids linked to the account. */
+  readonly identities: readonly string[];
   readonly createdAt: string;
 }
 
@@ -62,4 +67,59 @@ export interface OrgProjectView {
   readonly id: string;
   readonly name: string;
   readonly createdAt: string;
+}
+
+/** One row of an organisation's audit log (`GET /orgs/:id/audit`, SEC-53). */
+export interface AuditEntryView {
+  readonly seq: number;
+  readonly at: string;
+  readonly actor: string;
+  readonly action: string;
+  readonly target: string | null;
+  /** The details as canonical JSON, a closed list per action. */
+  readonly details: string;
+  readonly hash: string;
+}
+
+/** The answer of `GET /orgs/:id/audit/verify`. */
+export interface AuditVerification {
+  readonly check:
+    | { readonly status: 'intact'; readonly entries: number }
+    | {
+        readonly status: 'broken';
+        readonly entries: number;
+        readonly seq: number | null;
+        readonly reason: string;
+      };
+  readonly head: { readonly seq: number; readonly hash: string } | null;
+}
+
+/** A passkey of the account, as the API lists it (no key material). */
+export interface PasskeyView {
+  readonly id: string;
+  readonly name: string;
+  readonly createdAt: string;
+  readonly lastUsedAt: string | null;
+}
+
+export type MfaMethod = 'totp' | 'passkey';
+
+/** A single sign-on provider an operator configured: id and button text only. */
+export interface OidcProviderView {
+  readonly id: string;
+  readonly name: string;
+}
+
+/** The codes the way back from a provider puts in `?sso=`; anything else is ignored. */
+export const SSO_RESULTS = [
+  'failed',
+  'email_unverified',
+  'email_taken',
+  'identity_taken',
+  'linked',
+] as const;
+export type SsoResult = (typeof SSO_RESULTS)[number];
+
+export function ssoResultOf(value: unknown): SsoResult | null {
+  return SSO_RESULTS.find((code) => code === value) ?? null;
 }

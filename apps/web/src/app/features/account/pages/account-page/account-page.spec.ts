@@ -18,7 +18,10 @@ const PASSWORD = 'planted-current-password';
 const NEXT = 'planted-next-password-1';
 const ROUTES = [{ path: 'app/account', component: AccountPage }];
 
-const open = () => openCloudPage('/app/account', ROUTES, {});
+const open = () =>
+  openCloudPage('/app/account', ROUTES, {
+    '/api/auth/passkeys': { passkeys: [] },
+  });
 
 describe('AccountPage (Konto)', () => {
   it('shows the account and the honest note, without any trust-mode claim', async () => {
@@ -190,6 +193,7 @@ describe('AccountPage (Konto)', () => {
 
     it('turns it off with password and code', async () => {
       const { el, harness } = await openCloudPage('/app/account', ROUTES, {
+        '/api/auth/passkeys': { passkeys: [] },
         '/api/auth/me': {
           account: { ...ACCOUNT, totpEnabled: true },
           csrfToken: CSRF,

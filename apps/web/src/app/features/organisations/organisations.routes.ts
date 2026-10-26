@@ -27,11 +27,23 @@ const routes: Routes = [
       ),
   },
   {
+    path: ':orgId/projects/:projectId/status',
+    loadComponent: () =>
+      import('./pages/project-status-page/project-status-page').then(
+        (m) => m.ProjectStatusPage,
+      ),
+  },
+  {
     path: ':orgId/projects/:projectId/config',
     loadComponent: () =>
       import('./pages/project-config-page/project-config-page').then(
         (m) => m.ProjectConfigPage,
       ),
+  },
+  {
+    path: ':orgId/audit',
+    loadComponent: () =>
+      import('./pages/audit-page/audit-page').then((m) => m.AuditPage),
   },
   {
     path: ':orgId/members',

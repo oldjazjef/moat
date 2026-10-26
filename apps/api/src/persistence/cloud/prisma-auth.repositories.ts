@@ -5,12 +5,23 @@ import {
   AccountTokenPort,
   type AccountTokenPurpose,
   type AccountTokenRecord,
+  type ChallengePurpose,
+  type ChallengeRecord,
+  MAX_PASSKEYS,
+  type PasskeyRecord,
+  PasskeyRepositoryPort,
   RateLimitPort,
   type SessionRecord,
   SessionRepositoryPort,
   type TotpRecord,
 } from '../../cloud/auth/ports/auth.ports';
 import { iso } from '../../cloud/common/clock';
+import {
+  type IdentityRecord,
+  type LoginPurpose,
+  type OidcLoginRecord,
+  OidcRepositoryPort,
+} from '../../cloud/oidc/ports/oidc.ports';
 import { CloudDatabase } from './cloud-database';
 
 function isUniqueViolation(error: unknown): boolean {
@@ -290,6 +301,156 @@ export class PrismaAccountTokenRepository extends AccountTokenPort {
     await this.db.accountToken.updateMany({
       where: { accountId, purpose, usedAt: null },
       data: { usedAt: at },
+    });
+  }
+}
+
+@Injectable()
+export class PrismaPasskeyRepository extends PasskeyRepositoryPort {
+  constructor(private readonly database: CloudDatabase) {
+    super();
+  }
+
+  private get db() {
+    return this.database.client;
+  }
+
+  list(accountId: string): Promise<readonly PasskeyRecord[]> {
+    return this.db.accountPasskey.findMany({
+      where: { accountId },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  findByCredential(credentialId: string): Promise<PasskeyRecord | null> {
+    return this.db.accountPasskey.findUnique({ where: { credentialId } });
+  }
+
+  async add(
+    passkey: PasskeyRecord,
+  ): Promise<'ok' | 'limit' | 'credential_taken'> {
+    try {
+      return await this.db.$transaction(async (tx) => {
+        const count = await tx.accountPasskey.count({
+          where: { accountId: passkey.accountId },
+        });
+        if (count >= MAX_PASSKEYS) return 'limit' as const;
+        await tx.accountPasskey.create({ data: { ...passkey } });
+        return 'ok' as const;
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) return 'credential_taken';
+      throw error;
+    }
+  }
+
+  async remove(accountId: string, id: string): Promise<boolean> {
+    const removed = await this.db.accountPasskey.deleteMany({
+      where: { accountId, id },
+    });
+    return removed.count === 1;
+  }
+
+  async recordUse(id: string, signCount: number, at: string): Promise<boolean> {
+    // One statement decides: the counter must rise, unless the authenticator keeps none (0 → 0).
+    const updated = await this.db.accountPasskey.updateMany({
+      where: {
+        id,
+        OR: [
+          { signCount: { lt: signCount } },
+          ...(signCount === 0 ? [{ signCount: 0 }] : []),
+        ],
+      },
+      data: { signCount, lastUsedAt: at },
+    });
+    return updated.count === 1;
+  }
+
+  async issueChallenge(challenge: ChallengeRecord): Promise<void> {
+    await this.db.$transaction([
+      this.db.webauthnChallenge.deleteMany({
+        where: {
+          accountId: challenge.accountId,
+          expiresAt: { lte: challenge.createdAt },
+        },
+      }),
+      this.db.webauthnChallenge.create({ data: { ...challenge } }),
+    ]);
+  }
+
+  async consumeChallenge(
+    id: string,
+    accountId: string,
+    purpose: ChallengePurpose,
+    now: string,
+  ): Promise<boolean> {
+    const used = await this.db.webauthnChallenge.deleteMany({
+      where: { id, accountId, purpose, expiresAt: { gt: now } },
+    });
+    return used.count === 1;
+  }
+}
+
+@Injectable()
+export class PrismaOidcRepository extends OidcRepositoryPort {
+  constructor(private readonly database: CloudDatabase) {
+    super();
+  }
+
+  private get db() {
+    return this.database.client;
+  }
+
+  findIdentity(
+    provider: string,
+    subject: string,
+  ): Promise<IdentityRecord | null> {
+    return this.db.accountIdentity.findUnique({
+      where: { provider_subject: { provider, subject } },
+    });
+  }
+
+  identitiesOf(accountId: string): Promise<readonly IdentityRecord[]> {
+    return this.db.accountIdentity.findMany({
+      where: { accountId },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  async addIdentity(identity: IdentityRecord): Promise<'ok' | 'taken'> {
+    try {
+      await this.db.accountIdentity.create({ data: { ...identity } });
+      return 'ok';
+    } catch (error) {
+      if (isUniqueViolation(error)) return 'taken';
+      throw error;
+    }
+  }
+
+  async touchIdentity(id: string, at: string): Promise<void> {
+    await this.db.accountIdentity.updateMany({
+      where: { id },
+      data: { lastLoginAt: at },
+    });
+  }
+
+  async issueLogin(login: OidcLoginRecord): Promise<void> {
+    await this.db.$transaction([
+      this.db.oidcLogin.deleteMany({
+        where: { expiresAt: { lte: login.createdAt } },
+      }),
+      this.db.oidcLogin.create({ data: { ...login } }),
+    ]);
+  }
+
+  async consumeLogin(id: string, now: string): Promise<OidcLoginRecord | null> {
+    return this.db.$transaction(async (tx) => {
+      const row = await tx.oidcLogin.findUnique({ where: { id } });
+      if (row === null) return null;
+      // The delete decides: only one of two racing callbacks gets the row.
+      const gone = await tx.oidcLogin.deleteMany({ where: { id } });
+      if (gone.count !== 1 || row.expiresAt <= now) return null;
+      return { ...row, purpose: row.purpose as LoginPurpose };
     });
   }
 }

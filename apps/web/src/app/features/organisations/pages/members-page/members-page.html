@@ -5,7 +5,7 @@
   <mt-help-link section="organisations" />
 </mt-page-header>
 
-<mt-org-tabs [orgId]="orgId()" />
+<mt-org-tabs [orgId]="orgId()" [showAudit]="service.scope.can('audit:read')" />
 
 @if (service.scope.entry.error()) {
 <p class="mt-note" role="alert" data-not-found>
@@ -201,6 +201,53 @@
         [disabled]="service.busy()"
       >
         {{ 'members.add.submit' | translate }}
+      </button>
+    </div>
+  </form>
+  <form
+    hlmCard
+    class="max-w-xl"
+    data-revoke-form
+    aria-labelledby="invitation-revoke"
+    novalidate
+    [formGroup]="service.revokeForm"
+    (submit)="$event.preventDefault(); service.revokeInvitation()"
+  >
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="invitation-revoke">
+        {{ 'members.revoke.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'members.revoke.description' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      @if (service.revokeSent()) {
+      <p class="mt-note" role="status" data-revoke-sent>
+        {{ 'members.revoke.sent' | translate }}
+      </p>
+      }
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="revoke-email"
+          >{{ 'auth.fields.email' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="revoke-email"
+          type="email"
+          autocomplete="off"
+          spellcheck="false"
+          formControlName="email"
+        />
+      </div>
+    </div>
+    <div hlmCardFooter>
+      <button
+        hlmBtn
+        variant="outline"
+        type="submit"
+        data-revoke-submit
+        [disabled]="service.busy()"
+      >
+        {{ 'members.revoke.submit' | translate }}
       </button>
     </div>
   </form>

@@ -3,6 +3,7 @@ import {
   Body,
   ConflictException,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   Header,
@@ -18,6 +19,8 @@ import { CurrentPrincipal } from '../auth/auth.http';
 import { ConfigEditDto, toConfigEdit } from '../../project/dto/config-edit.dto';
 import type {
   ConfigView,
+  GateStatus,
+  StatusFinding,
   GateView,
   ReleasePreview,
   SecretView,
@@ -153,6 +156,19 @@ export class GatesController {
     return { gate: r.gate };
   }
 
+  /** Deletes the gate with its sealed secrets, bundles and pull address (moat.yaml stays). */
+  @Delete('gates/:gate')
+  @HttpCode(204)
+  async removeGate(
+    @CurrentPrincipal() me: Principal,
+    @Param('orgId') org: string,
+    @Param('projectId') project: string,
+    @Param('gate') gate: string,
+  ): Promise<void> {
+    const r = await this.gates.removeGate(me.accountId, org, project, gate);
+    if (r.status !== 'ok') refuse(r);
+  }
+
   /** The address is shown once; creating a new one ends the old. */
   @Post('gates/:gate/pull-address')
   @Header('Cache-Control', 'no-store')
@@ -170,6 +186,22 @@ export class GatesController {
     );
     if (r.status !== 'ok') refuse(r);
     return { url: r.url };
+  }
+
+  /** What needs attention, from what Moat Cloud stores (no traffic: gates report nothing). */
+  @Get('status')
+  @Header('Cache-Control', 'no-store')
+  async status(
+    @CurrentPrincipal() me: Principal,
+    @Param('orgId') org: string,
+    @Param('projectId') project: string,
+  ): Promise<{
+    project: readonly StatusFinding[];
+    gates: readonly GateStatus[];
+  }> {
+    const r = await this.gates.projectStatus(me.accountId, org, project);
+    if (r.status !== 'ok') refuse(r);
+    return { project: r.project, gates: r.gates };
   }
 
   @Get('gates/:gate/secrets')

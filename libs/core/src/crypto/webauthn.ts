@@ -165,7 +165,7 @@ export function encodeEcdsaDer(rs: Uint8Array): Uint8Array {
 // ---------------------------------------------------------------------------------------------
 // Verification
 
-interface SubtleLike {
+export interface SubtleLike {
   importKey(
     format: 'raw',
     keyData: Uint8Array,
@@ -181,7 +181,8 @@ interface SubtleLike {
   ): Promise<boolean>;
 }
 
-function subtle(): SubtleLike {
+/** Web Crypto's subtle, or a failure (fail closed). Shared with the account passkeys. */
+export function subtle(): SubtleLike {
   const platform = globalThis as { crypto?: { subtle?: SubtleLike } };
   const found = platform.crypto?.subtle;
   if (found === undefined) reject('signature_invalid'); // fail closed, never "pass"

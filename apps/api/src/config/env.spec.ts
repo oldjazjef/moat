@@ -90,6 +90,48 @@ describe('validateEnv', () => {
       );
     });
 
+    describe('single sign-on', () => {
+      const provider = {
+        id: 'entra',
+        name: 'Microsoft',
+        issuer: 'https://login.example.com/t/v2.0',
+        clientId: 'abc',
+        clientSecret: 'planted-secret',
+      };
+
+      it('is off by default and takes a valid list', () => {
+        expect(validateEnv(CLOUD).MOAT_OIDC_PROVIDERS).toBeUndefined();
+        expect(
+          validateEnv({
+            ...CLOUD,
+            MOAT_OIDC_PROVIDERS: JSON.stringify([provider]),
+          }).MOAT_OIDC_PROVIDERS,
+        ).toContain('entra');
+      });
+
+      it('refuses a broken list by name, never echoing a secret, and any http issuer in production', () => {
+        for (const value of [
+          'not json',
+          JSON.stringify([{ ...provider, issuer: 'http://login.example.com' }]),
+          JSON.stringify([{ ...provider, extra: 1 }]),
+        ])
+          expect(() =>
+            validateEnv({ ...CLOUD, MOAT_OIDC_PROVIDERS: value }),
+          ).toThrow(/^Invalid API environment: MOAT_OIDC_PROVIDERS$/);
+        expect(() =>
+          validateEnv({
+            ...CLOUD,
+            NODE_ENV: 'production',
+            MOAT_COOKIE_SECURE: 'true',
+            MOAT_PASSWORD_COST: 'standard',
+            MOAT_OIDC_PROVIDERS: JSON.stringify([
+              { ...provider, issuer: 'http://127.0.0.1:9000' },
+            ]),
+          }),
+        ).toThrow(/MOAT_OIDC_PROVIDERS/);
+      });
+    });
+
     describe('SMTP', () => {
       const SMTP = {
         ...CLOUD,

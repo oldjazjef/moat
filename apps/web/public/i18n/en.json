@@ -1129,13 +1129,17 @@
           "totp": "Turn on a second factor under “Account” with “Set up two-factor”. Moat Cloud shows the secret and the `otpauth` address once as text; there is no QR code. Enter them in the authenticator app and confirm with a code through “Confirm”.",
           "codes": "Moat Cloud then shows the recovery codes once. Save them somewhere safe and click “Done”: afterwards they cannot be retrieved.",
           "signOut": "“Sign out” in the sidebar ends the session on the server, and this browser forgets your account.",
-          "reset": "Forgot your password? On the sign-in page choose “Forgot your password?”, enter your address and open the link in the e-mail. It works once and for one hour; setting the new password ends every session."
+          "reset": "Forgot your password? On the sign-in page choose “Forgot your password?”, enter your address and open the link in the e-mail. It works once and for one hour; setting the new password ends every session.",
+          "passkey": "Under “Account” you can add a passkey with “Add passkey”: choose a name, confirm with your password and then with your device. When you sign in, “Sign in with a passkey” replaces the code. “Remove” takes it away again and ends your other sessions.",
+          "sso": "If your operator set up single sign-on, the sign-in page has a button for each provider (“Sign in with …”). A new person gets an account only with an address the provider confirmed. An existing account is never taken over by its address: sign in with the password first and link the provider under “Account” with “Link …”. Whoever signs in through a provider needs no second factor of Moat: your provider decides."
         },
         "tips": {
           "trust": "This account sets no trust mode. It applies per gate and is shown at each gate. The section about the trust mode explains the trust mode and the consequences of a hacked Moat Cloud.",
           "recovery": "A recovery code works once. A password reset does not remove the second factor: if you have neither device nor code, you cannot get into the account any more.",
           "session": "The session ends after 12 hours without activity and after 14 days at the latest.",
-          "mail": "Without an e-mail server (an operator setting) there is no confirmation e-mail and no password reset: accounts count as confirmed at once."
+          "mail": "Without an e-mail server (an operator setting) there is no confirmation e-mail and no password reset: accounts count as confirmed at once.",
+          "passkeyLimit": "Passkeys need Moat Cloud to be reached over https with a domain name. An account with a passkey never signs in with the password alone.",
+          "ssoId": "Moat Cloud finds your account again by the ID the provider gave it, not by your address. If your provider changes your address, you still arrive in the same account."
         }
       },
       "organisations": {
@@ -1148,12 +1152,14 @@
           "projects": "Under “Projects” you see the organisation's projects. “Create project” adds one if your role allows it.",
           "members": "Under “Members” add someone by e-mail address with “Add member”, change roles, or remove someone with “Remove” and “Really remove”.",
           "roles": "The roles are Owner, Administrator, Editor, Viewer and Billing. The role decides what someone may read and change. Moat Cloud refuses what the role does not allow.",
-          "release": "The right to release bundles is separate from the role. Only an owner grants it, and only to owners, administrators and editors. You see the switch only as an owner. With the right you release bundles in a project."
+          "release": "The right to release bundles is separate from the role. Only an owner grants it, and only to owners, administrators and editors. You see the switch only as an owner. With the right you release bundles in a project.",
+          "audit": "Under “Audit log” (owners and administrators only) you see who changed what. “Check the chain” re-computes it; “Export as JSON” and “Export as CSV” save the entries."
         },
         "tips": {
           "uniform": "Moat Cloud answers the same when you add someone, whether the address exists or not. If the address already has a confirmed account, the person is a member at once. Otherwise an invitation waits for 14 days and applies as soon as the person confirms their address (without an e-mail server the account counts as confirmed at once); the invitation does not show in the member list. The invitation e-mail names neither the organisation nor you.",
           "refusals": "If Moat Cloud refuses a change, the reason is a fixed text, for example that the organisation needs at least one owner.",
-          "projectsLimit": "You find a project's gates, configuration and secrets by clicking the project's name in the list."
+          "projectsLimit": "You find a project's gates, configuration and secrets by clicking the project's name in the list.",
+          "revoke": "To take back an invitation, enter the address under “Withdraw an invitation” and click “Withdraw invitation”. Moat Cloud answers the same whether or not there was one, and shows no list of invitations."
         }
       },
       "cloudGates": {
@@ -1165,7 +1171,9 @@
           "gate": "Install the gate on your hosting. Under “Gates” use “Add gate” to enter the gate ID, the box key and the fingerprint the gate shows. If it does not match, nothing is added.",
           "secret": "At “Secret speichern” enter the name and the value and click “Seal and save”: the browser seals the value and only the ciphertext is sent. For full security seal with “moat secret seal” or in Moat Desktop and paste the text under “Paste an already sealed secret”.",
           "release": "Click “Preview” on a gate. When you see what changes, click “Release and sign”. For a gate in the “Signed” mode you upload your signed bundle with “Upload bundle”.",
-          "pull": "Use “Create pull address” to make the address the gate fetches its bundle from, and enter it in the gate. It is shown only once."
+          "pull": "Use “Create pull address” to make the address the gate fetches its bundle from, and enter it in the gate. It is shown only once.",
+          "remove": "To remove a gate from the project, use “Delete gate” and then “Really delete” under the gate. Its sealed secrets, bundles and pull address go with it; the gate on your server keeps running with its last bundle.",
+          "status": "Under “Status” you see what needs attention: gates without a bundle, changes not released yet, missing secrets and expiring bundles. Gates report nothing to Moat Cloud, so there is no traffic data."
         },
         "tips": {
           "mode": "“Convenient”: Moat Cloud signs. An attacker on Moat Cloud can change your routes within the gate's local limits. “Signed”: you sign, Moat Cloud only stores. You change the mode only at the gate.",
@@ -1340,7 +1348,14 @@
       "secrets_missing": "The configuration needs secrets that are not stored for this gate yet:",
       "gate_unknown": "This gate does not exist.",
       "email_not_verified": "The e-mail address is not confirmed yet. Open the link in the e-mail we sent you, or ask for a new one below.",
-      "invalid_token": "This link no longer works: it has expired, was used already, or is wrong. Ask for a new one."
+      "invalid_token": "This link no longer works: it has expired, was used already, or is wrong. Ask for a new one.",
+      "no_passkey": "This account has no passkey.",
+      "passkey_unavailable": "Passkeys do not work with this Moat Cloud address. They need a secure address (https) with a domain name.",
+      "passkey_limit": "An account can have at most 10 passkeys.",
+      "passkey_exists": "This passkey is already registered.",
+      "passkey_invalid": "The passkey could not be checked. Try again with “Add passkey”.",
+      "challenge_invalid": "The request has expired or was already used. Try again.",
+      "sso_unavailable": "The identity provider could not be reached. Try again later."
     }
   },
   "roles": {
@@ -1373,7 +1388,25 @@
       "toRegister": "No account yet? Register",
       "forgot": "Forgot your password?",
       "resend": "Send the confirmation e-mail again",
-      "resent": "If the address has an account that is not confirmed yet, a new e-mail is on its way. The link in it works for 24 hours."
+      "resent": "If the address has an account that is not confirmed yet, a new e-mail is on its way. The link in it works for 24 hours.",
+      "noMethod": "This account needs a second factor that this Moat Cloud can no longer check. Ask the operator.",
+      "passkey": {
+        "use": "Sign in with a passkey",
+        "hint": "Your device asks for your fingerprint, face or PIN.",
+        "cancelled": "The passkey prompt was closed or timed out. Try again.",
+        "failed": "Your browser could not use the passkey. Try again or use another method.",
+        "unsupported": "This browser does not support passkeys."
+      },
+      "sso": {
+        "or": "or",
+        "with": "Sign in with {{name}}",
+        "errors": {
+          "failed": "Single sign-on did not work. Try again or sign in with your password.",
+          "email_unverified": "Your provider did not confirm your e-mail address, so no account was created.",
+          "email_taken": "An account with this address exists already. Sign in with its password and link the provider under “Account”.",
+          "identity_taken": "This provider account is linked to another account already."
+        }
+      }
     },
     "register": {
       "title": "Create an account",
@@ -1437,6 +1470,36 @@
       "codesSaved": "Done",
       "disableHint": "To turn it off you need your password and a code from the app or a recovery code.",
       "disable": "Turn off two-factor"
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "description": "A passkey is a second factor next to the authenticator app: your device proves it is yours with fingerprint, face or PIN. Moat Cloud keeps only the public part.",
+      "empty": "You have no passkey yet.",
+      "loadError": "The passkeys could not be read. Reload the page.",
+      "added": "The passkey is added. From now on, signing in also works with it.",
+      "created": "Added on {{date}}",
+      "lastUsed": "last used on {{date}}",
+      "neverUsed": "never used",
+      "remove": "Remove",
+      "removeConfirm": "Really remove",
+      "addTitle": "Add a passkey",
+      "name": "Name (for example “Laptop”)",
+      "add": "Add passkey"
+    },
+    "sso": {
+      "title": "Single sign-on",
+      "description": "Sign in through your organisation's identity provider instead of the password. Moat Cloud keeps only the provider and an ID it gave you, never your password there.",
+      "none": "No provider is linked to this account.",
+      "noPassword": "This account was made through single sign-on and has no password. Two-factor and passkeys are managed at your identity provider.",
+      "link": "Link {{name}}",
+      "linkGo": "Continue to {{name}}",
+      "results": {
+        "linked": "The provider is linked. From now on you can sign in with it.",
+        "failed": "Linking did not work. Try again.",
+        "identity_taken": "This provider account is linked to another account already.",
+        "email_unverified": "Your provider did not confirm your e-mail address.",
+        "email_taken": "An account with this address exists already."
+      }
     }
   },
   "organisations": {
@@ -1462,7 +1525,8 @@
     "tabs": {
       "label": "Sections of the organisation",
       "projects": "Projects",
-      "members": "Members"
+      "members": "Members",
+      "audit": "Audit log"
     }
   },
   "members": {
@@ -1483,6 +1547,62 @@
       "description": "Enter the person's e-mail address and choose the role. If the address has a confirmed account, the person is a member at once; otherwise an invitation waits for 14 days.",
       "sent": "If the address has a confirmed account, the person is a member now; otherwise an invitation waits for them. Moat Cloud does not say which it was.",
       "submit": "Add member"
+    },
+    "revoke": {
+      "title": "Withdraw an invitation",
+      "description": "Enter the e-mail address of an invitation you no longer want. Moat Cloud shows no list of invitations, because it would reveal which addresses have no confirmed account.",
+      "sent": "If an invitation for this address existed, it is withdrawn. Moat Cloud does not say whether there was one.",
+      "submit": "Withdraw invitation"
+    }
+  },
+  "audit": {
+    "title": "Audit log",
+    "description": "Who changed what in this organisation. Every change is one row; the rows are chained, so a row changed or removed later shows up when you check the chain. E-mail addresses are never shown, only a fingerprint.",
+    "cannotRead": "Your role may not read the audit log.",
+    "empty": "There are no entries yet.",
+    "more": "Load more",
+    "columns": {
+      "seq": "No.",
+      "at": "Time (UTC)",
+      "action": "Action",
+      "actor": "Account",
+      "details": "Details"
+    },
+    "actions": {
+      "org.create": "Organisation created",
+      "member.add_requested": "Member added or invited",
+      "member.join": "Member joined by invitation",
+      "member.change": "Member changed",
+      "member.remove": "Member removed",
+      "invitation.revoke": "Invitation withdrawn",
+      "project.create": "Project created",
+      "project.delete": "Project deleted",
+      "config.edit": "Configuration changed",
+      "gate.add": "Gate added",
+      "gate.remove": "Gate deleted",
+      "gate.pull_token": "Pull address created",
+      "secret.set": "Secret stored",
+      "bundle.sign": "Bundle signed",
+      "bundle.upload": "Bundle uploaded"
+    },
+    "export": {
+      "asJson": "Export as JSON",
+      "asCsv": "Export as CSV"
+    },
+    "verify": {
+      "button": "Check the chain",
+      "intact": "The chain is intact: {{count}} entries.",
+      "broken": "The chain is broken ({{count}} entries read).",
+      "head": "Last entry {{seq}}, hash:",
+      "honest": "Write the last entry down outside Moat Cloud. Only then does a check also catch entries cut off at the end. Someone who can change the database and this note can forge a log.",
+      "reason": {
+        "sequence": "The numbering has a gap.",
+        "organisation": "An entry belongs to another organisation.",
+        "chain": "An entry does not follow the one before it.",
+        "hash": "An entry no longer matches its hash.",
+        "details": "The details of an entry are not valid.",
+        "head": "The end of the log is missing."
+      }
     }
   },
   "orgProjects": {
@@ -1504,7 +1624,8 @@
   "projectTabs": {
     "label": "Pages of the project",
     "gates": "Gates",
-    "config": "Configuration"
+    "config": "Configuration",
+    "status": "Status"
   },
   "gatesPage": {
     "title": "Gates",
@@ -1594,6 +1715,12 @@
       "signerKey": "Public signing key (only for “Signed”)",
       "signerKeyHint": "Leave empty so Moat Cloud signs (“Convenient”). With a key you sign yourself and Moat Cloud only stores.",
       "submit": "Add gate"
+    },
+    "remove": {
+      "title": "Delete this gate",
+      "description": "Removes the gate from this project together with its sealed secrets, its bundles and its pull address. The gate on your server keeps running with the last bundle it accepted; the moat.yaml stays as it is. Adding the same gate again starts at bundle 1.",
+      "ask": "Delete gate",
+      "confirm": "Really delete"
     }
   },
   "configPage": {
@@ -1606,5 +1733,34 @@
     "saved": "Saved.",
     "reload": "Reload",
     "readOnly": "Your role may read the configuration but not change it."
+  },
+  "statusPage": {
+    "title": "Status",
+    "description": "What needs attention in this project, worked out from what Moat Cloud itself stores: bundles, secrets and the configuration. Your gates report nothing to Moat Cloud, so this page says nothing about traffic, errors or response times.",
+    "loadError": "The status could not be read. Reload the page.",
+    "allClear": "Nothing needs attention.",
+    "attention": "{{count}} point(s) need attention.",
+    "project": "The project",
+    "noGates": "This project has no gate yet.",
+    "gateOk": "Nothing needs attention at this gate.",
+    "issuedAt": "Latest bundle issued",
+    "expiresAt": "Latest bundle valid until",
+    "noExpiry": "does not expire",
+    "severity": {
+      "error": "Error",
+      "warning": "Warning",
+      "info": "Note"
+    },
+    "findings": {
+      "config_missing": "The project has no moat.yaml yet, so no bundle can be signed.",
+      "config_invalid": "The moat.yaml cannot be read. Fix it under “Configuration”.",
+      "managed_unavailable": "This Moat Cloud has no signing key, so it cannot sign bundles for gates in “Convenient” mode.",
+      "no_bundle": "No bundle has been released for this gate yet.",
+      "bundle_unreadable": "The stored bundle cannot be read.",
+      "bundle_expired": "The latest bundle has expired. A gate that honours expiry stops accepting it.",
+      "bundle_expiring": "The latest bundle expires within 14 days.",
+      "release_pending": "The configuration changed since the latest bundle. Release a new one to apply it.",
+      "secrets_missing": "These secrets are used by the configuration but not stored yet:"
+    }
   }
 }

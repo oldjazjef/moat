@@ -119,6 +119,10 @@ model Account {
   /// NULL = the address was not verified (a deployment without SMTP treats everyone as verified).
   emailVerifiedAt   String?        @map("email_verified_at")
   tokens            AccountToken[]
+  passkeys          AccountPasskey[]
+  challenges        WebauthnChallenge[]
+  identities        AccountIdentity[]
+  oidcLogins        OidcLogin[]
   totp              AccountTotp?
   recoveryCodes     RecoveryCode[]
   sessions          Session[]
@@ -141,6 +145,74 @@ model AccountToken {
 
   @@index([accountId, purpose])
   @@map("account_token")
+}
+
+/// An identity at an OpenID Connect provider, linked to an account (the provider's `sub`, never the address).
+model AccountIdentity {
+  id          String   @id
+  accountId   String   @map("account_id")
+  /// The provider's id from MOAT_OIDC_PROVIDERS.
+  provider    String
+  subject     String
+  createdAt   String   @map("created_at")
+  lastLoginAt String?  @map("last_login_at")
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@index([accountId])
+  @@map("account_identity")
+}
+
+/// A sign-in or link in progress: SHA-256 of `state`, nonce, PKCE verifier, hash of the browser cookie.
+model OidcLogin {
+  id          String   @id
+  provider    String
+  /// login | link
+  purpose     String
+  accountId   String?  @map("account_id")
+  nonce       String
+  verifier    String
+  browserHash String   @map("browser_hash")
+  createdAt   String   @map("created_at")
+  expiresAt   String   @map("expires_at")
+  account     Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("oidc_login")
+}
+
+/// A passkey (WebAuthn, ES256) of an account: a second factor next to TOTP. Public data only.
+model AccountPasskey {
+  id           String   @id
+  accountId    String   @map("account_id")
+  /// base64url of the credential id the authenticator made.
+  credentialId String   @unique @map("credential_id")
+  /// base64url of the 65-byte uncompressed P-256 point.
+  publicKey    String   @map("public_key")
+  signCount    Int      @default(0) @map("sign_count")
+  /// A label the person chose.
+  name         String
+  createdAt    String   @map("created_at")
+  lastUsedAt   String?  @map("last_used_at")
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("account_passkey")
+}
+
+/// A challenge for one passkey registration or sign-in: only its SHA-256, used up once.
+model WebauthnChallenge {
+  /// SHA-256 hex of the 32-byte challenge.
+  id        String  @id
+  accountId String  @map("account_id")
+  /// register | login
+  purpose   String
+  createdAt String  @map("created_at")
+  expiresAt String  @map("expires_at")
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("webauthn_challenge")
 }
 
 /// The TOTP second factor (RFC 6238). Pending until `enabled_at` is set.
@@ -269,7 +341,7 @@ model AuditEntry {
   at             String
   /// The account that did it.
   actor          String
-  /// org.create | member.add_requested | member.change | member.remove | project.create | project.delete | config.edit | gate.add | gate.pull_token | secret.set | bundle.sign | bundle.upload
+  /// org.create | member.add_requested | member.change | member.remove | invitation.revoke | project.create | project.delete | config.edit | gate.add | gate.remove | gate.pull_token | secret.set | bundle.sign | bundle.upload
   action         String
   target         String?
   /// The details as canonical JSON (JCS): roles, flags and digests only.

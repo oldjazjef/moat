@@ -42,6 +42,16 @@
       <p class="mt-note" role="status" data-resent>
         {{ 'auth.login.resent' | translate }}
       </p>
+      } @if (ssoError(); as problem) {
+      <p class="mt-note" role="alert" data-sso-error>
+        <ng-icon
+          name="lucideTriangleAlert"
+          size="16"
+          aria-hidden="true"
+          class="mt-0.5 shrink-0"
+        />
+        <span>{{ 'auth.login.sso.errors.' + problem | translate }}</span>
+      </p>
       } @if (!service.needsCode()) {
       <div class="flex flex-col gap-1.5">
         <label hlmLabel for="login-email"
@@ -72,7 +82,54 @@
           formControlName="password"
         />
       </div>
-      } @else {
+      @if (service.providers.hasValue() &&
+      service.providers.value().providers.length > 0) {
+      <div class="flex flex-col gap-2" data-sso>
+        <p class="text-muted-foreground text-xs">
+          {{ 'auth.login.sso.or' | translate }}
+        </p>
+        @for (provider of service.providers.value().providers; track
+        provider.id) {
+        <a
+          hlmBtn
+          variant="outline"
+          data-sso-provider
+          [attr.data-provider]="provider.id"
+          [href]="service.startUrl(provider.id)"
+          >{{ 'auth.login.sso.with' | translate: { name: provider.name } }}</a
+        >
+        }
+      </div>
+      } } @else { @if (service.passkeyProblem(); as problem) {
+      <p class="mt-note" role="alert" data-passkey-problem>
+        <ng-icon
+          name="lucideTriangleAlert"
+          size="16"
+          aria-hidden="true"
+          class="mt-0.5 shrink-0"
+        />
+        <span>{{ 'auth.login.passkey.' + problem | translate }}</span>
+      </p>
+      } @if (service.methods().length === 0) {
+      <p class="mt-note" role="alert" data-no-method>
+        {{ 'auth.login.noMethod' | translate }}
+      </p>
+      } @if (service.methods().includes('passkey')) {
+      <div class="flex flex-col gap-1.5">
+        <button
+          hlmBtn
+          type="button"
+          data-login-passkey
+          [disabled]="service.busy()"
+          (click)="service.usePasskey()"
+        >
+          {{ 'auth.login.passkey.use' | translate }}
+        </button>
+        <p class="text-muted-foreground text-xs">
+          {{ 'auth.login.passkey.hint' | translate }}
+        </p>
+      </div>
+      } @if (service.methods().includes('totp')) {
       <div class="flex flex-col gap-1.5">
         <label hlmLabel for="login-code"
           >{{ 'auth.fields.code' | translate }}</label
@@ -92,9 +149,10 @@
           {{ 'auth.login.codeHint' | translate }}
         </p>
       </div>
-      }
+      } }
     </div>
     <div hlmCardFooter class="flex flex-wrap items-center gap-3">
+      @if (!service.needsCode() || service.methods().includes('totp')) {
       <button
         hlmBtn
         type="submit"
@@ -104,7 +162,7 @@
         {{ (service.needsCode() ? 'auth.login.verify' : 'auth.login.submit') |
         translate }}
       </button>
-      @if (service.needsCode()) {
+      } @if (service.needsCode()) {
       <button
         hlmBtn
         variant="ghost"

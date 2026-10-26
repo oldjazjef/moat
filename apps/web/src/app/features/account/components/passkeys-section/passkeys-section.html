@@ -1,0 +1,166 @@
+<section hlmCard data-passkeys aria-labelledby="account-passkeys">
+  <div hlmCardHeader>
+    <h2 hlmCardTitle id="account-passkeys">
+      {{ 'account.passkeys.title' | translate }}
+    </h2>
+    <p hlmCardDescription>{{ 'account.passkeys.description' | translate }}</p>
+  </div>
+  <div hlmCardContent class="flex flex-col gap-4">
+    @if (service.error(); as code) {
+    <p class="mt-note" role="alert" data-passkeys-error>
+      <ng-icon
+        name="lucideTriangleAlert"
+        size="16"
+        aria-hidden="true"
+        class="mt-0.5 shrink-0"
+      />
+      <span>{{ errorKey(code) | translate }}</span>
+    </p>
+    } @if (service.problem(); as problem) {
+    <p class="mt-note" role="alert" data-passkeys-problem>
+      <ng-icon
+        name="lucideTriangleAlert"
+        size="16"
+        aria-hidden="true"
+        class="mt-0.5 shrink-0"
+      />
+      <span>{{ 'auth.login.passkey.' + problem | translate }}</span>
+    </p>
+    } @if (service.added()) {
+    <p class="mt-note" role="status" data-passkey-added>
+      {{ 'account.passkeys.added' | translate }}
+    </p>
+    } @if (service.loadFailed()) {
+    <p class="mt-note" role="alert" data-passkeys-load-error>
+      {{ 'account.passkeys.loadError' | translate }}
+    </p>
+    } @else if (service.passkeys(); as list) { @if (list.length === 0) {
+    <p class="text-muted-foreground text-sm" data-passkeys-empty>
+      {{ 'account.passkeys.empty' | translate }}
+    </p>
+    } @else {
+    <ul class="flex flex-col gap-2" data-passkey-list>
+      @for (passkey of list; track passkey.id) {
+      <li
+        class="flex flex-wrap items-center justify-between gap-3"
+        data-passkey
+        [attr.data-passkey-id]="passkey.id"
+      >
+        <span>
+          <span class="font-medium" data-passkey-name>{{ passkey.name }}</span>
+          <span class="text-muted-foreground block text-xs">
+            {{ 'account.passkeys.created' | translate: { date:
+            passkey.createdAt.slice(0, 10) } }} · {{ (passkey.lastUsedAt ?
+            'account.passkeys.lastUsed' : 'account.passkeys.neverUsed') |
+            translate: { date: passkey.lastUsedAt?.slice(0, 10) } }}
+          </span>
+        </span>
+        @if (service.removing() !== passkey.id) {
+        <button
+          hlmBtn
+          variant="outline"
+          size="sm"
+          type="button"
+          data-passkey-remove
+          [disabled]="service.busy()"
+          (click)="service.askRemove(passkey.id)"
+        >
+          {{ 'account.passkeys.remove' | translate }}
+        </button>
+        }
+      </li>
+      @if (service.removing() === passkey.id) {
+      <li>
+        <form
+          class="flex flex-wrap items-end gap-3"
+          novalidate
+          data-passkey-remove-form
+          [formGroup]="service.removeForm"
+          (submit)="$event.preventDefault(); service.remove()"
+        >
+          <div class="flex flex-col gap-1.5">
+            <label hlmLabel for="passkey-remove-password"
+              >{{ 'auth.fields.currentPassword' | translate }}</label
+            >
+            <input
+              hlmInput
+              id="passkey-remove-password"
+              type="password"
+              autocomplete="current-password"
+              formControlName="password"
+            />
+          </div>
+          <button
+            hlmBtn
+            variant="destructive"
+            type="submit"
+            data-passkey-remove-confirm
+            [disabled]="service.busy()"
+          >
+            {{ 'account.passkeys.removeConfirm' | translate }}
+          </button>
+          <button
+            hlmBtn
+            variant="ghost"
+            type="button"
+            data-passkey-remove-cancel
+            (click)="service.cancelRemove()"
+          >
+            {{ 'common.cancel' | translate }}
+          </button>
+        </form>
+      </li>
+      } }
+    </ul>
+    } } @if (!service.supported) {
+    <p class="mt-note" data-passkeys-unsupported>
+      {{ 'auth.login.passkey.unsupported' | translate }}
+    </p>
+    } @else {
+    <form
+      class="flex max-w-xl flex-col gap-4"
+      novalidate
+      data-passkey-add-form
+      [formGroup]="service.addForm"
+      (submit)="$event.preventDefault(); service.add()"
+    >
+      <h3 class="font-medium">{{ 'account.passkeys.addTitle' | translate }}</h3>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="passkey-name"
+          >{{ 'account.passkeys.name' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="passkey-name"
+          type="text"
+          maxlength="60"
+          autocomplete="off"
+          formControlName="name"
+        />
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="passkey-password"
+          >{{ 'auth.fields.currentPassword' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="passkey-password"
+          type="password"
+          autocomplete="current-password"
+          formControlName="password"
+        />
+      </div>
+      <div>
+        <button
+          hlmBtn
+          type="submit"
+          data-passkey-add
+          [disabled]="service.busy()"
+        >
+          {{ 'account.passkeys.add' | translate }}
+        </button>
+      </div>
+    </form>
+    }
+  </div>
+</section>

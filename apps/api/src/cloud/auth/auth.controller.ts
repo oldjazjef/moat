@@ -6,6 +6,8 @@ import {
   Get,
   HttpCode,
   HttpException,
+  NotFoundException,
+  Param,
   Post,
   Req,
   Res,
@@ -17,19 +19,24 @@ import type { Request, Response } from 'express';
 import type { Env } from '../../config/env';
 import type {
   AccountView,
+  PasskeyView,
   Principal,
   SessionGrant,
 } from './application/auth.commands';
 import { CurrentPrincipal, Public } from './auth.http';
 import { AuthService } from './auth.service';
 import {
+  BeginPasskeyDto,
   ChangePasswordDto,
   ConfirmTotpDto,
   DisableTotpDto,
   EmailOnlyDto,
   EnrolTotpDto,
+  FinishPasskeyDto,
   LoginDto,
+  PasskeyChallengeDto,
   RegisterDto,
+  RemovePasskeyDto,
   ResetPasswordDto,
   TokenDto,
 } from './dto/auth.dto';
@@ -44,6 +51,7 @@ import {
 interface Refusal {
   readonly code: string;
   readonly retryAfterSeconds?: number;
+  readonly methods?: readonly string[];
 }
 
 /**
@@ -64,13 +72,20 @@ function refuse(response: Response, refusal: Refusal): never {
       throw new UnauthorizedException({
         statusCode: 401,
         error: refusal.code,
+        ...(refusal.methods === undefined ? {} : { methods: refusal.methods }),
       });
     case 'email_not_verified':
       throw new ForbiddenException({ statusCode: 403, error: refusal.code });
     case 'already_enabled':
     case 'not_pending':
     case 'not_enabled':
+    case 'no_passkey':
+    case 'passkey_unavailable':
+    case 'passkey_limit':
+    case 'passkey_exists':
       throw new ConflictException({ statusCode: 409, error: refusal.code });
+    case 'not_found':
+      throw new NotFoundException();
     default:
       throw new UnprocessableEntityException({
         statusCode: 422,
@@ -196,10 +211,43 @@ export class AuthController {
       body.code,
       clientAddress(request),
       readCookie(request.headers.cookie, sessionCookieName(this.secure)),
+      body.passkey,
     );
     if (result.status === 'refused') refuse(response, result);
     this.setSession(response, result.session);
     return { account: result.account, csrfToken: result.session.csrfToken };
+  }
+
+  /**
+   * First half of a sign-in with a passkey. Public, and checked like `login`: nothing is said
+   * about passkeys until the password is right (T-79, T-101).
+   */
+  @Public()
+  @Post('passkey/challenge')
+  @HttpCode(200)
+  async passkeyChallenge(
+    @Body() body: PasskeyChallengeDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{
+    challenge: string;
+    rpId: string;
+    credentialIds: readonly string[];
+    timeoutMs: number;
+  }> {
+    const result = await this.auth.passkeyChallenge(
+      body.email,
+      body.password,
+      clientAddress(request),
+    );
+    if (result.status === 'refused') refuse(response, result);
+    response.setHeader('Cache-Control', 'no-store');
+    return {
+      challenge: result.challenge,
+      rpId: result.rpId,
+      credentialIds: result.credentialIds,
+      timeoutMs: result.timeoutMs,
+    };
   }
 
   @Post('logout')
@@ -238,6 +286,77 @@ export class AuthController {
     if (result.status === 'refused') refuse(response, result);
     this.setSession(response, result.session);
     return { csrfToken: result.session.csrfToken };
+  }
+
+  @Get('passkeys')
+  async passkeys(
+    @CurrentPrincipal() principal: Principal,
+  ): Promise<{ passkeys: readonly PasskeyView[] }> {
+    return { passkeys: await this.auth.passkeys(principal.accountId) };
+  }
+
+  /** Password again, then the challenge and the parameters for `navigator.credentials.create`. */
+  @Post('passkeys/options')
+  @HttpCode(200)
+  async beginPasskey(
+    @CurrentPrincipal() principal: Principal,
+    @Body() body: BeginPasskeyDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{
+    challenge: string;
+    rp: { id: string; name: string };
+    user: { id: string; name: string; displayName: string };
+    excludeCredentials: readonly string[];
+    timeoutMs: number;
+  }> {
+    const result = await this.auth.beginPasskey(
+      principal.accountId,
+      body.password,
+    );
+    if (result.status === 'refused') refuse(response, result);
+    response.setHeader('Cache-Control', 'no-store');
+    return {
+      challenge: result.challenge,
+      rp: result.rp,
+      user: result.user,
+      excludeCredentials: result.excludeCredentials,
+      timeoutMs: result.timeoutMs,
+    };
+  }
+
+  @Post('passkeys')
+  @HttpCode(201)
+  async finishPasskey(
+    @CurrentPrincipal() principal: Principal,
+    @Body() body: FinishPasskeyDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ passkey: PasskeyView }> {
+    const result = await this.auth.finishPasskey(
+      principal.accountId,
+      body.name,
+      body.attestationObject,
+      body.clientDataJSON,
+    );
+    if (result.status === 'refused') refuse(response, result);
+    return { passkey: result.passkey };
+  }
+
+  /** Password again; the account's other sessions end. */
+  @Post('passkeys/:id/remove')
+  @HttpCode(204)
+  async removePasskey(
+    @CurrentPrincipal() principal: Principal,
+    @Param('id') id: string,
+    @Body() body: RemovePasskeyDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    const result = await this.auth.removePasskey(
+      principal.accountId,
+      principal.sessionId,
+      body.password,
+      id,
+    );
+    if (result.status === 'refused') refuse(response, result);
   }
 
   /** The secret is in this answer and nowhere else, ever again. */

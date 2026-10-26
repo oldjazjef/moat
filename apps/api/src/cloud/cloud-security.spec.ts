@@ -5,6 +5,7 @@ import { CloudDatabase } from '../persistence/cloud/cloud-database';
 import { csrfTokenOf } from './auth/domain/session';
 import { hotp } from './auth/domain/totp';
 import { TotpVault } from './auth/application/totp-vault';
+import { b64, SoftwarePasskey } from './testing/software-passkey';
 import {
   type CloudHarness,
   type Reply,
@@ -220,7 +221,10 @@ describe('sessions (SEC-51, T-80)', () => {
     expect(Object.keys(me.account).sort()).toEqual([
       'createdAt',
       'email',
+      'hasPassword',
       'id',
+      'identities',
+      'passkeyCount',
       'totpEnabled',
     ]);
   });
@@ -434,6 +438,7 @@ describe('TOTP over HTTP (SEC-51)', () => {
     expect(need.reply.json()).toEqual({
       statusCode: 401,
       error: 'mfa_required',
+      methods: ['totp'],
     });
     expect(need.reply.setCookies).toEqual([]);
     // The code used to confirm is spent; the next step's works once.
@@ -693,5 +698,148 @@ describe('secrets never leave (SEC-34, SEC-31)', () => {
     });
     expect([400, 500]).toContain(reply.status);
     expect(reply.body).not.toMatch(/at .*\.ts|node_modules|Prisma|SQLITE/);
+  });
+});
+
+describe('passkeys over HTTP (SEC-51, T-101 to T-103)', () => {
+  const device = () =>
+    new SoftwarePasskey({ rpId: 'app.moat.test', origin: TEST_ORIGIN });
+  const fromB64 = (text: string) =>
+    new Uint8Array(Buffer.from(text, 'base64url'));
+
+  it('registers a passkey, asks for it at sign-in, takes each challenge once and shows nothing secret', async () => {
+    const s = await signUp();
+    const authenticator = device();
+
+    const options = await cloud.call('POST', '/api/auth/passkeys/options', {
+      ...write(s),
+      body: { password: PASSWORD },
+    });
+    expect(options.status).toBe(200);
+    expect(options.json<{ rp: { id: string } }>().rp.id).toBe('app.moat.test');
+    const made = authenticator.create(
+      fromB64(options.json<{ challenge: string }>().challenge),
+    );
+    // A field the API does not know is refused, not ignored (API3).
+    expect(
+      (
+        await cloud.call('POST', '/api/auth/passkeys', {
+          ...write(s),
+          body: { name: 'Laptop', ...made, admin: true },
+        })
+      ).status,
+    ).toBe(400);
+    const done = await cloud.call('POST', '/api/auth/passkeys', {
+      ...write(s),
+      body: { name: 'Laptop', ...made },
+    });
+    expect(done.status).toBe(201);
+    const listed = (
+      await cloud.call('GET', '/api/auth/passkeys', { token: s.token })
+    ).json<{ passkeys: Record<string, unknown>[] }>();
+    expect(Object.keys(listed.passkeys[0] ?? {}).sort()).toEqual([
+      'createdAt',
+      'id',
+      'lastUsedAt',
+      'name',
+    ]);
+    const row = await cloud
+      .get(CloudDatabase)
+      .client.accountPasskey.findFirstOrThrow();
+    expect(row.credentialId).toBe(b64(authenticator.credentialId));
+    // The same challenge cannot register a second passkey.
+    expect(
+      (
+        await cloud.call('POST', '/api/auth/passkeys', {
+          ...write(s),
+          body: { name: 'Again', ...made },
+        })
+      ).status,
+    ).toBe(422);
+
+    // Sign in: the password alone asks for a factor and names the methods.
+    const need = await signIn(s.email);
+    expect(need.reply.status).toBe(401);
+    expect(need.reply.json()).toEqual({
+      statusCode: 401,
+      error: 'mfa_required',
+      methods: ['passkey'],
+    });
+    expect(need.reply.setCookies).toEqual([]);
+
+    const ask = async () =>
+      (
+        await cloud.call('POST', '/api/auth/passkey/challenge', {
+          body: { email: s.email, password: PASSWORD },
+          headers: ip(),
+        })
+      ).json<{ challenge: string; rpId: string; credentialIds: string[] }>();
+    const first = await ask();
+    expect(first.credentialIds).toEqual([b64(authenticator.credentialId)]);
+    const assertion = authenticator.get(fromB64(first.challenge));
+    const signed = await cloud.call('POST', '/api/auth/login', {
+      body: { email: s.email, password: PASSWORD, passkey: assertion },
+      headers: ip(),
+    });
+    expect(signed.status).toBe(200);
+    expect(signed.setCookies[0]).toContain('HttpOnly');
+    // The same assertion again: the challenge is used up.
+    const replay = await cloud.call('POST', '/api/auth/login', {
+      body: { email: s.email, password: PASSWORD, passkey: assertion },
+      headers: ip(),
+    });
+    expect(replay.status).toBe(401);
+    expect(replay.json()).toEqual({ statusCode: 401, error: 'invalid_code' });
+    expect(replay.setCookies).toEqual([]);
+    // A forged signature over a fresh challenge.
+    const forged = authenticator.get(fromB64((await ask()).challenge), {
+      forged: true,
+    });
+    expect(
+      (
+        await cloud.call('POST', '/api/auth/login', {
+          body: { email: s.email, password: PASSWORD, passkey: forged },
+          headers: ip(),
+        })
+      ).status,
+    ).toBe(401);
+
+    // Removing needs the password and ends the other sessions.
+    const other = await signIn(s.email, PASSWORD, undefined);
+    expect(other.reply.status).toBe(401);
+    const id = listed.passkeys[0]?.['id'];
+    expect(
+      (
+        await cloud.call('POST', `/api/auth/passkeys/${String(id)}/remove`, {
+          ...write(s),
+          body: { password: 'not the password at all' },
+        })
+      ).status,
+    ).toBe(401);
+    expect(
+      (
+        await cloud.call('POST', `/api/auth/passkeys/${String(id)}/remove`, {
+          ...write(s),
+          body: { password: PASSWORD },
+        })
+      ).status,
+    ).toBe(204);
+    expect((await signIn(s.email)).reply.status).toBe(200);
+  });
+
+  it('does not answer a passkey challenge before the password is right', async () => {
+    const s = await signUp();
+    const wrong = await cloud.call('POST', '/api/auth/passkey/challenge', {
+      body: { email: s.email, password: 'not the password at all' },
+      headers: ip(),
+    });
+    const unknown = await cloud.call('POST', '/api/auth/passkey/challenge', {
+      body: { email: next(), password: PASSWORD },
+      headers: ip(),
+    });
+    expect(wrong.status).toBe(401);
+    expect(unknown.status).toBe(401);
+    expect(unknown.json()).toEqual(wrong.json());
+    expect(wrong.setCookies).toEqual([]);
   });
 });

@@ -3,6 +3,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { apiUrl } from '../config/runtime-env';
 import type { AccountView, SessionAnswer } from './account.types';
+import type { PasskeyGetOptions, UsedPasskey } from './passkey-browser';
 
 /**
  * Who is signed in (Moat Cloud only). The session itself is the `HttpOnly` cookie the API sets —
@@ -80,16 +81,37 @@ export class AccountSession {
   }
 
   /** Rejects with the API's error; `mfa_required` asks for `code`. */
-  async login(email: string, password: string, code?: string): Promise<void> {
-    const body: { email: string; password: string; code?: string } = {
-      email,
-      password,
-    };
+  async login(
+    email: string,
+    password: string,
+    code?: string,
+    passkey?: UsedPasskey,
+  ): Promise<void> {
+    const body: {
+      email: string;
+      password: string;
+      code?: string;
+      passkey?: UsedPasskey;
+    } = { email, password };
     if (code !== undefined && code !== '') body.code = code;
+    if (passkey !== undefined) body.passkey = passkey;
     const answer = await firstValueFrom(
       this.http.post<SessionAnswer>(apiUrl('/auth/login'), body),
     );
     this.adopt(answer);
+  }
+
+  /** First half of a passkey sign-in; rejects like `login` until the password is right. */
+  passkeyChallenge(
+    email: string,
+    password: string,
+  ): Promise<PasskeyGetOptions> {
+    return firstValueFrom(
+      this.http.post<PasskeyGetOptions>(apiUrl('/auth/passkey/challenge'), {
+        email,
+        password,
+      }),
+    );
   }
 
   async logout(): Promise<void> {
@@ -110,6 +132,12 @@ export class AccountSession {
   setTotp(enabled: boolean): void {
     const account = this.current();
     if (account) this.current.set({ ...account, totpEnabled: enabled });
+  }
+
+  /** The number of passkeys changed on the account page. */
+  setPasskeyCount(count: number): void {
+    const account = this.current();
+    if (account) this.current.set({ ...account, passkeyCount: count });
   }
 
   /** The API said the session is gone. */

@@ -34,6 +34,38 @@ export {
   type VerifiedBundle,
 } from './bundle/bundle';
 export {
+  IdTokenError,
+  MAX_ID_TOKEN_BYTES,
+  pkceChallenge,
+  verifyIdToken,
+  type IdTokenClaims,
+  type IdTokenExpectation,
+  type Jwk,
+} from './oidc/id-token';
+export { readBundleTimes, type BundleTimes } from './bundle/bundle-times';
+export {
+  decodeCbor,
+  decodeCborPrefix,
+  isOnCurve,
+  MAX_ATTESTATION_BYTES,
+  MAX_CLIENT_DATA_BYTES,
+  parseAttestationObject,
+  parseAuthenticatorData,
+  PasskeyAssertionError,
+  PasskeyEnrollmentError,
+  pointOfCoseKey,
+  verifyAssertion,
+  verifyEnrollment,
+  type AssertionInput,
+  type CborValue,
+  type EnrolledPasskey,
+  type EnrollmentInput,
+  type ParsedAuthenticatorData,
+  type PasskeyAssertionCode,
+  type PasskeyEnrollmentCode,
+  type VerifiedAssertion,
+} from './crypto/webauthn-attestation';
+export {
   webauthnSignature,
   verifyPasskeyEntry,
   parseEcdsaDer,

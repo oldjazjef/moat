@@ -215,6 +215,38 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
     body: { email: 'ownera@example.ch', password: CLOUD_MATRIX_PASSWORD },
     expect: open(200, true),
   },
+  {
+    // Public, like login; the password is right but the account has no passkey: 409 `no_passkey`.
+    name: 'passkey challenge',
+    method: 'POST',
+    path: '/api/auth/passkey/challenge',
+    body: { email: 'ownera@example.ch', password: CLOUD_MATRIX_PASSWORD },
+    expect: open(409, true),
+  },
+  { method: 'GET', path: '/api/auth/oidc/providers', expect: open(200, false) },
+  {
+    // No provider is configured in this matrix: the start answers a plain 404.
+    name: 'start single sign-in',
+    method: 'GET',
+    path: '/api/auth/oidc/:provider/start',
+    request: '/api/auth/oidc/entra/start',
+    expect: open(404, false),
+  },
+  {
+    // Without a login in progress the way back ends at the sign-in page with a fixed code.
+    name: 'single sign-in callback',
+    method: 'GET',
+    path: '/api/auth/oidc/callback',
+    expect: open(302, false),
+  },
+  {
+    name: 'link a provider',
+    method: 'POST',
+    path: '/api/auth/oidc/:provider/link',
+    request: '/api/auth/oidc/entra/link',
+    body: { password: CLOUD_MATRIX_PASSWORD },
+    expect: accountRoute(404, true),
+  },
   { method: 'POST', path: '/api/auth/logout', expect: accountRoute(204, true) },
   { method: 'GET', path: '/api/auth/me', expect: accountRoute(200, false) },
   {
@@ -225,6 +257,36 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
       newPassword: 'another perfectly long password',
     },
     expect: accountRoute(200, true),
+  },
+  {
+    method: 'GET',
+    path: '/api/auth/passkeys',
+    expect: accountRoute(200, false),
+  },
+  {
+    // Password again, then a challenge: 200 for every signed-in account.
+    name: 'passkey options',
+    method: 'POST',
+    path: '/api/auth/passkeys/options',
+    body: { password: CLOUD_MATRIX_PASSWORD },
+    expect: accountRoute(200, true),
+  },
+  {
+    // A registration that answers no challenge of ours: 422 `challenge_invalid`.
+    name: 'register a passkey',
+    method: 'POST',
+    path: '/api/auth/passkeys',
+    body: { name: 'Laptop', attestationObject: 'AAAA', clientDataJSON: 'AAAA' },
+    expect: accountRoute(422, true),
+  },
+  {
+    // The password checks out, the account has no such passkey: 404 for every account.
+    name: 'remove a passkey',
+    method: 'POST',
+    path: '/api/auth/passkeys/:id/remove',
+    request: '/api/auth/passkeys/unknownpasskey000000000/remove',
+    body: { password: CLOUD_MATRIX_PASSWORD },
+    expect: accountRoute(404, true),
   },
   {
     method: 'POST',
@@ -342,6 +404,25 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
     path: '/api/orgs/:orgId/members',
     request: `${ORG}/members`,
     body: { email: CLOUD_TARGET_EMAIL, role: 'viewer' },
+    expect: guarded(
+      {
+        owner: 204,
+        admin: 204,
+        editor: 403,
+        viewer: 403,
+        billing: 403,
+        foreign: 404,
+      },
+      true,
+    ),
+  },
+  {
+    // Owner and Admin only; 204 even when no invitation exists (T-79), and there is no list.
+    name: 'revoke an invitation by address',
+    method: 'POST',
+    path: '/api/orgs/:orgId/invitations/revoke',
+    request: `${ORG}/invitations/revoke`,
+    body: { email: CLOUD_TARGET_EMAIL },
     expect: guarded(
       {
         owner: 204,
@@ -641,6 +722,23 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
     ),
   },
   {
+    name: 'delete a gate: Owner and Admin only',
+    method: 'DELETE',
+    path: '/api/orgs/:orgId/projects/:projectId/gates/:gate',
+    request: GATE,
+    expect: guarded(
+      {
+        owner: 204,
+        admin: 204,
+        editor: 403,
+        viewer: 403,
+        billing: 403,
+        foreign: 404,
+      },
+      true,
+    ),
+  },
+  {
     method: 'POST',
     path: '/api/orgs/:orgId/projects/:projectId/gates/:gate/pull-address',
     request: `${GATE}/pull-address`,
@@ -687,6 +785,23 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
         foreign: 404,
       },
       true,
+    ),
+  },
+  {
+    name: 'status',
+    method: 'GET',
+    path: '/api/orgs/:orgId/projects/:projectId/status',
+    request: `${PROJECT}/status`,
+    expect: guarded(
+      {
+        owner: 200,
+        admin: 200,
+        editor: 200,
+        viewer: 200,
+        billing: 403,
+        foreign: 404,
+      },
+      false,
     ),
   },
   {

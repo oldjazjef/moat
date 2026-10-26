@@ -19,6 +19,8 @@ import {
   InMemorySessions,
 } from '../../testing/in-memory';
 import { mailKit, tokenIn } from '../../testing/mail-kit';
+import { passkeyKit } from '../../testing/passkey-kit';
+import { LoginGate } from './login-gate';
 import { SessionIssuer } from './session-issuer';
 import {
   ChangePasswordCommand,
@@ -63,6 +65,7 @@ async function setup(mailEnabled: boolean) {
   const limiter = new RateLimiter(rate, clock);
   const vault = await TotpVault.create('A'.repeat(43));
   const issuer = new SessionIssuer(sessions, clock);
+  const pk = passkeyKit(clock);
   return {
     ...kit,
     sessions,
@@ -82,11 +85,13 @@ async function setup(mailEnabled: boolean) {
       accounts,
       sessions,
       hasher,
-      limiter,
       new SecondFactor(accounts, vault, clock),
       issuer,
       clock,
-      kit.mails,
+      pk.passkeys,
+      pk.service,
+      new LoginGate(accounts, hasher, limiter, kit.mails),
+      pk.oidc,
     ),
     change: new ChangePasswordHandler(
       accounts,

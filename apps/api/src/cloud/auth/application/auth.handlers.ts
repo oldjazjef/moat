@@ -6,6 +6,11 @@ import {
 } from '@nestjs/cqrs';
 import { Clock, iso, newId } from '../../common/clock';
 import {
+  type IdentityRecord,
+  OidcRepositoryPort,
+} from '../../oidc/ports/oidc.ports';
+import {
+  hasPassword,
   normaliseEmail,
   PASSWORD_INPUT_MAX_BYTES,
   passwordProblem,
@@ -26,8 +31,10 @@ import {
   RECOVERY_CODE_COUNT,
 } from '../domain/totp';
 import {
+  type AccountRecord,
   AccountRepositoryPort,
   AccountTokenPort,
+  PasskeyRepositoryPort,
   SessionRepositoryPort,
 } from '../ports/auth.ports';
 import {
@@ -44,6 +51,7 @@ import {
   GetMeQuery,
   LoginCommand,
   type LoginResult,
+  type MfaMethod,
   LogoutCommand,
   type Principal,
   type RateLimited,
@@ -54,12 +62,12 @@ import { AccountMails } from './account-mails';
 import { InvitationRedeemer } from '../../tenancy/application/invitation-redeemer';
 import { PasswordHasher } from './password-hasher';
 import {
-  LOGIN_FAILURES_PER_ACCOUNT,
-  LOGIN_PER_IP,
   RateLimiter,
   REAUTH_FAILURES_PER_ACCOUNT,
   REGISTER_PER_IP,
 } from './rate-limiter';
+import { LoginGate } from './login-gate';
+import { PasskeyService } from './passkey-service';
 import { SecondFactor } from './second-factor';
 import { SessionIssuer } from './session-issuer';
 import { TotpVault } from './totp-vault';
@@ -126,55 +134,48 @@ export class LoginHandler implements ICommandHandler<LoginCommand> {
     private readonly accounts: AccountRepositoryPort,
     private readonly sessions: SessionRepositoryPort,
     private readonly hasher: PasswordHasher,
-    private readonly limiter: RateLimiter,
     private readonly factor: SecondFactor,
     private readonly issuer: SessionIssuer,
     private readonly clock: Clock,
-    private readonly mails: AccountMails,
+    private readonly passkeys: PasskeyRepositoryPort,
+    private readonly passkeyService: PasskeyService,
+    private readonly gate: LoginGate,
+    private readonly oidc: OidcRepositoryPort,
   ) {}
 
   async execute(command: LoginCommand): Promise<LoginResult> {
-    const subject = command.email.trim().toLowerCase().slice(0, 254);
-    const ipWait = await this.limiter.retryAfter(LOGIN_PER_IP, command.ip);
-    if (ipWait !== null) return limited(ipWait);
-    const accountWait = await this.limiter.retryAfter(
-      LOGIN_FAILURES_PER_ACCOUNT,
-      subject,
+    const checked = await this.gate.check(
+      command.email,
+      command.password,
+      command.ip,
     );
-    if (accountWait !== null) return limited(accountWait);
-    await this.limiter.record(LOGIN_PER_IP, command.ip);
-
-    const fail = async (): Promise<LoginResult> => {
-      await this.limiter.record(LOGIN_FAILURES_PER_ACCOUNT, subject);
-      return { status: 'refused', code: 'invalid_credentials' };
-    };
-
-    const email = normaliseEmail(command.email);
-    const account =
-      email === null || tooLarge(command.password)
-        ? null
-        : await this.accounts.findByEmail(email);
-    if (account === null) {
-      // An unknown address costs the same work as a known one (T-79).
-      if (!tooLarge(command.password))
-        await this.hasher.verifyUnknown(command.password);
-      return fail();
-    }
-    if (!(await this.hasher.verify(account.passwordHash, command.password)))
-      return fail();
-
-    // The password was right, so saying that the address still needs its link tells nothing new.
-    if (this.mails.enabled && account.emailVerifiedAt === null)
-      return { status: 'refused', code: 'email_not_verified' };
+    if (checked.status !== 'ok') return checked;
+    const { account, subject } = checked;
 
     const totp = await this.accounts.totp(account.id);
     const enabled = totp !== null && totp.enabledAt !== null;
-    if (enabled) {
-      // The password was right, so saying that a code is needed tells nothing new.
-      if (command.code === undefined || command.code === '')
-        return { status: 'refused', code: 'mfa_required' };
-      if (!(await this.factor.verify(account.id, totp, command.code))) {
-        await this.limiter.record(LOGIN_FAILURES_PER_ACCOUNT, subject);
+    const passkeyCount = (await this.passkeys.list(account.id)).length;
+    if (enabled || passkeyCount > 0) {
+      // The password was right, so saying which factors would do tells nothing new. An account
+      // with passkeys never signs in without a factor, even when this installation can no longer
+      // check them (`methods` then lacks `passkey`): fail closed.
+      const methods: MfaMethod[] = [
+        ...(enabled ? (['totp'] as const) : []),
+        ...(passkeyCount > 0 && this.passkeyService.available
+          ? (['passkey'] as const)
+          : []),
+      ];
+      const assertion = command.passkey;
+      const code = command.code ?? '';
+      if (assertion === undefined && code === '')
+        return { status: 'refused', code: 'mfa_required', methods };
+      const proven =
+        assertion !== undefined
+          ? passkeyCount > 0 &&
+            (await this.passkeyService.verifyLogin(account.id, assertion))
+          : enabled && (await this.factor.verify(account.id, totp, code));
+      if (!proven) {
+        await this.gate.failed(subject);
         return { status: 'refused', code: 'invalid_code' };
       }
     }
@@ -196,7 +197,12 @@ export class LoginHandler implements ICommandHandler<LoginCommand> {
     const session = await this.issuer.issue(account.id);
     return {
       status: 'ok',
-      account: view(account.id, account.email, account.createdAt, enabled),
+      account: view(
+        account,
+        enabled,
+        passkeyCount,
+        await this.oidc.identitiesOf(account.id),
+      ),
       session,
     };
   }
@@ -239,17 +245,21 @@ export class AuthenticateSessionHandler implements IQueryHandler<AuthenticateSes
 
 @QueryHandler(GetMeQuery)
 export class GetMeHandler implements IQueryHandler<GetMeQuery> {
-  constructor(private readonly accounts: AccountRepositoryPort) {}
+  constructor(
+    private readonly accounts: AccountRepositoryPort,
+    private readonly passkeys: PasskeyRepositoryPort,
+    private readonly oidc: OidcRepositoryPort,
+  ) {}
 
   async execute(query: GetMeQuery): Promise<AccountView | null> {
     const account = await this.accounts.findById(query.accountId);
     if (account === null) return null;
     const totp = await this.accounts.totp(account.id);
     return view(
-      account.id,
-      account.email,
-      account.createdAt,
+      account,
       totp !== null && totp.enabledAt !== null,
+      (await this.passkeys.list(account.id)).length,
+      await this.oidc.identitiesOf(account.id),
     );
   }
 }
@@ -439,13 +449,21 @@ export class DisableTotpHandler implements ICommandHandler<DisableTotpCommand> {
   }
 }
 
-function view(
-  id: string,
-  email: string,
-  createdAt: string,
+export function view(
+  account: AccountRecord,
   totpEnabled: boolean,
+  passkeyCount: number,
+  identities: readonly IdentityRecord[],
 ): AccountView {
-  return { id, email, totpEnabled, createdAt };
+  return {
+    id: account.id,
+    email: account.email,
+    totpEnabled,
+    passkeyCount,
+    hasPassword: hasPassword(account.passwordHash),
+    identities: identities.map((identity) => identity.provider),
+    createdAt: account.createdAt,
+  };
 }
 
 export const AUTH_HANDLERS = [

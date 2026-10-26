@@ -179,6 +179,9 @@ describe('audit log chain (SEC-53)', () => {
       ['member.add_requested', null, { role: 'editor', emailHash: 'A@B.CH' }],
       ['member.add_requested', TARGET, { role: 'editor', emailHash: SHA }],
       ['member.remove', TARGET, { role: 'admin', self: 'no' }],
+      ['invitation.revoke', null, { email: 'a@b.ch' }],
+      ['invitation.revoke', TARGET, { emailHash: SHA }],
+      ['invitation.revoke', null, { emailHash: 'A@B.CH' }],
       ['member.change', TARGET, { fromRole: 'viewer', toRole: 'viewer' }],
       ['unknown.action', null, {}],
       ['config.edit', TARGET, { op: 'add route' }],
@@ -186,6 +189,8 @@ describe('audit log chain (SEC-53)', () => {
       ['gate.add', TARGET, { gate: 'Site', mode: 'managed' }],
       ['gate.add', TARGET, { gate: 'site', mode: 'cloud' }],
       ['gate.pull_token', TARGET, { gate: 'site', token: 'abc' }],
+      ['gate.remove', TARGET, { gate: 'Site' }],
+      ['gate.remove', TARGET, { gate: 'site', mode: 'managed' }],
       ['secret.set', TARGET, { gate: 'site', name: 'x', secretVersion: 0 }],
       [
         'secret.set',

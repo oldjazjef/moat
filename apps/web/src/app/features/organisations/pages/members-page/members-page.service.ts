@@ -47,6 +47,15 @@ export class MembersPageService {
     role: new FormControl<Role>('viewer', { nonNullable: true }),
   });
 
+  readonly revokeForm = new FormGroup({
+    email: new FormControl('', {
+      nonNullable: true,
+      validators: [zodValidator(emailSchema)],
+    }),
+  });
+  /** The withdrawal was sent; whether an invitation existed stays unsaid (T-79). */
+  readonly revokeSent = signal(false);
+
   readonly canManage = computed(() => this.scope.can('members:manage'));
   readonly canGrantRelease = computed(() => this.scope.can('release:grant'));
 
@@ -78,6 +87,30 @@ export class MembersPageService {
         this.addForm.patchValue({ email: '' });
         this.addForm.markAsUntouched();
         this.addSent.set(true);
+      },
+    );
+  }
+
+  /** Withdraws the invitation for an address. There is no list of invitations (T-79). */
+  async revokeInvitation(): Promise<void> {
+    this.begin();
+    this.revokeSent.set(false);
+    if (this.revokeForm.invalid) {
+      this.revokeForm.markAllAsTouched();
+      this.busy.set(false);
+      return;
+    }
+    const { email } = this.revokeForm.getRawValue();
+    await this.send(
+      this.http.post(
+        apiUrl(
+          `/orgs/${encodeURIComponent(this.scope.orgId() ?? '')}/invitations/revoke`,
+        ),
+        { email: email.trim() },
+      ),
+      () => {
+        this.revokeForm.reset();
+        this.revokeSent.set(true);
       },
     );
   }

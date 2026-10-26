@@ -1,0 +1,87 @@
+@if (visible()) {
+<section hlmCard data-sso aria-labelledby="account-sso">
+  <div hlmCardHeader>
+    <h2 hlmCardTitle id="account-sso">{{ 'account.sso.title' | translate }}</h2>
+    <p hlmCardDescription>{{ 'account.sso.description' | translate }}</p>
+  </div>
+  <div hlmCardContent class="flex flex-col gap-4">
+    @if (outcome(); as result) {
+    <p
+      class="mt-note"
+      [attr.role]="result === 'linked' ? 'status' : 'alert'"
+      data-sso-result
+    >
+      {{ 'account.sso.results.' + result | translate }}
+    </p>
+    } @if (service.error(); as code) {
+    <p class="mt-note" role="alert" data-sso-error>
+      <ng-icon
+        name="lucideTriangleAlert"
+        size="16"
+        aria-hidden="true"
+        class="mt-0.5 shrink-0"
+      />
+      <span>{{ errorKey(code) | translate }}</span>
+    </p>
+    } @if (service.linked().length > 0) {
+    <ul class="flex flex-col gap-1" data-sso-linked>
+      @for (id of service.linked(); track id) {
+      <li data-sso-identity>{{ service.nameOf(id) }}</li>
+      }
+    </ul>
+    } @else {
+    <p class="text-muted-foreground text-sm" data-sso-none>
+      {{ 'account.sso.none' | translate }}
+    </p>
+    } @if (service.hasPassword()) { @for (provider of service.linkable(); track
+    provider.id) { @if (service.linking() !== provider.id) {
+    <div>
+      <button
+        hlmBtn
+        variant="outline"
+        type="button"
+        data-sso-link
+        [attr.data-provider]="provider.id"
+        [disabled]="service.busy()"
+        (click)="service.askLink(provider.id)"
+      >
+        {{ 'account.sso.link' | translate: { name: provider.name } }}
+      </button>
+    </div>
+    } @else {
+    <form
+      class="flex flex-wrap items-end gap-3"
+      novalidate
+      data-sso-link-form
+      [formGroup]="service.form"
+      (submit)="$event.preventDefault(); service.link()"
+    >
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="sso-password"
+          >{{ 'auth.fields.currentPassword' | translate }}</label
+        >
+        <input
+          hlmInput
+          id="sso-password"
+          type="password"
+          autocomplete="current-password"
+          formControlName="password"
+        />
+      </div>
+      <button hlmBtn type="submit" data-sso-link-go [disabled]="service.busy()">
+        {{ 'account.sso.linkGo' | translate: { name: provider.name } }}
+      </button>
+      <button
+        hlmBtn
+        variant="ghost"
+        type="button"
+        data-sso-link-cancel
+        (click)="service.cancel()"
+      >
+        {{ 'common.cancel' | translate }}
+      </button>
+    </form>
+    } } }
+  </div>
+</section>
+}

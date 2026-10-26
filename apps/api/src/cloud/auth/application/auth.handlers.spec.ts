@@ -9,6 +9,7 @@ import {
   InMemoryRateLimit,
   InMemorySessions,
 } from '../../testing/in-memory';
+import { passkeyKit } from '../../testing/passkey-kit';
 import { mailKit } from '../../testing/mail-kit';
 import { SESSION_IDLE_MS, sessionIdOf } from '../domain/session';
 import { hotp } from '../domain/totp';
@@ -34,6 +35,7 @@ import {
   LogoutHandler,
   RegisterHandler,
 } from './auth.handlers';
+import { LoginGate } from './login-gate';
 import { PasswordHasher } from './password-hasher';
 import { RateLimiter } from './rate-limiter';
 import { SecondFactor } from './second-factor';
@@ -60,6 +62,7 @@ function setup(mailEnabled = false) {
   const organisations = new InMemoryOrganisations(accounts);
   const audit = new AuditTrail(new InMemoryAudit(), clock);
   const kit = mailKit(mailEnabled, accounts, organisations, clock, audit, rate);
+  const pk = passkeyKit(clock);
   return {
     kit,
     organisations,
@@ -76,19 +79,22 @@ function setup(mailEnabled = false) {
       kit.mails,
       kit.redeemer,
     ),
+    passkeyKit: pk,
     login: new LoginHandler(
       accounts,
       sessions,
       hasher,
-      limiter,
       factor,
       issuer,
       clock,
-      kit.mails,
+      pk.passkeys,
+      pk.service,
+      new LoginGate(accounts, hasher, limiter, kit.mails),
+      pk.oidc,
     ),
     logout: new LogoutHandler(sessions, clock),
     authenticate: new AuthenticateSessionHandler(sessions, clock),
-    me: new GetMeHandler(accounts),
+    me: new GetMeHandler(accounts, pk.passkeys, pk.oidc),
     change: new ChangePasswordHandler(
       accounts,
       sessions,
@@ -255,7 +261,10 @@ describe('login (SEC-51, T-79)', () => {
     expect(Object.keys(result.account).sort()).toEqual([
       'createdAt',
       'email',
+      'hasPassword',
       'id',
+      'identities',
+      'passkeyCount',
       'totpEnabled',
     ]);
   });
@@ -560,7 +569,11 @@ describe('TOTP and recovery codes (SEC-51)', () => {
     const none = await ctx.login.execute(
       new LoginCommand('eme@example.ch', PASSWORD, undefined, '1.1.1.1', null),
     );
-    expect(none).toEqual({ status: 'refused', code: 'mfa_required' });
+    expect(none).toEqual({
+      status: 'refused',
+      code: 'mfa_required',
+      methods: ['totp'],
+    });
     expect(
       await ctx.login.execute(
         new LoginCommand('eme@example.ch', PASSWORD, '000000', '1.1.1.1', null),

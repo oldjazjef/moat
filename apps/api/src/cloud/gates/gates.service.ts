@@ -3,6 +3,10 @@ import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import type { ConfigEdit } from '../../project/project.types';
 import {
   AddGateCommand,
+  ProjectStatusQuery,
+  type ProjectStatusResult,
+  RemoveGateCommand,
+  type RemoveGateResult,
   type AddGateResult,
   CreatePullAddressCommand,
   EditConfigCommand,
@@ -84,6 +88,14 @@ export class GatesService {
       ),
     );
   }
+  removeGate(
+    a: string,
+    o: string,
+    p: string,
+    gate: string,
+  ): Promise<RemoveGateResult> {
+    return this.commands.execute(new RemoveGateCommand(a, o, p, gate));
+  }
   createPullAddress(
     a: string,
     o: string,
@@ -111,6 +123,9 @@ export class GatesService {
     return this.commands.execute(
       new PutSecretCommand(a, o, p, gate, name, sealed),
     );
+  }
+  projectStatus(a: string, o: string, p: string): Promise<ProjectStatusResult> {
+    return this.queries.execute(new ProjectStatusQuery(a, o, p));
   }
   previewRelease(
     a: string,

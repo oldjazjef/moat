@@ -17,6 +17,11 @@ import {
   AccountRepositoryPort,
   type AccountRecord,
   AccountTokenPort,
+  type ChallengePurpose,
+  type ChallengeRecord,
+  MAX_PASSKEYS,
+  type PasskeyRecord,
+  PasskeyRepositoryPort,
   type AccountTokenPurpose,
   type AccountTokenRecord,
   RateLimitPort,
@@ -25,6 +30,11 @@ import {
   type TotpRecord,
 } from '../auth/ports/auth.ports';
 import { Clock } from '../common/clock';
+import {
+  type IdentityRecord,
+  type OidcLoginRecord,
+  OidcRepositoryPort,
+} from '../oidc/ports/oidc.ports';
 import type { Role } from '../tenancy/domain/permissions';
 import {
   type AddMemberOutcome,
@@ -423,6 +433,20 @@ export class InMemoryCloudStore extends CloudProjectStorePort {
     this.gates.push(gate);
     return Promise.resolve('ok');
   }
+  removeGate(projectId: string, name: string) {
+    const i = this.gates.findIndex(
+      (g) => g.projectId === projectId && g.name === name,
+    );
+    if (i < 0) return Promise.resolve(false);
+    this.gates.splice(i, 1);
+    for (const list of [this.secrets, this.bundles])
+      for (let j = list.length - 1; j >= 0; j -= 1) {
+        const row = list[j];
+        if (row?.projectId === projectId && row.gate === name)
+          list.splice(j, 1);
+      }
+    return Promise.resolve(true);
+  }
   setPullTokenHash(projectId: string, name: string, hash: string) {
     const i = this.gates.findIndex(
       (g) => g.projectId === projectId && g.name === name,
@@ -539,6 +563,13 @@ export class InMemoryInvitations extends InvitationRepositoryPort {
     this.rows.push(invitation);
     return Promise.resolve();
   }
+  revoke(organisationId: string, email: string): Promise<void> {
+    const at = this.rows.findIndex(
+      (r) => r.organisationId === organisationId && r.email === email,
+    );
+    if (at >= 0) this.rows.splice(at, 1);
+    return Promise.resolve();
+  }
   takeAllFor(
     email: string,
     now: string,
@@ -546,5 +577,126 @@ export class InMemoryInvitations extends InvitationRepositoryPort {
     const mine = this.rows.filter((r) => r.email === email);
     for (const r of mine) this.rows.splice(this.rows.indexOf(r), 1);
     return Promise.resolve(mine.filter((r) => r.expiresAt > now));
+  }
+}
+
+export class InMemoryPasskeys extends PasskeyRepositoryPort {
+  readonly passkeys: PasskeyRecord[] = [];
+  readonly challenges: ChallengeRecord[] = [];
+  list(accountId: string) {
+    return Promise.resolve(
+      this.passkeys.filter((p) => p.accountId === accountId),
+    );
+  }
+  findByCredential(credentialId: string) {
+    return Promise.resolve(
+      this.passkeys.find((p) => p.credentialId === credentialId) ?? null,
+    );
+  }
+  add(passkey: PasskeyRecord): Promise<'ok' | 'limit' | 'credential_taken'> {
+    if (this.passkeys.some((p) => p.credentialId === passkey.credentialId))
+      return Promise.resolve('credential_taken');
+    if (
+      this.passkeys.filter((p) => p.accountId === passkey.accountId).length >=
+      MAX_PASSKEYS
+    )
+      return Promise.resolve('limit');
+    this.passkeys.push(passkey);
+    return Promise.resolve('ok');
+  }
+  remove(accountId: string, id: string) {
+    const at = this.passkeys.findIndex(
+      (p) => p.accountId === accountId && p.id === id,
+    );
+    if (at < 0) return Promise.resolve(false);
+    this.passkeys.splice(at, 1);
+    return Promise.resolve(true);
+  }
+  recordUse(id: string, signCount: number, at: string) {
+    const i = this.passkeys.findIndex((p) => p.id === id);
+    const current = this.passkeys[i];
+    if (!current) return Promise.resolve(false);
+    const rises =
+      current.signCount < signCount ||
+      (current.signCount === 0 && signCount === 0);
+    if (!rises) return Promise.resolve(false);
+    this.passkeys[i] = { ...current, signCount, lastUsedAt: at };
+    return Promise.resolve(true);
+  }
+  issueChallenge(challenge: ChallengeRecord) {
+    for (let i = this.challenges.length - 1; i >= 0; i -= 1) {
+      const c = this.challenges[i];
+      if (
+        c?.accountId === challenge.accountId &&
+        c.expiresAt <= challenge.createdAt
+      )
+        this.challenges.splice(i, 1);
+    }
+    this.challenges.push(challenge);
+    return Promise.resolve();
+  }
+  consumeChallenge(
+    id: string,
+    accountId: string,
+    purpose: ChallengePurpose,
+    now: string,
+  ) {
+    const at = this.challenges.findIndex(
+      (c) =>
+        c.id === id &&
+        c.accountId === accountId &&
+        c.purpose === purpose &&
+        c.expiresAt > now,
+    );
+    if (at < 0) return Promise.resolve(false);
+    this.challenges.splice(at, 1);
+    return Promise.resolve(true);
+  }
+}
+
+export class InMemoryOidc extends OidcRepositoryPort {
+  readonly identities: IdentityRecord[] = [];
+  readonly logins: OidcLoginRecord[] = [];
+  findIdentity(provider: string, subject: string) {
+    return Promise.resolve(
+      this.identities.find(
+        (i) => i.provider === provider && i.subject === subject,
+      ) ?? null,
+    );
+  }
+  identitiesOf(accountId: string) {
+    return Promise.resolve(
+      this.identities.filter((i) => i.accountId === accountId),
+    );
+  }
+  addIdentity(identity: IdentityRecord): Promise<'ok' | 'taken'> {
+    if (
+      this.identities.some(
+        (i) =>
+          i.provider === identity.provider && i.subject === identity.subject,
+      )
+    )
+      return Promise.resolve('taken');
+    this.identities.push(identity);
+    return Promise.resolve('ok');
+  }
+  touchIdentity(id: string, at: string) {
+    const i = this.identities.findIndex((x) => x.id === id);
+    const current = this.identities[i];
+    if (current) this.identities[i] = { ...current, lastLoginAt: at };
+    return Promise.resolve();
+  }
+  issueLogin(login: OidcLoginRecord) {
+    for (let i = this.logins.length - 1; i >= 0; i -= 1)
+      if ((this.logins[i]?.expiresAt ?? '') <= login.createdAt)
+        this.logins.splice(i, 1);
+    this.logins.push(login);
+    return Promise.resolve();
+  }
+  consumeLogin(id: string, now: string) {
+    const at = this.logins.findIndex((l) => l.id === id);
+    if (at < 0) return Promise.resolve(null);
+    const [row] = this.logins.splice(at, 1);
+    return Promise.resolve(row && row.expiresAt > now ? row : null);
   }
 }

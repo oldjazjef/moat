@@ -39,3 +39,15 @@ export function normaliseEmail(input: string): string | null {
   if (email.length < 3 || email.length > 254) return null;
   return EMAIL.test(email) ? email : null;
 }
+
+/**
+ * What an account made by single sign-on holds instead of a password hash. It starts like an
+ * Argon2id string, so the database's CHECK (nothing but an Argon2id hash is ever stored as a
+ * password) still holds, but it is no hash `crypto_pwhash_str_verify` accepts: no password ever
+ * matches. The account page sees `hasPassword: false` and offers no password-based settings.
+ */
+export const SSO_PASSWORD_MARKER = '$argon2id$moat-sso-no-password';
+
+export function hasPassword(passwordHash: string): boolean {
+  return passwordHash !== SSO_PASSWORD_MARKER;
+}

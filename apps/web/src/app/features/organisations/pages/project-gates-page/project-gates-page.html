@@ -5,7 +5,7 @@
   <mt-help-link section="cloudGates" />
 </mt-page-header>
 
-<mt-org-tabs [orgId]="orgId()" />
+<mt-org-tabs [orgId]="orgId()" [showAudit]="service.scope.can('audit:read')" />
 
 @if (service.scope.entry.error() || service.project.error()) {
 <p class="mt-note" role="alert" data-not-found>
@@ -393,6 +393,51 @@
         </div>
         }
       </div>
+
+      @if (service.canManage()) {
+      <div class="flex flex-col gap-3" data-remove>
+        <h3 class="text-sm font-semibold">
+          {{ 'gatesPage.remove.title' | translate }}
+        </h3>
+        <p class="text-muted-foreground text-sm">
+          {{ 'gatesPage.remove.description' | translate }}
+        </p>
+        <div class="flex gap-2">
+          @if (service.confirmingRemove() === gate.name) {
+          <button
+            hlmBtn
+            variant="destructive"
+            type="button"
+            data-remove-confirm
+            [disabled]="ui.busy"
+            (click)="service.removeGate(gate.name)"
+          >
+            {{ 'gatesPage.remove.confirm' | translate }}
+          </button>
+          <button
+            hlmBtn
+            variant="ghost"
+            type="button"
+            data-remove-cancel
+            (click)="service.cancelRemove()"
+          >
+            {{ 'common.cancel' | translate }}
+          </button>
+          } @else {
+          <button
+            hlmBtn
+            variant="outline"
+            type="button"
+            data-remove-ask
+            [disabled]="ui.busy"
+            (click)="service.askRemove(gate.name)"
+          >
+            {{ 'gatesPage.remove.ask' | translate }}
+          </button>
+          }
+        </div>
+      </div>
+      }
     </div>
   </section>
   } @if (service.canManage()) {

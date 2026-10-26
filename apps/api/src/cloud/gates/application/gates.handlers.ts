@@ -22,6 +22,7 @@ import {
   pinnedSignerOf,
   planBundle,
   planGate,
+  readBundleTimes,
   SEALED_SECRET_ALG,
   signBundle,
   toBase64Url,
@@ -58,11 +59,18 @@ import {
   type ListSecretsResult,
   PreviewReleaseQuery,
   type PreviewReleaseResult,
+  ProjectStatusQuery,
+  type ProjectStatusResult,
+  type GateStatus,
+  type StatusFinding,
+  type StatusKind,
   PullBundleQuery,
   type PullAddressResult,
   PutSecretCommand,
   type PutSecretResult,
   ReleaseCommand,
+  RemoveGateCommand,
+  type RemoveGateResult,
   type ReleaseResult,
   type SaveConfigResult,
   SetConfigCommand,
@@ -464,6 +472,40 @@ export class AddGateHandler
   }
 }
 
+@CommandHandler(RemoveGateCommand)
+export class RemoveGateHandler
+  extends Guarded
+  implements ICommandHandler<RemoveGateCommand>
+{
+  constructor(
+    organisations: OrganisationRepositoryPort,
+    projects: OrgProjectRepositoryPort,
+    private readonly store: CloudProjectStorePort,
+    private readonly audit: AuditTrail,
+  ) {
+    super(organisations, projects);
+  }
+
+  async execute(command: RemoveGateCommand): Promise<RemoveGateResult> {
+    const access = await this.guard(
+      command.actorId,
+      command.organisationId,
+      command.projectId,
+      'gate:manage',
+    );
+    if (access !== 'ok') return failure(access);
+    if (!NAME.test(command.gate)) return failure('not_found');
+    if (!(await this.store.removeGate(command.projectId, command.gate)))
+      return failure('not_found');
+    await this.audit.record(command.organisationId, command.actorId, {
+      action: 'gate.remove',
+      target: command.projectId,
+      details: { gate: command.gate },
+    });
+    return { status: 'ok' };
+  }
+}
+
 @CommandHandler(CreatePullAddressCommand)
 export class CreatePullAddressHandler
   extends Guarded
@@ -707,6 +749,93 @@ abstract class ReleasePlanner extends Guarded {
     }
   }
 }
+
+/** A bundle that expires within this many seconds is reported (it matters only to gates that honour expiry). */
+const EXPIRY_WARNING_SECONDS = 14 * 24 * 60 * 60;
+
+@QueryHandler(ProjectStatusQuery)
+export class ProjectStatusHandler
+  extends ReleasePlanner
+  implements IQueryHandler<ProjectStatusQuery>
+{
+  constructor(
+    organisations: OrganisationRepositoryPort,
+    projects: OrgProjectRepositoryPort,
+    store: CloudProjectStorePort,
+    signer: CloudSigner,
+    private readonly clock: Clock,
+  ) {
+    super(organisations, projects, store, signer);
+  }
+
+  async execute(query: ProjectStatusQuery): Promise<ProjectStatusResult> {
+    const access = await this.guard(
+      query.actorId,
+      query.organisationId,
+      query.projectId,
+      'config:read',
+    );
+    if (access !== 'ok') return failure(access);
+    const now = Math.floor(this.clock.now().getTime() / 1000);
+    const project = new Map<StatusKind, StatusFinding>();
+    const gates: GateStatus[] = [];
+    for (const gate of await this.store.listGates(query.projectId)) {
+      const latest = await this.store.latestBundle(query.projectId, gate.name);
+      const times = latest === null ? null : readBundleTimes(latest.text);
+      const findings: StatusFinding[] = [];
+      if (latest === null)
+        findings.push({ kind: 'no_bundle', severity: 'warning' });
+      else if (times === null)
+        findings.push({ kind: 'bundle_unreadable', severity: 'error' });
+      else if (times.expiresAt !== null && times.expiresAt <= now)
+        findings.push({ kind: 'bundle_expired', severity: 'error' });
+      else if (
+        times.expiresAt !== null &&
+        times.expiresAt - now <= EXPIRY_WARNING_SECONDS
+      )
+        findings.push({ kind: 'bundle_expiring', severity: 'warning' });
+      if (gate.mode === 'managed') {
+        const planned = await this.plan(query.projectId, gate);
+        if (planned.status === 'planned') {
+          if (latest !== null && planned.plan.changes.length > 0)
+            findings.push({ kind: 'release_pending', severity: 'info' });
+        } else if (planned.code === 'secrets_missing') {
+          findings.push({
+            kind: 'secrets_missing',
+            severity: 'warning',
+            names: planned.secrets ?? [],
+          });
+        } else if (
+          planned.code === 'config_missing' ||
+          planned.code === 'config_invalid'
+        ) {
+          project.set(planned.code, {
+            kind: planned.code,
+            severity: planned.code === 'config_invalid' ? 'error' : 'warning',
+          });
+        } else if (planned.code === 'managed_unavailable') {
+          project.set('managed_unavailable', {
+            kind: 'managed_unavailable',
+            severity: 'error',
+          });
+        }
+      }
+      gates.push({
+        name: gate.name,
+        mode: gate.mode,
+        latestVersion: times?.version ?? latest?.version ?? 0,
+        issuedAt: times === null ? null : isoOfSeconds(times.issuedAt),
+        expiresAt:
+          times?.expiresAt == null ? null : isoOfSeconds(times.expiresAt),
+        findings,
+      });
+    }
+    return { status: 'ok', project: [...project.values()], gates };
+  }
+}
+
+const isoOfSeconds = (seconds: number): string =>
+  new Date(seconds * 1000).toISOString();
 
 @QueryHandler(PreviewReleaseQuery)
 export class PreviewReleaseHandler
@@ -959,10 +1088,13 @@ export const GATES_HANDLERS = [
   SetConfigHandler,
   EditConfigHandler,
   ListGatesHandler,
+  ProjectStatusHandler,
   AddGateHandler,
+  RemoveGateHandler,
   CreatePullAddressHandler,
   ListSecretsHandler,
   PutSecretHandler,
+  ProjectStatusHandler,
   PreviewReleaseHandler,
   ReleaseHandler,
   UploadBundleHandler,

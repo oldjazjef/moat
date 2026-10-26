@@ -32,15 +32,19 @@ import {
   SetConfigCommand,
   CreatePullAddressCommand,
   PullBundleQuery,
+  RemoveGateCommand,
+  ProjectStatusQuery,
 } from './gates.commands';
 import {
   AddGateHandler,
   CreatePullAddressHandler,
   EditConfigHandler,
   PreviewReleaseHandler,
+  ProjectStatusHandler,
   PullBundleHandler,
   PutSecretHandler,
   ReleaseHandler,
+  RemoveGateHandler,
   SetConfigHandler,
 } from './gates.handlers';
 
@@ -104,6 +108,8 @@ async function setup(withKey = true) {
       put: new PutSecretHandler(...args, store, clock, audit),
       preview: new PreviewReleaseHandler(...args, store, signer),
       release: new ReleaseHandler(...args, store, signer, clock, audit),
+      remove: new RemoveGateHandler(...args, store, audit),
+      status: new ProjectStatusHandler(...args, store, signer, clock),
       pull: new PullBundleHandler(store),
       address: new CreatePullAddressHandler(
         ...args,
@@ -587,5 +593,220 @@ describe('rotating the installation key', () => {
       /^Invalid signing key environment: MOAT_SIGNING_KEY_NEXT_PUBLIC$/,
     );
     expect((await CloudSigner.create(undefined)).available).toBe(false);
+  });
+});
+
+describe('deleting a gate', () => {
+  it('removes the gate with its secrets, bundles and pull address, and records only its name', async () => {
+    const t = await setup();
+    await t.handlers.set.execute(
+      new SetConfigCommand(t.owner, t.org, t.project, NEW_PROJECT_CONFIG, null),
+    );
+    await enrol(t);
+    const p = await t.handlers.preview.execute(
+      new PreviewReleaseQuery(t.owner, t.org, t.project, 'site'),
+    );
+    if (p.status !== 'ok') throw new Error('preview');
+    await t.handlers.release.execute(
+      new ReleaseCommand(t.owner, t.org, t.project, 'site', p.preview.digest),
+    );
+    const made = await t.handlers.address.execute(
+      new CreatePullAddressCommand(t.owner, t.org, t.project, 'site'),
+    );
+    if (made.status !== 'ok') throw new Error('address');
+    const token = made.url.split('/').at(-1) ?? '';
+    expect(t.store.bundles).toHaveLength(1);
+
+    const result = await t.handlers.remove.execute(
+      new RemoveGateCommand(t.owner, t.org, t.project, 'site'),
+    );
+    expect(result).toEqual({ status: 'ok' });
+    expect(t.store.gates).toHaveLength(0);
+    expect(t.store.bundles).toHaveLength(0);
+    expect(t.store.secrets).toHaveLength(0);
+    // The old pull address serves nothing any more.
+    expect(
+      await t.handlers.pull.execute(new PullBundleQuery(token)),
+    ).toBeNull();
+    // moat.yaml is not touched.
+    expect((await t.store.getConfig(t.project))?.text).toBe(NEW_PROJECT_CONFIG);
+    expect(t.log.rows.at(-1)).toMatchObject({ action: 'gate.remove' });
+    expect(JSON.parse(t.log.rows.at(-1)?.details ?? '{}')).toEqual({
+      gate: 'site',
+    });
+  });
+
+  it('answers a missing gate and a bad name with not_found, and writes nothing', async () => {
+    const t = await setup();
+    const before = t.log.rows.length;
+    for (const gate of ['site', 'Site', '../x'])
+      expect(
+        await t.handlers.remove.execute(
+          new RemoveGateCommand(t.owner, t.org, t.project, gate),
+        ),
+      ).toEqual({ status: 'not_found' });
+    expect(t.log.rows).toHaveLength(before);
+  });
+
+  it('leaves a gate of another project and another member role alone', async () => {
+    const t = await setup();
+    await enrol(t);
+    const stranger = newId();
+    expect(
+      await t.handlers.remove.execute(
+        new RemoveGateCommand(stranger, t.org, t.project, 'site'),
+      ),
+    ).toEqual({ status: 'not_found' });
+    expect(t.store.gates).toHaveLength(1);
+  });
+});
+
+describe('project status (FR-51/52, from what Moat Cloud stores)', () => {
+  const status = (t: Awaited<ReturnType<typeof setup>>, actor = t.owner) =>
+    t.handlers.status.execute(new ProjectStatusQuery(actor, t.org, t.project));
+  const kinds = (r: Awaited<ReturnType<typeof status>>, gate = 0) =>
+    r.status === 'ok' ? (r.gates[gate]?.findings.map((f) => f.kind) ?? []) : [];
+
+  it('has nothing to say about a project without gates', async () => {
+    const t = await setup();
+    expect(await status(t)).toEqual({ status: 'ok', project: [], gates: [] });
+  });
+
+  it('reports a gate without a bundle, and the missing config of a managed gate', async () => {
+    const t = await setup();
+    await enrol(t);
+    const r = await status(t);
+    if (r.status !== 'ok') throw new Error('status');
+    expect(r.gates[0]).toMatchObject({ name: 'site', latestVersion: 0 });
+    expect(kinds(r)).toContain('no_bundle');
+    expect(r.project.map((f) => f.kind)).toEqual(['config_missing']);
+  });
+
+  it('names the secrets the config uses, and only their names', async () => {
+    const t = await setup();
+    await t.handlers.set.execute(
+      new SetConfigCommand(
+        t.owner,
+        t.org,
+        t.project,
+        `version: 1
+environments:
+  production:
+    enabled: true
+upstreams:
+  hubspot:
+    origin: 'https://api.hubapi.com'
+    auth:
+      type: bearer
+      secret: hubspot-token
+routes:
+  newsletter:
+    method: POST
+    path: '/newsletter'
+    upstream: hubspot
+    upstreamPath: '/crm/v3/objects/contacts'
+    maxBodySize: '4KiB'
+`,
+        null,
+      ),
+    );
+    await enrol(t);
+    const r = await status(t);
+    if (r.status !== 'ok') throw new Error('status');
+    expect(r.gates[0]?.findings).toContainEqual({
+      kind: 'secrets_missing',
+      severity: 'warning',
+      names: ['hubspot-token'],
+    });
+  });
+
+  it('after a release nothing is pending, until the config changes', async () => {
+    const t = await setup();
+    const saved = await t.handlers.set.execute(
+      new SetConfigCommand(t.owner, t.org, t.project, NEW_PROJECT_CONFIG, null),
+    );
+    if (saved.status !== 'ok' || saved.hash === null) throw new Error('save');
+    await enrol(t);
+    const p = await t.handlers.preview.execute(
+      new PreviewReleaseQuery(t.owner, t.org, t.project, 'site'),
+    );
+    if (p.status !== 'ok') throw new Error('preview');
+    await t.handlers.release.execute(
+      new ReleaseCommand(t.owner, t.org, t.project, 'site', p.preview.digest),
+    );
+    const after = await status(t);
+    expect(kinds(after)).toEqual([]);
+    expect(after).toMatchObject({
+      gates: [{ latestVersion: 1, expiresAt: null }],
+    });
+    await t.handlers.set.execute(
+      new SetConfigCommand(
+        t.owner,
+        t.org,
+        t.project,
+        NEW_PROJECT_CONFIG.replace(
+          'upstreams: {}',
+          "upstreams:\n  open:\n    origin: 'https://api.example.ch'",
+        ).replace(
+          'routes: {}',
+          "routes:\n  ping:\n    method: GET\n    path: '/ping'\n    upstream: open\n    upstreamPath: '/ping'\n    maxBodySize: '1KiB'",
+        ),
+        saved.hash,
+      ),
+    );
+    expect(kinds(await status(t))).toEqual(['release_pending']);
+  });
+
+  it('reports an expired and an expiring bundle of a gate the customer signs', async () => {
+    const t = await setup(false);
+    await sodium.ready;
+    await enrol(t, {
+      signerKey: toBase64Url(sodium.crypto_sign_keypair().publicKey),
+    });
+    const now = Math.floor(t.clock.now().getTime() / 1000);
+    const put = (version: number, expiresAt: number | null) =>
+      t.store.addBundle({
+        projectId: t.project,
+        gate: 'site',
+        version,
+        digest: 'a'.repeat(64),
+        text: JSON.stringify({
+          moat: 'bundle',
+          v: 1,
+          payload: toBase64Url(
+            new TextEncoder().encode(
+              JSON.stringify({ version, issuedAt: now - 10, expiresAt }),
+            ),
+          ),
+          sigs: [],
+        }),
+        createdAt: t.clock.now().toISOString(),
+      });
+    await put(1, now - 1);
+    expect(kinds(await status(t))).toEqual(['bundle_expired']);
+    await put(2, now + 3 * 86_400);
+    expect(kinds(await status(t))).toEqual(['bundle_expiring']);
+    await put(3, now + 60 * 86_400);
+    expect(kinds(await status(t))).toEqual([]);
+    await put(4, null);
+    expect(kinds(await status(t))).toEqual([]);
+  });
+
+  it('flags a stored bundle it cannot read, and refuses a foreign or unauthorised asker', async () => {
+    const t = await setup(false);
+    await sodium.ready;
+    await enrol(t, {
+      signerKey: toBase64Url(sodium.crypto_sign_keypair().publicKey),
+    });
+    await t.store.addBundle({
+      projectId: t.project,
+      gate: 'site',
+      version: 1,
+      digest: 'a'.repeat(64),
+      text: 'garbage',
+      createdAt: t.clock.now().toISOString(),
+    });
+    expect(kinds(await status(t))).toEqual(['bundle_unreadable']);
+    expect(await status(t, newId())).toEqual({ status: 'not_found' });
   });
 });

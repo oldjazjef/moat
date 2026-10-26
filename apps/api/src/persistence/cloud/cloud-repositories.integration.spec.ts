@@ -13,6 +13,8 @@ import { CloudDatabase } from './cloud-database';
 import {
   PrismaAccountRepository,
   PrismaAccountTokenRepository,
+  PrismaOidcRepository,
+  PrismaPasskeyRepository,
   PrismaRateLimit,
   PrismaSessionRepository,
 } from './prisma-auth.repositories';
@@ -55,6 +57,8 @@ for (const provider of ['sqlite', 'postgresql'] as const) {
     let projects: PrismaOrgProjectRepository;
     let tokens: PrismaAccountTokenRepository;
     let invitations: PrismaInvitationRepository;
+    let passkeys: PrismaPasskeyRepository;
+    let oidc: PrismaOidcRepository;
     // No PostgreSQL server on this machine and no MOAT_TEST_POSTGRES_URL: the specs return early.
     const unavailable = () => provider === 'postgresql' && pg === null;
 
@@ -78,10 +82,185 @@ for (const provider of ['sqlite', 'postgresql'] as const) {
       projects = new PrismaOrgProjectRepository(database);
       tokens = new PrismaAccountTokenRepository(database);
       invitations = new PrismaInvitationRepository(database);
+      passkeys = new PrismaPasskeyRepository(database);
+      oidc = new PrismaOidcRepository(database);
     }, 120_000);
 
     afterAll(async () => {
       await database?.onApplicationShutdown();
+    });
+
+    it('keeps single sign-on identities unique per provider and subject, and logins single-use', async () => {
+      if (unavailable()) return;
+      const a = account('sso-a@example.ch');
+      const b = account('sso-b@example.ch');
+      await accounts.create(a);
+      await accounts.create(b);
+      const identity = (accountId: string, subject: string) => ({
+        id: newId(),
+        accountId,
+        provider: 'entra',
+        subject,
+        createdAt: AT,
+        lastLoginAt: null,
+      });
+      expect(await oidc.addIdentity(identity(a.id, 'sub-1'))).toBe('ok');
+      expect(await oidc.addIdentity(identity(b.id, 'sub-1'))).toBe('taken');
+      expect(
+        await oidc.addIdentity({
+          ...identity(b.id, 'sub-1'),
+          provider: 'other',
+        }),
+      ).toBe('ok');
+      const found = await oidc.findIdentity('entra', 'sub-1');
+      expect(found?.accountId).toBe(a.id);
+      await oidc.touchIdentity(found?.id ?? '', AT);
+      expect((await oidc.identitiesOf(a.id))[0]?.lastLoginAt).toBe(AT);
+      expect(await oidc.findIdentity('entra', 'missing')).toBeNull();
+
+      const login = {
+        id: '4'.repeat(64),
+        provider: 'entra',
+        purpose: 'login' as const,
+        accountId: null,
+        nonce: 'n'.repeat(43),
+        verifier: 'v'.repeat(43),
+        browserHash: '5'.repeat(64),
+        createdAt: AT,
+        expiresAt: '2026-10-15T12:10:00.000Z',
+      };
+      await oidc.issueLogin(login);
+      expect(
+        await oidc.consumeLogin(login.id, '2026-10-15T12:11:00.000Z'),
+      ).toBeNull();
+      await oidc.issueLogin({ ...login, id: '6'.repeat(64) });
+      expect(await oidc.consumeLogin('6'.repeat(64), AT)).toMatchObject({
+        provider: 'entra',
+        purpose: 'login',
+      });
+      expect(await oidc.consumeLogin('6'.repeat(64), AT)).toBeNull();
+      // A link needs its account, a login must not have one (CHECK).
+      await expect(
+        oidc.issueLogin({ ...login, id: '7'.repeat(64), purpose: 'link' }),
+      ).rejects.toThrow();
+      await expect(
+        oidc.issueLogin({ ...login, id: '8'.repeat(64), accountId: a.id }),
+      ).rejects.toThrow();
+      await oidc.issueLogin({
+        ...login,
+        id: '9'.repeat(64),
+        purpose: 'link',
+        accountId: a.id,
+      });
+      expect((await oidc.consumeLogin('9'.repeat(64), AT))?.accountId).toBe(
+        a.id,
+      );
+    });
+
+    it('keeps passkeys: unique credentials, a limit, a counter that must rise, cascade with the account', async () => {
+      if (unavailable()) return;
+      const a = account('passkeys@example.ch');
+      await accounts.create(a);
+      const passkey = (n: number) => ({
+        id: newId(),
+        accountId: a.id,
+        credentialId: `cred-${n}`.padEnd(43, 'x'),
+        publicKey: 'K'.repeat(87),
+        signCount: 0,
+        name: `key ${n}`,
+        createdAt: AT,
+        lastUsedAt: null,
+      });
+      const first = passkey(1);
+      expect(await passkeys.add(first)).toBe('ok');
+      expect(
+        await passkeys.add({ ...passkey(2), credentialId: first.credentialId }),
+      ).toBe('credential_taken');
+      expect((await passkeys.findByCredential(first.credentialId))?.id).toBe(
+        first.id,
+      );
+      // A counter must rise, except an authenticator that keeps none (0 and 0).
+      expect(await passkeys.recordUse(first.id, 0, AT)).toBe(true);
+      expect(await passkeys.recordUse(first.id, 7, AT)).toBe(true);
+      expect(await passkeys.recordUse(first.id, 7, AT)).toBe(false);
+      expect(await passkeys.recordUse(first.id, 3, AT)).toBe(false);
+      expect(await passkeys.recordUse(first.id, 0, AT)).toBe(false);
+      expect((await passkeys.list(a.id))[0]).toMatchObject({
+        signCount: 7,
+        lastUsedAt: AT,
+      });
+      for (let n = 2; n <= 10; n += 1)
+        expect(await passkeys.add(passkey(n))).toBe('ok');
+      expect(await passkeys.add(passkey(11))).toBe('limit');
+      expect(await passkeys.remove(a.id, first.id)).toBe(true);
+      expect(await passkeys.remove(a.id, first.id)).toBe(false);
+      expect(
+        await passkeys.remove(
+          newId(),
+          (await passkeys.list(a.id))[0]?.id ?? '',
+        ),
+      ).toBe(false);
+      expect(await passkeys.list(a.id)).toHaveLength(9);
+    });
+
+    it('uses a challenge up once, for its account and purpose, before it expires', async () => {
+      if (unavailable()) return;
+      const a = account('challenge@example.ch');
+      await accounts.create(a);
+      const b = account('challenge2@example.ch');
+      await accounts.create(b);
+      const live = '1'.repeat(64);
+      await passkeys.issueChallenge({
+        id: live,
+        accountId: a.id,
+        purpose: 'login',
+        createdAt: AT,
+        expiresAt: '2026-10-15T12:02:00.000Z',
+      });
+      expect(await passkeys.consumeChallenge(live, b.id, 'login', AT)).toBe(
+        false,
+      );
+      expect(await passkeys.consumeChallenge(live, a.id, 'register', AT)).toBe(
+        false,
+      );
+      expect(
+        await passkeys.consumeChallenge(
+          live,
+          a.id,
+          'login',
+          '2026-10-15T12:03:00.000Z',
+        ),
+      ).toBe(false);
+      expect(await passkeys.consumeChallenge(live, a.id, 'login', AT)).toBe(
+        true,
+      );
+      expect(await passkeys.consumeChallenge(live, a.id, 'login', AT)).toBe(
+        false,
+      );
+      // Issuing drops the account's expired challenges.
+      const old = '2'.repeat(64);
+      await passkeys.issueChallenge({
+        id: old,
+        accountId: a.id,
+        purpose: 'login',
+        createdAt: AT,
+        expiresAt: '2026-10-15T12:02:00.000Z',
+      });
+      await passkeys.issueChallenge({
+        id: '3'.repeat(64),
+        accountId: a.id,
+        purpose: 'login',
+        createdAt: '2026-10-15T13:00:00.000Z',
+        expiresAt: '2026-10-15T13:02:00.000Z',
+      });
+      expect(
+        await passkeys.consumeChallenge(
+          old,
+          a.id,
+          'login',
+          '2026-10-15T12:01:00.000Z',
+        ),
+      ).toBe(false);
     });
 
     it('keeps an address once, whatever the case it came in', async () => {

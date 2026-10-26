@@ -21,10 +21,12 @@ export const AUDIT_ACTIONS = [
   'member.join',
   'member.change',
   'member.remove',
+  'invitation.revoke',
   'project.create',
   'project.delete',
   'config.edit',
   'gate.add',
+  'gate.remove',
   'gate.pull_token',
   'secret.set',
   'bundle.sign',
@@ -54,6 +56,16 @@ export type AuditEvent =
       readonly target: null;
       readonly details: {
         readonly role: AuditRole;
+        /** SHA-256 hex of the normalised address. */
+        readonly emailHash: string;
+      };
+    }
+  | {
+      /** An invitation for this address was withdrawn (recorded whether or not one existed, T-79). */
+      readonly action: 'invitation.revoke';
+      /** The organisation: nobody is named. */
+      readonly target: null;
+      readonly details: {
         /** SHA-256 hex of the normalised address. */
         readonly emailHash: string;
       };
@@ -103,6 +115,12 @@ export type AuditEvent =
         readonly gate: string;
         readonly mode: 'managed' | 'signed';
       };
+    }
+  | {
+      /** A gate was deleted with its sealed secrets, bundles and pull address (the config stays). */
+      readonly action: 'gate.remove';
+      readonly target: string;
+      readonly details: { readonly gate: string };
     }
   | {
       /** A gate's pull address was created or replaced (the token itself is never recorded). */
@@ -356,6 +374,13 @@ export function eventValid(
         typeof d['emailHash'] === 'string' &&
         HEX64.test(d['emailHash'])
       );
+    case 'invitation.revoke':
+      return (
+        target === null &&
+        exactly('emailHash') &&
+        typeof d['emailHash'] === 'string' &&
+        HEX64.test(d['emailHash'])
+      );
     case 'member.join':
       return id && exactly('role') && isRole(d['role']);
     case 'member.change':
@@ -385,6 +410,7 @@ export function eventValid(
         name(d['gate']) &&
         (d['mode'] === 'managed' || d['mode'] === 'signed')
       );
+    case 'gate.remove':
     case 'gate.pull_token':
       return id && exactly('gate') && name(d['gate']);
     case 'secret.set':

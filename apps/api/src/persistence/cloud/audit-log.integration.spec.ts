@@ -59,6 +59,25 @@ for (const provider of ['sqlite', 'postgresql'] as const) {
       if (!unavailable()) await database.client.$disconnect();
     });
 
+    it('takes the action `gate.remove` into the chain (T-87)', async () => {
+      if (unavailable()) return;
+      const org = newId();
+      const actor = newId();
+      const trail = new AuditTrail(log, new FixedClock());
+      await trail.record(org, actor, created(org));
+      await trail.record(org, actor, {
+        action: 'gate.remove',
+        target: newId(),
+        details: { gate: 'site' },
+      });
+      const rows = await log.list(org, 0, 10);
+      expect(rows.map((r) => r.action)).toEqual(['org.create', 'gate.remove']);
+      expect(await verifyAudit(org, rows, await log.head(org))).toEqual({
+        status: 'intact',
+        entries: 2,
+      });
+    });
+
     it('appends, reads back in order and verifies the chain it stored', async () => {
       if (unavailable()) return;
       const org = newId();
@@ -190,3 +209,71 @@ for (const provider of ['sqlite', 'postgresql'] as const) {
     });
   });
 }
+
+describe('the migration that adds `gate.remove` on SQLite', () => {
+  it('keeps the rows and their hashes and the append-only triggers of a log that already exists', async () => {
+    const { DatabaseSync } = await import('node:sqlite');
+    const { MIGRATIONS } = await import('../database/migrations');
+    const db = new DatabaseSync(':memory:');
+    const all = MIGRATIONS.sqlite;
+    const at = all.findIndex(
+      (m) => m.name === '20261020120000_audit_gate_remove',
+    );
+    expect(at).toBeGreaterThan(0);
+    const last = all[at];
+    for (const m of all.slice(0, at)) db.exec(m.sql);
+    const org = newId();
+    const insert = db.prepare(
+      'INSERT INTO audit_entry (organisation_id, seq, at, actor, action, target, details, prev_hash, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    );
+    insert.run(
+      org,
+      1,
+      AT,
+      newId(),
+      'org.create',
+      org,
+      '{}',
+      '0'.repeat(64),
+      SHA,
+    );
+    expect(() =>
+      insert.run(
+        org,
+        2,
+        AT,
+        newId(),
+        'gate.remove',
+        org,
+        '{}',
+        SHA,
+        'b'.repeat(64),
+      ),
+    ).toThrow(/CHECK/);
+
+    db.exec(last?.sql ?? '');
+
+    expect(
+      db.prepare('SELECT seq, action, hash FROM audit_entry').all(),
+    ).toEqual([{ seq: 1, action: 'org.create', hash: SHA }]);
+    insert.run(
+      org,
+      2,
+      AT,
+      newId(),
+      'gate.remove',
+      org,
+      '{}',
+      SHA,
+      'b'.repeat(64),
+    );
+    expect(() => db.exec('UPDATE audit_entry SET seq = 9')).toThrow(
+      /append-only/,
+    );
+    expect(() => db.exec('DELETE FROM audit_entry')).toThrow(/append-only/);
+    expect(() =>
+      insert.run(org, 3, AT, newId(), 'org.create', org, '{}', SHA, SHA),
+    ).toThrow(/UNIQUE/);
+    db.close();
+  });
+});

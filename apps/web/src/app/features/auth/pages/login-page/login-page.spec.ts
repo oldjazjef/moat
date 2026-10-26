@@ -12,6 +12,7 @@ import {
   text,
   typeInto,
 } from '../../../../../testing/cloud-harness';
+import { PasskeyBrowser } from '../../../../core/auth/passkey-browser';
 import { LoginPage } from './login-page';
 
 const PASSWORD = 'planted-password-never-shown';
@@ -21,7 +22,13 @@ const ROUTES = [
   { path: 'app', children: [] },
 ];
 
-const open = () => openPage('/login', ROUTES, {});
+const open = (browser?: Partial<Record<'get', () => Promise<unknown>>>) =>
+  openPage('/login', ROUTES, {}, () => {
+    if (browser === undefined) return;
+    const real = TestBed.inject(PasskeyBrowser);
+    vi.spyOn(real, 'supported', 'get').mockReturnValue(true);
+    vi.spyOn(real, 'get').mockImplementation(browser.get as never);
+  });
 
 function fill(el: HTMLElement) {
   typeInto(el, '#login-email', 'eme@example.ch');
@@ -82,7 +89,9 @@ describe('LoginPage (Anmelden)', () => {
     const { el, harness } = await open();
     fill(el);
     submitForm(el, '[data-login-form]');
-    refuse(await sent('POST', '/api/auth/login'), 401, 'mfa_required');
+    refuse(await sent('POST', '/api/auth/login'), 401, 'mfa_required', {
+      methods: ['totp'],
+    });
     await settle(harness);
     expect(el.querySelector('#login-code')).not.toBeNull();
     // The password field is gone from the page while the code is asked for.
@@ -106,7 +115,9 @@ describe('LoginPage (Anmelden)', () => {
     const { el, harness } = await open();
     fill(el);
     submitForm(el, '[data-login-form]');
-    refuse(await sent('POST', '/api/auth/login'), 401, 'mfa_required');
+    refuse(await sent('POST', '/api/auth/login'), 401, 'mfa_required', {
+      methods: ['totp'],
+    });
     await settle(harness);
     typeInto(el, '#login-code', '000000');
     submitForm(el, '[data-login-form]');
@@ -123,7 +134,9 @@ describe('LoginPage (Anmelden)', () => {
     const { el, harness } = await open();
     fill(el);
     submitForm(el, '[data-login-form]');
-    refuse(await sent('POST', '/api/auth/login'), 401, 'mfa_required');
+    refuse(await sent('POST', '/api/auth/login'), 401, 'mfa_required', {
+      methods: ['totp'],
+    });
     await settle(harness);
     (el.querySelector('[data-login-back]') as HTMLButtonElement).click();
     await settle(harness);
@@ -204,5 +217,105 @@ describe('LoginPage (Anmelden)', () => {
     refuse(await sent('POST', '/api/auth/login'), 429, 'rate_limited');
     await settle(harness);
     expect(text(el, '[data-login-error]')).toContain('Zu viele Versuche');
+  });
+
+  describe('with a passkey', () => {
+    const OPTIONS = {
+      challenge: 'Y2hhbGxlbmdl',
+      rpId: 'moat.example.ch',
+      credentialIds: ['Y3JlZA'],
+      timeoutMs: 120000,
+    };
+    const ASSERTION = {
+      credentialId: 'Y3JlZA',
+      authenticatorData: 'YXV0aA',
+      clientDataJSON: 'Y2xpZW50',
+      signature: 'c2ln',
+    };
+    const passkeyStep = async (
+      browser: Partial<Record<'get', () => Promise<unknown>>>,
+      methods: string[] = ['passkey'],
+    ) => {
+      const page = await open(browser);
+      fill(page.el);
+      submitForm(page.el, '[data-login-form]');
+      refuse(await sent('POST', '/api/auth/login'), 401, 'mfa_required', {
+        methods,
+      });
+      await settle(page.harness);
+      return page;
+    };
+
+    it('offers the passkey, and the code field only when TOTP is a method', async () => {
+      const only = await passkeyStep({ get: () => Promise.resolve(ASSERTION) });
+      expect(only.el.querySelector('[data-login-passkey]')).not.toBeNull();
+      expect(only.el.querySelector('#login-code')).toBeNull();
+      expect(only.el.querySelector('[data-login-submit]')).toBeNull();
+      TestBed.resetTestingModule();
+      const both = await passkeyStep(
+        { get: () => Promise.resolve(ASSERTION) },
+        ['totp', 'passkey'],
+      );
+      expect(both.el.querySelector('[data-login-passkey]')).not.toBeNull();
+      expect(both.el.querySelector('#login-code')).not.toBeNull();
+      expect(both.el.querySelector('[data-login-submit]')).not.toBeNull();
+    });
+
+    it('asks Moat Cloud for a challenge, lets the browser sign it and sends the assertion', async () => {
+      const get = vi.fn(() => Promise.resolve(ASSERTION));
+      const { el, harness } = await passkeyStep({ get });
+      (el.querySelector('[data-login-passkey]') as HTMLButtonElement).click();
+      const challenge = await sent('POST', '/api/auth/passkey/challenge');
+      expect(challenge.request.body).toEqual({
+        email: 'eme@example.ch',
+        password: PASSWORD,
+      });
+      challenge.flush(OPTIONS);
+      const login = await sent('POST', '/api/auth/login');
+      expect(get).toHaveBeenCalledWith(OPTIONS);
+      expect(login.request.body).toEqual({
+        email: 'eme@example.ch',
+        password: PASSWORD,
+        passkey: ASSERTION,
+      });
+      login.flush({ account: ACCOUNT, csrfToken: CSRF });
+      await settle(harness);
+      expect(TestBed.inject(Router).url).toBe('/app');
+    });
+
+    it('says plainly when the person cancels, and sends no assertion', async () => {
+      const { PasskeyBrowserError } =
+        await import('../../../../core/auth/passkey-browser');
+      const { el, harness } = await passkeyStep({
+        get: () => Promise.reject(new PasskeyBrowserError('cancelled')),
+      });
+      (el.querySelector('[data-login-passkey]') as HTMLButtonElement).click();
+      (await sent('POST', '/api/auth/passkey/challenge')).flush(OPTIONS);
+      await settle(harness);
+      expect(text(el, '[data-passkey-problem]')).toContain('geschlossen');
+      expect(el.querySelector('[data-login-passkey]')).not.toBeNull();
+    });
+
+    it("shows the API's refusal of an assertion and stays on the step", async () => {
+      const { el, harness } = await passkeyStep({
+        get: () => Promise.resolve(ASSERTION),
+      });
+      (el.querySelector('[data-login-passkey]') as HTMLButtonElement).click();
+      (await sent('POST', '/api/auth/passkey/challenge')).flush(OPTIONS);
+      refuse(await sent('POST', '/api/auth/login'), 401, 'invalid_code');
+      await settle(harness);
+      expect(text(el, '[data-login-error]')).toContain('Der Code stimmt nicht');
+      expect(el.querySelector('[data-login-passkey]')).not.toBeNull();
+    });
+
+    it('says when this installation can check no method at all', async () => {
+      const { el } = await passkeyStep(
+        { get: () => Promise.resolve(ASSERTION) },
+        [],
+      );
+      expect(el.querySelector('[data-no-method]')).not.toBeNull();
+      expect(el.querySelector('[data-login-passkey]')).toBeNull();
+      expect(el.querySelector('#login-code')).toBeNull();
+    });
   });
 });

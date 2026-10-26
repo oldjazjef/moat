@@ -27,6 +27,7 @@ import {
   ChangeMemberDto,
   CreateOrganisationDto,
   CreateOrgProjectDto,
+  RevokeInvitationDto,
 } from './dto/tenancy.dto';
 import { TenancyService } from './tenancy.service';
 
@@ -101,6 +102,22 @@ export class TenancyController {
       orgId,
       body.email,
       body.role,
+    );
+    if (result.status !== 'ok') refuse(result);
+  }
+
+  /** 204 whether or not an invitation for that address existed (T-79); there is no list. */
+  @Post(':orgId/invitations/revoke')
+  @HttpCode(204)
+  async revokeInvitation(
+    @CurrentPrincipal() me: Principal,
+    @Param('orgId') orgId: string,
+    @Body() body: RevokeInvitationDto,
+  ): Promise<void> {
+    const result = await this.tenancy.revokeInvitation(
+      me.accountId,
+      orgId,
+      body.email,
     );
     if (result.status !== 'ok') refuse(result);
   }
