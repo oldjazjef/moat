@@ -25,9 +25,10 @@ module.exports = {
   files: [
     'package.json',
     'main.js',
-    'preload.js',
-    'sign-preload.js',
-    'seal-preload.js',
+    // Every window's preload (`*preload.js`: the page's own and each dialog's). Listing them one
+    // by one left the key, SFTP, FTPS, database and passkey windows without theirs: the windows
+    // opened blank (a preload is what renders them).
+    '*preload.js',
     'dialogs/**',
     'api/**',
     'web/**',
