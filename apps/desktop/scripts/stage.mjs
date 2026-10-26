@@ -149,6 +149,30 @@ const version = process.env.MOAT_VERSION ?? '0.0.0';
 if (!/^\d+\.\d+\.\d+$/.test(version))
   throw new Error(`MOAT_VERSION must look like 1.2.3 (got ${version})`);
 
+// Nx lists the server's npm packages in dist/.../package.json but misses some that the bundle
+// still requires (`@prisma/client` through a sub-path, `tslib`): the installed app then died with
+// "Cannot find module '@prisma/client/runtime/client'". Every package the bundle requires is
+// added with the repository's version (same rule as deploy/docker/stage-cloud.mjs); a package
+// declared nowhere is an error, never a guess.
+const apiDependencies = { ...apiManifest.dependencies };
+const bundleSource = readFileSync(path.join(apiDist, 'main.js'), 'utf8');
+for (const match of bundleSource.matchAll(/require\("([^"./][^"]*)"\)/g)) {
+  const specifier = match[1];
+  if (specifier.startsWith('node:')) continue;
+  const parts = specifier.split('/');
+  const name = specifier.startsWith('@')
+    ? parts.slice(0, 2).join('/')
+    : parts[0];
+  if (apiDependencies[name] !== undefined) continue;
+  const declared =
+    rootManifest.dependencies?.[name] ?? rootManifest.devDependencies?.[name];
+  if (typeof declared !== 'string')
+    throw new Error(
+      `the server bundle requires ${name}, which the repository does not declare`,
+    );
+  apiDependencies[name] = declared;
+}
+
 const manifest = {
   name: 'moat-desktop',
   productName: 'Moat',
@@ -159,9 +183,7 @@ const manifest = {
   private: true,
   main: 'main.js',
   dependencies: Object.fromEntries(
-    Object.entries(apiManifest.dependencies).sort(([a], [b]) =>
-      a.localeCompare(b),
-    ),
+    Object.entries(apiDependencies).sort(([a], [b]) => a.localeCompare(b)),
   ),
   // Read by electron-builder; never installed (`--prod`).
   devDependencies: { electron: electronVersion },
