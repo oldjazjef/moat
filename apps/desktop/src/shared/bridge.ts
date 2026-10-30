@@ -19,6 +19,10 @@ export const IPC = {
   passkeyStatus: 'moat:passkey:status',
   passkeyEnroll: 'moat:passkey:enroll',
   passkeyUse: 'moat:passkey:use',
+  updateCheck: 'moat:update:check',
+  updateOpen: 'moat:update:open',
+  updateAuto: 'moat:update:auto',
+  updateSetAuto: 'moat:update:set-auto',
 } as const;
 
 /** A project id as the API hands it out (22 characters base64url). */
@@ -266,6 +270,13 @@ export type PasskeyEnrollResult =
   | { status: 'unavailable' }
   | { status: 'failed' };
 
+/** Whether a newer release exists (main/lib/update-check.ts). Nothing is ever downloaded. */
+export type UpdateCheckResult =
+  | { status: 'current'; current: string }
+  | { status: 'available'; current: string; latest: string }
+  | { status: 'development'; current: string }
+  | { status: 'failed'; current: string };
+
 export interface DesktopBridge {
   readonly platform: string;
   readonly project: {
@@ -373,6 +384,15 @@ export interface DesktopBridge {
    * typed there, never in the page, and the page learns only the counts. Optional only so test
    * doubles need not stub it; the desktop's preload always provides it.
    */
+  readonly update?: {
+    /** Asks GitHub for the latest release; shows, never installs. */
+    check(): Promise<UpdateCheckResult>;
+    /** Opens that version's release page (built by the main process, never taken from GitHub). */
+    open(version: string): Promise<void>;
+    /** Whether the app checks once at start. */
+    auto(): Promise<boolean>;
+    setAuto(on: boolean): Promise<boolean>;
+  };
   readonly database?: {
     open(projectId: string, locale: string): Promise<DatabaseResult>;
   };

@@ -53,6 +53,7 @@ describe('desktop config', () => {
       databaseTargets: {},
       passkey: null,
       passkeyGates: [],
+      updateCheck: true,
     });
     if (process.platform !== 'win32')
       expect(statSync(join(dir, CONFIG_FILE)).mode & 0o077).toBe(0);

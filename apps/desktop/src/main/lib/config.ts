@@ -79,6 +79,8 @@ export interface DesktopConfig {
    * pins it (trust mode 2). A local setting; nothing from a project or the Cloud sets it.
    */
   readonly passkeyGates: readonly string[];
+  /** Ask GitHub once at start whether a newer release exists (shown, never installed). */
+  readonly updateCheck: boolean;
 }
 
 export interface ProjectKey {
@@ -108,6 +110,7 @@ export const EMPTY_CONFIG: DesktopConfig = {
   databaseTargets: {},
   passkey: null,
   passkeyGates: [],
+  updateCheck: true,
 };
 
 const PROJECT_KEY = /^[A-Za-z0-9_-]{22}$/;
@@ -214,6 +217,7 @@ export function readConfig(userData: string): DesktopConfig {
       databaseTargets,
       passkey: passkeyRecordOf(value['passkey']),
       passkeyGates: [...new Set(passkeyGates)].sort(),
+      updateCheck: value['updateCheck'] !== false,
     };
   } catch {
     return EMPTY_CONFIG;

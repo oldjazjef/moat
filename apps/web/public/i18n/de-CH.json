@@ -1090,12 +1090,14 @@
           "create": "Mit «Neuen Schlüssel erstellen» legst du für ein Projekt eine neue Schlüsseldatei an. Die Passphrase gibst du zweimal im eigenen Fenster von Moat ein.",
           "choose": "Mit «Vorhandene Schlüsseldatei wählen» nimmst du eine Datei, die du schon hast, zum Beispiel eine mit `moat keygen` erzeugte.",
           "replace": "Wählst du für ein Projekt einen anderen Schlüssel, beginnt ein Schlüsselwechsel: Moat Desktop merkt sich den alten, bis du den Wechsel unter «Gates» abschliesst.",
-          "passkey": "Unter «Passkey dieses Geräts» legst du mit «Passkey anlegen» einen Passkey an. Es gibt einen für ganz Moat Desktop."
+          "passkey": "Unter «Passkey dieses Geräts» legst du mit «Passkey anlegen» einen Passkey an. Es gibt einen für ganz Moat Desktop.",
+          "updates": "Unter «Updates» zeigt Moat Desktop, ob es eine neuere Version gibt. «Release-Seite öffnen» öffnet sie im Browser, dort lädst du den Installer. Mit «Beim Start nach Updates suchen» schaltest du die Abfrage bei GitHub beim Start aus oder ein."
         },
         "tips": {
           "own": "Ein Projekt pro Schlüssel trennt deine Websites: Wer den Schlüssel eines Projekts hat, kann die Gates eines anderen nicht ändern.",
           "backup": "Sichere jede Schlüsseldatei an einem zweiten Ort. Ohne sie kannst du für dieses Projekt nichts mehr freigeben.",
-          "perGate": "Ob ein Gate mit dem Projektschlüssel oder mit dem Passkey signiert, legst du im Projekt unter «Gates» mit «Mit Passkey signieren» fest."
+          "perGate": "Ob ein Gate mit dem Projektschlüssel oder mit dem Passkey signiert, legst du im Projekt unter «Gates» mit «Mit Passkey signieren» fest.",
+          "noAutoInstall": "Moat Desktop installiert Updates nie selbst: Eine neue Version kommt nur auf deinen Rechner, wenn du sie herunterlädst und installierst. Die App ist noch nicht signiert, deshalb warnt dein System beim Installieren."
         }
       },
       "configEditor": {
@@ -1839,5 +1841,17 @@
       "not_writable": "Die moat.yaml kann nicht geschrieben werden. Prüfe die Rechte des Projektordners.",
       "failed": "Das hat nicht geklappt. Versuche es noch einmal."
     }
+  },
+  "update": {
+    "title": "Updates",
+    "intro": "Moat Desktop fragt bei GitHub nach der neuesten Version und zeigt sie an. Installieren tust du sie selbst, von der Release-Seite: Die App lädt nie von sich aus Code herunter.",
+    "available": "Update {{version}} verfügbar",
+    "newer": "Version {{latest}} ist verfügbar, du hast {{current}}.",
+    "current": "Du hast die neueste Version ({{current}}).",
+    "development": "Eine Entwicklungsversion hat keine Updates.",
+    "failed": "Die neueste Version konnte nicht abgefragt werden. Prüfe die Internetverbindung.",
+    "open": "Release-Seite öffnen",
+    "check": "Jetzt prüfen",
+    "auto": "Beim Start nach Updates suchen"
   }
 }

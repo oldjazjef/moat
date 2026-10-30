@@ -69,6 +69,14 @@ const bridge: DesktopBridge = {
         String(locale),
       ),
   },
+  update: {
+    check: () => ipcRenderer.invoke(IPC.updateCheck),
+    open: (version: string) =>
+      ipcRenderer.invoke(IPC.updateOpen, String(version)),
+    auto: () => ipcRenderer.invoke(IPC.updateAuto),
+    setAuto: (on: boolean) =>
+      ipcRenderer.invoke(IPC.updateSetAuto, on === true),
+  },
   passkey: {
     status: (projectId: string | null) =>
       ipcRenderer.invoke(

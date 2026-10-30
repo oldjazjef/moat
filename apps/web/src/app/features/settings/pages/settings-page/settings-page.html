@@ -53,7 +53,64 @@
     </div>
   </section>
 
-  @if (service.canPasskey) {
+  @if (updates.supported) {
+  <section
+    hlmCard
+    data-settings-updates
+    aria-labelledby="settings-updates-title"
+  >
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="settings-updates-title" class="text-base">
+        {{ 'update.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'update.intro' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-3 text-sm">
+      @if (updates.result(); as result) {
+      <p data-update-result [attr.data-status]="result.status" role="status">
+        @switch (result.status) { @case ('available') { {{ 'update.newer' |
+        translate: { latest: result.latest, current: result.current } }} } @case
+        ('current') { {{ 'update.current' | translate: { current: result.current
+        } }} } @case ('development') { {{ 'update.development' | translate }} }
+        @default { {{ 'update.failed' | translate }} } }
+      </p>
+      }
+      <div class="flex flex-wrap gap-2">
+        @if (updates.result()?.status === 'available') {
+        <button
+          hlmBtn
+          size="sm"
+          type="button"
+          data-update-open
+          (click)="updates.open()"
+        >
+          {{ 'update.open' | translate }}
+        </button>
+        }
+        <button
+          hlmBtn
+          size="sm"
+          variant="outline"
+          type="button"
+          data-update-check
+          [disabled]="updates.checking()"
+          (click)="updates.check()"
+        >
+          {{ 'update.check' | translate }}
+        </button>
+      </div>
+      <label class="flex items-center gap-2">
+        <input
+          type="checkbox"
+          data-update-auto
+          [checked]="updates.auto()"
+          (change)="onAuto($event)"
+        />
+        <span>{{ 'update.auto' | translate }}</span>
+      </label>
+    </div>
+  </section>
+  } @if (service.canPasskey) {
   <section hlmCard data-passkey aria-labelledby="settings-passkey-title">
     <div hlmCardHeader>
       <div class="flex items-center justify-between gap-3">

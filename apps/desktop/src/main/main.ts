@@ -13,6 +13,7 @@ import {
   type IpcMainInvokeEvent,
   ipcMain,
   Menu,
+  net,
   safeStorage,
   session,
   shell,
@@ -38,8 +39,15 @@ import {
   type SigningKeyInfo,
   type SigningKeyResult,
   type SigningKeyStatus,
+  type UpdateCheckResult,
 } from '../shared/bridge';
 import { type RunningApi, startApi } from './api-host';
+import {
+  LATEST_RELEASE_URL,
+  MAX_RELEASE_ANSWER_BYTES,
+  releasePageOf,
+  updateCheckOf,
+} from './lib/update-check';
 import {
   legacyKeyMigration,
   readConfig,
@@ -592,6 +600,28 @@ function registerIpc(): void {
     },
   );
   registerPasskeyDialogIpc();
+  // Updates: shown, never downloaded or installed (main/lib/update-check.ts).
+  ipcMain.handle(IPC.updateCheck, async (event): Promise<UpdateCheckResult> => {
+    const current = app.getVersion();
+    if (!fromApp(event)) return { status: 'failed', current };
+    return updateCheckOf(current, await latestReleaseAnswer());
+  });
+  ipcMain.handle(
+    IPC.updateOpen,
+    async (event, version: unknown): Promise<void> => {
+      if (!fromApp(event) || typeof version !== 'string') return;
+      const page = releasePageOf(version);
+      if (page !== null) await shell.openExternal(page);
+    },
+  );
+  ipcMain.handle(IPC.updateAuto, (event): boolean =>
+    fromApp(event) ? readConfig(app.getPath('userData')).updateCheck : false,
+  );
+  ipcMain.handle(IPC.updateSetAuto, (event, on: unknown): boolean => {
+    if (!fromApp(event) || typeof on !== 'boolean') return false;
+    updateConfig(app.getPath('userData'), { updateCheck: on });
+    return on;
+  });
   // The value of a secret is typed only in the main process's seal window, never in the page.
   ipcMain.handle(
     IPC.secretSeal,
@@ -1083,6 +1113,29 @@ async function openDatabase(
       running.syncDatabase(id, url, key, direction, signer),
   });
   return showDatabaseDialog({ parent, appDir, title: texts.title, session });
+}
+
+/**
+ * GitHub's answer about the latest release, at most MAX_RELEASE_ANSWER_BYTES and 10 s; null on
+ * any failure. Through Electron's net (the system's proxy settings), no credentials.
+ */
+async function latestReleaseAnswer(): Promise<string | null> {
+  try {
+    const response = await net.fetch(LATEST_RELEASE_URL, {
+      headers: {
+        accept: 'application/vnd.github+json',
+        'user-agent': 'moat-desktop',
+      },
+      credentials: 'omit',
+      redirect: 'error',
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) return null;
+    const text = await response.text();
+    return text.length > MAX_RELEASE_ANSWER_BYTES ? null : text;
+  } catch {
+    return null;
+  }
 }
 
 /** `<userData>/no-git-hooks`, created empty: git's hooks path for every Git deploy (T-68). */

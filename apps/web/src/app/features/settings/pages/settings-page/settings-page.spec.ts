@@ -68,6 +68,16 @@ function bridge(): DesktopBridge {
     bundle: { sign: vi.fn() },
     secret: { seal: vi.fn() },
     gate: { deploy: vi.fn(), import: vi.fn(), log: vi.fn() },
+    update: {
+      check: vi.fn().mockResolvedValue({
+        status: 'available',
+        current: '0.0.1',
+        latest: '0.0.2',
+      }),
+      open: vi.fn().mockResolvedValue(undefined),
+      auto: vi.fn().mockResolvedValue(true),
+      setAuto: vi.fn((on: boolean) => Promise.resolve(on)),
+    },
     passkey: {
       status: vi.fn().mockResolvedValue({ passkey: null, gates: [] }),
       enroll: vi
@@ -136,6 +146,27 @@ describe('SettingsPage (Moat Desktop)', () => {
       PASSKEY.fingerprint,
     );
     expect(el.querySelector('[data-passkey-created]')).not.toBeNull();
+  });
+
+  it('shows a newer release and opens its page, never installs it', async () => {
+    const desktop = bridge();
+    window.moatDesktop = desktop;
+    const { el, harness } = await openPage('/app/settings', ROUTES, {
+      '/api/projects': [],
+    });
+    (el.querySelector('[data-update-check]') as HTMLButtonElement).click();
+    await settle(harness);
+    expect(
+      el.querySelector('[data-update-result]')?.getAttribute('data-status'),
+    ).toBe('available');
+    expect(text(el.querySelector('[data-update-result]'))).toContain('0.0.2');
+    (el.querySelector('[data-update-open]') as HTMLButtonElement).click();
+    await settle(harness);
+    expect(desktop.update?.open).toHaveBeenCalledWith('0.0.2');
+    const auto = el.querySelector('[data-update-auto]') as HTMLInputElement;
+    auto.click();
+    await settle(harness);
+    expect(desktop.update?.setAuto).toHaveBeenCalledWith(false);
   });
 
   it('points to the projects when there is none', async () => {

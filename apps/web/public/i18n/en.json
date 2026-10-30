@@ -1090,12 +1090,14 @@
           "create": "With “Create a new key” you create a new key file for a project. You type the passphrase twice in Moat's own window.",
           "choose": "With “Choose an existing key file” you take a file you already have, for example one made with `moat keygen`.",
           "replace": "Choosing another key for a project starts a key change: Moat Desktop remembers the old one until you finish the change under “Gates”.",
-          "passkey": "Under “This device's passkey” you create a passkey with “Create passkey”. There is one for all of Moat Desktop."
+          "passkey": "Under “This device's passkey” you create a passkey with “Create passkey”. There is one for all of Moat Desktop.",
+          "updates": "Under “Updates” Moat Desktop shows whether a newer version exists. “Open release page” opens it in the browser, where you download the installer. “Check for updates at start” turns the query to GitHub at start off or on."
         },
         "tips": {
           "own": "One key per project keeps your websites apart: whoever has one project's key cannot change another project's gates.",
           "backup": "Back up every key file in a second place. Without it you can no longer approve anything for that project.",
-          "perGate": "Whether a gate signs with the project key or with the passkey you choose in the project under “Gates” with “Sign with passkey”."
+          "perGate": "Whether a gate signs with the project key or with the passkey you choose in the project under “Gates” with “Sign with passkey”.",
+          "noAutoInstall": "Moat Desktop never installs updates itself: a new version reaches your computer only when you download and install it. The app is not signed yet, so your system warns when you install it."
         }
       },
       "configEditor": {
@@ -1839,5 +1841,17 @@
       "not_writable": "The moat.yaml cannot be written. Check the project folder's permissions.",
       "failed": "That did not work. Try again."
     }
+  },
+  "update": {
+    "title": "Updates",
+    "intro": "Moat Desktop asks GitHub for the newest version and shows it. You install it yourself, from the release page: the app never downloads code on its own.",
+    "available": "Update {{version}} available",
+    "newer": "Version {{latest}} is available, you have {{current}}.",
+    "current": "You have the newest version ({{current}}).",
+    "development": "A development build has no updates.",
+    "failed": "The newest version could not be looked up. Check the internet connection.",
+    "open": "Open release page",
+    "check": "Check now",
+    "auto": "Check for updates at start"
   }
 }

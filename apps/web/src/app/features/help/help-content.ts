@@ -152,8 +152,16 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     // Moat Desktop: each project's signing key, the device's passkey.
     id: 'settings',
     only: 'desktop',
-    steps: items('open', 'keys', 'create', 'choose', 'replace', 'passkey'),
-    tips: items('own', 'backup', 'perGate'),
+    steps: items(
+      'open',
+      'keys',
+      'create',
+      'choose',
+      'replace',
+      'passkey',
+      'updates',
+    ),
+    tips: items('own', 'backup', 'perGate', 'noAutoInstall'),
     links: [SETTINGS],
   },
   {
