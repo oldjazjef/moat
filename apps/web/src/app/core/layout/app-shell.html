@@ -85,7 +85,23 @@
             <span>{{ setupItem.labelKey | translate }}</span>
           </a>
         </li>
-        }
+        } @if (updates.result(); as update) { @if (update.status ===
+        'available') {
+        <li hlmSidebarMenuItem>
+          <a
+            hlmSidebarMenuButton
+            data-update-nav
+            routerLink="/app/settings"
+            [tooltip]="'update.available' | translate: { version: update.latest }"
+          >
+            <ng-icon name="lucideDownload" aria-hidden="true" />
+            <span
+              >{{ 'update.available' | translate: { version: update.latest }
+              }}</span
+            >
+          </a>
+        </li>
+        } }
         <!-- FR-70: "Hilfe" at the bottom of the sidebar. -->
         <li hlmSidebarMenuItem>
           @let helpActive = isActive(help);

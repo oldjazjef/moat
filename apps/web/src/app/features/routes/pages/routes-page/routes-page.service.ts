@@ -46,6 +46,8 @@ export class RoutesPageService {
 
   /** The open form: «Neue Route» (`null`) or the route being changed; undefined = closed. */
   readonly editing = signal<RouteRow | null | undefined>(undefined);
+  /** «Route aus Vorlage» (FR-43) is open. */
+  readonly recipeOpen = signal(false);
   /** «Löschen» asks once: the route waiting for the second click. */
   readonly confirmingRemove = signal<string | null>(null);
   /** The open upstream form: «Neuer Upstream» (`null`) or the one being changed. */

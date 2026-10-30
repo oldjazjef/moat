@@ -10,6 +10,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Put,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import type { HistoryCheck } from '@moat/core';
@@ -18,7 +19,9 @@ import {
   HistoryService,
   type HistoryView,
 } from './application/history.service';
+import type { ConfigText } from './application/config-text';
 import { ConfigEditDto, toConfigEdit } from './dto/config-edit.dto';
+import { ReplaceConfigDto } from './dto/config-text.dto';
 import { GateDto, toGateInput } from './dto/gate.dto';
 import { ProjectService } from './project.service';
 import type { ProjectSummary, ProjectView } from './project.types';
@@ -60,6 +63,42 @@ export class ProjectController {
   @HttpCode(204)
   async remove(@Param('id') id: string): Promise<void> {
     if (!(await this.projects.remove(id))) throw new NotFoundException();
+  }
+
+  /** moat.yaml as text for the editor, with the hash the next save names as its base. */
+  @Get(':id/config')
+  @Header('Cache-Control', 'no-store')
+  async configText(@Param('id') id: string): Promise<ConfigText> {
+    const config = await this.projects.configText(id);
+    if (config === null) throw new NotFoundException();
+    return config;
+  }
+
+  /**
+   * The editor's «Speichern»: moat.yaml as a whole (ReplaceConfigCommand). 422 `config_invalid`
+   * with `issues` (code, path, line, column) when the core refuses the text; 409
+   * `config_changed` when the file changed since `base`. Nothing is written in either case.
+   */
+  @Put(':id/config')
+  @Header('Cache-Control', 'no-store')
+  async replaceConfig(
+    @Param('id') id: string,
+    @Body() body: ReplaceConfigDto,
+  ): Promise<ConfigText> {
+    const result = await this.projects.replaceConfig(id, body.base, body.text);
+    switch (result.status) {
+      case 'not_found':
+        throw new NotFoundException();
+      case 'changed':
+        throw new ConflictException({ error: 'config_changed' });
+      case 'refused':
+        throw new UnprocessableEntityException({
+          error: result.code,
+          ...(result.issues === undefined ? {} : { issues: result.issues }),
+        });
+      case 'saved':
+        return result.config;
+    }
   }
 
   /**

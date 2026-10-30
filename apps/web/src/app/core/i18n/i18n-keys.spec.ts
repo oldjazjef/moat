@@ -7,7 +7,7 @@ import { allHelpKeys } from '../../features/help/help-content';
 import { allTrustKeys } from '../../shared/components/trust-mode-badge/trust-modes';
 import {
   AUTH_TYPES,
-  CONFIG_ISSUE_CODES,
+  CONFIG_TEXT_ISSUE_CODES,
   EDIT_ERROR_CODES,
   QUOTA_PERIODS,
   USAGE_FORMATS,
@@ -26,12 +26,13 @@ import { SETUP_STEPS, STEP_STATES } from '../api/setup.types';
 import { SETUP_ERRORS } from '../../features/setup/pages/setup-page/setup-page.service';
 import { GATE_NOTICES } from '../../features/setup/components/steps/gate-step';
 import { GATE_FETCH_ERRORS } from '../../features/setup/components/steps/gate-fetch';
-import { KEY_NOTICES } from '../../features/setup/components/steps/key-step';
+import { PROJECT_KEY_NOTICES } from '../../shared/components/project-key';
+import { CONFIG_EDITOR_ERRORS } from '../../features/config/pages/config-page/config-page.service';
 import { PROJECT_NOTICES } from '../../features/setup/components/steps/project-step';
 import {
   GATE_CODES,
   RECIPE_NOTICES,
-} from '../../features/setup/components/steps/recipe-step';
+} from '../../features/routes/components/recipe-panel';
 import { GATE_FAILURES, RECIPE_IDS } from '../api/recipe.types';
 import { HARDENING_NOTICES } from '../../shared/components/hardening-check';
 import {
@@ -47,6 +48,13 @@ import {
 import { DRY_RUN_ERRORS } from '../api/dry-run.types';
 import { ROLES } from '../auth/account.types';
 import { API_ERROR_CODES } from '../auth/api-error';
+import {
+  ASSISTANT_ERRORS,
+  ASSISTANT_TOOLS,
+  PROPOSAL_STATUSES,
+} from '../api/assistant.types';
+import { DECISION_ERRORS } from '../../features/assistant/pages/assistant-page/assistant-page.service';
+import { MCP_NOTICES } from '../../features/settings/pages/settings-page/settings-page.service';
 
 /**
  * Every i18n key the app references exists in every message file, and every text in the files is
@@ -61,6 +69,15 @@ const I18N_DIR = fileURLToPath(
 
 const DYNAMIC_KEYS = [
   ...allHelpKeys(),
+  // The assistant (Moat Desktop): states, errors and tool names from the API's answer.
+  ...PROPOSAL_STATUSES.map((code) => `assistant.proposal.status.${code}`),
+  ...ASSISTANT_ERRORS.map((code) => `assistant.errors.${code}`),
+  ...ASSISTANT_TOOLS.map((name) => `assistant.tools.${name}`),
+  ...DECISION_ERRORS.map((code) => `assistant.decisionErrors.${code}`),
+  ...MCP_NOTICES.map((code) => `settings.mcp.notices.${code}`),
+  ...['anthropic', 'openai_compatible'].map(
+    (kind) => `settings.ai.kinds.${kind}`,
+  ),
   // The Cloud project's tabs and the gates page, built from a value of the API's answer.
   ...['gates', 'config', 'status'].map((tab) => `projectTabs.${tab}`),
   ...['cancelled', 'failed'].map((problem) => `auth.login.passkey.${problem}`),
@@ -120,7 +137,8 @@ const DYNAMIC_KEYS = [
     (reason) => `audit.verify.reason.${reason}`,
   ),
   ...allTrustKeys(),
-  ...CONFIG_ISSUE_CODES.map((code) => `config.errors.${code}`),
+  ...CONFIG_TEXT_ISSUE_CODES.map((code) => `config.errors.${code}`),
+  ...CONFIG_EDITOR_ERRORS.map((code) => `configEditor.errors.${code}`),
   ...EDIT_ERROR_CODES.map((code) => `edit.errors.${code}`),
   ...AUTH_TYPES.map((type) => `routes.auth.${type}`),
   ...['none', ...AUTH_TYPES].map(
@@ -147,12 +165,12 @@ const DYNAMIC_KEYS = [
   ]),
   ...STEP_STATES.map((state) => `setup.state.${state}`),
   ...SETUP_ERRORS.map((code) => `setup.errors.${code}`),
-  ...KEY_NOTICES.map((code) => `setup.key.notices.${code}`),
+  ...PROJECT_KEY_NOTICES.map((code) => `projectKey.notices.${code}`),
   ...PROJECT_NOTICES.map((code) => `setup.project.notices.${code}`),
   ...GATE_NOTICES.map((code) => `setup.gate.notices.${code}`),
   ...GATE_FETCH_ERRORS.map((code) => `setup.gate.fetch.errors.${code}`),
-  ...RECIPE_NOTICES.map((code) => `setup.recipe.notices.${code}`),
-  ...GATE_CODES.map((code) => `setup.recipe.codes.${code}`),
+  ...RECIPE_NOTICES.map((code) => `recipe.notices.${code}`),
+  ...GATE_CODES.map((code) => `recipe.codes.${code}`),
   ...HARDENING_NOTICES.map((code) => `hardening.check.notices.${code}`),
   ...CONSOLE_NOTICES.map((code) => `console.notices.${code}`),
   ...DRY_RUN_ERRORS.map((code) => `console.errors.${code}`),
@@ -164,12 +182,12 @@ const DYNAMIC_KEYS = [
   'history.database.done.push',
   'history.database.done.pull',
   'history.notices.failed',
-  ...GATE_FAILURES.map((reason) => `setup.recipe.failed.${reason}`),
+  ...GATE_FAILURES.map((reason) => `recipe.failed.${reason}`),
   ...RECIPE_IDS.flatMap((id) => [
-    `setup.recipe.recipes.${id}.title`,
-    `setup.recipe.recipes.${id}.description`,
-    `setup.recipe.scopes.${id}`,
-    `setup.recipe.testWarning.${id}`,
+    `recipe.recipes.${id}.title`,
+    `recipe.recipes.${id}.description`,
+    `recipe.scopes.${id}`,
+    `recipe.testWarning.${id}`,
   ]),
 ];
 

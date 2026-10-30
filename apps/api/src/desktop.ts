@@ -48,6 +48,10 @@ import {
 import { HistoryService } from './project/application/history.service';
 import { parseDatabaseUrl } from './persistence/database/database-url';
 import { ProjectService } from './project/project.service';
+import { MainProcessConnection } from './assistant/ports/assistant-connection.port';
+import type { AssistantConnectionSummary } from './assistant/ports/assistant-connection.port';
+import type { AiConnection } from './assistant/ai/ai-completion.port';
+import { McpServer, type McpAnswer } from './assistant/mcp/mcp-server';
 import {
   requestLogView,
   type RequestLogViewResult,
@@ -146,6 +150,11 @@ export async function passkeyKeyInfo(
     publicKey: point,
     fingerprint: await fingerprint(WEBAUTHN_ALG, bytes),
   };
+}
+
+/** The ids of every listed project (the desktop moves its old key into each once). */
+export async function projectIds(api: RunningApi): Promise<string[]> {
+  return (await api.app.get(ProjectService).list()).map((entry) => entry.id);
 }
 
 /** The folder of a listed project (for "Im Ordner zeigen"), or null for an unknown id. */
@@ -370,4 +379,34 @@ export async function recordDeploy(
   await api.app
     .get(HistoryService)
     .record(id, { kind: 'deploy', details: { ...deploy } });
+}
+
+export type { AiConnection } from './assistant/ai/ai-completion.port';
+export type { AssistantConnectionSummary } from './assistant/ports/assistant-connection.port';
+export type { McpAnswer } from './assistant/mcp/mcp-server';
+
+/**
+ * Registers the AI provider the person set up in the main process's own window (T-108):
+ * `summary` for the page (never the key), `open` with the decrypted token for one call.
+ */
+export function setAssistantConnection(
+  api: RunningApi,
+  supplier: {
+    summary(): AssistantConnectionSummary | null;
+    open(): Promise<AiConnection | null>;
+  },
+): void {
+  api.app.get(MainProcessConnection).register(supplier);
+}
+
+/**
+ * One MCP message (JSON-RPC) for the main process's MCP listener, which has already checked the
+ * token, the Host and that no Origin came with it (T-109). Reads and proposals only.
+ */
+export function handleMcp(
+  api: RunningApi,
+  message: unknown,
+  version: string,
+): Promise<McpAnswer> {
+  return api.app.get(McpServer).handle(message, version);
 }

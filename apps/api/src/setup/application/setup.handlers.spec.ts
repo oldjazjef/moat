@@ -53,10 +53,9 @@ describe('setup wizard (FR-73)', () => {
       view.steps.map(({ id, required, state }) => [id, required, state]),
     ).toEqual([
       ['language', true, 'open'],
-      ['signingKey', false, 'open'],
       ['project', true, 'open'],
+      ['signingKey', false, 'open'],
       ['gate', false, 'open'],
-      ['recipe', false, 'open'],
       ['summary', false, 'open'],
     ]);
     expect(view.missing).toEqual(['language', 'project']);
@@ -94,9 +93,9 @@ describe('setup wizard (FR-73)', () => {
     ).toEqual({ status: 'refused', code: 'step_required' });
   });
 
-  it('marks project, gate and recipe done only when they exist', async () => {
+  it('marks project and gate done only when they exist', async () => {
     const { update, registry } = setup();
-    for (const step of ['project', 'gate', 'recipe'] as const) {
+    for (const step of ['project', 'gate'] as const) {
       expect(
         await update.execute(
           new UpdateSetupCommand({ states: { [step]: 'done' } }),
@@ -106,7 +105,7 @@ describe('setup wizard (FR-73)', () => {
     registry.add('/sites/shop');
     const result = await update.execute(
       new UpdateSetupCommand({
-        states: { project: 'done', gate: 'done', recipe: 'done' },
+        states: { project: 'done', gate: 'done' },
       }),
     );
     expect(result.status === 'ok' && result.view.facts).toEqual({

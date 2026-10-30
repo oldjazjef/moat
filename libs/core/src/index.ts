@@ -129,6 +129,7 @@ export {
   loadMoatYaml,
   ConfigError,
   formatIssue,
+  MAX_YAML_BYTES,
   type ConfigIssue,
 } from './config/yaml';
 export { compileConfig } from './config/compile';

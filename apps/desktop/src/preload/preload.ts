@@ -12,12 +12,18 @@ const bridge: DesktopBridge = {
     reveal: (id: string) => ipcRenderer.invoke(IPC.projectReveal, String(id)),
   },
   key: {
-    status: () => ipcRenderer.invoke(IPC.keyStatus),
-    choose: () => ipcRenderer.invoke(IPC.keyChoose),
-    rotationDone: (locale: string) =>
-      ipcRenderer.invoke(IPC.keyRotationDone, String(locale)),
-    create: (locale: string) =>
-      ipcRenderer.invoke(IPC.keyCreate, String(locale)),
+    status: (projectId: string) =>
+      ipcRenderer.invoke(IPC.keyStatus, String(projectId)),
+    choose: (projectId: string) =>
+      ipcRenderer.invoke(IPC.keyChoose, String(projectId)),
+    rotationDone: (projectId: string, locale: string) =>
+      ipcRenderer.invoke(
+        IPC.keyRotationDone,
+        String(projectId),
+        String(locale),
+      ),
+    create: (projectId: string, locale: string) =>
+      ipcRenderer.invoke(IPC.keyCreate, String(projectId), String(locale)),
   },
   secret: {
     seal: (projectId: string, gate: string, name: string, locale: string) =>
@@ -63,9 +69,33 @@ const bridge: DesktopBridge = {
         String(locale),
       ),
   },
+  assistant: {
+    openProvider: (locale: string) =>
+      ipcRenderer.invoke(IPC.aiOpen, String(locale)),
+    mcpStatus: () => ipcRenderer.invoke(IPC.mcpStatus),
+    mcpSetEnabled: (on: boolean) =>
+      ipcRenderer.invoke(IPC.mcpSetEnabled, on === true),
+    mcpSetPort: (port: number) =>
+      ipcRenderer.invoke(IPC.mcpSetPort, Number(port)),
+    mcpTokenCreate: (name: string) =>
+      ipcRenderer.invoke(IPC.mcpTokenCreate, String(name)),
+    mcpTokenRevoke: (id: string) =>
+      ipcRenderer.invoke(IPC.mcpTokenRevoke, String(id)),
+  },
+  update: {
+    check: () => ipcRenderer.invoke(IPC.updateCheck),
+    open: (version: string) =>
+      ipcRenderer.invoke(IPC.updateOpen, String(version)),
+    auto: () => ipcRenderer.invoke(IPC.updateAuto),
+    setAuto: (on: boolean) =>
+      ipcRenderer.invoke(IPC.updateSetAuto, on === true),
+  },
   passkey: {
-    status: (projectId: string) =>
-      ipcRenderer.invoke(IPC.passkeyStatus, String(projectId)),
+    status: (projectId: string | null) =>
+      ipcRenderer.invoke(
+        IPC.passkeyStatus,
+        projectId === null ? null : String(projectId),
+      ),
     enroll: (locale: string) =>
       ipcRenderer.invoke(IPC.passkeyEnroll, String(locale)),
     use: (projectId: string, gate: string, on: boolean, locale: string) =>

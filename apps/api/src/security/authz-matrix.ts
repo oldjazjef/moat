@@ -83,6 +83,22 @@ export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
     expect: { ...LOCAL_ONLY, desktop: 204 },
   },
   {
+    // moat.yaml as text for the editor.
+    method: 'GET',
+    path: '/api/projects/:id/config',
+    request: `/api/projects/${SEEDED_PROJECT}/config`,
+    expect: LOCAL_ONLY,
+  },
+  {
+    // The editor's «Speichern»: the desktop only. This text is not a moat.yaml, so even the
+    // desktop gets 422 `config_invalid` and nothing is written.
+    method: 'PUT',
+    path: '/api/projects/:id/config',
+    request: `/api/projects/${SEEDED_PROJECT}/config`,
+    body: { base: null, text: 'version: 2\n' },
+    expect: { ...LOCAL_ONLY, desktop: 422 },
+  },
+  {
     // Writes moat.yaml: the desktop only, and only through the closed list of edits.
     method: 'POST',
     path: '/api/projects/:id/config/edits',
@@ -206,5 +222,48 @@ export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
     method: 'POST',
     path: '/api/setup/complete',
     expect: LOCAL_ONLY,
+  },
+  // The assistant (Moat Desktop only). Ids the spec never created answer 404 even to the desktop.
+  { method: 'GET', path: '/api/assistant/status', expect: LOCAL_ONLY },
+  { method: 'GET', path: '/api/assistant/conversations', expect: LOCAL_ONLY },
+  {
+    // A new, empty conversation in memory; no provider is called.
+    method: 'POST',
+    path: '/api/assistant/conversations',
+    expect: { ...LOCAL_ONLY, desktop: 201 },
+  },
+  {
+    method: 'GET',
+    path: '/api/assistant/conversations/:id',
+    request: '/api/assistant/conversations/unknownConversation000',
+    expect: { ...LOCAL_ONLY, desktop: 404 },
+  },
+  {
+    method: 'DELETE',
+    path: '/api/assistant/conversations/:id',
+    request: '/api/assistant/conversations/unknownConversation000',
+    expect: { ...LOCAL_ONLY, desktop: 404 },
+  },
+  {
+    // Would call the provider: an unknown conversation stops it before anything is sent.
+    method: 'POST',
+    path: '/api/assistant/conversations/:id/messages',
+    request: '/api/assistant/conversations/unknownConversation000/messages',
+    body: { text: 'Hallo' },
+    expect: { ...LOCAL_ONLY, desktop: 404 },
+  },
+  { method: 'GET', path: '/api/assistant/proposals', expect: LOCAL_ONLY },
+  {
+    // «Ausführen» writes moat.yaml: the desktop only; an unknown proposal writes nothing.
+    method: 'POST',
+    path: '/api/assistant/proposals/:id/confirm',
+    request: '/api/assistant/proposals/unknownProposal0000000/confirm',
+    expect: { ...LOCAL_ONLY, desktop: 404 },
+  },
+  {
+    method: 'POST',
+    path: '/api/assistant/proposals/:id/cancel',
+    request: '/api/assistant/proposals/unknownProposal0000000/cancel',
+    expect: { ...LOCAL_ONLY, desktop: 404 },
   },
 ];

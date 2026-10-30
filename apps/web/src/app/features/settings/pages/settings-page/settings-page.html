@@ -1,0 +1,360 @@
+<mt-page-header
+  [title]="'settings.title' | translate"
+  [subtitle]="'settings.subtitle' | translate"
+>
+  <mt-help-link section="settings" />
+</mt-page-header>
+
+<div class="flex max-w-3xl flex-col gap-6">
+  <section hlmCard data-settings-keys aria-labelledby="settings-keys-title">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="settings-keys-title" class="text-base">
+        {{ 'settings.keys.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'settings.keys.intro' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-6">
+      @if (service.projects.isLoading() && !service.projects.hasValue()) {
+      <hlm-skeleton class="h-24 w-full" />
+      } @else if (service.projects.error()) {
+      <p class="mt-note" role="alert" data-settings-projects-failed>
+        {{ 'settings.keys.loadFailed' | translate }}
+      </p>
+      } @else if (service.projectList().length === 0) {
+      <p class="text-muted-foreground text-sm" data-settings-no-projects>
+        {{ 'settings.keys.noProjects' | translate }}
+      </p>
+      <div>
+        <a hlmBtn size="sm" variant="outline" routerLink="/app/projects">
+          {{ 'settings.keys.toProjects' | translate }}
+        </a>
+      </div>
+      } @else { @for (project of service.projectList(); track project.id) {
+      <div
+        class="border-border flex flex-col gap-2 border-t pt-4 first:border-t-0 first:pt-0"
+        data-settings-project
+        [attr.data-project-id]="project.id"
+      >
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 class="font-medium">{{ project.name }}</h3>
+          <a
+            class="text-sm underline-offset-4 hover:underline"
+            [routerLink]="['/app/projects', project.id, 'gates']"
+          >
+            {{ 'settings.keys.toGates' | translate }}
+          </a>
+        </div>
+        <p class="mt-code text-muted-foreground text-xs break-all">
+          {{ project.folder }}
+        </p>
+        <mt-project-key [projectId]="project.id" />
+      </div>
+      } }
+    </div>
+  </section>
+
+  @if (service.canAssistant) {
+  <section hlmCard data-settings-ai aria-labelledby="settings-ai-title">
+    <div hlmCardHeader>
+      <div class="flex items-center justify-between gap-3">
+        <h2 hlmCardTitle id="settings-ai-title" class="text-base">
+          {{ 'settings.ai.title' | translate }}
+        </h2>
+        <mt-help-link section="assistant" />
+      </div>
+      <p hlmCardDescription>{{ 'settings.ai.intro' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-3 text-sm">
+      @if (service.assistant.value()?.provider; as provider) {
+      <dl class="mt-facts" data-ai-provider>
+        <dt>{{ 'settings.ai.kind' | translate }}</dt>
+        <dd>{{ 'settings.ai.kinds.' + provider.kind | translate }}</dd>
+        <dt>{{ 'settings.ai.address' | translate }}</dt>
+        <dd class="mt-code">
+          {{ provider.baseUrl || ('settings.ai.defaultValue' | translate) }}
+        </dd>
+        <dt>{{ 'settings.ai.model' | translate }}</dt>
+        <dd class="mt-code">
+          {{ provider.model || ('settings.ai.defaultValue' | translate) }}
+        </dd>
+        <dt>{{ 'settings.ai.token' | translate }}</dt>
+        <dd>
+          {{ (provider.hasKey ? 'settings.ai.tokenStored' :
+          'settings.ai.tokenNone') | translate }}
+        </dd>
+      </dl>
+      } @else {
+      <p class="text-muted-foreground" data-ai-none>
+        {{ 'settings.ai.none' | translate }}
+      </p>
+      }
+      <div>
+        <button
+          hlmBtn
+          size="sm"
+          type="button"
+          data-ai-open
+          (click)="service.openProvider()"
+        >
+          {{ 'settings.ai.open' | translate }}
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section hlmCard data-settings-mcp aria-labelledby="settings-mcp-title">
+    <div hlmCardHeader>
+      <div class="flex items-center justify-between gap-3">
+        <h2 hlmCardTitle id="settings-mcp-title" class="text-base">
+          {{ 'settings.mcp.title' | translate }}
+        </h2>
+        <mt-help-link section="mcp" />
+      </div>
+      <p hlmCardDescription>{{ 'settings.mcp.intro' | translate }}</p>
+    </div>
+    @if (service.mcp(); as mcp) {
+    <div hlmCardContent class="flex flex-col gap-4 text-sm">
+      <label class="flex items-center gap-2">
+        <input
+          type="checkbox"
+          data-mcp-enabled
+          [checked]="mcp.enabled"
+          [disabled]="service.mcpBusy()"
+          (change)="onMcpEnabled($event)"
+        />
+        <span>{{ 'settings.mcp.enabled' | translate }}</span>
+      </label>
+      @if (mcp.enabled) {
+      <p role="status" data-mcp-state [class.text-destructive]="!mcp.running">
+        {{ (mcp.running ? 'settings.mcp.running' : 'settings.mcp.notRunning') |
+        translate: { endpoint: mcp.endpoint } }}
+      </p>
+      }
+      <label class="flex flex-col gap-1">
+        <span class="font-medium">{{ 'settings.mcp.port' | translate }}</span>
+        <input
+          hlmInput
+          type="number"
+          min="1024"
+          max="65535"
+          class="h-9 max-w-40"
+          data-mcp-port
+          [value]="mcp.port"
+          [disabled]="service.mcpBusy()"
+          (change)="onPort($event)"
+        />
+      </label>
+
+      <div class="flex flex-col gap-2">
+        <h3 class="font-medium">{{ 'settings.mcp.tokens' | translate }}</h3>
+        <ul class="flex flex-col gap-1" data-mcp-tokens>
+          @for (token of mcp.tokens; track token.id) {
+          <li
+            class="flex items-center justify-between gap-2 border-b py-1 last:border-b-0"
+            data-mcp-token
+          >
+            <span class="min-w-0 truncate">{{ token.name }}</span>
+            <mt-row-actions
+              [actions]="tokenActions"
+              [name]="token.name"
+              [disabled]="service.mcpBusy()"
+              (run)="onTokenAction(token.id, $event)"
+            />
+          </li>
+          } @empty {
+          <li class="text-muted-foreground">
+            {{ 'settings.mcp.noTokens' | translate }}
+          </li>
+          }
+        </ul>
+        <form
+          class="flex flex-wrap items-end gap-2"
+          (submit)="$event.preventDefault(); createToken()"
+        >
+          <label class="flex flex-col gap-1">
+            <span>{{ 'settings.mcp.tokenName' | translate }}</span>
+            <input
+              hlmInput
+              class="h-9 w-64"
+              maxlength="60"
+              data-mcp-token-name
+              [value]="tokenName()"
+              (input)="onTokenName($event)"
+            />
+          </label>
+          <button
+            hlmBtn
+            size="sm"
+            type="submit"
+            data-mcp-token-create
+            [disabled]="service.mcpBusy() || tokenName().trim() === ''"
+          >
+            {{ 'settings.mcp.create' | translate }}
+          </button>
+        </form>
+        @if (service.newToken(); as token) {
+        <div class="mt-note flex-col items-stretch" data-mcp-new-token>
+          <p class="font-medium">{{ 'settings.mcp.newToken' | translate }}</p>
+          <p class="mt-code select-all">{{ token }}</p>
+          <div>
+            <button
+              hlmBtn
+              size="sm"
+              variant="outline"
+              type="button"
+              (click)="service.hideToken()"
+            >
+              {{ 'settings.mcp.done' | translate }}
+            </button>
+          </div>
+        </div>
+        } @if (service.mcpNotice(); as notice) {
+        <p class="text-destructive" role="alert" data-mcp-notice>
+          {{ 'settings.mcp.notices.' + notice | translate }}
+        </p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <h3 class="font-medium">{{ 'settings.mcp.connect' | translate }}</h3>
+        <p class="text-muted-foreground">
+          {{ 'settings.mcp.claudeCode' | translate }}
+        </p>
+        <pre class="mt-diff p-3 whitespace-pre-wrap" data-mcp-snippet-cli>
+{{ snippets().claudeCode }}</pre>
+        <p class="text-muted-foreground">
+          {{ 'settings.mcp.jsonClients' | translate }}
+        </p>
+        <pre class="mt-diff p-3" data-mcp-snippet-json>
+{{ snippets().json }}</pre>
+        <p class="text-muted-foreground">
+          {{ 'settings.mcp.limits' | translate }}
+        </p>
+      </div>
+    </div>
+    }
+  </section>
+  } @if (updates.supported) {
+  <section
+    hlmCard
+    data-settings-updates
+    aria-labelledby="settings-updates-title"
+  >
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="settings-updates-title" class="text-base">
+        {{ 'update.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'update.intro' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-3 text-sm">
+      @if (updates.result(); as result) {
+      <p data-update-result [attr.data-status]="result.status" role="status">
+        @switch (result.status) { @case ('available') { {{ 'update.newer' |
+        translate: { latest: result.latest, current: result.current } }} } @case
+        ('current') { {{ 'update.current' | translate: { current: result.current
+        } }} } @case ('development') { {{ 'update.development' | translate }} }
+        @default { {{ 'update.failed' | translate }} } }
+      </p>
+      }
+      <div class="flex flex-wrap gap-2">
+        @if (updates.result()?.status === 'available') {
+        <button
+          hlmBtn
+          size="sm"
+          type="button"
+          data-update-open
+          (click)="updates.open()"
+        >
+          {{ 'update.open' | translate }}
+        </button>
+        }
+        <button
+          hlmBtn
+          size="sm"
+          variant="outline"
+          type="button"
+          data-update-check
+          [disabled]="updates.checking()"
+          (click)="updates.check()"
+        >
+          {{ 'update.check' | translate }}
+        </button>
+      </div>
+      <label class="flex items-center gap-2">
+        <input
+          type="checkbox"
+          data-update-auto
+          [checked]="updates.auto()"
+          (change)="onAuto($event)"
+        />
+        <span>{{ 'update.auto' | translate }}</span>
+      </label>
+    </div>
+  </section>
+  } @if (service.canPasskey) {
+  <section hlmCard data-passkey aria-labelledby="settings-passkey-title">
+    <div hlmCardHeader>
+      <div class="flex items-center justify-between gap-3">
+        <h2 hlmCardTitle id="settings-passkey-title" class="text-base">
+          {{ 'settings.passkey.title' | translate }}
+        </h2>
+        <mt-help-link section="trust" />
+      </div>
+      <p hlmCardDescription>{{ 'settings.passkey.intro' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-3 text-sm">
+      <p class="text-muted-foreground">
+        {{ 'gates.passkey.honesty' | translate }}
+      </p>
+      @if (service.passkey(); as status) { @if (status.passkey; as passkey) {
+      <dl class="mt-facts" data-passkey-ready>
+        <dt>{{ 'gates.passkey.fingerprint' | translate }}</dt>
+        <dd class="mt-code" data-passkey-fingerprint>
+          {{ passkey.fingerprint }}
+        </dd>
+        <dt>{{ 'gates.passkey.rpId' | translate }}</dt>
+        <dd class="mt-code">{{ passkey.rpId }}</dd>
+        <dt>{{ 'gates.passkey.origin' | translate }}</dt>
+        <dd class="mt-code">{{ passkey.origin }}</dd>
+        <dt>{{ 'gates.passkey.trustCommand' | translate }}</dt>
+        <dd class="mt-code break-all" data-passkey-trust>
+          {{ passkey.trustCommand }}
+        </dd>
+        <dt>{{ 'gates.passkey.installCommand' | translate }}</dt>
+        <dd class="mt-code break-all" data-passkey-install>
+          {{ passkey.installCommand }}
+        </dd>
+      </dl>
+      <p class="text-muted-foreground" data-passkey-per-gate>
+        {{ 'settings.passkey.perGate' | translate }}
+      </p>
+      } @else {
+      <p class="text-muted-foreground" data-passkey-none>
+        {{ 'gates.passkey.none' | translate }}
+      </p>
+      } } @if (service.passkeyCreated()) {
+      <p data-passkey-created role="status">
+        {{ 'gates.passkey.created' | translate }}
+      </p>
+      } @if (service.passkeyNotice(); as notice) {
+      <p class="text-destructive" role="alert" data-passkey-notice>
+        {{ 'gates.passkey.notices.' + notice | translate }}
+      </p>
+      }
+      <div>
+        <button
+          hlmBtn
+          size="sm"
+          type="button"
+          data-passkey-enroll
+          [variant]="service.passkey()?.passkey ? 'outline' : 'default'"
+          [disabled]="service.passkeyBusy()"
+          (click)="service.enrollPasskey()"
+        >
+          {{ 'gates.passkey.enroll' | translate }}
+        </button>
+      </div>
+    </div>
+  </section>
+  }
+</div>

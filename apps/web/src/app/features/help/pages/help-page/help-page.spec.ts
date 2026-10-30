@@ -50,7 +50,7 @@ describe('HelpPage (FR-71)', () => {
     expect(sectionIds(el)).toEqual([...ids, 'faq']);
     const total = ids.length;
     expect(el.querySelector('#gate [data-help-step]')?.textContent).toContain(
-      `Schritt 3 von ${total}`,
+      `Schritt ${ids.indexOf('gate') + 1} von ${total}`,
     );
     expect(el.querySelectorAll('h1')).toHaveLength(1);
     expect(el.querySelector('#gate h2')?.textContent).toContain(
@@ -82,7 +82,9 @@ describe('HelpPage (FR-71)', () => {
       ]);
       expect(
         el.querySelector('#account [data-help-step]')?.textContent,
-      ).toContain(`Schritt 1 von ${HELP_SECTIONS.length}`);
+      ).toContain(
+        `Schritt 1 von ${HELP_SECTIONS.filter((section) => section.only !== 'desktop').length}`,
+      );
       // «Registrieren» etc. are quoted labels of the Cloud pages; no desktop step is offered.
       expect(el.querySelector('#project')?.textContent).not.toContain(
         'Nur Desktop',

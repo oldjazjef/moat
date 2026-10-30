@@ -9,6 +9,7 @@ import { HistoryService } from './application/history.service';
 import { DeployPackageService } from './application/deploy-package.service';
 import { BundleImportService } from './application/bundle-import.service';
 import { SecretSealingService } from './application/secret-sealing.service';
+import { CONFIG_TEXT_HANDLERS } from './application/config-text';
 import { EditConfigHandler } from './application/edit-config.handler';
 import { GetProjectHandler } from './application/get-project.handler';
 import { ListProjectsHandler } from './application/list-projects.handler';
@@ -29,6 +30,7 @@ import { ProjectService } from './project.service';
     AddGateHandler,
     RemoveProjectHandler,
     EditConfigHandler,
+    ...CONFIG_TEXT_HANDLERS,
     BundleSigningService,
     SecretSealingService,
     DeployPackageService,

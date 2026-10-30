@@ -17,7 +17,9 @@
     "orgProjects": "Projekte",
     "members": "Mitglieder",
     "account": "Konto",
-    "signOut": "Abmelden"
+    "signOut": "Abmelden",
+    "settings": "Einstellungen",
+    "assistant": "Assistent"
   },
   "common": {
     "reload": "Neu laden",
@@ -60,7 +62,8 @@
       "gates": "Gates",
       "routes": "Routen",
       "console": "Test-Konsole",
-      "history": "Verlauf"
+      "history": "Verlauf",
+      "config": "moat.yaml"
     },
     "remove": {
       "button": "Aus der Liste entfernen",
@@ -111,7 +114,8 @@
       "alias": "Anker und Aliase sind nicht erlaubt",
       "tag": "YAML-Tags sind nicht erlaubt",
       "too_deep": "Zu tief verschachtelt",
-      "schema": "Ungültiger Wert"
+      "schema": "Ungültiger Wert",
+      "rejected": "Wird von Moat abgelehnt"
     }
   },
   "edit": {
@@ -341,7 +345,8 @@
         "failed": "Der Passkey konnte nicht angelegt werden.",
         "set_failed": "Das Gate liess sich nicht umstellen. Lege zuerst einen Passkey an."
       }
-    }
+    },
+    "yaml": "In moat.yaml zeigen"
   },
   "routes": {
     "subtitle": "Was das Gate weiterleitet, und an wen",
@@ -552,10 +557,6 @@
         "title": "Erstes Gate",
         "intro": "Das Gate läuft auf deinem Hosting. Installiere es und trage es hier ein. Bevor es gespeichert wird, vergleichst du seinen Fingerprint."
       },
-      "recipe": {
-        "title": "Erstes Recipe",
-        "intro": "Ein Recipe richtet eine fertige Route für einen häufigen Zweck ein. Danach schickst du eine Testanfrage durch dein Gate."
-      },
       "summary": {
         "title": "Zusammenfassung",
         "intro": "Das ist eingerichtet. Was noch fehlt, holst du jederzeit unter «Einrichtung» nach."
@@ -566,22 +567,6 @@
       "german": "Deutsch",
       "english": "English",
       "later": "Die Sprache kannst du jederzeit oben rechts wechseln."
-    },
-    "key": {
-      "cli": "Hier im Browser kann Moat keinen Schlüssel erstellen. Nutze Moat Desktop oder das CLI: `moat keygen <datei>.moatkey`.",
-      "fingerprint": "Fingerprint",
-      "publicKey": "Öffentlicher Schlüssel",
-      "readyHint": "Mit diesem Schlüssel signiert Moat Desktop. Den öffentlichen Schlüssel gibst du dem Gate bei der Installation mit.",
-      "unreadable": "Die gewählte Schlüsseldatei ist nicht mehr lesbar oder keine Schlüsseldatei. Erstelle einen neuen Schlüssel oder wähle eine andere Datei.",
-      "none": "Noch kein Schlüssel gewählt.",
-      "create": "Neuen Schlüssel erstellen",
-      "choose": "Vorhandene Schlüsseldatei wählen",
-      "backup": "Die Passphrase gibst du nur im eigenen Fenster von Moat ein, nie auf dieser Seite. Sichere die Schlüsseldatei an einem zweiten Ort: Ohne sie kannst du nichts mehr freigeben.",
-      "notices": {
-        "unreadable": "Diese Datei ist keine Schlüsseldatei.",
-        "failed": "Das hat nicht geklappt. Versuche es noch einmal.",
-        "required": "Erstelle oder wähle einen Schlüssel, oder klicke auf «Später»."
-      }
     },
     "project": {
       "choose": "Mit diesem Projekt geht es weiter:",
@@ -655,92 +640,6 @@
           "tls": "Das Zertifikat des Servers ist nicht gültig für diese Adresse. Es wurde nichts übernommen.",
           "failed": "Das hat nicht geklappt. Versuche es noch einmal."
         }
-      }
-    },
-    "recipe": {
-      "noProject": "Wähle zuerst im Schritt «Erstes Projekt» ein Projekt.",
-      "choose": "Was soll deine Website über das Gate tun?",
-      "recipes": {
-        "hubspot-newsletter": {
-          "title": "HubSpot-Newsletter",
-          "description": "Ein Anmeldeformular legt in HubSpot einen Kontakt an. Mit Rate-Limit und höchstens 500 Anmeldungen pro Tag."
-        },
-        "openai-chat": {
-          "title": "OpenAI-Chat mit Tagesbudget",
-          "description": "Ein Chatfenster fragt OpenAI. Mit Rate-Limit und einem Budget von 500 000 Tokens bzw. 5.00 USD pro Tag."
-        }
-      },
-      "site": "Adresse der Website (optional)",
-      "sitePlaceholder": "https://www.example.ch",
-      "siteHint": "Nur nötig, wenn die Website auf einer anderen Adresse läuft als das Gate. Dann nimmt das Gate Anfragen aus dem Browser nur von dieser Adresse an.",
-      "apply": "Übernehmen",
-      "applied": "«{{recipe}}» ist im Projekt: Die Website ruft das Gate unter {{route}} auf.",
-      "seal": "Versiegle das Secret {{secret}} für das Gate {{gate}}. Den Wert gibst du nur im eigenen Fenster von Moat ein.",
-      "scopes": {
-        "hubspot-newsletter": "Ein Token einer privaten HubSpot-App mit dem Bereich crm.objects.contacts.write genügt.",
-        "openai-chat": "Ein OpenAI-Projektschlüssel, am besten mit eigenem Ausgabenlimit bei OpenAI."
-      },
-      "sealed": "Versiegelt, Version {{version}}.",
-      "sign": "Signiere ein neues Bundle für {{gate}}. Erst damit erhält das Gate Route und Secret.",
-      "bundle": "Neuestes Bundle: Version {{version}}.",
-      "server": "Auf dem Server: Speichere die Richtlinie als `policy.json` neben `moat-gate.php`, lade das Bundle hoch und führe aus:",
-      "showPolicy": "Richtlinie anzeigen",
-      "bundleFile": "Das Bundle liegt im Projektordner unter `{{file}}`.",
-      "test": "Trage die Adresse des Gates ein, also die Adresse von `moat-gate.php` auf deiner Website, und sende eine Testanfrage. Sie geht den gleichen Weg wie eine Anfrage deiner Website.",
-      "testWarning": {
-        "hubspot-newsletter": "Die Testanfrage legt in HubSpot wirklich einen Kontakt an. Setze eine Adresse ein, die du danach löschen kannst.",
-        "openai-chat": "Die Testanfrage geht wirklich an OpenAI und kostet ein paar Tokens."
-      },
-      "gateUrl": "Adresse des Gates",
-      "gateUrlPlaceholder": "https://www.example.ch/moat-gate.php",
-      "body": "Inhalt der Anfrage (JSON)",
-      "testButton": "Testen",
-      "passed": "Es funktioniert: Das Gate hat die Anfrage weitergeleitet, die API hat mit {{status}} geantwortet.",
-      "upstreamError": "Das Gate hat die Anfrage weitergeleitet, aber die API hat mit {{status}} geantwortet. Prüfe den Inhalt der Anfrage und das Secret.",
-      "failed": {
-        "address_forbidden": "Diese Adresse zeigt in ein privates Netz. Moat testet nur Gates, die öffentlich erreichbar sind.",
-        "not_found": "Diesen Server gibt es nicht. Prüfe die Adresse.",
-        "unreachable": "Der Server antwortet nicht. Prüfe die Adresse.",
-        "timeout": "Der Server hat zu lange nicht geantwortet.",
-        "tls": "Das Zertifikat des Servers passt nicht zur Adresse oder ist nicht vertrauenswürdig."
-      },
-      "codes": {
-        "gate_not_configured": "Das Gate hat noch kein Bundle. Nimm das signierte Bundle mit `php moat-gate.php accept` an.",
-        "gate_disabled": "Das Gate ist gesperrt, mit dem Kill-Switch oder mit einem gesperrten Bundle.",
-        "route_disabled": "Die Route ist ausgeschaltet.",
-        "not_found": "Das Gate kennt diese Route nicht. Hast du das neueste Bundle angenommen?",
-        "method_not_allowed": "Die Route nimmt diese Methode nicht an.",
-        "unsupported_media_type": "Die Route nimmt diesen Inhaltstyp nicht an.",
-        "body_too_large": "Der Inhalt ist grösser, als die Route erlaubt.",
-        "body_invalid": "Der Inhalt passt nicht zu den Feldern der Route: Ein Pflichtfeld fehlt, oder ein Wert hat den falschen Typ oder liegt ausserhalb der Grenzen.",
-        "origin_forbidden": "Das Gate hat die Anfrage wegen ihrer Herkunft abgelehnt.",
-        "request_unbounded": "Die Anfrage braucht max_tokens bis zur Grenze der Route und kein stream.",
-        "rate_limited": "Zu viele Anfragen. Warte kurz und teste dann noch einmal.",
-        "quota_exceeded": "Das Tageskontingent der Route ist aufgebraucht.",
-        "budget_exhausted": "Das Budget der Route ist aufgebraucht.",
-        "secret_unavailable": "Das Gate kann das Secret nicht öffnen. Versiegle es für dieses Gate und signiere ein neues Bundle.",
-        "upstream_forbidden": "Die Richtlinie auf dem Server erlaubt diesen Aufruf nicht. Installiere die angezeigte Richtlinie.",
-        "upstream_unreachable": "Das Gate erreicht die API nicht. Erlaubt dein Hosting ausgehende HTTPS-Verbindungen?",
-        "upstream_timeout": "Die API hat dem Gate zu lange nicht geantwortet.",
-        "internal_error": "Im Gate ist ein Fehler aufgetreten. `php moat-gate.php status` auf dem Server zeigt mehr."
-      },
-      "noGate": "Für eine Testanfrage braucht das Projekt ein Gate. Hole den Schritt «Erstes Gate» nach.",
-      "notices": {
-        "route_exists": "Im Projekt gibt es schon eine Route mit diesem Namen. Es wurde nichts geändert.",
-        "upstream_exists": "Im Projekt gibt es schon einen Upstream mit diesem Namen. Es wurde nichts geändert.",
-        "value_invalid": "Die Adresse der Website passt nicht. Sie beginnt mit https:// und endet ohne Pfad, zum Beispiel https://www.example.ch.",
-        "config_changed": "moat.yaml hat sich inzwischen geändert. Versuche es noch einmal.",
-        "not_writable": "moat.yaml kann nicht gespeichert werden.",
-        "policy_failed": "Die Richtlinie konnte nicht erstellt werden. Ist moat.yaml gültig?",
-        "failed": "Das hat nicht geklappt. Versuche es noch einmal.",
-        "required": "Übernimm ein Recipe, oder klicke auf «Später».",
-        "noProject": "Wähle zuerst ein Projekt.",
-        "config_missing": "Es gibt noch keine moat.yaml in diesem Projekt.",
-        "config_invalid": "moat.yaml ist nicht gültig. Behebe die Fehler in der «Übersicht».",
-        "route_unknown": "Die Route ist nicht mehr im Projekt.",
-        "url_invalid": "Die Adresse passt nicht. Sie beginnt mit https:// und hat keinen Teil nach ? oder #.",
-        "body_invalid": "Der Inhalt der Anfrage ist kein gültiges JSON.",
-        "not_confirmed": "Die Testanfrage wurde nicht gesendet: Die Adresse wurde im Fenster von Moat nicht bestätigt."
       }
     },
     "summary": {
@@ -838,7 +737,9 @@
       "projects": "Projekte",
       "setup": "Einrichtung",
       "account": "Konto",
-      "organisations": "Organisationen"
+      "organisations": "Organisationen",
+      "settings": "Einstellungen",
+      "assistant": "Assistent öffnen"
     },
     "sections": {
       "setup": {
@@ -847,11 +748,10 @@
         "where": "Einrichtung, in der Seitenleiste unten",
         "steps": {
           "language": "Wähle unter «Sprache», wie Moat mit dir spricht.",
-          "key": "Erstelle unter «Signaturschlüssel» mit «Neuen Schlüssel erstellen» deine Schlüsseldatei, oder wähle mit «Vorhandene Schlüsseldatei wählen» eine, die du schon hast. Die Passphrase gibst du nur im eigenen Fenster von Moat ein.",
           "project": "Lege unter «Erstes Projekt» mit «Neues Projekt anlegen» einen Projektordner an, oder füge mit «Vorhandenen Ordner hinzufügen» einen bestehenden hinzu.",
+          "key": "Erstelle unter «Signaturschlüssel» mit «Neuen Schlüssel erstellen» die Schlüsseldatei für das Projekt, oder wähle mit «Vorhandene Schlüsseldatei wählen» eine, die du schon hast. Jedes Projekt hat seinen eigenen Schlüssel. Die Passphrase gibst du nur im eigenen Fenster von Moat ein.",
           "gate": "Installiere unter «Erstes Gate» das Gate mit dem angezeigten Befehl, trage Gate-ID und Box-Schlüssel ein und klicke auf «Prüfen». Vergleiche den Fingerprint mit der Ausgabe des Gates und bestätige mit «Stimmt überein».",
-          "recipe": "Wähle unter «Erstes Recipe» eine fertige Route und klicke auf «Übernehmen». Versiegle das Secret mit «Versiegeln», signiere mit «Bundle signieren» und installiere auf dem Server die Richtlinie aus «Richtlinie anzeigen» und das Bundle. Mit «Testen» schickst du dann eine Anfrage durch das Gate.",
-          "summary": "Die «Zusammenfassung» zeigt, was eingerichtet ist, den Vertrauensmodus und die Härtungsstufe. Mit «Fertig» öffnet sich dein Projekt."
+          "summary": "Die «Zusammenfassung» zeigt, was eingerichtet ist, den Vertrauensmodus und die Härtungsstufe. Mit «Fertig» öffnet sich dein Projekt. Routen richtest du danach im Projekt unter «Routen» ein, zum Beispiel mit «Route aus Vorlage»."
         },
         "tips": {
           "later": "Optionale Schritte überspringst du mit «Später». Die Zusammenfassung zeigt sie weiter an.",
@@ -918,9 +818,9 @@
         "where": "Projekt › Übersicht › Vertrauensmodus und Gates",
         "steps": {
           "keygen": "Erzeuge einmal eine Schlüsseldatei mit `moat keygen <datei>.moatkey` und wähle eine gute Passphrase.",
-          "keyDesktop": "In Moat Desktop erstellst du den Schlüssel unter «Einrichtung» › «Signaturschlüssel» mit «Neuen Schlüssel erstellen».",
+          "keyDesktop": "In Moat Desktop erstellst du den Schlüssel eines Projekts unter «Einstellungen» mit «Neuen Schlüssel erstellen». Jedes Projekt hat seinen eigenen.",
           "trust": "Gib dem Gate bei der Installation den öffentlichen Schlüssel mit (--signer). Wechseln kannst du ihn nur am Gate selbst, mit `php moat-gate.php trust`.",
-          "passkeyDesktop": "Für «Signiert mit Passkey» klickst du unter «Gates» im Abschnitt «Passkey» auf «Passkey anlegen». Ein eigenes Fenster von Moat Desktop fragt dein Betriebssystem nach einem Passkey und zeigt Fingerprint und Befehl.",
+          "passkeyDesktop": "Für «Signiert mit Passkey» klickst du unter «Einstellungen» oder unter «Gates» auf «Passkey anlegen». Ein eigenes Fenster von Moat Desktop fragt dein Betriebssystem nach einem Passkey und zeigt Fingerprint und Befehl.",
           "passkeyGate": "Führe den Befehl `php moat-gate.php trust --passkey=…` am Gate aus und vergleiche den Fingerprint. Schalte danach beim Gate «Mit Passkey signieren» ein.",
           "badge": "Neben jedem Gate steht der Vertrauensmodus, mit dem Satz, was ein Angreifer könnte, wenn Moat Cloud gehackt würde."
         },
@@ -952,7 +852,7 @@
         "where": "Projekt › Routen",
         "steps": {
           "write": "Klicke unter «Routen» auf «Neue Route» und fülle Methode, Pfad, Upstream und Ziel-Pfad aus. Das Drei-Punkte-Menü am Ende jeder Zeile hat «Bearbeiten», «Ausschalten» (legt die Route still, ohne sie zu löschen) und «Löschen». Wer lieber im Editor arbeitet, trägt sie direkt in moat.yaml ein.",
-          "recipe": "Für häufige Fälle gibt es Recipes, zum Beispiel die Newsletter-Anmeldung bei HubSpot.",
+          "recipe": "Für häufige Fälle gibt es Recipes, zum Beispiel die Newsletter-Anmeldung bei HubSpot: Klicke unter «Routen» auf «Route aus Vorlage», wähle eine und klicke auf «Übernehmen». Danach versiegelst du das Secret, signierst ein Bundle und schickst mit «Testen» eine Anfrage durch das Gate.",
           "origins": "Ruft eine andere Website die Route im Browser auf, trage sie unter «Erlaubte Websites» ein (in moat.yaml: `origins`). Ohne Eintrag lehnen Browser fremde Websites ab.",
           "body": "Damit nur erwartete Daten zur API gehen, liste in moat.yaml unter `body` die Felder, die deine Website schickt, mit Typ (`string`, `integer`, `boolean`, `object`, `array`) und Grenzen wie `required`, `maxLength`, `enum` oder `format: email`. Das Gate entfernt jedes andere Feld und lehnt Inhalte, die nicht passen, mit 400 und `body_invalid` ab. Die Recipes bringen ihre Felder mit. Unter «Routen» steht bei jeder Route, welche Felder geprüft werden, oder dass der Inhalt ungeprüft weitergeht.",
           "bundle": "Eine neue oder geänderte Route gilt auf dem Gate erst mit dem nächsten Bundle: `moat build <gate>`, hochladen und annehmen.",
@@ -1074,7 +974,7 @@
         "purpose": "Ein neuer Signaturschlüssel ersetzt den alten in zwei Schritten auf jedem Server, damit keine Website ausfällt. Moat Desktop merkt sich den alten Schlüssel, bis du den Wechsel abschliesst.",
         "where": "Projekt › Gates › Schlüssel wechseln",
         "steps": {
-          "choose": "Wähle oder erstelle einen neuen Schlüssel in der Einrichtung oder unter «Gates». Sobald er sich vom alten unterscheidet, erscheint das Feld «Schlüssel wechseln».",
+          "choose": "Wähle oder erstelle unter «Einstellungen» einen neuen Schlüssel für das Projekt. Sobald er sich vom alten unterscheidet, erscheint unter «Gates» das Feld «Schlüssel wechseln».",
           "pin": "Führe auf jedem Server den ersten Befehl aus: er legt den alten und den neuen Schlüssel fest.",
           "sign": "Signiere das nächste Bundle jedes Gates mit dem neuen Schlüssel («Bundle signieren») und aktiviere es auf dem Server.",
           "pinNew": "Wenn jedes Gate den neuen Schlüssel zeigt, führe auf jedem Server den zweiten Befehl aus: er legt nur den neuen Schlüssel fest.",
@@ -1180,6 +1080,77 @@
           "signer": "Für «Bequem» braucht das Gate den öffentlichen Schlüssel von Moat Cloud. Er steht unter «Gates». Hat diese Moat Cloud keinen Schlüssel, gibt es nur «Signiert».",
           "sealed": "Ein Secret erscheint nie im Klartext in Moat Cloud: Es wird bei dir versiegelt, die Seite zeigt nur Namen und Versionen. Im Browser gilt das nur gegen eine Moat Cloud, die nicht aktiv gehackt ist.",
           "rotation": "Ein Schlüsselwechsel von Moat Cloud geht in zwei Schritten: Erst kündigt der Betreiber den neuen Schlüssel an, du trägst ihn an jedem Gate zusätzlich ein, dann wechselt Moat Cloud. «Gates» zeigt beide Schritte."
+        }
+      },
+      "settings": {
+        "title": "Einstellungen",
+        "purpose": "Jedes Projekt hat seinen eigenen Signaturschlüssel. Unter «Einstellungen» siehst und änderst du ihn für jedes Projekt, und du legst den Passkey dieses Geräts an.",
+        "where": "Einstellungen, in der Seitenleiste",
+        "steps": {
+          "open": "Öffne «Einstellungen» in der Seitenleiste.",
+          "keys": "Unter «Signaturschlüssel pro Projekt» steht jedes Projekt mit dem Fingerprint und dem öffentlichen Schlüssel seines Schlüssels.",
+          "create": "Mit «Neuen Schlüssel erstellen» legst du für ein Projekt eine neue Schlüsseldatei an. Die Passphrase gibst du zweimal im eigenen Fenster von Moat ein.",
+          "choose": "Mit «Vorhandene Schlüsseldatei wählen» nimmst du eine Datei, die du schon hast, zum Beispiel eine mit `moat keygen` erzeugte.",
+          "replace": "Wählst du für ein Projekt einen anderen Schlüssel, beginnt ein Schlüsselwechsel: Moat Desktop merkt sich den alten, bis du den Wechsel unter «Gates» abschliesst.",
+          "passkey": "Unter «Passkey dieses Geräts» legst du mit «Passkey anlegen» einen Passkey an. Es gibt einen für ganz Moat Desktop.",
+          "updates": "Unter «Updates» zeigt Moat Desktop, ob es eine neuere Version gibt. «Release-Seite öffnen» öffnet sie im Browser, dort lädst du den Installer. Mit «Beim Start nach Updates suchen» schaltest du die Abfrage bei GitHub beim Start aus oder ein."
+        },
+        "tips": {
+          "own": "Ein Projekt pro Schlüssel trennt deine Websites: Wer den Schlüssel eines Projekts hat, kann die Gates eines anderen nicht ändern.",
+          "backup": "Sichere jede Schlüsseldatei an einem zweiten Ort. Ohne sie kannst du für dieses Projekt nichts mehr freigeben.",
+          "perGate": "Ob ein Gate mit dem Projektschlüssel oder mit dem Passkey signiert, legst du im Projekt unter «Gates» mit «Mit Passkey signieren» fest.",
+          "noAutoInstall": "Moat Desktop installiert Updates nie selbst: Eine neue Version kommt nur auf deinen Rechner, wenn du sie herunterlädst und installierst. Die App ist noch nicht signiert, deshalb warnt dein System beim Installieren."
+        }
+      },
+      "configEditor": {
+        "title": "moat.yaml bearbeiten",
+        "purpose": "Die moat.yaml ist die eine Konfigurationsdatei eines Projekts. Im Editor siehst und änderst du sie als Text, ohne den Projektordner zu öffnen.",
+        "where": "Projekt › moat.yaml",
+        "steps": {
+          "open": "Öffne im Projekt den Bereich «moat.yaml».",
+          "fromGate": "Unter «Gates» öffnet «In moat.yaml zeigen» den Editor und markiert den Eintrag dieses Gates.",
+          "edit": "Ändere den Text. Moat prüft ihn beim Speichern so streng wie das CLI.",
+          "save": "Klicke auf «Speichern». Ist etwas falsch, nennt Moat Zeile und Spalte, und nichts wird geschrieben.",
+          "sign": "Ein Gate sieht die Änderung erst mit dem nächsten Bundle: Klicke unter «Gates» auf «Bundle signieren»."
+        },
+        "tips": {
+          "allGates": "Routen und Upstreams gelten für alle Gates des Projekts. Pro Gate stehen unter `gates` nur seine Umgebung und ob es gesperrt ist.",
+          "strict": "Keine Anker, Aliase oder YAML-Tags; setze Pfade, URLs und Zeitangaben in Anführungszeichen.",
+          "secrets": "Secrets gehören nie in diese Datei, nur ihre Namen. Den Wert versiegelst du unter «Gates»."
+        }
+      },
+      "assistant": {
+        "title": "Assistent",
+        "purpose": "Der Assistent beantwortet Fragen zu deinen Projekten und schlägt Änderungen an moat.yaml vor. Du siehst jede Änderung Zeile für Zeile und führst sie selbst aus.",
+        "where": "Assistent, in der Seitenleiste",
+        "steps": {
+          "provider": "Öffne «Einstellungen» und wähle bei «AI-Anbieter» den Knopf «AI-Anbieter einrichten». Im eigenen Fenster von Moat Desktop wählst du Anbieter, Adresse und Modell und gibst das API-Token ein.",
+          "open": "Öffne «Assistent» in der Seitenleiste und wähle bei «Bezogen auf Projekt» das Projekt, um das es geht.",
+          "ask": "Schreib deine Frage und wähle «Senden».",
+          "proposal": "Schlägt der Assistent eine Änderung vor, siehst du die Zeilen von moat.yaml, die sich ändern. «Ausführen» schreibt sie, «Verwerfen» nicht.",
+          "sign": "Danach signierst du unter «Gates» mit «Bundle signieren» ein neues Bundle, damit das Gate die Änderung erhält."
+        },
+        "tips": {
+          "limits": "Der Assistent kann keine Bundles signieren, keine Secrets versiegeln oder lesen, keine Gates anheften und nichts ausliefern. Dafür bleiben die Knöpfe unter «Gates».",
+          "data": "Was der Assistent liest, geht an deinen AI-Anbieter: Projektnamen, moat.yaml und Gates ohne Secrets. Pfade auf deinem Rechner schickt Moat nicht mit.",
+          "local": "Mit einem lokalen Modell (Ollama, LM Studio) verlässt nichts deinen Rechner: Trag als Adresse zum Beispiel http://localhost:11434/v1 ein.",
+          "memory": "Gespräche und offene Vorschläge bleiben nur, bis du Moat Desktop beendest."
+        }
+      },
+      "mcp": {
+        "title": "MCP-Server",
+        "purpose": "Über den MCP-Server kann ein AI-Programm auf deinem Rechner, etwa Claude Desktop oder Claude Code, dieselben Werkzeuge nutzen wie der Assistent: lesen und Änderungen vorschlagen.",
+        "where": "Einstellungen, Abschnitt «MCP-Server»",
+        "steps": {
+          "enable": "Öffne «Einstellungen» und schalte bei «MCP-Server» das Feld «MCP-Server einschalten» ein.",
+          "token": "Gib bei «Name des neuen Tokens» einen Namen ein und wähle «Token erstellen». Kopiere das Token sofort: Es wird nie wieder angezeigt.",
+          "connect": "Übernimm unter «Verbinden» den Befehl oder die JSON-Zeilen in dein AI-Programm und setz dein Token ein.",
+          "decide": "Vorschläge des Programms erscheinen unter «Assistent» bei «Vorschläge von MCP-Clients». Dort wählst du «Ausführen» oder «Verwerfen»."
+        },
+        "tips": {
+          "local": "Der Server hört nur auf 127.0.0.1 und nimmt keine Anfragen von Webseiten an.",
+          "revoke": "«Widerrufen» sperrt ein Token sofort.",
+          "off": "Ausgeschaltet hört Moat Desktop auf keinem Port."
         }
       }
     }
@@ -1761,6 +1732,282 @@
       "bundle_expiring": "Das letzte Bundle läuft innerhalb von 14 Tagen ab.",
       "release_pending": "Die Konfiguration hat sich seit dem letzten Bundle geändert. Gib ein neues frei, damit sie gilt.",
       "secrets_missing": "Diese Secrets braucht die Konfiguration, sie sind aber noch nicht gespeichert:"
+    }
+  },
+  "projectKey": {
+    "cli": "Hier im Browser kann Moat keinen Schlüssel erstellen. Nutze Moat Desktop oder das CLI: `moat keygen <datei>.moatkey`.",
+    "fingerprint": "Fingerprint",
+    "publicKey": "Öffentlicher Schlüssel",
+    "readyHint": "Mit diesem Schlüssel signiert Moat Desktop die Bundles dieses Projekts. Den öffentlichen Schlüssel gibst du dem Gate bei der Installation mit.",
+    "unreadable": "Die gewählte Schlüsseldatei ist nicht mehr lesbar oder keine Schlüsseldatei. Erstelle einen neuen Schlüssel oder wähle eine andere Datei.",
+    "none": "Noch kein Schlüssel gewählt.",
+    "create": "Neuen Schlüssel erstellen",
+    "choose": "Vorhandene Schlüsseldatei wählen",
+    "backup": "Die Passphrase gibst du nur im eigenen Fenster von Moat ein, nie auf dieser Seite. Sichere die Schlüsseldatei an einem zweiten Ort: Ohne sie kannst du nichts mehr freigeben.",
+    "notices": {
+      "unreadable": "Diese Datei ist keine Schlüsseldatei.",
+      "failed": "Das hat nicht geklappt. Versuche es noch einmal.",
+      "required": "Erstelle oder wähle einen Schlüssel, oder klicke auf «Später»."
+    },
+    "noProject": "Wähle zuerst ein Projekt. Jedes Projekt hat seinen eigenen Signaturschlüssel.",
+    "rotation": "Schlüsselwechsel offen: Der vorige Schlüssel ({{fingerprint}}) bleibt gemerkt, bis du den Wechsel unter «Gates» abschliesst.",
+    "replaceHint": "Ein anderer Schlüssel für dieses Projekt startet einen Schlüsselwechsel: Die Gates nehmen den neuen erst an, wenn du ihn auf dem Server festgelegt hast."
+  },
+  "recipe": {
+    "choose": "Was soll deine Website über das Gate tun?",
+    "recipes": {
+      "hubspot-newsletter": {
+        "title": "HubSpot-Newsletter",
+        "description": "Ein Anmeldeformular legt in HubSpot einen Kontakt an. Mit Rate-Limit und höchstens 500 Anmeldungen pro Tag."
+      },
+      "openai-chat": {
+        "title": "OpenAI-Chat mit Tagesbudget",
+        "description": "Ein Chatfenster fragt OpenAI. Mit Rate-Limit und einem Budget von 500 000 Tokens bzw. 5.00 USD pro Tag."
+      }
+    },
+    "site": "Adresse der Website (optional)",
+    "sitePlaceholder": "https://www.example.ch",
+    "siteHint": "Nur nötig, wenn die Website auf einer anderen Adresse läuft als das Gate. Dann nimmt das Gate Anfragen aus dem Browser nur von dieser Adresse an.",
+    "apply": "Übernehmen",
+    "applied": "«{{recipe}}» ist im Projekt: Die Website ruft das Gate unter {{route}} auf.",
+    "seal": "Versiegle das Secret {{secret}} für das Gate {{gate}}. Den Wert gibst du nur im eigenen Fenster von Moat ein.",
+    "scopes": {
+      "hubspot-newsletter": "Ein Token einer privaten HubSpot-App mit dem Bereich crm.objects.contacts.write genügt.",
+      "openai-chat": "Ein OpenAI-Projektschlüssel, am besten mit eigenem Ausgabenlimit bei OpenAI."
+    },
+    "sealed": "Versiegelt, Version {{version}}.",
+    "sign": "Signiere ein neues Bundle für {{gate}}. Erst damit erhält das Gate Route und Secret.",
+    "bundle": "Neuestes Bundle: Version {{version}}.",
+    "server": "Auf dem Server: Speichere die Richtlinie als `policy.json` neben `moat-gate.php`, lade das Bundle hoch und führe aus:",
+    "showPolicy": "Richtlinie anzeigen",
+    "bundleFile": "Das Bundle liegt im Projektordner unter `{{file}}`.",
+    "test": "Trage die Adresse des Gates ein, also die Adresse von `moat-gate.php` auf deiner Website, und sende eine Testanfrage. Sie geht den gleichen Weg wie eine Anfrage deiner Website.",
+    "testWarning": {
+      "hubspot-newsletter": "Die Testanfrage legt in HubSpot wirklich einen Kontakt an. Setze eine Adresse ein, die du danach löschen kannst.",
+      "openai-chat": "Die Testanfrage geht wirklich an OpenAI und kostet ein paar Tokens."
+    },
+    "gateUrl": "Adresse des Gates",
+    "gateUrlPlaceholder": "https://www.example.ch/moat-gate.php",
+    "body": "Inhalt der Anfrage (JSON)",
+    "testButton": "Testen",
+    "passed": "Es funktioniert: Das Gate hat die Anfrage weitergeleitet, die API hat mit {{status}} geantwortet.",
+    "upstreamError": "Das Gate hat die Anfrage weitergeleitet, aber die API hat mit {{status}} geantwortet. Prüfe den Inhalt der Anfrage und das Secret.",
+    "failed": {
+      "address_forbidden": "Diese Adresse zeigt in ein privates Netz. Moat testet nur Gates, die öffentlich erreichbar sind.",
+      "not_found": "Diesen Server gibt es nicht. Prüfe die Adresse.",
+      "unreachable": "Der Server antwortet nicht. Prüfe die Adresse.",
+      "timeout": "Der Server hat zu lange nicht geantwortet.",
+      "tls": "Das Zertifikat des Servers passt nicht zur Adresse oder ist nicht vertrauenswürdig."
+    },
+    "codes": {
+      "gate_not_configured": "Das Gate hat noch kein Bundle. Nimm das signierte Bundle mit `php moat-gate.php accept` an.",
+      "gate_disabled": "Das Gate ist gesperrt, mit dem Kill-Switch oder mit einem gesperrten Bundle.",
+      "route_disabled": "Die Route ist ausgeschaltet.",
+      "not_found": "Das Gate kennt diese Route nicht. Hast du das neueste Bundle angenommen?",
+      "method_not_allowed": "Die Route nimmt diese Methode nicht an.",
+      "unsupported_media_type": "Die Route nimmt diesen Inhaltstyp nicht an.",
+      "body_too_large": "Der Inhalt ist grösser, als die Route erlaubt.",
+      "body_invalid": "Der Inhalt passt nicht zu den Feldern der Route: Ein Pflichtfeld fehlt, oder ein Wert hat den falschen Typ oder liegt ausserhalb der Grenzen.",
+      "origin_forbidden": "Das Gate hat die Anfrage wegen ihrer Herkunft abgelehnt.",
+      "request_unbounded": "Die Anfrage braucht max_tokens bis zur Grenze der Route und kein stream.",
+      "rate_limited": "Zu viele Anfragen. Warte kurz und teste dann noch einmal.",
+      "quota_exceeded": "Das Tageskontingent der Route ist aufgebraucht.",
+      "budget_exhausted": "Das Budget der Route ist aufgebraucht.",
+      "secret_unavailable": "Das Gate kann das Secret nicht öffnen. Versiegle es für dieses Gate und signiere ein neues Bundle.",
+      "upstream_forbidden": "Die Richtlinie auf dem Server erlaubt diesen Aufruf nicht. Installiere die angezeigte Richtlinie.",
+      "upstream_unreachable": "Das Gate erreicht die API nicht. Erlaubt dein Hosting ausgehende HTTPS-Verbindungen?",
+      "upstream_timeout": "Die API hat dem Gate zu lange nicht geantwortet.",
+      "internal_error": "Im Gate ist ein Fehler aufgetreten. `php moat-gate.php status` auf dem Server zeigt mehr."
+    },
+    "noGate": "Für eine Testanfrage braucht das Projekt ein Gate. Hole den Schritt «Erstes Gate» nach.",
+    "notices": {
+      "route_exists": "Im Projekt gibt es schon eine Route mit diesem Namen. Es wurde nichts geändert.",
+      "upstream_exists": "Im Projekt gibt es schon einen Upstream mit diesem Namen. Es wurde nichts geändert.",
+      "value_invalid": "Die Adresse der Website passt nicht. Sie beginnt mit https:// und endet ohne Pfad, zum Beispiel https://www.example.ch.",
+      "config_changed": "moat.yaml hat sich inzwischen geändert. Versuche es noch einmal.",
+      "not_writable": "moat.yaml kann nicht gespeichert werden.",
+      "policy_failed": "Die Richtlinie konnte nicht erstellt werden. Ist moat.yaml gültig?",
+      "failed": "Das hat nicht geklappt. Versuche es noch einmal.",
+      "config_missing": "Es gibt noch keine moat.yaml in diesem Projekt.",
+      "config_invalid": "moat.yaml ist nicht gültig. Behebe die Fehler in der «Übersicht».",
+      "route_unknown": "Die Route ist nicht mehr im Projekt.",
+      "url_invalid": "Die Adresse passt nicht. Sie beginnt mit https:// und hat keinen Teil nach ? oder #.",
+      "body_invalid": "Der Inhalt der Anfrage ist kein gültiges JSON.",
+      "not_confirmed": "Die Testanfrage wurde nicht gesendet: Die Adresse wurde im Fenster von Moat nicht bestätigt."
+    },
+    "title": "Aus Vorlage",
+    "intro": "Ein Recipe richtet eine fertige Route für einen häufigen Zweck ein. Danach versiegelst du das Secret, signierst ein Bundle und schickst eine Testanfrage durch dein Gate.",
+    "open": "Route aus Vorlage"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "subtitle": "Signaturschlüssel deiner Projekte und der Passkey dieses Geräts.",
+    "keys": {
+      "title": "Signaturschlüssel pro Projekt",
+      "intro": "Jedes Projekt hat seinen eigenen Signaturschlüssel. Ein Gate nimmt nur Bundles an, die mit dem Schlüssel seines Projekts signiert sind.",
+      "loadFailed": "Die Projekte konnten nicht geladen werden.",
+      "noProjects": "Noch kein Projekt. Lege zuerst eines an.",
+      "toProjects": "Zu den Projekten",
+      "toGates": "Gates des Projekts"
+    },
+    "passkey": {
+      "title": "Passkey dieses Geräts",
+      "intro": "Ein Passkey für ganz Moat Desktop. Unter «Gates» legst du pro Gate fest, ob es mit dem Projektschlüssel oder mit dem Passkey signiert.",
+      "perGate": "Welche Gates mit dem Passkey signieren, legst du im Projekt unter «Gates» fest."
+    },
+    "ai": {
+      "title": "AI-Anbieter",
+      "intro": "Für den Assistenten. Anbieter, Adresse, Modell und Token gibst du in einem eigenen Fenster von Moat Desktop ein; das Token liegt nur verschlüsselt im Schlüsselbund des Systems.",
+      "kind": "Anbieter",
+      "kinds": {
+        "anthropic": "Anthropic (Claude)",
+        "openai_compatible": "OpenAI-kompatibel"
+      },
+      "address": "Adresse",
+      "model": "Modell",
+      "defaultValue": "Standard des Anbieters",
+      "token": "Token",
+      "tokenStored": "Gespeichert",
+      "tokenNone": "Keines",
+      "none": "Noch kein Anbieter eingerichtet.",
+      "open": "AI-Anbieter einrichten"
+    },
+    "mcp": {
+      "title": "MCP-Server",
+      "intro": "Damit ein AI-Programm auf diesem Rechner (Claude Desktop, Claude Code, …) deine Projekte lesen und Änderungen an moat.yaml vorschlagen kann. Ausführen kannst nur du, unter «Assistent».",
+      "enabled": "MCP-Server einschalten",
+      "running": "Läuft auf {{endpoint}}",
+      "notRunning": "Läuft nicht: Der Port ist belegt oder gesperrt. Wähle einen anderen.",
+      "port": "Port",
+      "tokens": "Zugangstoken",
+      "noTokens": "Noch keine Token.",
+      "tokenName": "Name des neuen Tokens",
+      "create": "Token erstellen",
+      "newToken": "Dein neues Token – kopiere es jetzt, es wird nie wieder angezeigt:",
+      "done": "Fertig",
+      "revoke": "Widerrufen",
+      "connect": "Verbinden",
+      "claudeCode": "Claude Code:",
+      "limits": "Ersetze <TOKEN> durch dein Token. Der Server hört nur auf 127.0.0.1, nimmt nur Anfragen mit Token an und nie eine von einer Webseite.",
+      "notices": {
+        "name_invalid": "Gib dem Token einen Namen (höchstens 60 Zeichen).",
+        "too_many": "Es gibt schon 10 Token. Widerrufe eines, bevor du ein neues erstellst.",
+        "port_invalid": "Der Port muss zwischen 1024 und 65535 liegen.",
+        "failed": "Das hat nicht geklappt."
+      },
+      "jsonClients": "Claude Desktop und andere Programme (claude_desktop_config.json):"
+    }
+  },
+  "configEditor": {
+    "intro": "Die moat.yaml dieses Projekts als Text. Sie gilt für alle Gates des Projekts. Secrets gehören nie hier hinein, nur ihre Namen.",
+    "editor": "moat.yaml",
+    "loadError": "Die moat.yaml konnte nicht gelesen werden. Lade die Seite neu.",
+    "empty": "Dieses Projekt hat noch keine moat.yaml. Schreibe sie hier und speichere sie.",
+    "gateMarked": "Der Eintrag des Gates «{{gate}}» ist markiert (Zeilen {{from}} bis {{to}}). Routen und Upstreams darunter gelten für alle Gates des Projekts.",
+    "gateNotInFile": "Das Gate «{{gate}}» steht nicht unter «gates» in dieser Datei: Es bekommt alle Routen des Projekts und gehört zu keiner Umgebung.",
+    "lines": "{{count}} Zeilen",
+    "invalid": "Nicht gespeichert: Die moat.yaml ist so nicht gültig.",
+    "line": "Zeile {{line}}, Spalte {{column}}",
+    "saved": "Gespeichert.",
+    "save": "Speichern",
+    "reload": "Neu laden",
+    "discard": "Änderungen verwerfen",
+    "nextBundle": "Ein Gate sieht die Änderung erst mit dem nächsten signierten Bundle.",
+    "errors": {
+      "config_changed": "Die Datei wurde inzwischen geändert. Lade sie neu und übernimm deine Änderungen noch einmal.",
+      "config_too_large": "Die moat.yaml ist zu gross.",
+      "not_writable": "Die moat.yaml kann nicht geschrieben werden. Prüfe die Rechte des Projektordners.",
+      "failed": "Das hat nicht geklappt. Versuche es noch einmal."
+    }
+  },
+  "update": {
+    "title": "Updates",
+    "intro": "Moat Desktop fragt bei GitHub nach der neuesten Version und zeigt sie an. Installieren tust du sie selbst, von der Release-Seite: Die App lädt nie von sich aus Code herunter.",
+    "available": "Update {{version}} verfügbar",
+    "newer": "Version {{latest}} ist verfügbar, du hast {{current}}.",
+    "current": "Du hast die neueste Version ({{current}}).",
+    "development": "Eine Entwicklungsversion hat keine Updates.",
+    "failed": "Die neueste Version konnte nicht abgefragt werden. Prüfe die Internetverbindung.",
+    "open": "Release-Seite öffnen",
+    "check": "Jetzt prüfen",
+    "auto": "Beim Start nach Updates suchen"
+  },
+  "assistant": {
+    "title": "Assistent",
+    "subtitle": "Fragen zu deinen Projekten. Änderungen an moat.yaml schlägt er nur vor; ausführen tust du sie.",
+    "setup": {
+      "title": "Noch kein AI-Anbieter",
+      "intro": "Der Assistent braucht einen AI-Anbieter: Anthropic, einen OpenAI-kompatiblen Dienst oder ein lokales Modell. Anbieter und Token gibst du in einem eigenen Fenster von Moat Desktop ein, nie auf dieser Seite.",
+      "button": "AI-Anbieter einrichten",
+      "toSettings": "Zu den Einstellungen"
+    },
+    "conversations": {
+      "title": "Gespräche",
+      "new": "Neues Gespräch",
+      "untitled": "Ohne Titel",
+      "none": "Noch keine Gespräche.",
+      "delete": "Löschen",
+      "memoryOnly": "Gespräche und offene Vorschläge bleiben nur, bis du Moat Desktop beendest."
+    },
+    "chat": {
+      "title": "Gespräch",
+      "limits": "Der Assistent liest Projekte, moat.yaml, Vorlagen und die vorgeschlagene Richtlinie und schlägt Änderungen an moat.yaml vor. Er signiert nichts, versiegelt nichts, sieht keine Secrets, heftet keine Gates an und liefert nichts aus. Was er liest, geht an deinen AI-Anbieter.",
+      "empty": "Stell eine Frage, zum Beispiel: «Welche Routen hat mein Projekt?» oder «Füge eine Umgebung staging hinzu.»",
+      "toolsUsed": "Gelesen mit:",
+      "cutShort": "Der Assistent hat für diese Frage zu viele Schritte gebraucht und hier aufgehört. Frag enger oder nach dem nächsten Teil.",
+      "project": "Bezogen auf Projekt",
+      "noProject": "Kein bestimmtes Projekt",
+      "question": "Deine Frage",
+      "placeholder": "Frag etwas zu deinen Projekten …",
+      "send": "Senden",
+      "sending": "Wartet auf Antwort …",
+      "shortcut": "Strg+Enter sendet."
+    },
+    "tools": {
+      "list_projects": "Projektliste",
+      "get_project": "Projekt",
+      "get_config": "moat.yaml",
+      "get_config_schema": "Schema",
+      "list_recipes": "Vorlagen",
+      "suggest_policy": "Richtlinie",
+      "dry_run": "Test-Konsole",
+      "propose_config_edit": "Vorschlag"
+    },
+    "proposal": {
+      "title": "Vorschlag für {{project}}",
+      "reason": "Begründung des Assistenten: {{reason}}",
+      "unchanged": "… {{count}} unveränderte Zeilen",
+      "confirm": "Ausführen",
+      "cancel": "Verwerfen",
+      "afterwards": "«Ausführen» schreibt nur moat.yaml. Damit ein Gate die Änderung erhält, signierst du danach unter «Gates» ein neues Bundle.",
+      "changedHint": "moat.yaml wurde seit dem Vorschlag geändert. Nichts geschrieben – lass die Änderung neu vorschlagen.",
+      "toConfig": "moat.yaml ansehen",
+      "status": {
+        "pending": "Offen",
+        "done": "Ausgeführt",
+        "cancelled": "Verworfen",
+        "changed": "Veraltet",
+        "failed": "Nicht ausgeführt"
+      }
+    },
+    "mcpProposals": {
+      "title": "Vorschläge von MCP-Clients",
+      "intro": "Ein AI-Programm auf diesem Rechner hat über den MCP-Server Änderungen vorgeschlagen. Nichts davon ist geschrieben, bis du «Ausführen» wählst."
+    },
+    "decisionErrors": {
+      "already_decided": "Über diesen Vorschlag wurde schon entschieden.",
+      "failed": "Das hat nicht geklappt. Lade die Seite neu und versuch es noch einmal."
+    },
+    "errors": {
+      "not_configured": "Es ist kein AI-Anbieter eingerichtet, oder sein Token lässt sich nicht öffnen. Richte ihn unter «Einstellungen» ein.",
+      "invalidKey": "Der Anbieter hat das Token abgelehnt.",
+      "rateLimited": "Der Anbieter bremst: zu viele Anfragen. Warte kurz und versuch es noch einmal.",
+      "network": "Der Anbieter war nicht erreichbar.",
+      "timeout": "Der Anbieter hat nicht rechtzeitig geantwortet.",
+      "badResponse": "Die Antwort des Anbieters war nicht lesbar.",
+      "providerError": "Der Anbieter hat einen Fehler gemeldet.",
+      "modelNotFound": "Dieses Modell kennt der Anbieter nicht.",
+      "failed": "Das hat nicht geklappt."
     }
   }
 }

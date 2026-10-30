@@ -4,10 +4,9 @@
  */
 export const SETUP_STEPS = [
   'language',
-  'signingKey',
   'project',
+  'signingKey',
   'gate',
-  'recipe',
   'summary',
 ] as const;
 export type SetupStepId = (typeof SETUP_STEPS)[number];

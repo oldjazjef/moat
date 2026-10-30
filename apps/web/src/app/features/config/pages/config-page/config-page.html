@@ -1,0 +1,126 @@
+<div class="mb-4 flex items-start justify-between gap-3">
+  <p class="text-muted-foreground max-w-3xl text-sm">
+    {{ 'configEditor.intro' | translate }}
+  </p>
+  <mt-help-link section="configEditor" />
+</div>
+
+@if (service.loaded.error()) {
+<p class="mt-note" role="alert" data-load-error>
+  <ng-icon
+    name="lucideTriangleAlert"
+    size="16"
+    aria-hidden="true"
+    class="mt-0.5 shrink-0"
+  />
+  <span>{{ 'configEditor.loadError' | translate }}</span>
+</p>
+} @else if (service.loaded.hasValue()) {
+<div class="flex flex-col gap-3">
+  @if (gate(); as name) { @if (gateRange(); as range) {
+  <p class="text-sm" data-gate-marked>
+    {{ 'configEditor.gateMarked' | translate: { gate: name, from: range.from,
+    to: range.to } }}
+  </p>
+  } @else {
+  <p class="text-muted-foreground text-sm" data-gate-not-in-file>
+    {{ 'configEditor.gateNotInFile' | translate: { gate: name } }}
+  </p>
+  } } @if (service.loaded.value().text === null) {
+  <p class="text-muted-foreground text-sm" data-no-config>
+    {{ 'configEditor.empty' | translate }}
+  </p>
+  }
+  <label class="sr-only" for="config-text"
+    >{{ 'configEditor.editor' | translate }}</label
+  >
+  <textarea
+    #editor
+    id="config-text"
+    class="mt-textarea mt-code"
+    spellcheck="false"
+    autocomplete="off"
+    rows="28"
+    data-config-text
+    [value]="service.text()"
+    (input)="onInput($event)"
+  ></textarea>
+  <p class="text-muted-foreground text-xs" data-config-lines>
+    {{ 'configEditor.lines' | translate: { count: lineCount() } }}
+  </p>
+
+  @if (service.issues().length > 0) {
+  <div class="mt-note flex-col items-stretch" role="alert" data-config-issues>
+    <p class="font-medium">{{ 'configEditor.invalid' | translate }}</p>
+    <ul class="flex flex-col gap-1">
+      @for (issue of service.issues(); track $index) {
+      <li class="flex flex-wrap items-baseline gap-2" data-config-issue>
+        @if (issue.line !== null) {
+        <button
+          hlmBtn
+          size="sm"
+          variant="link"
+          type="button"
+          class="h-auto p-0"
+          data-issue-line
+          (click)="goTo(issue.line)"
+        >
+          {{ 'configEditor.line' | translate: { line: issue.line, column:
+          issue.column ?? 1 } }}
+        </button>
+        }
+        <span>{{ 'config.errors.' + issue.code | translate }}</span>
+        @if (issue.path.length > 0) {
+        <span class="mt-code text-xs">{{ issue.path.join('.') }}</span>
+        }
+      </li>
+      }
+    </ul>
+  </div>
+  } @if (service.error(); as code) {
+  <p class="mt-note" role="alert" data-config-error>
+    <ng-icon
+      name="lucideTriangleAlert"
+      size="16"
+      aria-hidden="true"
+      class="mt-0.5 shrink-0"
+    />
+    <span>{{ 'configEditor.errors.' + code | translate }}</span>
+  </p>
+  } @if (service.saved()) {
+  <p class="text-sm" role="status" data-config-saved>
+    {{ 'configEditor.saved' | translate }}
+  </p>
+  }
+
+  <div class="flex flex-wrap items-center gap-3">
+    <button
+      hlmBtn
+      type="button"
+      data-config-save
+      [disabled]="service.busy() || !service.dirty()"
+      (click)="service.save()"
+    >
+      {{ 'configEditor.save' | translate }}
+    </button>
+    <button
+      hlmBtn
+      variant="outline"
+      type="button"
+      data-config-reload
+      [disabled]="service.busy()"
+      (click)="service.reload()"
+    >
+      {{ (service.dirty() ? 'configEditor.discard' : 'configEditor.reload') |
+      translate }}
+    </button>
+  </div>
+  <p class="text-muted-foreground text-xs">
+    {{ 'configEditor.nextBundle' | translate }}
+  </p>
+</div>
+} @else {
+<p class="text-muted-foreground text-sm" role="status">
+  {{ 'common.loading' | translate }}
+</p>
+}

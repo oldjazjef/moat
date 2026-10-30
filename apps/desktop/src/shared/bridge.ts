@@ -19,6 +19,16 @@ export const IPC = {
   passkeyStatus: 'moat:passkey:status',
   passkeyEnroll: 'moat:passkey:enroll',
   passkeyUse: 'moat:passkey:use',
+  updateCheck: 'moat:update:check',
+  updateOpen: 'moat:update:open',
+  updateAuto: 'moat:update:auto',
+  updateSetAuto: 'moat:update:set-auto',
+  aiOpen: 'moat:ai:open',
+  mcpStatus: 'moat:mcp:status',
+  mcpSetEnabled: 'moat:mcp:set-enabled',
+  mcpSetPort: 'moat:mcp:set-port',
+  mcpTokenCreate: 'moat:mcp:token-create',
+  mcpTokenRevoke: 'moat:mcp:token-revoke',
 } as const;
 
 /** A project id as the API hands it out (22 characters base64url). */
@@ -266,6 +276,33 @@ export type PasskeyEnrollResult =
   | { status: 'unavailable' }
   | { status: 'failed' };
 
+/** Whether a newer release exists (main/lib/update-check.ts). Nothing is ever downloaded. */
+export type UpdateCheckResult =
+  | { status: 'current'; current: string }
+  | { status: 'available'; current: string; latest: string }
+  | { status: 'development'; current: string }
+  | { status: 'failed'; current: string };
+
+/** The local MCP server (T-109) as the settings page shows it; tokens by name only. */
+export interface McpStatus {
+  readonly enabled: boolean;
+  readonly port: number;
+  /** `http://127.0.0.1:<port>/mcp` */
+  readonly endpoint: string;
+  /** Listening right now; false with `enabled` means the port could not be opened. */
+  readonly running: boolean;
+  readonly tokens: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly createdAt: string;
+  }[];
+}
+
+export type McpTokenResult =
+  /** `token` is shown once and kept nowhere (only its SHA-256). */
+  | { status: 'created'; token: string; mcp: McpStatus }
+  | { status: 'refused'; code: 'name_invalid' | 'too_many' };
+
 export interface DesktopBridge {
   readonly platform: string;
   readonly project: {
@@ -280,17 +317,18 @@ export interface DesktopBridge {
     reveal(id: string): Promise<void>;
   };
   readonly key: {
-    /** The signing key the desktop uses (DT-15), by its public half. */
-    status(): Promise<SigningKeyStatus>;
-    /** The main process's file dialog for an existing `.moatkey` file. */
-    choose(): Promise<SigningKeyResult>;
+    /** The project's signing key (DT-15), by its public half. Each project has its own. */
+    status(projectId: string): Promise<SigningKeyStatus>;
+    /** The main process's file dialog for an existing `.moatkey` file, for this project. */
+    choose(projectId: string): Promise<SigningKeyResult>;
     /**
      * The main process's key window: the passphrase is typed there (twice), the file is saved
-     * where the person chooses. The page learns only the public key.
+     * where the person chooses, and it becomes this project's key. The page learns only the
+     * public key.
      */
-    create(locale: string): Promise<SigningKeyResult>;
-    /** SEC-08: every gate pins the new key alone now; the desktop forgets the old key. */
-    rotationDone(locale: string): Promise<boolean>;
+    create(projectId: string, locale: string): Promise<SigningKeyResult>;
+    /** SEC-08: every gate of the project pins the new key alone now; the old one is forgotten. */
+    rotationDone(projectId: string, locale: string): Promise<boolean>;
   };
   readonly bundle: {
     /**
@@ -357,7 +395,8 @@ export interface DesktopBridge {
    * outcomes only.
    */
   readonly passkey: {
-    status(projectId: string): Promise<PasskeyStatus>;
+    /** The device's passkey; with a project also which of its gates sign with it. */
+    status(projectId: string | null): Promise<PasskeyStatus>;
     enroll(locale: string): Promise<PasskeyEnrollResult>;
     use(
       projectId: string,
@@ -371,7 +410,29 @@ export interface DesktopBridge {
    * typed there, never in the page, and the page learns only the counts. Optional only so test
    * doubles need not stub it; the desktop's preload always provides it.
    */
+  readonly update?: {
+    /** Asks GitHub for the latest release; shows, never installs. */
+    check(): Promise<UpdateCheckResult>;
+    /** Opens that version's release page (built by the main process, never taken from GitHub). */
+    open(version: string): Promise<void>;
+    /** Whether the app checks once at start. */
+    auto(): Promise<boolean>;
+    setAuto(on: boolean): Promise<boolean>;
+  };
   readonly database?: {
     open(projectId: string, locale: string): Promise<DatabaseResult>;
+  };
+  /**
+   * The assistant (T-108, T-109). `ai.open` shows the main process's provider window, where
+   * provider, address, model and token are typed; the page then asks the API for the state.
+   * The MCP server listens only while switched on, on 127.0.0.1 with a token.
+   */
+  readonly assistant?: {
+    openProvider(locale: string): Promise<void>;
+    mcpStatus(): Promise<McpStatus>;
+    mcpSetEnabled(on: boolean): Promise<McpStatus>;
+    mcpSetPort(port: number): Promise<McpStatus>;
+    mcpTokenCreate(name: string): Promise<McpTokenResult>;
+    mcpTokenRevoke(id: string): Promise<McpStatus>;
   };
 }

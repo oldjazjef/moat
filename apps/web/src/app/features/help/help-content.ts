@@ -29,12 +29,16 @@ export const HELP_SECTION_IDS = [
   'organisations',
   'cloudGates',
   'setup',
+  'settings',
   'project',
   'gate',
   'hardening',
   'trust',
   'secrets',
   'routes',
+  'configEditor',
+  'assistant',
+  'mcp',
   'console',
   'limits',
   'release',
@@ -68,6 +72,19 @@ const PROJECTS: HelpLink = {
 };
 /** FR-73: the setup wizard. */
 const SETUP: HelpLink = { id: 'setup', path: '/app/setup', only: 'desktop' };
+/** Moat Desktop: each project's signing key and the device's passkey. */
+const SETTINGS: HelpLink = {
+  id: 'settings',
+  path: '/app/settings',
+  only: 'desktop',
+};
+
+/** Moat Desktop: the AI chat and its proposals. */
+const ASSISTANT: HelpLink = {
+  id: 'assistant',
+  path: '/app/assistant',
+  only: 'desktop',
+};
 
 /** The guide, in the order of the work (FR-70): "Schritt N von M" is the position here. */
 export const HELP_SECTIONS: readonly HelpSection[] = [
@@ -132,14 +149,29 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     id: 'setup',
     steps: items(
       'language',
-      { id: 'key', only: 'desktop' },
       { id: 'project', only: 'desktop' },
+      { id: 'key', only: 'desktop' },
       'gate',
-      { id: 'recipe', only: 'desktop' },
       'summary',
     ),
     tips: items('later', 'again'),
     links: [SETUP],
+  },
+  {
+    // Moat Desktop: each project's signing key, the device's passkey.
+    id: 'settings',
+    only: 'desktop',
+    steps: items(
+      'open',
+      'keys',
+      'create',
+      'choose',
+      'replace',
+      'passkey',
+      'updates',
+    ),
+    tips: items('own', 'backup', 'perGate', 'noAutoInstall'),
+    links: [SETTINGS],
   },
   {
     id: 'project',
@@ -217,6 +249,30 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     ),
     tips: items('exact', 'quote', 'requireBody'),
     links: [PROJECTS],
+  },
+  {
+    // Moat Desktop: moat.yaml as text, from the project or from a gate.
+    id: 'configEditor',
+    only: 'desktop',
+    steps: items('open', 'fromGate', 'edit', 'save', 'sign'),
+    tips: items('allGates', 'strict', 'secrets'),
+    links: [PROJECTS],
+  },
+  {
+    // Moat Desktop: questions about the projects, proposals for moat.yaml (T-107).
+    id: 'assistant',
+    only: 'desktop',
+    steps: items('provider', 'open', 'ask', 'proposal', 'sign'),
+    tips: items('limits', 'data', 'local', 'memory'),
+    links: [ASSISTANT, SETTINGS],
+  },
+  {
+    // Moat Desktop: the local MCP server for AI programs on this computer (T-109).
+    id: 'mcp',
+    only: 'desktop',
+    steps: items('enable', 'token', 'connect', 'decide'),
+    tips: items('local', 'revoke', 'off'),
+    links: [SETTINGS, ASSISTANT],
   },
   {
     id: 'console',

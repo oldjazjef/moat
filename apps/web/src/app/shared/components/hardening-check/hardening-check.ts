@@ -187,7 +187,7 @@ interface Remembered {
           @default {
             <p class="text-destructive">
               @if (result.reason; as reason) {
-                {{ 'setup.recipe.failed.' + reason | translate }}
+                {{ 'recipe.failed.' + reason | translate }}
               } @else {
                 {{ 'hardening.check.incomplete' | translate }}
               }

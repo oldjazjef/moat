@@ -5,6 +5,7 @@ import { HlmBadge } from '@moat/ui/badge';
 import { HlmButtonImports } from '@moat/ui/button';
 import { HlmTableImports } from '@moat/ui/table';
 import { HelpLink } from '../../../help/components/help-link';
+import { RecipePanel } from '../../components/recipe-panel';
 import { RouteForm } from '../../components/route-form';
 import { UpstreamForm } from '../../components/upstream-form';
 import { RowActions } from '../../../../shared/components/row-actions';
@@ -17,6 +18,7 @@ import { RoutesPageService } from './routes-page.service';
     TranslatePipe,
     HelpLink,
     RouteForm,
+    RecipePanel,
     UpstreamForm,
     RowActions,
     HlmBadge,

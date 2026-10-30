@@ -8,7 +8,7 @@
  *   seal-preload.js,      and the key window (FR-73)
  *   key-preload.js,       and the SFTP, FTPS and database windows (DT-05, DT-03) and the
  *   passkey windows (passkey-preload.js, passkey-sign-preload.js: trust mode 2)
- *   sftp-preload.js, ftps-preload.js, database-preload.js, dialogs/
+ *   sftp-preload.js, ftps-preload.js, database-preload.js, ai-preload.js, dialogs/
  *   api/main.js           the NestJS API as a library (`nx run api:build`)
  *   web/                  the Angular build (`nx run web:build:desktop`), served via app://
  *   package.json          name/version/main + the API's runtime dependencies
@@ -96,6 +96,7 @@ await esbuild.build({
       repoRoot,
       'apps/desktop/src/preload/database-preload.ts',
     ),
+    'ai-preload': path.join(repoRoot, 'apps/desktop/src/preload/ai-preload.ts'),
   },
   outdir: out,
   bundle: true,

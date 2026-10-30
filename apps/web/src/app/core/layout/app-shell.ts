@@ -1,3 +1,4 @@
+import { UpdateService } from '../desktop/update.service';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -15,6 +16,7 @@ import {
 } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
+  lucideDownload,
   lucideLanguages,
   lucideLogOut,
   lucideMoon,
@@ -64,6 +66,7 @@ import {
   providers: [
     provideIcons({
       ...NAV_ICONS,
+      lucideDownload,
       lucideLanguages,
       lucideLogOut,
       lucideMoon,
@@ -109,7 +112,11 @@ export class AppShell {
     { initialValue: this.router.url },
   );
 
+  /** Moat Desktop: a newer release, shown once found (never installed by the app). */
+  protected readonly updates = inject(UpdateService);
+
   constructor() {
+    if (!this.cloud) void this.updates.start();
     // The mobile sheet closes once a link took the user somewhere.
     effect(() => {
       this.url();

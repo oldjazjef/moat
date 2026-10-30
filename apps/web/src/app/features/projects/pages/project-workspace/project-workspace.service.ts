@@ -11,6 +11,7 @@ export const PROJECT_TABS = [
   'overview',
   'gates',
   'routes',
+  'config',
   'console',
   'history',
 ] as const;

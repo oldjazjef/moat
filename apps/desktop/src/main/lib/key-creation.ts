@@ -34,7 +34,7 @@ export interface KeyCreationDeps {
   /** core createKeyFile through the API bundle (Argon2id, in-process). */
   create(passphrase: string): Promise<{ text: string; key: SigningKeyInfo }>;
   write(path: string, text: string): WriteOutcome;
-  /** The new file becomes the desktop's signing key (config.json `keyFile`). */
+  /** The new file becomes the project's signing key (config.json `projectKeys`). */
   use(path: string): void | Promise<void>;
 }
 
