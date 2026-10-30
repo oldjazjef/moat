@@ -26,12 +26,12 @@ import { SETUP_STEPS, STEP_STATES } from '../api/setup.types';
 import { SETUP_ERRORS } from '../../features/setup/pages/setup-page/setup-page.service';
 import { GATE_NOTICES } from '../../features/setup/components/steps/gate-step';
 import { GATE_FETCH_ERRORS } from '../../features/setup/components/steps/gate-fetch';
-import { KEY_NOTICES } from '../../features/setup/components/steps/key-step';
+import { PROJECT_KEY_NOTICES } from '../../shared/components/project-key';
 import { PROJECT_NOTICES } from '../../features/setup/components/steps/project-step';
 import {
   GATE_CODES,
   RECIPE_NOTICES,
-} from '../../features/setup/components/steps/recipe-step';
+} from '../../features/routes/components/recipe-panel';
 import { GATE_FAILURES, RECIPE_IDS } from '../api/recipe.types';
 import { HARDENING_NOTICES } from '../../shared/components/hardening-check';
 import {
@@ -147,12 +147,12 @@ const DYNAMIC_KEYS = [
   ]),
   ...STEP_STATES.map((state) => `setup.state.${state}`),
   ...SETUP_ERRORS.map((code) => `setup.errors.${code}`),
-  ...KEY_NOTICES.map((code) => `setup.key.notices.${code}`),
+  ...PROJECT_KEY_NOTICES.map((code) => `projectKey.notices.${code}`),
   ...PROJECT_NOTICES.map((code) => `setup.project.notices.${code}`),
   ...GATE_NOTICES.map((code) => `setup.gate.notices.${code}`),
   ...GATE_FETCH_ERRORS.map((code) => `setup.gate.fetch.errors.${code}`),
-  ...RECIPE_NOTICES.map((code) => `setup.recipe.notices.${code}`),
-  ...GATE_CODES.map((code) => `setup.recipe.codes.${code}`),
+  ...RECIPE_NOTICES.map((code) => `recipe.notices.${code}`),
+  ...GATE_CODES.map((code) => `recipe.codes.${code}`),
   ...HARDENING_NOTICES.map((code) => `hardening.check.notices.${code}`),
   ...CONSOLE_NOTICES.map((code) => `console.notices.${code}`),
   ...DRY_RUN_ERRORS.map((code) => `console.errors.${code}`),
@@ -164,12 +164,12 @@ const DYNAMIC_KEYS = [
   'history.database.done.push',
   'history.database.done.pull',
   'history.notices.failed',
-  ...GATE_FAILURES.map((reason) => `setup.recipe.failed.${reason}`),
+  ...GATE_FAILURES.map((reason) => `recipe.failed.${reason}`),
   ...RECIPE_IDS.flatMap((id) => [
-    `setup.recipe.recipes.${id}.title`,
-    `setup.recipe.recipes.${id}.description`,
-    `setup.recipe.scopes.${id}`,
-    `setup.recipe.testWarning.${id}`,
+    `recipe.recipes.${id}.title`,
+    `recipe.recipes.${id}.description`,
+    `recipe.scopes.${id}`,
+    `recipe.testWarning.${id}`,
   ]),
 ];
 

@@ -309,12 +309,12 @@ export class GateStep extends SetupStepComponent {
 
   constructor() {
     super();
-    void this.loadKey();
-    // Another project: start over.
+    // Another project: start over, with that project's key.
     effect(() => {
       this.service.project();
       this.preview.set(null);
       this.saved.set(null);
+      void this.loadKey();
     });
   }
 
@@ -442,9 +442,14 @@ export class GateStep extends SetupStepComponent {
   }
 
   private async loadKey(): Promise<void> {
+    const id = this.service.project();
     if (this.bridge === null) return;
+    if (id === null) {
+      this.key.set({ status: 'none' });
+      return;
+    }
     try {
-      this.key.set(await this.bridge.key.status());
+      this.key.set(await this.bridge.key.status(id));
     } catch {
       this.key.set({ status: 'unreadable' });
     }

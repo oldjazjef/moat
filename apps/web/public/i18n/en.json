@@ -552,10 +552,6 @@
         "title": "First gate",
         "intro": "The gate runs on your hosting. Install it and enter it here. Before it is saved you compare its fingerprint."
       },
-      "recipe": {
-        "title": "First recipe",
-        "intro": "A recipe sets up a ready-made route for a common use. Then you send a test request through your gate."
-      },
       "summary": {
         "title": "Summary",
         "intro": "This is set up. Anything missing you can catch up on at any time under “Setup”."
@@ -566,22 +562,6 @@
       "german": "Deutsch",
       "english": "English",
       "later": "You can switch the language at any time at the top right."
-    },
-    "key": {
-      "cli": "Here in the browser Moat cannot create a key. Use Moat Desktop or the CLI: `moat keygen <file>.moatkey`.",
-      "fingerprint": "Fingerprint",
-      "publicKey": "Public key",
-      "readyHint": "Moat Desktop signs with this key. You give the public key to the gate when you install it.",
-      "unreadable": "The chosen key file can no longer be read or is not a key file. Create a new key or choose another file.",
-      "none": "No key chosen yet.",
-      "create": "Create a new key",
-      "choose": "Choose an existing key file",
-      "backup": "You type the passphrase only in Moat's own window, never on this page. Back up the key file in a second place: without it you cannot approve anything.",
-      "notices": {
-        "unreadable": "This file is not a key file.",
-        "failed": "That did not work. Try again.",
-        "required": "Create or choose a key, or click “Later”."
-      }
     },
     "project": {
       "choose": "Continue with this project:",
@@ -655,92 +635,6 @@
           "tls": "The server’s certificate is not valid for this address. Nothing was taken over.",
           "failed": "That did not work. Try again."
         }
-      }
-    },
-    "recipe": {
-      "noProject": "Choose a project in the “First project” step first.",
-      "choose": "What should your website do through the gate?",
-      "recipes": {
-        "hubspot-newsletter": {
-          "title": "HubSpot newsletter",
-          "description": "A sign-up form creates a contact in HubSpot. With a rate limit and at most 500 sign-ups a day."
-        },
-        "openai-chat": {
-          "title": "OpenAI chat with a daily budget",
-          "description": "A chat box asks OpenAI. With a rate limit and a budget of 500,000 tokens or 5.00 USD a day."
-        }
-      },
-      "site": "Website address (optional)",
-      "sitePlaceholder": "https://www.example.ch",
-      "siteHint": "Only needed when the website runs on another address than the gate. The gate then takes browser requests from this address only.",
-      "apply": "Apply",
-      "applied": "“{{recipe}}” is in the project: the website calls the gate at {{route}}.",
-      "seal": "Seal the secret {{secret}} for the gate {{gate}}. You type the value only in Moat's own window.",
-      "scopes": {
-        "hubspot-newsletter": "A token of a HubSpot private app with the scope crm.objects.contacts.write is enough.",
-        "openai-chat": "An OpenAI project key, ideally with its own spending limit at OpenAI."
-      },
-      "sealed": "Sealed, version {{version}}.",
-      "sign": "Sign a new bundle for {{gate}}. Only then does the gate get the route and the secret.",
-      "bundle": "Latest bundle: version {{version}}.",
-      "server": "On the server: save the policy as `policy.json` next to `moat-gate.php`, upload the bundle and run:",
-      "showPolicy": "Show policy",
-      "bundleFile": "The bundle is in the project folder at `{{file}}`.",
-      "test": "Enter the gate's address, that is the address of `moat-gate.php` on your website, and send a test request. It takes the same way as a request from your website.",
-      "testWarning": {
-        "hubspot-newsletter": "The test request really creates a contact in HubSpot. Use an address you can delete afterwards.",
-        "openai-chat": "The test request really goes to OpenAI and costs a few tokens."
-      },
-      "gateUrl": "Gate address",
-      "gateUrlPlaceholder": "https://www.example.ch/moat-gate.php",
-      "body": "Request body (JSON)",
-      "testButton": "Test",
-      "passed": "It works: the gate forwarded the request, the API answered {{status}}.",
-      "upstreamError": "The gate forwarded the request, but the API answered {{status}}. Check the request body and the secret.",
-      "failed": {
-        "address_forbidden": "This address points into a private network. Moat only tests gates that are publicly reachable.",
-        "not_found": "This server does not exist. Check the address.",
-        "unreachable": "The server does not answer. Check the address.",
-        "timeout": "The server took too long to answer.",
-        "tls": "The server's certificate does not match the address or is not trusted."
-      },
-      "codes": {
-        "gate_not_configured": "The gate has no bundle yet. Accept the signed bundle with `php moat-gate.php accept`.",
-        "gate_disabled": "The gate is locked, by the kill switch or by a locked bundle.",
-        "route_disabled": "The route is switched off.",
-        "not_found": "The gate does not know this route. Did you accept the latest bundle?",
-        "method_not_allowed": "The route does not take this method.",
-        "unsupported_media_type": "The route does not take this content type.",
-        "body_too_large": "The body is larger than the route allows.",
-        "body_invalid": "The content does not fit the route's fields: a required field is missing, or a value has the wrong type or is out of bounds.",
-        "origin_forbidden": "The gate refused the request because of where it came from.",
-        "request_unbounded": "The request needs max_tokens up to the route's limit and no stream.",
-        "rate_limited": "Too many requests. Wait a moment, then test again.",
-        "quota_exceeded": "The route's daily quota is used up.",
-        "budget_exhausted": "The route's budget is used up.",
-        "secret_unavailable": "The gate cannot open the secret. Seal it for this gate and sign a new bundle.",
-        "upstream_forbidden": "The policy on the server does not allow this call. Install the policy shown.",
-        "upstream_unreachable": "The gate cannot reach the API. Does your hosting allow outgoing HTTPS connections?",
-        "upstream_timeout": "The API took too long to answer the gate.",
-        "internal_error": "An error occurred in the gate. `php moat-gate.php status` on the server shows more."
-      },
-      "noGate": "A test request needs a gate in the project. Catch up on the “First gate” step.",
-      "notices": {
-        "route_exists": "The project already has a route with this name. Nothing was changed.",
-        "upstream_exists": "The project already has an upstream with this name. Nothing was changed.",
-        "value_invalid": "The website address does not fit. It starts with https:// and ends without a path, for example https://www.example.ch.",
-        "config_changed": "moat.yaml changed in the meantime. Try again.",
-        "not_writable": "moat.yaml cannot be saved.",
-        "policy_failed": "The policy could not be created. Is moat.yaml valid?",
-        "failed": "That did not work. Try again.",
-        "required": "Apply a recipe, or click “Later”.",
-        "noProject": "Choose a project first.",
-        "config_missing": "This project has no moat.yaml yet.",
-        "config_invalid": "moat.yaml is not valid. Fix the errors in the “Overview”.",
-        "route_unknown": "The route is no longer in the project.",
-        "url_invalid": "The address does not fit. It starts with https:// and has nothing after ? or #.",
-        "body_invalid": "The request body is not valid JSON.",
-        "not_confirmed": "The test request was not sent: the address was not confirmed in Moat's window."
       }
     },
     "summary": {
@@ -1762,5 +1656,110 @@
       "release_pending": "The configuration changed since the latest bundle. Release a new one to apply it.",
       "secrets_missing": "These secrets are used by the configuration but not stored yet:"
     }
+  },
+  "projectKey": {
+    "cli": "Here in the browser Moat cannot create a key. Use Moat Desktop or the CLI: `moat keygen <file>.moatkey`.",
+    "fingerprint": "Fingerprint",
+    "publicKey": "Public key",
+    "readyHint": "Moat Desktop signs this project's bundles with this key. You give the gate the public key when you install it.",
+    "unreadable": "The chosen key file can no longer be read or is not a key file. Create a new key or choose another file.",
+    "none": "No key chosen yet.",
+    "create": "Create a new key",
+    "choose": "Choose an existing key file",
+    "backup": "You type the passphrase only in Moat's own window, never on this page. Back up the key file in a second place: without it you cannot approve anything.",
+    "notices": {
+      "unreadable": "This file is not a key file.",
+      "failed": "That did not work. Try again.",
+      "required": "Create or choose a key, or click “Later”."
+    },
+    "noProject": "Choose a project first. Every project has its own signing key.",
+    "rotation": "Key change open: the previous key ({{fingerprint}}) is remembered until you finish the change under “Gates”.",
+    "replaceHint": "Another key for this project starts a key change: the gates accept the new one only once you have pinned it on the server."
+  },
+  "recipe": {
+    "choose": "What should your website do through the gate?",
+    "recipes": {
+      "hubspot-newsletter": {
+        "title": "HubSpot newsletter",
+        "description": "A sign-up form creates a contact in HubSpot. With a rate limit and at most 500 sign-ups a day."
+      },
+      "openai-chat": {
+        "title": "OpenAI chat with a daily budget",
+        "description": "A chat box asks OpenAI. With a rate limit and a budget of 500,000 tokens or 5.00 USD a day."
+      }
+    },
+    "site": "Website address (optional)",
+    "sitePlaceholder": "https://www.example.ch",
+    "siteHint": "Only needed when the website runs on another address than the gate. The gate then takes browser requests from this address only.",
+    "apply": "Apply",
+    "applied": "“{{recipe}}” is in the project: the website calls the gate at {{route}}.",
+    "seal": "Seal the secret {{secret}} for the gate {{gate}}. You type the value only in Moat's own window.",
+    "scopes": {
+      "hubspot-newsletter": "A token of a HubSpot private app with the scope crm.objects.contacts.write is enough.",
+      "openai-chat": "An OpenAI project key, ideally with its own spending limit at OpenAI."
+    },
+    "sealed": "Sealed, version {{version}}.",
+    "sign": "Sign a new bundle for {{gate}}. Only then does the gate get the route and the secret.",
+    "bundle": "Latest bundle: version {{version}}.",
+    "server": "On the server: save the policy as `policy.json` next to `moat-gate.php`, upload the bundle and run:",
+    "showPolicy": "Show policy",
+    "bundleFile": "The bundle is in the project folder at `{{file}}`.",
+    "test": "Enter the gate's address, that is the address of `moat-gate.php` on your website, and send a test request. It takes the same way as a request from your website.",
+    "testWarning": {
+      "hubspot-newsletter": "The test request really creates a contact in HubSpot. Use an address you can delete afterwards.",
+      "openai-chat": "The test request really goes to OpenAI and costs a few tokens."
+    },
+    "gateUrl": "Gate address",
+    "gateUrlPlaceholder": "https://www.example.ch/moat-gate.php",
+    "body": "Request body (JSON)",
+    "testButton": "Test",
+    "passed": "It works: the gate forwarded the request, the API answered {{status}}.",
+    "upstreamError": "The gate forwarded the request, but the API answered {{status}}. Check the request body and the secret.",
+    "failed": {
+      "address_forbidden": "This address points into a private network. Moat only tests gates that are publicly reachable.",
+      "not_found": "This server does not exist. Check the address.",
+      "unreachable": "The server does not answer. Check the address.",
+      "timeout": "The server took too long to answer.",
+      "tls": "The server's certificate does not match the address or is not trusted."
+    },
+    "codes": {
+      "gate_not_configured": "The gate has no bundle yet. Accept the signed bundle with `php moat-gate.php accept`.",
+      "gate_disabled": "The gate is locked, by the kill switch or by a locked bundle.",
+      "route_disabled": "The route is switched off.",
+      "not_found": "The gate does not know this route. Did you accept the latest bundle?",
+      "method_not_allowed": "The route does not take this method.",
+      "unsupported_media_type": "The route does not take this content type.",
+      "body_too_large": "The body is larger than the route allows.",
+      "body_invalid": "The content does not fit the route's fields: a required field is missing, or a value has the wrong type or is out of bounds.",
+      "origin_forbidden": "The gate refused the request because of where it came from.",
+      "request_unbounded": "The request needs max_tokens up to the route's limit and no stream.",
+      "rate_limited": "Too many requests. Wait a moment, then test again.",
+      "quota_exceeded": "The route's daily quota is used up.",
+      "budget_exhausted": "The route's budget is used up.",
+      "secret_unavailable": "The gate cannot open the secret. Seal it for this gate and sign a new bundle.",
+      "upstream_forbidden": "The policy on the server does not allow this call. Install the policy shown.",
+      "upstream_unreachable": "The gate cannot reach the API. Does your hosting allow outgoing HTTPS connections?",
+      "upstream_timeout": "The API took too long to answer the gate.",
+      "internal_error": "An error occurred in the gate. `php moat-gate.php status` on the server shows more."
+    },
+    "noGate": "A test request needs a gate in the project. Catch up on the “First gate” step.",
+    "notices": {
+      "route_exists": "The project already has a route with this name. Nothing was changed.",
+      "upstream_exists": "The project already has an upstream with this name. Nothing was changed.",
+      "value_invalid": "The website address does not fit. It starts with https:// and ends without a path, for example https://www.example.ch.",
+      "config_changed": "moat.yaml changed in the meantime. Try again.",
+      "not_writable": "moat.yaml cannot be saved.",
+      "policy_failed": "The policy could not be created. Is moat.yaml valid?",
+      "failed": "That did not work. Try again.",
+      "config_missing": "This project has no moat.yaml yet.",
+      "config_invalid": "moat.yaml is not valid. Fix the errors in the “Overview”.",
+      "route_unknown": "The route is no longer in the project.",
+      "url_invalid": "The address does not fit. It starts with https:// and has nothing after ? or #.",
+      "body_invalid": "The request body is not valid JSON.",
+      "not_confirmed": "The test request was not sent: the address was not confirmed in Moat's window."
+    },
+    "title": "From a template",
+    "intro": "A recipe sets up a ready-made route for a common purpose. Then you seal the secret, sign a bundle and send a test request through your gate.",
+    "open": "Route from a template"
   }
 }

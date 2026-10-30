@@ -3,7 +3,7 @@
  * (recipes/recipes.ts) and apps/api/src/gate-test (ports/gate-client.port.ts). The web app
  * imports neither; keep them in step.
  */
-/** Recipe ids as libs/core RECIPE_IDS: each has texts under `setup.recipe.recipes.<id>`. */
+/** Recipe ids as libs/core RECIPE_IDS: each has texts under `recipe.recipes.<id>`. */
 export const RECIPE_IDS = ['hubspot-newsletter', 'openai-chat'] as const;
 
 export interface Recipe {

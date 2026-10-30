@@ -10,12 +10,15 @@ import { join } from 'node:path';
 import {
   CONFIG_FILE,
   EMPTY_CONFIG,
+  legacyKeyMigration,
   readConfig,
   updateConfig,
   writeConfig,
 } from './config';
 
 const KID = 'hpJ_W-5BmWCxRC4DaLFNKQ';
+const PROJECT = 'EET8NETuKZO4J4p9vrWNKg';
+const OTHER = 'AAAAAAAAAAAAAAAAAAAAAA';
 
 describe('desktop config', () => {
   let dir: string;
@@ -32,13 +35,16 @@ describe('desktop config', () => {
   });
 
   it('keeps the other fields when one changes, readable by this user only', () => {
-    updateConfig(dir, { keyFile: '/home/me/release.moatkey' });
-    updateConfig(dir, { passphrases: { [KID]: 'c2VhbGVk' } });
-    updateConfig(dir, { previousKey: 'P'.repeat(43) });
-    expect(readConfig(dir)).toEqual({
-      projectDir: null,
+    const key = {
       keyFile: '/home/me/release.moatkey',
       previousKey: 'P'.repeat(43),
+    };
+    updateConfig(dir, { projectKeys: { [PROJECT]: key } });
+    updateConfig(dir, { passphrases: { [KID]: 'c2VhbGVk' } });
+    expect(readConfig(dir)).toEqual({
+      projectDir: null,
+      projectKeys: { [PROJECT]: key },
+      legacyKey: null,
       passphrases: { [KID]: 'c2VhbGVk' },
       deployed: {},
       sftpTargets: {},
@@ -60,10 +66,49 @@ describe('desktop config', () => {
       '{"projectDir":"relative/dir","keyFile":"key.moatkey"}',
       '{"projectDir":42,"passphrases":[]}',
       '{"previousKey":"not a key"}',
+      '{"projectKeys":{"../x":{"keyFile":"/k.moatkey"},"EET8NETuKZO4J4p9vrWNKg":{"keyFile":"k.moatkey"}}}',
     ]) {
       writeFileSync(join(dir, CONFIG_FILE), content);
       expect(readConfig(dir)).toEqual(EMPTY_CONFIG);
     }
+  });
+
+  it('reads the desktop-wide key of older builds as the key to move into the projects', () => {
+    writeFileSync(
+      join(dir, CONFIG_FILE),
+      JSON.stringify({
+        keyFile: '/home/me/release.moatkey',
+        previousKey: 'P'.repeat(43),
+      }),
+    );
+    const config = readConfig(dir);
+    expect(config.legacyKey).toEqual({
+      keyFile: '/home/me/release.moatkey',
+      previousKey: 'P'.repeat(43),
+    });
+    expect(config.projectKeys).toEqual({});
+    // Written once, the old fields are gone and the key stays as `legacyKey`.
+    updateConfig(dir, {});
+    const written = JSON.parse(
+      readFileSync(join(dir, CONFIG_FILE), 'utf8'),
+    ) as Record<string, unknown>;
+    expect(written['keyFile']).toBeUndefined();
+    expect(readConfig(dir).legacyKey).toEqual(config.legacyKey);
+  });
+
+  it('moves the old key into every project without one, once, and never replaces the key a project has', () => {
+    const legacy = { keyFile: '/home/me/old.moatkey', previousKey: null };
+    const own = { keyFile: '/home/me/own.moatkey', previousKey: null };
+    const config = {
+      ...EMPTY_CONFIG,
+      legacyKey: legacy,
+      projectKeys: { [OTHER]: own },
+    };
+    expect(legacyKeyMigration(config, [PROJECT, OTHER, '../x'])).toEqual({
+      projectKeys: { [PROJECT]: legacy, [OTHER]: own },
+      legacyKey: null,
+    });
+    expect(legacyKeyMigration(EMPTY_CONFIG, [PROJECT])).toBeNull();
   });
 
   it('keeps the last deploy package per project and gate, nothing else (T-66)', () => {

@@ -258,7 +258,7 @@ export class GatesPageService {
   private async loadRotation(): Promise<void> {
     if (this.bridge === null) return;
     try {
-      const status = await this.bridge.key.status();
+      const status = await this.bridge.key.status(this.resource.id());
       this.rotation.set(
         status.status === 'ready' && status.previous !== null
           ? { previous: status.previous, current: status.key }
@@ -309,7 +309,10 @@ export class GatesPageService {
   async finishRotation(): Promise<void> {
     if (this.bridge === null || !this.rotationReady()) return;
     try {
-      await this.bridge.key.rotationDone(this.translate.getCurrentLang() ?? '');
+      await this.bridge.key.rotationDone(
+        this.resource.id(),
+        this.translate.getCurrentLang() ?? '',
+      );
     } catch {
       // Still open: the panel stays.
     }

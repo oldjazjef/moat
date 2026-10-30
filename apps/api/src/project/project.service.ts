@@ -6,6 +6,12 @@ import {
   type CreateProjectResult,
 } from './application/create-project.command';
 import {
+  type ConfigText,
+  GetConfigTextQuery,
+  ReplaceConfigCommand,
+  type ReplaceConfigResult,
+} from './application/config-text';
+import {
   EditConfigCommand,
   type EditConfigResult,
 } from './application/edit-config.command';
@@ -74,5 +80,18 @@ export class ProjectService {
     edit: ConfigEdit,
   ): Promise<EditConfigResult> {
     return this.commands.execute(new EditConfigCommand(id, base, edit));
+  }
+
+  /** moat.yaml as text for the editor (null: not in the list). */
+  configText(id: string): Promise<ConfigText | null> {
+    return this.queries.execute(new GetConfigTextQuery(id));
+  }
+
+  replaceConfig(
+    id: string,
+    base: string | null,
+    text: string,
+  ): Promise<ReplaceConfigResult> {
+    return this.commands.execute(new ReplaceConfigCommand(id, base, text));
   }
 }

@@ -40,7 +40,12 @@ import {
   type SigningKeyStatus,
 } from '../shared/bridge';
 import { type RunningApi, startApi } from './api-host';
-import { readConfig, updateConfig } from './lib/config';
+import {
+  legacyKeyMigration,
+  readConfig,
+  updateConfig,
+  withProjectKey,
+} from './lib/config';
 import { previousKeyAfter } from './lib/key-rotation';
 import { confirmed, passkeyGatesAfter } from './lib/state-change';
 import {
@@ -229,6 +234,13 @@ async function start(): Promise<void> {
     if (isFolder(legacy)) await api.addProject(legacy).catch(() => undefined);
     updateConfig(userData, { projectDir: null });
   }
+  // Builds before per-project keys signed every project with one key: each listed project keeps
+  // it as its own, once (a gate that pins it goes on accepting what is signed).
+  const keyMove = legacyKeyMigration(
+    readConfig(userData),
+    await api.projectIds().catch(() => []),
+  );
+  if (keyMove !== null) updateConfig(userData, keyMove);
   // A folder given on the command line (`--project=<dir>`) is added and opened: demos and tests.
   const projectArg = process.argv
     .find((arg) => arg.startsWith('--project='))
@@ -333,26 +345,36 @@ function registerIpc(): void {
       }
     },
   );
-  // The signing key (FR-73): the page learns only its public half, never the path.
-  ipcMain.handle(IPC.keyStatus, async (event): Promise<SigningKeyStatus> => {
-    if (!fromApp(event) || api === null) return { status: 'unreadable' };
-    const path = readConfig(app.getPath('userData')).keyFile;
-    if (path === null) return { status: 'none' };
-    const key = await keyInfo(api, path);
-    if (key === null) return { status: 'unreadable' };
-    const previousKey = readConfig(app.getPath('userData')).previousKey;
-    return {
-      status: 'ready',
-      key,
-      previous:
-        previousKey === null ? null : await api.signingKeyInfo(previousKey),
-    };
-  });
-  // SEC-08: the person says every gate now pins the new key alone; the old key is forgotten.
+  // A project's signing key (FR-73, DT-15): the page learns only its public half, never the path.
+  ipcMain.handle(
+    IPC.keyStatus,
+    async (event, id: unknown): Promise<SigningKeyStatus> => {
+      if (!fromApp(event) || api === null) return { status: 'unreadable' };
+      if (typeof id !== 'string' || !PROJECT_ID.test(id))
+        return { status: 'unreadable' };
+      const entry = readConfig(app.getPath('userData')).projectKeys[id];
+      if (entry === undefined) return { status: 'none' };
+      const key = await keyInfo(api, entry.keyFile);
+      if (key === null) return { status: 'unreadable' };
+      return {
+        status: 'ready',
+        key,
+        previous:
+          entry.previousKey === null
+            ? null
+            : await api.signingKeyInfo(entry.previousKey),
+      };
+    },
+  );
+  // SEC-08: the person says every gate of the project now pins the new key alone; the old key
+  // is forgotten.
   ipcMain.handle(
     IPC.keyRotationDone,
-    async (event, locale: unknown): Promise<boolean> => {
+    async (event, id: unknown, locale: unknown): Promise<boolean> => {
       if (!fromApp(event)) return false;
+      if (typeof id !== 'string' || !PROJECT_ID.test(id)) return false;
+      const userData = app.getPath('userData');
+      if (readConfig(userData).projectKeys[id] === undefined) return false;
       const text = MESSAGES[pageLocale(locale, app.getLocale())].confirmChange;
       return confirmed(
         () =>
@@ -363,38 +385,51 @@ function registerIpc(): void {
             text.keyRotationDone.confirm,
             text.cancel,
           ),
-        () => updateConfig(app.getPath('userData'), { previousKey: null }),
+        () => {
+          const config = readConfig(userData);
+          const entry = config.projectKeys[id];
+          if (entry === undefined) return;
+          updateConfig(userData, {
+            projectKeys: withProjectKey(config, id, {
+              ...entry,
+              previousKey: null,
+            }),
+          });
+        },
       );
     },
   );
-  ipcMain.handle(IPC.keyChoose, async (event): Promise<SigningKeyResult> => {
-    if (!fromApp(event) || mainWindow === null || api === null)
-      return { status: 'failed' };
-    const text = messages().chooseKey;
-    const picked = await dialog.showOpenDialog(mainWindow, {
-      title: text.title,
-      buttonLabel: text.button,
-      properties: ['openFile'],
-      filters: [{ name: text.filter, extensions: ['moatkey'] }],
-    });
-    const file = picked.filePaths[0];
-    if (picked.canceled || file === undefined) return { status: 'cancelled' };
-    const key = await keyInfo(api, file);
-    if (key === null) return { status: 'unreadable' };
-    const userData = app.getPath('userData');
-    const before = await currentKey(api, userData);
-    const config = readConfig(userData);
-    updateConfig(userData, {
-      keyFile: file,
-      previousKey: previousKeyAfter(before, config.previousKey, key.publicKey),
-    });
-    return { status: 'chosen', key };
-  });
   ipcMain.handle(
-    IPC.keyCreate,
-    async (event, locale: unknown): Promise<SigningKeyResult> => {
+    IPC.keyChoose,
+    async (event, id: unknown): Promise<SigningKeyResult> => {
       if (!fromApp(event) || mainWindow === null || api === null)
         return { status: 'failed' };
+      if (typeof id !== 'string' || !PROJECT_ID.test(id))
+        return { status: 'failed' };
+      if ((await api.projectFolder(id)) === null) return { status: 'failed' };
+      const text = messages().chooseKey;
+      const picked = await dialog.showOpenDialog(mainWindow, {
+        title: text.title,
+        buttonLabel: text.button,
+        properties: ['openFile'],
+        filters: [{ name: text.filter, extensions: ['moatkey'] }],
+      });
+      const file = picked.filePaths[0];
+      if (picked.canceled || file === undefined) return { status: 'cancelled' };
+      const key = await keyInfo(api, file);
+      if (key === null) return { status: 'unreadable' };
+      await useProjectKey(api, app.getPath('userData'), id, file, key);
+      return { status: 'chosen', key };
+    },
+  );
+  ipcMain.handle(
+    IPC.keyCreate,
+    async (event, id: unknown, locale: unknown): Promise<SigningKeyResult> => {
+      if (!fromApp(event) || mainWindow === null || api === null)
+        return { status: 'failed' };
+      if (typeof id !== 'string' || !PROJECT_ID.test(id))
+        return { status: 'failed' };
+      if ((await api.projectFolder(id)) === null) return { status: 'failed' };
       const text = MESSAGES[pageLocale(locale, app.getLocale())];
       const parent = mainWindow;
       const running = api;
@@ -421,19 +456,9 @@ function registerIpc(): void {
         create: (passphrase) => running.createSigningKey(passphrase),
         write: writeKeyFile,
         use: async (path) => {
-          const before = await currentKey(running, userData);
           const next = await keyInfo(running, path);
-          updateConfig(userData, {
-            keyFile: path,
-            previousKey:
-              next === null
-                ? readConfig(userData).previousKey
-                : previousKeyAfter(
-                    before,
-                    readConfig(userData).previousKey,
-                    next.publicKey,
-                  ),
-          });
+          if (next !== null)
+            await useProjectKey(running, userData, id, path, next);
         },
       });
       try {
@@ -1047,7 +1072,7 @@ async function openDatabase(
     },
     label: (url) => running.databaseLabel(url),
     signer: () => {
-      const keyPath = readConfig(userData).keyFile;
+      const keyPath = readConfig(userData).projectKeys[id]?.keyFile ?? null;
       return (keyPath === null ? null : readKeyFile(keyPath)?.signer) ?? null;
     },
     sync: (url, key, direction, signer) =>
@@ -1115,7 +1140,7 @@ async function signBundle(
     prepare: (signer) => running.prepareBundle(id, gate, signer),
     sign: (digest, keyFile, passphrase) =>
       running.signBundle(id, gate, digest, keyFile, passphrase),
-    keyFilePath: () => readConfig(userData).keyFile,
+    keyFilePath: () => readConfig(userData).projectKeys[id]?.keyFile ?? null,
     chooseKeyFile: async () => {
       const owner = BrowserWindow.getFocusedWindow() ?? parent;
       const picked = await dialog.showOpenDialog(owner, {
@@ -1126,7 +1151,9 @@ async function signBundle(
       });
       const file = picked.filePaths[0];
       if (picked.canceled || file === undefined) return null;
-      updateConfig(userData, { keyFile: file });
+      const key = await keyInfo(running, file);
+      if (key === null) return null;
+      await useProjectKey(running, userData, id, file, key);
       return file;
     },
     vault: new PassphraseVault(
@@ -1154,7 +1181,7 @@ function gateSigner(
   const config = readConfig(userData);
   if (config.passkeyGates.includes(gateKey(id, gate)))
     return config.passkey === null ? null : passkeyPlanSigner(config.passkey);
-  return keySigner(config.keyFile);
+  return keySigner(config.projectKeys[id]?.keyFile ?? null);
 }
 
 function keySigner(keyPath: string | null) {
@@ -1178,14 +1205,33 @@ async function keyInfo(
   return info !== null && info.kid === file.kid ? info : null;
 }
 
-/** The public key of the key file in use, null when none or unreadable. */
-async function currentKey(
+/**
+ * Makes `path` the project's signing key. Replacing a key that still opens starts a rotation
+ * (SEC-08): its public key is kept until the person says every gate pins the new one.
+ */
+async function useProjectKey(
   running: RunningApi,
   userData: string,
-): Promise<string | null> {
-  const path = readConfig(userData).keyFile;
-  if (path === null) return null;
-  return (await keyInfo(running, path))?.publicKey ?? null;
+  id: string,
+  path: string,
+  key: SigningKeyInfo,
+): Promise<void> {
+  const before = readConfig(userData).projectKeys[id];
+  const current =
+    before === undefined
+      ? null
+      : ((await keyInfo(running, before.keyFile))?.publicKey ?? null);
+  const config = readConfig(userData);
+  updateConfig(userData, {
+    projectKeys: withProjectKey(config, id, {
+      keyFile: path,
+      previousKey: previousKeyAfter(
+        current,
+        config.projectKeys[id]?.previousKey ?? null,
+        key.publicKey,
+      ),
+    }),
+  });
 }
 
 /** The resolved path when it is a directory, otherwise null. */

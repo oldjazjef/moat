@@ -26,13 +26,17 @@ export interface DesktopConfig {
    * list on the next start, then cleared (see main.ts).
    */
   readonly projectDir: string | null;
-  /** The `.moatkey` file chosen for signing bundles (the same file the CLI uses). */
-  readonly keyFile: string | null;
   /**
-   * SEC-08: the public key (base64url) of the key used before the current one, while a key
-   * rotation is not finished; the gates still pin it next to the new one. Public only.
+   * The signing key per project id (DT-15): the `.moatkey` file the project's bundles are signed
+   * with (the same file the CLI uses), and during a rotation the key it replaces. There is no
+   * key for the whole desktop: a project without an entry has none.
    */
-  readonly previousKey: string | null;
+  readonly projectKeys: Readonly<Record<string, ProjectKey>>;
+  /**
+   * The one key of the builds before per-project keys. main.ts copies it to every listed project
+   * that has none yet, once, and clears it.
+   */
+  readonly legacyKey: ProjectKey | null;
   /**
    * Passphrases the person asked to remember, by the key file's kid: encrypted with Electron
    * `safeStorage` (the OS keychain, DT-04), base64. Never plain text in this file.
@@ -77,6 +81,16 @@ export interface DesktopConfig {
   readonly passkeyGates: readonly string[];
 }
 
+export interface ProjectKey {
+  /** The `.moatkey` file (absolute path). */
+  readonly keyFile: string;
+  /**
+   * SEC-08: the public key (base64url) of the key used before this one, while a key rotation is
+   * not finished; the gates still pin it next to the new one. Public only.
+   */
+  readonly previousKey: string | null;
+}
+
 export interface DeployedPackage {
   readonly gateId: string;
   readonly version: number;
@@ -84,8 +98,8 @@ export interface DeployedPackage {
 
 export const EMPTY_CONFIG: DesktopConfig = {
   projectDir: null,
-  keyFile: null,
-  previousKey: null,
+  projectKeys: {},
+  legacyKey: null,
   passphrases: {},
   deployed: {},
   sftpTargets: {},
@@ -165,6 +179,21 @@ export function readConfig(userData: string): DesktopConfig {
         if (target !== null) databaseTargets[id] = target;
       }
     }
+    const projectKeys: Record<string, ProjectKey> = {};
+    const keys = value['projectKeys'];
+    if (isRecord(keys)) {
+      for (const [id, entry] of Object.entries(keys)) {
+        const key = PROJECT_KEY.test(id) ? projectKeyOf(entry) : null;
+        if (key !== null) projectKeys[id] = key;
+      }
+    }
+    // Builds before per-project keys wrote `keyFile` and `previousKey` at the top level.
+    const legacyKey =
+      projectKeyOf(value['legacyKey']) ??
+      projectKeyOf({
+        keyFile: value['keyFile'],
+        previousKey: value['previousKey'] ?? null,
+      });
     const passkeyGates: string[] = [];
     const marked = value['passkeyGates'];
     if (Array.isArray(marked)) {
@@ -175,12 +204,8 @@ export function readConfig(userData: string): DesktopConfig {
     }
     return {
       projectDir: absolute(value['projectDir']),
-      keyFile: absolute(value['keyFile']),
-      previousKey:
-        typeof value['previousKey'] === 'string' &&
-        PUBLIC_KEY.test(value['previousKey'])
-          ? value['previousKey']
-          : null,
+      projectKeys,
+      legacyKey,
       passphrases,
       deployed,
       sftpTargets,
@@ -212,6 +237,48 @@ export function writeConfig(userData: string, config: DesktopConfig): void {
   const temp = `${target}.tmp-${process.pid}`;
   writeFileSync(temp, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
   renameSync(temp, target);
+}
+
+/** A project's signing key as stored; anything else is dropped. */
+function projectKeyOf(value: unknown): ProjectKey | null {
+  if (!isRecord(value)) return null;
+  const keyFile = absolute(value['keyFile']);
+  if (keyFile === null) return null;
+  const previous = value['previousKey'];
+  return {
+    keyFile,
+    previousKey:
+      typeof previous === 'string' && PUBLIC_KEY.test(previous)
+        ? previous
+        : null,
+  };
+}
+
+/** The projectKeys map with `id`'s key replaced (or removed with null). */
+export function withProjectKey(
+  config: DesktopConfig,
+  id: string,
+  key: ProjectKey | null,
+): Readonly<Record<string, ProjectKey>> {
+  const { [id]: _dropped, ...rest } = config.projectKeys;
+  return key === null ? rest : { ...rest, [id]: key };
+}
+
+/**
+ * The change that moves the old desktop-wide key into every listed project without a key of its
+ * own, and clears it; null when there is nothing to move.
+ */
+export function legacyKeyMigration(
+  config: DesktopConfig,
+  projectIds: readonly string[],
+): Pick<DesktopConfig, 'projectKeys' | 'legacyKey'> | null {
+  const legacy = config.legacyKey;
+  if (legacy === null) return null;
+  const projectKeys: Record<string, ProjectKey> = { ...config.projectKeys };
+  for (const id of projectIds)
+    if (PROJECT_KEY.test(id) && projectKeys[id] === undefined)
+      projectKeys[id] = legacy;
+  return { projectKeys, legacyKey: null };
 }
 
 /** A stored SFTP target as the SFTP window writes it; anything else is dropped. */

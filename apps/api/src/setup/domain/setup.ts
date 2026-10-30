@@ -5,10 +5,9 @@
  */
 export const SETUP_STEPS = [
   'language',
-  'signingKey',
   'project',
+  'signingKey',
   'gate',
-  'recipe',
   'summary',
 ] as const;
 export type SetupStepId = (typeof SETUP_STEPS)[number];
@@ -45,8 +44,8 @@ export interface SetupStepDefinition {
 
 /**
  * Language and the first project are required: without a project there is nothing to work on.
- * The signing key, the first gate and the first recipe can wait («Später»): the key may live on
- * another computer, the gate may not be installed yet, the routes may come from the person.
+ * The project's signing key and the first gate can wait («Später»): the key may live on another
+ * computer, the gate may not be installed yet. Routes are written later, in the project.
  */
 const REQUIRED: readonly SetupStepId[] = ['language', 'project'];
 
@@ -62,7 +61,6 @@ export function isRequired(step: SetupStepId): boolean {
 export function canMarkDone(step: SetupStepId, facts: SetupFacts): boolean {
   if (step === 'project') return facts.projects > 0;
   if (step === 'gate') return facts.gates > 0;
-  if (step === 'recipe') return facts.routes > 0;
   return true;
 }
 

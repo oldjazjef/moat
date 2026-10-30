@@ -12,12 +12,18 @@ const bridge: DesktopBridge = {
     reveal: (id: string) => ipcRenderer.invoke(IPC.projectReveal, String(id)),
   },
   key: {
-    status: () => ipcRenderer.invoke(IPC.keyStatus),
-    choose: () => ipcRenderer.invoke(IPC.keyChoose),
-    rotationDone: (locale: string) =>
-      ipcRenderer.invoke(IPC.keyRotationDone, String(locale)),
-    create: (locale: string) =>
-      ipcRenderer.invoke(IPC.keyCreate, String(locale)),
+    status: (projectId: string) =>
+      ipcRenderer.invoke(IPC.keyStatus, String(projectId)),
+    choose: (projectId: string) =>
+      ipcRenderer.invoke(IPC.keyChoose, String(projectId)),
+    rotationDone: (projectId: string, locale: string) =>
+      ipcRenderer.invoke(
+        IPC.keyRotationDone,
+        String(projectId),
+        String(locale),
+      ),
+    create: (projectId: string, locale: string) =>
+      ipcRenderer.invoke(IPC.keyCreate, String(projectId), String(locale)),
   },
   secret: {
     seal: (projectId: string, gate: string, name: string, locale: string) =>

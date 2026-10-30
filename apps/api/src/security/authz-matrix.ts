@@ -83,6 +83,22 @@ export const AUTHZ_MATRIX: readonly AuthzEntry[] = [
     expect: { ...LOCAL_ONLY, desktop: 204 },
   },
   {
+    // moat.yaml as text for the editor.
+    method: 'GET',
+    path: '/api/projects/:id/config',
+    request: `/api/projects/${SEEDED_PROJECT}/config`,
+    expect: LOCAL_ONLY,
+  },
+  {
+    // The editor's «Speichern»: the desktop only. This text is not a moat.yaml, so even the
+    // desktop gets 422 `config_invalid` and nothing is written.
+    method: 'PUT',
+    path: '/api/projects/:id/config',
+    request: `/api/projects/${SEEDED_PROJECT}/config`,
+    body: { base: null, text: 'version: 2\n' },
+    expect: { ...LOCAL_ONLY, desktop: 422 },
+  },
+  {
     // Writes moat.yaml: the desktop only, and only through the closed list of edits.
     method: 'POST',
     path: '/api/projects/:id/config/edits',

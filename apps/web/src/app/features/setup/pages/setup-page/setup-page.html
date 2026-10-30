@@ -77,14 +77,12 @@
   <div hlmCardContent>
     @switch (current.id) { @case ('language') {
     <mt-setup-language-step />
-    } @case ('signingKey') {
-    <mt-setup-key-step />
     } @case ('project') {
     <mt-setup-project-step />
+    } @case ('signingKey') {
+    <mt-setup-key-step />
     } @case ('gate') {
     <mt-setup-gate-step />
-    } @case ('recipe') {
-    <mt-setup-recipe-step />
     } @case ('summary') {
     <mt-setup-summary-step (open)="goTo($event)" />
     } }

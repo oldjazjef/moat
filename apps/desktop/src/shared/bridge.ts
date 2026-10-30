@@ -280,17 +280,18 @@ export interface DesktopBridge {
     reveal(id: string): Promise<void>;
   };
   readonly key: {
-    /** The signing key the desktop uses (DT-15), by its public half. */
-    status(): Promise<SigningKeyStatus>;
-    /** The main process's file dialog for an existing `.moatkey` file. */
-    choose(): Promise<SigningKeyResult>;
+    /** The project's signing key (DT-15), by its public half. Each project has its own. */
+    status(projectId: string): Promise<SigningKeyStatus>;
+    /** The main process's file dialog for an existing `.moatkey` file, for this project. */
+    choose(projectId: string): Promise<SigningKeyResult>;
     /**
      * The main process's key window: the passphrase is typed there (twice), the file is saved
-     * where the person chooses. The page learns only the public key.
+     * where the person chooses, and it becomes this project's key. The page learns only the
+     * public key.
      */
-    create(locale: string): Promise<SigningKeyResult>;
-    /** SEC-08: every gate pins the new key alone now; the desktop forgets the old key. */
-    rotationDone(locale: string): Promise<boolean>;
+    create(projectId: string, locale: string): Promise<SigningKeyResult>;
+    /** SEC-08: every gate of the project pins the new key alone now; the old one is forgotten. */
+    rotationDone(projectId: string, locale: string): Promise<boolean>;
   };
   readonly bundle: {
     /**

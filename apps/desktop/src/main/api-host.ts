@@ -35,6 +35,7 @@ interface ApiBundle {
   ): Promise<{ text: string; key: SigningKeyInfo }>;
   signingKeyInfo(publicKey: string): Promise<SigningKeyInfo | null>;
   projectFolder(api: ApiHandle, id: string): Promise<string | null>;
+  projectIds(api: ApiHandle): Promise<string[]>;
   prepareBundle(
     api: ApiHandle,
     id: string,
@@ -135,6 +136,7 @@ export interface RunningApi {
   ): Promise<{ text: string; key: SigningKeyInfo }>;
   signingKeyInfo(publicKey: string): Promise<SigningKeyInfo | null>;
   projectFolder(id: string): Promise<string | null>;
+  projectIds(): Promise<string[]>;
   /** «Testen» (T-59): the main process confirms each new address in its own dialog. */
   setGateTestConfirmation(
     ask: (target: string, locale: string) => Promise<boolean>,
@@ -246,6 +248,7 @@ export async function startApi(options: {
     signingKeyInfo: (publicKey) => api.signingKeyInfo(publicKey),
     setGateTestConfirmation: (ask) => api.setGateTestConfirmation(running, ask),
     projectFolder: (id) => api.projectFolder(running, id),
+    projectIds: () => api.projectIds(running),
     prepareBundle: (id, gate, signer) =>
       api.prepareBundle(running, id, gate, signer),
     signBundle: (id, gate, digest, keyFile, passphrase) =>

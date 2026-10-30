@@ -148,6 +148,11 @@ export async function passkeyKeyInfo(
   };
 }
 
+/** The ids of every listed project (the desktop moves its old key into each once). */
+export async function projectIds(api: RunningApi): Promise<string[]> {
+  return (await api.app.get(ProjectService).list()).map((entry) => entry.id);
+}
+
 /** The folder of a listed project (for "Im Ordner zeigen"), or null for an unknown id. */
 export async function projectFolder(
   api: RunningApi,
