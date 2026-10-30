@@ -37,6 +37,8 @@ export const HELP_SECTION_IDS = [
   'secrets',
   'routes',
   'configEditor',
+  'assistant',
+  'mcp',
   'console',
   'limits',
   'release',
@@ -74,6 +76,13 @@ const SETUP: HelpLink = { id: 'setup', path: '/app/setup', only: 'desktop' };
 const SETTINGS: HelpLink = {
   id: 'settings',
   path: '/app/settings',
+  only: 'desktop',
+};
+
+/** Moat Desktop: the AI chat and its proposals. */
+const ASSISTANT: HelpLink = {
+  id: 'assistant',
+  path: '/app/assistant',
   only: 'desktop',
 };
 
@@ -248,6 +257,22 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
     steps: items('open', 'fromGate', 'edit', 'save', 'sign'),
     tips: items('allGates', 'strict', 'secrets'),
     links: [PROJECTS],
+  },
+  {
+    // Moat Desktop: questions about the projects, proposals for moat.yaml (T-107).
+    id: 'assistant',
+    only: 'desktop',
+    steps: items('provider', 'open', 'ask', 'proposal', 'sign'),
+    tips: items('limits', 'data', 'local', 'memory'),
+    links: [ASSISTANT, SETTINGS],
+  },
+  {
+    // Moat Desktop: the local MCP server for AI programs on this computer (T-109).
+    id: 'mcp',
+    only: 'desktop',
+    steps: items('enable', 'token', 'connect', 'decide'),
+    tips: items('local', 'revoke', 'off'),
+    links: [SETTINGS, ASSISTANT],
   },
   {
     id: 'console',

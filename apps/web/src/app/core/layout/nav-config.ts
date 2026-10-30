@@ -1,4 +1,5 @@
 import {
+  lucideBotMessageSquare,
   lucideBuilding2,
   lucideCircleHelp,
   lucideFolderKanban,
@@ -26,6 +27,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
     path: '/app/projects',
     labelKey: 'nav.projects',
     icon: 'lucideFolderKanban',
+  },
+  // The AI chat over the projects and the proposals of MCP clients (Moat Desktop).
+  {
+    path: '/app/assistant',
+    labelKey: 'nav.assistant',
+    icon: 'lucideBotMessageSquare',
   },
   // The device's passkey and each project's signing key.
   {
@@ -78,6 +85,7 @@ export const ACCOUNT_NAV_ITEM: NavItem = {
 };
 
 export const NAV_ICONS = {
+  lucideBotMessageSquare,
   lucideBuilding2,
   lucideCircleHelp,
   lucideFolderKanban,

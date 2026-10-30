@@ -1,0 +1,304 @@
+<mt-page-header
+  [title]="'assistant.title' | translate"
+  [subtitle]="'assistant.subtitle' | translate"
+>
+  <mt-help-link section="assistant" />
+</mt-page-header>
+
+<ng-template #proposalCard let-proposal>
+  <article
+    class="flex flex-col gap-2 rounded-lg border p-3 text-sm"
+    data-proposal
+    [attr.data-proposal-id]="proposal.id"
+    [attr.data-status]="proposal.status"
+  >
+    <div class="flex flex-wrap items-baseline justify-between gap-2">
+      <h3 class="font-medium">
+        {{ 'assistant.proposal.title' | translate: { project:
+        proposal.projectName } }}
+      </h3>
+      <span class="text-muted-foreground text-xs">
+        {{ 'assistant.proposal.status.' + proposal.status | translate }}
+      </span>
+    </div>
+    <p class="text-muted-foreground">
+      {{ 'assistant.proposal.reason' | translate: { reason: proposal.reason } }}
+    </p>
+    <div class="mt-diff" data-proposal-diff>
+      @for (line of proposal.diff; track $index) { @if (line.kind === '…') {
+      <div class="mt-diff-line text-muted-foreground">
+        {{ 'assistant.proposal.unchanged' | translate: { count: line.lines } }}
+      </div>
+      } @else {
+      <div
+        class="mt-diff-line"
+        [class.mt-diff-add]="line.kind === '+'"
+        [class.mt-diff-del]="line.kind === '-'"
+      >
+        {{ line.kind }} {{ line.text }}
+      </div>
+      } }
+    </div>
+    @if (proposal.status === 'pending') {
+    <div class="flex flex-wrap gap-2">
+      <button
+        hlmBtn
+        size="sm"
+        type="button"
+        data-proposal-confirm
+        [disabled]="service.deciding() !== null"
+        (click)="service.confirm(proposal.id)"
+      >
+        {{ 'assistant.proposal.confirm' | translate }}
+      </button>
+      <button
+        hlmBtn
+        size="sm"
+        variant="outline"
+        type="button"
+        data-proposal-cancel
+        [disabled]="service.deciding() !== null"
+        (click)="service.cancel(proposal.id)"
+      >
+        {{ 'assistant.proposal.cancel' | translate }}
+      </button>
+    </div>
+    <p class="text-muted-foreground text-xs">
+      {{ 'assistant.proposal.afterwards' | translate }}
+    </p>
+    } @else if (proposal.status === 'failed') {
+    <p class="text-destructive" role="alert">
+      {{ failureKey(proposal) | translate }}
+    </p>
+    } @else if (proposal.status === 'changed') {
+    <p class="mt-warning-text">
+      {{ 'assistant.proposal.changedHint' | translate }}
+    </p>
+    } @else if (proposal.status === 'done') {
+    <p>
+      <a
+        class="underline-offset-4 hover:underline"
+        [routerLink]="['/app/projects', proposal.projectId, 'config']"
+      >
+        {{ 'assistant.proposal.toConfig' | translate }}
+      </a>
+    </p>
+    }
+  </article>
+</ng-template>
+
+<div class="flex flex-col gap-6">
+  @if (service.status.isLoading() && !service.status.hasValue()) {
+  <hlm-skeleton class="h-24 w-full max-w-3xl" />
+  } @else if (!service.configured()) {
+  <section hlmCard class="max-w-3xl" data-assistant-setup>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle class="text-base">
+        {{ 'assistant.setup.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'assistant.setup.intro' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-wrap gap-2">
+      @if (service.canSetUp) {
+      <button
+        hlmBtn
+        size="sm"
+        type="button"
+        data-assistant-provider
+        (click)="service.setUpProvider()"
+      >
+        {{ 'assistant.setup.button' | translate }}
+      </button>
+      }
+      <a hlmBtn size="sm" variant="outline" routerLink="/app/settings">
+        {{ 'assistant.setup.toSettings' | translate }}
+      </a>
+    </div>
+  </section>
+  } @if (service.mcpPending().length > 0) {
+  <section
+    hlmCard
+    class="max-w-4xl"
+    data-mcp-proposals
+    aria-labelledby="assistant-mcp-title"
+  >
+    <div hlmCardHeader>
+      <h2 hlmCardTitle id="assistant-mcp-title" class="text-base">
+        {{ 'assistant.mcpProposals.title' | translate }}
+      </h2>
+      <p hlmCardDescription>{{ 'assistant.mcpProposals.intro' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-3">
+      @for (proposal of service.mcpPending(); track proposal.id) {
+      <ng-container
+        [ngTemplateOutlet]="proposalCard"
+        [ngTemplateOutletContext]="{ $implicit: proposal }"
+      />
+      }
+    </div>
+  </section>
+  } @if (service.decisionError(); as code) {
+  <p class="text-destructive text-sm" role="alert" data-decision-error>
+    {{ 'assistant.decisionErrors.' + code | translate }}
+  </p>
+  } @if (service.configured()) {
+  <div class="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
+    <aside class="flex flex-col gap-3" aria-labelledby="assistant-list-title">
+      <h2 id="assistant-list-title" class="text-sm font-medium">
+        {{ 'assistant.conversations.title' | translate }}
+      </h2>
+      <button
+        hlmBtn
+        size="sm"
+        variant="outline"
+        type="button"
+        data-conversation-new
+        (click)="service.startNew()"
+      >
+        {{ 'assistant.conversations.new' | translate }}
+      </button>
+      <ul class="flex flex-col gap-1" data-conversations>
+        @for (item of service.conversations.value() ?? []; track item.id) {
+        <li
+          class="flex items-center gap-1"
+          data-conversation
+          [attr.data-conversation-id]="item.id"
+        >
+          <button
+            type="button"
+            class="hover:bg-accent min-w-0 flex-1 truncate rounded px-2 py-1 text-left text-sm"
+            [class.bg-accent]="service.current()?.id === item.id"
+            [attr.aria-current]="service.current()?.id === item.id ? 'true' : null"
+            (click)="service.open(item.id)"
+          >
+            {{ item.title || ('assistant.conversations.untitled' | translate) }}
+          </button>
+          <mt-row-actions
+            [actions]="conversationActions"
+            [name]="item.title || ('assistant.conversations.untitled' | translate)"
+            (run)="onConversationAction(item.id, $event)"
+          />
+        </li>
+        } @empty {
+        <li class="text-muted-foreground text-sm">
+          {{ 'assistant.conversations.none' | translate }}
+        </li>
+        }
+      </ul>
+      <p class="text-muted-foreground text-xs">
+        {{ 'assistant.conversations.memoryOnly' | translate }}
+      </p>
+    </aside>
+
+    <section
+      class="flex min-w-0 flex-col gap-4"
+      aria-labelledby="assistant-chat-title"
+    >
+      <h2 id="assistant-chat-title" class="sr-only">
+        {{ 'assistant.chat.title' | translate }}
+      </h2>
+      <p class="mt-note" data-assistant-limits>
+        {{ 'assistant.chat.limits' | translate }}
+      </p>
+      @if (empty()) {
+      <p class="text-muted-foreground text-sm" data-chat-empty>
+        {{ 'assistant.chat.empty' | translate }}
+      </p>
+      }
+      <ol class="flex flex-col gap-3" data-messages>
+        @for (message of service.current()?.messages ?? []; track $index) {
+        <li class="flex flex-col gap-2" [attr.data-role]="message.role">
+          <div
+            class="mt-chat-message"
+            [class.mt-chat-user]="message.role === 'user'"
+            data-message
+          >
+            {{ message.text }}
+          </div>
+          @if (message.tools.length > 0) {
+          <p class="text-muted-foreground text-xs" data-message-tools>
+            {{ 'assistant.chat.toolsUsed' | translate }} @for (tool of
+            message.tools; track tool; let last = $last) { @if (toolKey(tool);
+            as key) { {{ key | translate }} } @else { {{ tool }} }{{ last ? '' :
+            ', ' }} }
+          </p>
+          } @if (message.cutShort) {
+          <p class="mt-warning-text text-xs">
+            {{ 'assistant.chat.cutShort' | translate }}
+          </p>
+          } @for (id of message.proposalIds; track id) { @if
+          (service.proposal(id); as proposal) {
+          <ng-container
+            [ngTemplateOutlet]="proposalCard"
+            [ngTemplateOutletContext]="{ $implicit: proposal }"
+          />
+          } }
+        </li>
+        }
+      </ol>
+
+      @if (service.error(); as code) {
+      <div class="text-destructive text-sm" role="alert" data-assistant-error>
+        <p>{{ 'assistant.errors.' + code | translate }}</p>
+        @if (service.errorDetail(); as detail) {
+        <p class="mt-code">{{ detail }}</p>
+        }
+      </div>
+      }
+
+      <form
+        class="flex flex-col gap-2"
+        (submit)="$event.preventDefault(); send()"
+      >
+        <label class="flex flex-col gap-1 text-sm">
+          <span class="font-medium"
+            >{{ 'assistant.chat.project' | translate }}</span
+          >
+          <select
+            hlmInput
+            class="h-9 max-w-md"
+            data-assistant-project
+            [value]="service.projectId()"
+            (change)="onProject($event)"
+          >
+            <option value="">
+              {{ 'assistant.chat.noProject' | translate }}
+            </option>
+            @for (project of service.projects.value() ?? []; track project.id) {
+            <option [value]="project.id">{{ project.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="sr-only" for="assistant-question">
+          {{ 'assistant.chat.question' | translate }}
+        </label>
+        <textarea
+          id="assistant-question"
+          class="mt-textarea font-sans text-sm"
+          rows="4"
+          data-assistant-question
+          [placeholder]="'assistant.chat.placeholder' | translate"
+          [value]="draft()"
+          (input)="onDraft($event)"
+          (keydown)="onKey($event)"
+        ></textarea>
+        <div class="flex items-center gap-3">
+          <button
+            hlmBtn
+            size="sm"
+            type="submit"
+            data-assistant-send
+            [disabled]="service.asking() || draft().trim() === ''"
+          >
+            {{ (service.asking() ? 'assistant.chat.sending' :
+            'assistant.chat.send') | translate }}
+          </button>
+          <span class="text-muted-foreground text-xs">
+            {{ 'assistant.chat.shortcut' | translate }}
+          </span>
+        </div>
+      </form>
+    </section>
+  </div>
+  }
+</div>

@@ -87,6 +87,12 @@ export const appRoutes: Route[] = [
         loadChildren: () => import('./features/projects/projects.routes'),
       },
       {
+        // Moat Desktop: the AI chat and the proposals to decide (T-107).
+        path: 'assistant',
+        canMatch: [desktopOnly],
+        loadChildren: () => import('./features/assistant/assistant.routes'),
+      },
+      {
         // Moat Desktop: the device's passkey and each project's signing key.
         path: 'settings',
         canMatch: [desktopOnly],

@@ -199,6 +199,32 @@
     @apply bg-background border-input focus-visible:ring-ring/50 block w-full max-w-4xl rounded-md border px-3 py-2 font-mono text-xs leading-relaxed shadow-xs outline-hidden focus-visible:ring-[3px];
   }
 
+  /* A proposal's change to moat.yaml: removed and added lines, gaps folded. */
+  .mt-diff {
+    @apply bg-muted/40 overflow-x-auto rounded-md border font-mono text-xs leading-relaxed;
+  }
+
+  .mt-diff-line {
+    @apply px-3 whitespace-pre;
+  }
+
+  .mt-diff-add {
+    background-color: color-mix(in oklab, var(--trust-strong) 18%, transparent);
+  }
+
+  .mt-diff-del {
+    background-color: color-mix(in oklab, var(--destructive) 15%, transparent);
+  }
+
+  /* The assistant's and the person's messages. */
+  .mt-chat-message {
+    @apply rounded-lg border px-4 py-3 text-sm whitespace-pre-wrap break-words;
+  }
+
+  .mt-chat-user {
+    background-color: color-mix(in oklab, var(--primary) 8%, transparent);
+  }
+
   /* A project's tabs (Übersicht, Gates, Routen): links, the current one underlined. */
   .mt-tabs {
     @apply flex gap-1 overflow-x-auto overflow-y-hidden;

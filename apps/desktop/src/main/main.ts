@@ -42,6 +42,7 @@ import {
   type UpdateCheckResult,
 } from '../shared/bridge';
 import { type RunningApi, startApi } from './api-host';
+import { registerAssistant } from './assistant-host';
 import {
   LATEST_RELEASE_URL,
   MAX_RELEASE_ANSWER_BYTES,
@@ -273,6 +274,13 @@ async function start(): Promise<void> {
   );
   session.defaultSession.setPermissionCheckHandler(() => false);
   registerIpc();
+  registerAssistant({
+    api,
+    appDir,
+    keychain,
+    fromApp,
+    window: () => mainWindow,
+  });
   Menu.setApplicationMenu(buildMenu());
   createWindow(startPath);
 }

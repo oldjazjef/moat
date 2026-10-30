@@ -18,7 +18,8 @@
     "members": "Mitglieder",
     "account": "Konto",
     "signOut": "Abmelden",
-    "settings": "Einstellungen"
+    "settings": "Einstellungen",
+    "assistant": "Assistent"
   },
   "common": {
     "reload": "Neu laden",
@@ -737,7 +738,8 @@
       "setup": "Einrichtung",
       "account": "Konto",
       "organisations": "Organisationen",
-      "settings": "Einstellungen"
+      "settings": "Einstellungen",
+      "assistant": "Assistent öffnen"
     },
     "sections": {
       "setup": {
@@ -1115,6 +1117,40 @@
           "allGates": "Routen und Upstreams gelten für alle Gates des Projekts. Pro Gate stehen unter `gates` nur seine Umgebung und ob es gesperrt ist.",
           "strict": "Keine Anker, Aliase oder YAML-Tags; setze Pfade, URLs und Zeitangaben in Anführungszeichen.",
           "secrets": "Secrets gehören nie in diese Datei, nur ihre Namen. Den Wert versiegelst du unter «Gates»."
+        }
+      },
+      "assistant": {
+        "title": "Assistent",
+        "purpose": "Der Assistent beantwortet Fragen zu deinen Projekten und schlägt Änderungen an moat.yaml vor. Du siehst jede Änderung Zeile für Zeile und führst sie selbst aus.",
+        "where": "Assistent, in der Seitenleiste",
+        "steps": {
+          "provider": "Öffne «Einstellungen» und wähle bei «AI-Anbieter» den Knopf «AI-Anbieter einrichten». Im eigenen Fenster von Moat Desktop wählst du Anbieter, Adresse und Modell und gibst das API-Token ein.",
+          "open": "Öffne «Assistent» in der Seitenleiste und wähle bei «Bezogen auf Projekt» das Projekt, um das es geht.",
+          "ask": "Schreib deine Frage und wähle «Senden».",
+          "proposal": "Schlägt der Assistent eine Änderung vor, siehst du die Zeilen von moat.yaml, die sich ändern. «Ausführen» schreibt sie, «Verwerfen» nicht.",
+          "sign": "Danach signierst du unter «Gates» mit «Bundle signieren» ein neues Bundle, damit das Gate die Änderung erhält."
+        },
+        "tips": {
+          "limits": "Der Assistent kann keine Bundles signieren, keine Secrets versiegeln oder lesen, keine Gates anheften und nichts ausliefern. Dafür bleiben die Knöpfe unter «Gates».",
+          "data": "Was der Assistent liest, geht an deinen AI-Anbieter: Projektnamen, moat.yaml und Gates ohne Secrets. Pfade auf deinem Rechner schickt Moat nicht mit.",
+          "local": "Mit einem lokalen Modell (Ollama, LM Studio) verlässt nichts deinen Rechner: Trag als Adresse zum Beispiel http://localhost:11434/v1 ein.",
+          "memory": "Gespräche und offene Vorschläge bleiben nur, bis du Moat Desktop beendest."
+        }
+      },
+      "mcp": {
+        "title": "MCP-Server",
+        "purpose": "Über den MCP-Server kann ein AI-Programm auf deinem Rechner, etwa Claude Desktop oder Claude Code, dieselben Werkzeuge nutzen wie der Assistent: lesen und Änderungen vorschlagen.",
+        "where": "Einstellungen, Abschnitt «MCP-Server»",
+        "steps": {
+          "enable": "Öffne «Einstellungen» und schalte bei «MCP-Server» das Feld «MCP-Server einschalten» ein.",
+          "token": "Gib bei «Name des neuen Tokens» einen Namen ein und wähle «Token erstellen». Kopiere das Token sofort: Es wird nie wieder angezeigt.",
+          "connect": "Übernimm unter «Verbinden» den Befehl oder die JSON-Zeilen in dein AI-Programm und setz dein Token ein.",
+          "decide": "Vorschläge des Programms erscheinen unter «Assistent» bei «Vorschläge von MCP-Clients». Dort wählst du «Ausführen» oder «Verwerfen»."
+        },
+        "tips": {
+          "local": "Der Server hört nur auf 127.0.0.1 und nimmt keine Anfragen von Webseiten an.",
+          "revoke": "«Widerrufen» sperrt ein Token sofort.",
+          "off": "Ausgeschaltet hört Moat Desktop auf keinem Port."
         }
       }
     }
@@ -1818,6 +1854,48 @@
       "title": "Passkey dieses Geräts",
       "intro": "Ein Passkey für ganz Moat Desktop. Unter «Gates» legst du pro Gate fest, ob es mit dem Projektschlüssel oder mit dem Passkey signiert.",
       "perGate": "Welche Gates mit dem Passkey signieren, legst du im Projekt unter «Gates» fest."
+    },
+    "ai": {
+      "title": "AI-Anbieter",
+      "intro": "Für den Assistenten. Anbieter, Adresse, Modell und Token gibst du in einem eigenen Fenster von Moat Desktop ein; das Token liegt nur verschlüsselt im Schlüsselbund des Systems.",
+      "kind": "Anbieter",
+      "kinds": {
+        "anthropic": "Anthropic (Claude)",
+        "openai_compatible": "OpenAI-kompatibel"
+      },
+      "address": "Adresse",
+      "model": "Modell",
+      "defaultValue": "Standard des Anbieters",
+      "token": "Token",
+      "tokenStored": "Gespeichert",
+      "tokenNone": "Keines",
+      "none": "Noch kein Anbieter eingerichtet.",
+      "open": "AI-Anbieter einrichten"
+    },
+    "mcp": {
+      "title": "MCP-Server",
+      "intro": "Damit ein AI-Programm auf diesem Rechner (Claude Desktop, Claude Code, …) deine Projekte lesen und Änderungen an moat.yaml vorschlagen kann. Ausführen kannst nur du, unter «Assistent».",
+      "enabled": "MCP-Server einschalten",
+      "running": "Läuft auf {{endpoint}}",
+      "notRunning": "Läuft nicht: Der Port ist belegt oder gesperrt. Wähle einen anderen.",
+      "port": "Port",
+      "tokens": "Zugangstoken",
+      "noTokens": "Noch keine Token.",
+      "tokenName": "Name des neuen Tokens",
+      "create": "Token erstellen",
+      "newToken": "Dein neues Token – kopiere es jetzt, es wird nie wieder angezeigt:",
+      "done": "Fertig",
+      "revoke": "Widerrufen",
+      "connect": "Verbinden",
+      "claudeCode": "Claude Code:",
+      "limits": "Ersetze <TOKEN> durch dein Token. Der Server hört nur auf 127.0.0.1, nimmt nur Anfragen mit Token an und nie eine von einer Webseite.",
+      "notices": {
+        "name_invalid": "Gib dem Token einen Namen (höchstens 60 Zeichen).",
+        "too_many": "Es gibt schon 10 Token. Widerrufe eines, bevor du ein neues erstellst.",
+        "port_invalid": "Der Port muss zwischen 1024 und 65535 liegen.",
+        "failed": "Das hat nicht geklappt."
+      },
+      "jsonClients": "Claude Desktop und andere Programme (claude_desktop_config.json):"
     }
   },
   "configEditor": {
@@ -1853,5 +1931,83 @@
     "open": "Release-Seite öffnen",
     "check": "Jetzt prüfen",
     "auto": "Beim Start nach Updates suchen"
+  },
+  "assistant": {
+    "title": "Assistent",
+    "subtitle": "Fragen zu deinen Projekten. Änderungen an moat.yaml schlägt er nur vor; ausführen tust du sie.",
+    "setup": {
+      "title": "Noch kein AI-Anbieter",
+      "intro": "Der Assistent braucht einen AI-Anbieter: Anthropic, einen OpenAI-kompatiblen Dienst oder ein lokales Modell. Anbieter und Token gibst du in einem eigenen Fenster von Moat Desktop ein, nie auf dieser Seite.",
+      "button": "AI-Anbieter einrichten",
+      "toSettings": "Zu den Einstellungen"
+    },
+    "conversations": {
+      "title": "Gespräche",
+      "new": "Neues Gespräch",
+      "untitled": "Ohne Titel",
+      "none": "Noch keine Gespräche.",
+      "delete": "Löschen",
+      "memoryOnly": "Gespräche und offene Vorschläge bleiben nur, bis du Moat Desktop beendest."
+    },
+    "chat": {
+      "title": "Gespräch",
+      "limits": "Der Assistent liest Projekte, moat.yaml, Vorlagen und die vorgeschlagene Richtlinie und schlägt Änderungen an moat.yaml vor. Er signiert nichts, versiegelt nichts, sieht keine Secrets, heftet keine Gates an und liefert nichts aus. Was er liest, geht an deinen AI-Anbieter.",
+      "empty": "Stell eine Frage, zum Beispiel: «Welche Routen hat mein Projekt?» oder «Füge eine Umgebung staging hinzu.»",
+      "toolsUsed": "Gelesen mit:",
+      "cutShort": "Der Assistent hat für diese Frage zu viele Schritte gebraucht und hier aufgehört. Frag enger oder nach dem nächsten Teil.",
+      "project": "Bezogen auf Projekt",
+      "noProject": "Kein bestimmtes Projekt",
+      "question": "Deine Frage",
+      "placeholder": "Frag etwas zu deinen Projekten …",
+      "send": "Senden",
+      "sending": "Wartet auf Antwort …",
+      "shortcut": "Strg+Enter sendet."
+    },
+    "tools": {
+      "list_projects": "Projektliste",
+      "get_project": "Projekt",
+      "get_config": "moat.yaml",
+      "get_config_schema": "Schema",
+      "list_recipes": "Vorlagen",
+      "suggest_policy": "Richtlinie",
+      "dry_run": "Test-Konsole",
+      "propose_config_edit": "Vorschlag"
+    },
+    "proposal": {
+      "title": "Vorschlag für {{project}}",
+      "reason": "Begründung des Assistenten: {{reason}}",
+      "unchanged": "… {{count}} unveränderte Zeilen",
+      "confirm": "Ausführen",
+      "cancel": "Verwerfen",
+      "afterwards": "«Ausführen» schreibt nur moat.yaml. Damit ein Gate die Änderung erhält, signierst du danach unter «Gates» ein neues Bundle.",
+      "changedHint": "moat.yaml wurde seit dem Vorschlag geändert. Nichts geschrieben – lass die Änderung neu vorschlagen.",
+      "toConfig": "moat.yaml ansehen",
+      "status": {
+        "pending": "Offen",
+        "done": "Ausgeführt",
+        "cancelled": "Verworfen",
+        "changed": "Veraltet",
+        "failed": "Nicht ausgeführt"
+      }
+    },
+    "mcpProposals": {
+      "title": "Vorschläge von MCP-Clients",
+      "intro": "Ein AI-Programm auf diesem Rechner hat über den MCP-Server Änderungen vorgeschlagen. Nichts davon ist geschrieben, bis du «Ausführen» wählst."
+    },
+    "decisionErrors": {
+      "already_decided": "Über diesen Vorschlag wurde schon entschieden.",
+      "failed": "Das hat nicht geklappt. Lade die Seite neu und versuch es noch einmal."
+    },
+    "errors": {
+      "not_configured": "Es ist kein AI-Anbieter eingerichtet, oder sein Token lässt sich nicht öffnen. Richte ihn unter «Einstellungen» ein.",
+      "invalidKey": "Der Anbieter hat das Token abgelehnt.",
+      "rateLimited": "Der Anbieter bremst: zu viele Anfragen. Warte kurz und versuch es noch einmal.",
+      "network": "Der Anbieter war nicht erreichbar.",
+      "timeout": "Der Anbieter hat nicht rechtzeitig geantwortet.",
+      "badResponse": "Die Antwort des Anbieters war nicht lesbar.",
+      "providerError": "Der Anbieter hat einen Fehler gemeldet.",
+      "modelNotFound": "Dieses Modell kennt der Anbieter nicht.",
+      "failed": "Das hat nicht geklappt."
+    }
   }
 }

@@ -18,7 +18,8 @@
     "members": "Members",
     "account": "Account",
     "signOut": "Sign out",
-    "settings": "Settings"
+    "settings": "Settings",
+    "assistant": "Assistant"
   },
   "common": {
     "reload": "Reload",
@@ -737,7 +738,8 @@
       "setup": "Setup",
       "account": "Account",
       "organisations": "Organisations",
-      "settings": "Settings"
+      "settings": "Settings",
+      "assistant": "Open the assistant"
     },
     "sections": {
       "setup": {
@@ -1115,6 +1117,40 @@
           "allGates": "Routes and upstreams apply to every gate of the project. Under `gates` each gate has only its environment and whether it is locked.",
           "strict": "No anchors, aliases or YAML tags; put paths, URLs and durations in quotes.",
           "secrets": "Secrets never belong in this file, only their names. You seal the value under “Gates”."
+        }
+      },
+      "assistant": {
+        "title": "Assistant",
+        "purpose": "The assistant answers questions about your projects and proposes changes to moat.yaml. You see each change line by line and apply it yourself.",
+        "where": "Assistant, in the sidebar",
+        "steps": {
+          "provider": "Open “Settings” and under “AI provider” choose “Set up AI provider”. In a window of Moat Desktop of its own you choose provider, address and model and type the API token.",
+          "open": "Open “Assistant” in the sidebar and under “About project” choose the project it is about.",
+          "ask": "Write your question and choose “Send”.",
+          "proposal": "When the assistant proposes a change, you see the lines of moat.yaml that change. “Apply” writes them, “Discard” does not.",
+          "sign": "Then sign a new bundle under “Gates” with “Sign bundle”, so the gate gets the change."
+        },
+        "tips": {
+          "limits": "The assistant cannot sign bundles, seal or read secrets, pin gates or deploy anything. The buttons under “Gates” stay for that.",
+          "data": "What the assistant reads goes to your AI provider: project names, moat.yaml and gates without secrets. Moat does not send paths on your computer.",
+          "local": "With a local model (Ollama, LM Studio) nothing leaves your computer: enter for example http://localhost:11434/v1 as the address.",
+          "memory": "Conversations and open proposals last only until you quit Moat Desktop."
+        }
+      },
+      "mcp": {
+        "title": "MCP server",
+        "purpose": "Through the MCP server an AI program on your computer, such as Claude Desktop or Claude Code, can use the same tools as the assistant: read and propose changes.",
+        "where": "Settings, section “MCP server”",
+        "steps": {
+          "enable": "Open “Settings” and under “MCP server” turn on “Turn on the MCP server”.",
+          "token": "Enter a name under “Name of the new token” and choose “Create token”. Copy the token at once: it is never shown again.",
+          "connect": "Take the command or the JSON lines under “Connect” into your AI program and put in your token.",
+          "decide": "The program's proposals appear under “Assistant” in “Proposals from MCP clients”. There you choose “Apply” or “Discard”."
+        },
+        "tips": {
+          "local": "The server listens on 127.0.0.1 only and takes no requests from web pages.",
+          "revoke": "“Revoke” blocks a token at once.",
+          "off": "Turned off, Moat Desktop listens on no port."
         }
       }
     }
@@ -1818,6 +1854,48 @@
       "title": "This device's passkey",
       "intro": "One passkey for all of Moat Desktop. Under “Gates” you choose per gate whether it signs with the project key or with the passkey.",
       "perGate": "Which gates sign with the passkey you choose in the project under “Gates”."
+    },
+    "ai": {
+      "title": "AI provider",
+      "intro": "For the assistant. Provider, address, model and token are typed in a window of Moat Desktop of its own; the token is kept only encrypted in the system keychain.",
+      "kind": "Provider",
+      "kinds": {
+        "anthropic": "Anthropic (Claude)",
+        "openai_compatible": "OpenAI-compatible"
+      },
+      "address": "Address",
+      "model": "Model",
+      "defaultValue": "Provider's default",
+      "token": "Token",
+      "tokenStored": "Stored",
+      "tokenNone": "None",
+      "none": "No provider set up yet.",
+      "open": "Set up AI provider"
+    },
+    "mcp": {
+      "title": "MCP server",
+      "intro": "So that an AI program on this computer (Claude Desktop, Claude Code, …) can read your projects and propose changes to moat.yaml. Only you can apply them, under “Assistant”.",
+      "enabled": "Turn on the MCP server",
+      "running": "Running at {{endpoint}}",
+      "notRunning": "Not running: the port is taken or blocked. Choose another one.",
+      "port": "Port",
+      "tokens": "Access tokens",
+      "noTokens": "No tokens yet.",
+      "tokenName": "Name of the new token",
+      "create": "Create token",
+      "newToken": "Your new token – copy it now, it is never shown again:",
+      "done": "Done",
+      "revoke": "Revoke",
+      "connect": "Connect",
+      "claudeCode": "Claude Code:",
+      "limits": "Replace <TOKEN> with your token. The server listens on 127.0.0.1 only, takes only requests with a token and never one from a web page.",
+      "notices": {
+        "name_invalid": "Give the token a name (at most 60 characters).",
+        "too_many": "There are 10 tokens already. Revoke one before you create another.",
+        "port_invalid": "The port must be between 1024 and 65535.",
+        "failed": "That did not work."
+      },
+      "jsonClients": "Claude Desktop and other programs (claude_desktop_config.json):"
     }
   },
   "configEditor": {
@@ -1853,5 +1931,83 @@
     "open": "Open release page",
     "check": "Check now",
     "auto": "Check for updates at start"
+  },
+  "assistant": {
+    "title": "Assistant",
+    "subtitle": "Questions about your projects. It only proposes changes to moat.yaml; you apply them.",
+    "setup": {
+      "title": "No AI provider yet",
+      "intro": "The assistant needs an AI provider: Anthropic, an OpenAI-compatible service or a local model. Provider and token are typed in a window of Moat Desktop of its own, never on this page.",
+      "button": "Set up AI provider",
+      "toSettings": "Go to settings"
+    },
+    "conversations": {
+      "title": "Conversations",
+      "new": "New conversation",
+      "untitled": "Untitled",
+      "none": "No conversations yet.",
+      "delete": "Delete",
+      "memoryOnly": "Conversations and open proposals last only until you quit Moat Desktop."
+    },
+    "chat": {
+      "title": "Conversation",
+      "limits": "The assistant reads projects, moat.yaml, recipes and the suggested policy, and proposes changes to moat.yaml. It signs nothing, seals nothing, sees no secrets, pins no gates and deploys nothing. What it reads goes to your AI provider.",
+      "empty": "Ask a question, for example: “Which routes does my project have?” or “Add an environment staging.”",
+      "toolsUsed": "Read with:",
+      "cutShort": "The assistant needed too many steps for this question and stopped here. Ask something narrower or for the next part.",
+      "project": "About project",
+      "noProject": "No particular project",
+      "question": "Your question",
+      "placeholder": "Ask something about your projects …",
+      "send": "Send",
+      "sending": "Waiting for an answer …",
+      "shortcut": "Ctrl+Enter sends."
+    },
+    "tools": {
+      "list_projects": "project list",
+      "get_project": "project",
+      "get_config": "moat.yaml",
+      "get_config_schema": "schema",
+      "list_recipes": "recipes",
+      "suggest_policy": "policy",
+      "dry_run": "test console",
+      "propose_config_edit": "proposal"
+    },
+    "proposal": {
+      "title": "Proposal for {{project}}",
+      "reason": "The assistant's reason: {{reason}}",
+      "unchanged": "… {{count}} unchanged lines",
+      "confirm": "Apply",
+      "cancel": "Discard",
+      "afterwards": "“Apply” writes moat.yaml only. For a gate to get the change, sign a new bundle under “Gates” afterwards.",
+      "changedHint": "moat.yaml changed since the proposal. Nothing written – have the change proposed again.",
+      "toConfig": "View moat.yaml",
+      "status": {
+        "pending": "Open",
+        "done": "Applied",
+        "cancelled": "Discarded",
+        "changed": "Outdated",
+        "failed": "Not applied"
+      }
+    },
+    "mcpProposals": {
+      "title": "Proposals from MCP clients",
+      "intro": "An AI program on this computer proposed changes through the MCP server. None of it is written until you choose “Apply”."
+    },
+    "decisionErrors": {
+      "already_decided": "This proposal has already been decided.",
+      "failed": "That did not work. Reload the page and try again."
+    },
+    "errors": {
+      "not_configured": "No AI provider is set up, or its token cannot be opened. Set it up under “Settings”.",
+      "invalidKey": "The provider refused the token.",
+      "rateLimited": "The provider is throttling: too many requests. Wait a moment and try again.",
+      "network": "The provider could not be reached.",
+      "timeout": "The provider did not answer in time.",
+      "badResponse": "The provider's answer could not be read.",
+      "providerError": "The provider reported an error.",
+      "modelNotFound": "The provider does not know this model.",
+      "failed": "That did not work."
+    }
   }
 }

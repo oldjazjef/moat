@@ -23,6 +23,12 @@ export const IPC = {
   updateOpen: 'moat:update:open',
   updateAuto: 'moat:update:auto',
   updateSetAuto: 'moat:update:set-auto',
+  aiOpen: 'moat:ai:open',
+  mcpStatus: 'moat:mcp:status',
+  mcpSetEnabled: 'moat:mcp:set-enabled',
+  mcpSetPort: 'moat:mcp:set-port',
+  mcpTokenCreate: 'moat:mcp:token-create',
+  mcpTokenRevoke: 'moat:mcp:token-revoke',
 } as const;
 
 /** A project id as the API hands it out (22 characters base64url). */
@@ -277,6 +283,26 @@ export type UpdateCheckResult =
   | { status: 'development'; current: string }
   | { status: 'failed'; current: string };
 
+/** The local MCP server (T-109) as the settings page shows it; tokens by name only. */
+export interface McpStatus {
+  readonly enabled: boolean;
+  readonly port: number;
+  /** `http://127.0.0.1:<port>/mcp` */
+  readonly endpoint: string;
+  /** Listening right now; false with `enabled` means the port could not be opened. */
+  readonly running: boolean;
+  readonly tokens: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly createdAt: string;
+  }[];
+}
+
+export type McpTokenResult =
+  /** `token` is shown once and kept nowhere (only its SHA-256). */
+  | { status: 'created'; token: string; mcp: McpStatus }
+  | { status: 'refused'; code: 'name_invalid' | 'too_many' };
+
 export interface DesktopBridge {
   readonly platform: string;
   readonly project: {
@@ -395,5 +421,18 @@ export interface DesktopBridge {
   };
   readonly database?: {
     open(projectId: string, locale: string): Promise<DatabaseResult>;
+  };
+  /**
+   * The assistant (T-108, T-109). `ai.open` shows the main process's provider window, where
+   * provider, address, model and token are typed; the page then asks the API for the state.
+   * The MCP server listens only while switched on, on 127.0.0.1 with a token.
+   */
+  readonly assistant?: {
+    openProvider(locale: string): Promise<void>;
+    mcpStatus(): Promise<McpStatus>;
+    mcpSetEnabled(on: boolean): Promise<McpStatus>;
+    mcpSetPort(port: number): Promise<McpStatus>;
+    mcpTokenCreate(name: string): Promise<McpTokenResult>;
+    mcpTokenRevoke(id: string): Promise<McpStatus>;
   };
 }

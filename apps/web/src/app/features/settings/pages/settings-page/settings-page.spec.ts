@@ -88,6 +88,44 @@ function bridge(): DesktopBridge {
   };
 }
 
+const MCP = {
+  enabled: true,
+  port: 47_719,
+  endpoint: 'http://127.0.0.1:47719/mcp',
+  running: true,
+  tokens: [] as { id: string; name: string; createdAt: string }[],
+};
+/** TEST ONLY. */
+const TOKEN = 'moatmcp_' + 'T'.repeat(43);
+
+function withAssistant(base: ReturnType<typeof bridge>) {
+  const off = { ...MCP, enabled: false, running: false };
+  return {
+    ...base,
+    assistant: {
+      openProvider: vi.fn().mockResolvedValue(undefined),
+      mcpStatus: vi.fn().mockResolvedValue(off),
+      mcpSetEnabled: vi.fn().mockResolvedValue(MCP),
+      mcpSetPort: vi.fn().mockResolvedValue(MCP),
+      mcpTokenCreate: vi.fn().mockResolvedValue({
+        status: 'created',
+        token: TOKEN,
+        mcp: {
+          ...MCP,
+          tokens: [
+            {
+              id: 'I'.repeat(22),
+              name: 'Claude',
+              createdAt: '2026-10-30T00:00:00Z',
+            },
+          ],
+        },
+      }),
+      mcpTokenRevoke: vi.fn().mockResolvedValue(MCP),
+    },
+  };
+}
+
 describe('SettingsPage (Moat Desktop)', () => {
   beforeEach(() => localStorage.setItem('mt.locale', 'de-CH'));
   afterEach(() => {
@@ -167,6 +205,49 @@ describe('SettingsPage (Moat Desktop)', () => {
     auto.click();
     await settle(harness);
     expect(desktop.update?.setAuto).toHaveBeenCalledWith(false);
+  });
+
+  it('sets up the AI provider in the main process and shows only its summary', async () => {
+    const desktop = withAssistant(bridge());
+    window.moatDesktop = desktop;
+    const { el, harness } = await openPage('/app/settings', ROUTES, {
+      '/api/projects': [],
+      '/api/assistant/status': { configured: false, provider: null },
+    });
+    await settle(harness);
+    expect(el.querySelector('[data-ai-none]')).not.toBeNull();
+    (el.querySelector('[data-ai-open]') as HTMLButtonElement).click();
+    await settle(harness);
+    expect(desktop.assistant?.openProvider).toHaveBeenCalledWith('de-CH');
+  });
+
+  it('switches the MCP server on and shows a new token once', async () => {
+    const desktop = withAssistant(bridge());
+    window.moatDesktop = desktop;
+    const { el, harness } = await openPage('/app/settings', ROUTES, {
+      '/api/projects': [],
+      '/api/assistant/status': { configured: false, provider: null },
+    });
+    await settle(harness);
+    (el.querySelector('[data-mcp-enabled]') as HTMLInputElement).click();
+    await settle(harness);
+    expect(desktop.assistant?.mcpSetEnabled).toHaveBeenCalledWith(true);
+    expect(text(el.querySelector('[data-mcp-state]'))).toContain(MCP.endpoint);
+    const name = el.querySelector('[data-mcp-token-name]') as HTMLInputElement;
+    name.value = 'Claude';
+    name.dispatchEvent(new Event('input'));
+    await settle(harness);
+    (el.querySelector('[data-mcp-token-create]') as HTMLButtonElement).click();
+    await settle(harness);
+    expect(desktop.assistant?.mcpTokenCreate).toHaveBeenCalledWith('Claude');
+    expect(text(el.querySelector('[data-mcp-new-token]'))).toContain(TOKEN);
+    expect(el.querySelectorAll('[data-mcp-token]')).toHaveLength(1);
+    expect(text(el.querySelector('[data-mcp-snippet-cli]'))).toContain(
+      MCP.endpoint,
+    );
+    expect(text(el.querySelector('[data-mcp-snippet-cli]'))).not.toContain(
+      TOKEN,
+    );
   });
 
   it('points to the projects when there is none', async () => {

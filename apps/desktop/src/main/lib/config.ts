@@ -11,6 +11,13 @@ import {
 import type { FtpsTarget } from './ftps';
 import { FTPS_FINGERPRINT } from './ftps-client';
 import { passkeyRecordOf, type PasskeyRecord } from './passkey';
+import {
+  type AssistantSettings,
+  assistantSettingsOf,
+  DEFAULT_MCP,
+  type McpSettings,
+  mcpSettingsOf,
+} from './assistant';
 
 /** `<userData>/config.json`: what the desktop remembers between starts. */
 export const CONFIG_FILE = 'config.json';
@@ -81,6 +88,13 @@ export interface DesktopConfig {
   readonly passkeyGates: readonly string[];
   /** Ask GitHub once at start whether a newer release exists (shown, never installed). */
   readonly updateCheck: boolean;
+  /**
+   * The assistant's AI provider (T-108), set in the main process's own window: the token only
+   * as keychain ciphertext. Null = no assistant.
+   */
+  readonly assistant: AssistantSettings | null;
+  /** The local MCP server (T-109): off by default; tokens only as SHA-256. */
+  readonly mcp: McpSettings;
 }
 
 export interface ProjectKey {
@@ -111,6 +125,8 @@ export const EMPTY_CONFIG: DesktopConfig = {
   passkey: null,
   passkeyGates: [],
   updateCheck: true,
+  assistant: null,
+  mcp: DEFAULT_MCP,
 };
 
 const PROJECT_KEY = /^[A-Za-z0-9_-]{22}$/;
@@ -218,6 +234,8 @@ export function readConfig(userData: string): DesktopConfig {
       passkey: passkeyRecordOf(value['passkey']),
       passkeyGates: [...new Set(passkeyGates)].sort(),
       updateCheck: value['updateCheck'] !== false,
+      assistant: assistantSettingsOf(value['assistant']),
+      mcp: mcpSettingsOf(value['mcp']),
     };
   } catch {
     return EMPTY_CONFIG;

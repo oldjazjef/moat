@@ -53,7 +53,188 @@
     </div>
   </section>
 
-  @if (updates.supported) {
+  @if (service.canAssistant) {
+  <section hlmCard data-settings-ai aria-labelledby="settings-ai-title">
+    <div hlmCardHeader>
+      <div class="flex items-center justify-between gap-3">
+        <h2 hlmCardTitle id="settings-ai-title" class="text-base">
+          {{ 'settings.ai.title' | translate }}
+        </h2>
+        <mt-help-link section="assistant" />
+      </div>
+      <p hlmCardDescription>{{ 'settings.ai.intro' | translate }}</p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-3 text-sm">
+      @if (service.assistant.value()?.provider; as provider) {
+      <dl class="mt-facts" data-ai-provider>
+        <dt>{{ 'settings.ai.kind' | translate }}</dt>
+        <dd>{{ 'settings.ai.kinds.' + provider.kind | translate }}</dd>
+        <dt>{{ 'settings.ai.address' | translate }}</dt>
+        <dd class="mt-code">
+          {{ provider.baseUrl || ('settings.ai.defaultValue' | translate) }}
+        </dd>
+        <dt>{{ 'settings.ai.model' | translate }}</dt>
+        <dd class="mt-code">
+          {{ provider.model || ('settings.ai.defaultValue' | translate) }}
+        </dd>
+        <dt>{{ 'settings.ai.token' | translate }}</dt>
+        <dd>
+          {{ (provider.hasKey ? 'settings.ai.tokenStored' :
+          'settings.ai.tokenNone') | translate }}
+        </dd>
+      </dl>
+      } @else {
+      <p class="text-muted-foreground" data-ai-none>
+        {{ 'settings.ai.none' | translate }}
+      </p>
+      }
+      <div>
+        <button
+          hlmBtn
+          size="sm"
+          type="button"
+          data-ai-open
+          (click)="service.openProvider()"
+        >
+          {{ 'settings.ai.open' | translate }}
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section hlmCard data-settings-mcp aria-labelledby="settings-mcp-title">
+    <div hlmCardHeader>
+      <div class="flex items-center justify-between gap-3">
+        <h2 hlmCardTitle id="settings-mcp-title" class="text-base">
+          {{ 'settings.mcp.title' | translate }}
+        </h2>
+        <mt-help-link section="mcp" />
+      </div>
+      <p hlmCardDescription>{{ 'settings.mcp.intro' | translate }}</p>
+    </div>
+    @if (service.mcp(); as mcp) {
+    <div hlmCardContent class="flex flex-col gap-4 text-sm">
+      <label class="flex items-center gap-2">
+        <input
+          type="checkbox"
+          data-mcp-enabled
+          [checked]="mcp.enabled"
+          [disabled]="service.mcpBusy()"
+          (change)="onMcpEnabled($event)"
+        />
+        <span>{{ 'settings.mcp.enabled' | translate }}</span>
+      </label>
+      @if (mcp.enabled) {
+      <p role="status" data-mcp-state [class.text-destructive]="!mcp.running">
+        {{ (mcp.running ? 'settings.mcp.running' : 'settings.mcp.notRunning') |
+        translate: { endpoint: mcp.endpoint } }}
+      </p>
+      }
+      <label class="flex flex-col gap-1">
+        <span class="font-medium">{{ 'settings.mcp.port' | translate }}</span>
+        <input
+          hlmInput
+          type="number"
+          min="1024"
+          max="65535"
+          class="h-9 max-w-40"
+          data-mcp-port
+          [value]="mcp.port"
+          [disabled]="service.mcpBusy()"
+          (change)="onPort($event)"
+        />
+      </label>
+
+      <div class="flex flex-col gap-2">
+        <h3 class="font-medium">{{ 'settings.mcp.tokens' | translate }}</h3>
+        <ul class="flex flex-col gap-1" data-mcp-tokens>
+          @for (token of mcp.tokens; track token.id) {
+          <li
+            class="flex items-center justify-between gap-2 border-b py-1 last:border-b-0"
+            data-mcp-token
+          >
+            <span class="min-w-0 truncate">{{ token.name }}</span>
+            <mt-row-actions
+              [actions]="tokenActions"
+              [name]="token.name"
+              [disabled]="service.mcpBusy()"
+              (run)="onTokenAction(token.id, $event)"
+            />
+          </li>
+          } @empty {
+          <li class="text-muted-foreground">
+            {{ 'settings.mcp.noTokens' | translate }}
+          </li>
+          }
+        </ul>
+        <form
+          class="flex flex-wrap items-end gap-2"
+          (submit)="$event.preventDefault(); createToken()"
+        >
+          <label class="flex flex-col gap-1">
+            <span>{{ 'settings.mcp.tokenName' | translate }}</span>
+            <input
+              hlmInput
+              class="h-9 w-64"
+              maxlength="60"
+              data-mcp-token-name
+              [value]="tokenName()"
+              (input)="onTokenName($event)"
+            />
+          </label>
+          <button
+            hlmBtn
+            size="sm"
+            type="submit"
+            data-mcp-token-create
+            [disabled]="service.mcpBusy() || tokenName().trim() === ''"
+          >
+            {{ 'settings.mcp.create' | translate }}
+          </button>
+        </form>
+        @if (service.newToken(); as token) {
+        <div class="mt-note flex-col items-stretch" data-mcp-new-token>
+          <p class="font-medium">{{ 'settings.mcp.newToken' | translate }}</p>
+          <p class="mt-code select-all">{{ token }}</p>
+          <div>
+            <button
+              hlmBtn
+              size="sm"
+              variant="outline"
+              type="button"
+              (click)="service.hideToken()"
+            >
+              {{ 'settings.mcp.done' | translate }}
+            </button>
+          </div>
+        </div>
+        } @if (service.mcpNotice(); as notice) {
+        <p class="text-destructive" role="alert" data-mcp-notice>
+          {{ 'settings.mcp.notices.' + notice | translate }}
+        </p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <h3 class="font-medium">{{ 'settings.mcp.connect' | translate }}</h3>
+        <p class="text-muted-foreground">
+          {{ 'settings.mcp.claudeCode' | translate }}
+        </p>
+        <pre class="mt-diff p-3 whitespace-pre-wrap" data-mcp-snippet-cli>
+{{ snippets().claudeCode }}</pre>
+        <p class="text-muted-foreground">
+          {{ 'settings.mcp.jsonClients' | translate }}
+        </p>
+        <pre class="mt-diff p-3" data-mcp-snippet-json>
+{{ snippets().json }}</pre>
+        <p class="text-muted-foreground">
+          {{ 'settings.mcp.limits' | translate }}
+        </p>
+      </div>
+    </div>
+    }
+  </section>
+  } @if (updates.supported) {
   <section
     hlmCard
     data-settings-updates

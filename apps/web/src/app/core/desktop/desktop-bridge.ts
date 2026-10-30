@@ -241,6 +241,23 @@ export type UpdateCheckResult =
   | { status: 'development'; current: string }
   | { status: 'failed'; current: string };
 
+/** The local MCP server (T-109) as the settings page shows it; tokens by name only. */
+export interface McpStatus {
+  readonly enabled: boolean;
+  readonly port: number;
+  readonly endpoint: string;
+  readonly running: boolean;
+  readonly tokens: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly createdAt: string;
+  }[];
+}
+
+export type McpTokenResult =
+  | { status: 'created'; token: string; mcp: McpStatus }
+  | { status: 'refused'; code: 'name_invalid' | 'too_many' };
+
 export interface DesktopBridge {
   readonly platform: string;
   readonly project: {
@@ -360,6 +377,18 @@ export interface DesktopBridge {
   };
   readonly database?: {
     open(projectId: string, locale: string): Promise<DatabaseResult>;
+  };
+  /**
+   * The assistant (T-108, T-109): the provider is set in the main process's own window; the
+   * MCP server listens only while switched on, on 127.0.0.1 with a token.
+   */
+  readonly assistant?: {
+    openProvider(locale: string): Promise<void>;
+    mcpStatus(): Promise<McpStatus>;
+    mcpSetEnabled(on: boolean): Promise<McpStatus>;
+    mcpSetPort(port: number): Promise<McpStatus>;
+    mcpTokenCreate(name: string): Promise<McpTokenResult>;
+    mcpTokenRevoke(id: string): Promise<McpStatus>;
   };
 }
 

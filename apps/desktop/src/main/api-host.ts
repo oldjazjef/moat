@@ -119,7 +119,38 @@ interface ApiBundle {
       sha256: string;
     },
   ): Promise<void>;
+  setAssistantConnection(
+    api: ApiHandle,
+    supplier: {
+      summary(): AiProviderSummary | null;
+      open(): Promise<AiProviderConnection | null>;
+    },
+  ): void;
+  handleMcp(
+    api: ApiHandle,
+    message: unknown,
+    version: string,
+  ): Promise<McpAnswer>;
 }
+
+/** What the page may know about the assistant's provider (never the key). */
+export interface AiProviderSummary {
+  readonly kind: 'anthropic' | 'openai_compatible';
+  readonly baseUrl: string;
+  readonly model: string;
+  readonly hasKey: boolean;
+}
+
+export interface AiProviderConnection {
+  readonly kind: 'anthropic' | 'openai_compatible';
+  readonly baseUrl: string;
+  readonly model: string;
+  readonly apiKey?: string;
+}
+
+export type McpAnswer =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'message'; readonly body: Record<string, unknown> };
 
 export interface RunningApi {
   /** `http://127.0.0.1:<port>` */
@@ -141,6 +172,13 @@ export interface RunningApi {
   setGateTestConfirmation(
     ask: (target: string, locale: string) => Promise<boolean>,
   ): void;
+  /** The assistant's provider (T-108): the token is opened only for one call. */
+  setAssistantConnection(supplier: {
+    summary(): AiProviderSummary | null;
+    open(): Promise<AiProviderConnection | null>;
+  }): void;
+  /** One MCP message, after the listener checked token, Host and Origin (T-109). */
+  handleMcp(message: unknown, version: string): Promise<McpAnswer>;
   /** In-process only, for the signing dialog (DT-15): the page has no way to sign. */
   prepareBundle(
     id: string,
@@ -247,6 +285,9 @@ export async function startApi(options: {
     createSigningKey: (passphrase) => api.createSigningKey(passphrase),
     signingKeyInfo: (publicKey) => api.signingKeyInfo(publicKey),
     setGateTestConfirmation: (ask) => api.setGateTestConfirmation(running, ask),
+    setAssistantConnection: (supplier) =>
+      api.setAssistantConnection(running, supplier),
+    handleMcp: (message, version) => api.handleMcp(running, message, version),
     projectFolder: (id) => api.projectFolder(running, id),
     projectIds: () => api.projectIds(running),
     prepareBundle: (id, gate, signer) =>

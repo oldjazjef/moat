@@ -48,6 +48,13 @@ import {
 import { DRY_RUN_ERRORS } from '../api/dry-run.types';
 import { ROLES } from '../auth/account.types';
 import { API_ERROR_CODES } from '../auth/api-error';
+import {
+  ASSISTANT_ERRORS,
+  ASSISTANT_TOOLS,
+  PROPOSAL_STATUSES,
+} from '../api/assistant.types';
+import { DECISION_ERRORS } from '../../features/assistant/pages/assistant-page/assistant-page.service';
+import { MCP_NOTICES } from '../../features/settings/pages/settings-page/settings-page.service';
 
 /**
  * Every i18n key the app references exists in every message file, and every text in the files is
@@ -62,6 +69,15 @@ const I18N_DIR = fileURLToPath(
 
 const DYNAMIC_KEYS = [
   ...allHelpKeys(),
+  // The assistant (Moat Desktop): states, errors and tool names from the API's answer.
+  ...PROPOSAL_STATUSES.map((code) => `assistant.proposal.status.${code}`),
+  ...ASSISTANT_ERRORS.map((code) => `assistant.errors.${code}`),
+  ...ASSISTANT_TOOLS.map((name) => `assistant.tools.${name}`),
+  ...DECISION_ERRORS.map((code) => `assistant.decisionErrors.${code}`),
+  ...MCP_NOTICES.map((code) => `settings.mcp.notices.${code}`),
+  ...['anthropic', 'openai_compatible'].map(
+    (kind) => `settings.ai.kinds.${kind}`,
+  ),
   // The Cloud project's tabs and the gates page, built from a value of the API's answer.
   ...['gates', 'config', 'status'].map((tab) => `projectTabs.${tab}`),
   ...['cancelled', 'failed'].map((problem) => `auth.login.passkey.${problem}`),

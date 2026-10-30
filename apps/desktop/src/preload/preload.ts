@@ -69,6 +69,19 @@ const bridge: DesktopBridge = {
         String(locale),
       ),
   },
+  assistant: {
+    openProvider: (locale: string) =>
+      ipcRenderer.invoke(IPC.aiOpen, String(locale)),
+    mcpStatus: () => ipcRenderer.invoke(IPC.mcpStatus),
+    mcpSetEnabled: (on: boolean) =>
+      ipcRenderer.invoke(IPC.mcpSetEnabled, on === true),
+    mcpSetPort: (port: number) =>
+      ipcRenderer.invoke(IPC.mcpSetPort, Number(port)),
+    mcpTokenCreate: (name: string) =>
+      ipcRenderer.invoke(IPC.mcpTokenCreate, String(name)),
+    mcpTokenRevoke: (id: string) =>
+      ipcRenderer.invoke(IPC.mcpTokenRevoke, String(id)),
+  },
   update: {
     check: () => ipcRenderer.invoke(IPC.updateCheck),
     open: (version: string) =>
