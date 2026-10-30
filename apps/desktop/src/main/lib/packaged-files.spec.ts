@@ -1,5 +1,4 @@
 import { readFileSync, readdirSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
 /**
@@ -7,8 +6,7 @@ import { join } from 'node:path';
  * main process loads at run time. A dialog's preload that is not packed leaves its window blank,
  * and nothing else notices: the app starts, the window opens, the page is empty.
  */
-const root = join(import.meta.dirname, '../../..');
-const require = createRequire(import.meta.url);
+const root = join(__dirname, '../../..');
 const config = require(join(root, 'electron-builder.config.cjs')) as {
   files: string[];
 };
