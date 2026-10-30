@@ -17,7 +17,8 @@
     "orgProjects": "Projekte",
     "members": "Mitglieder",
     "account": "Konto",
-    "signOut": "Abmelden"
+    "signOut": "Abmelden",
+    "settings": "Einstellungen"
   },
   "common": {
     "reload": "Neu laden",
@@ -60,7 +61,8 @@
       "gates": "Gates",
       "routes": "Routen",
       "console": "Test-Konsole",
-      "history": "Verlauf"
+      "history": "Verlauf",
+      "config": "moat.yaml"
     },
     "remove": {
       "button": "Aus der Liste entfernen",
@@ -111,7 +113,8 @@
       "alias": "Anker und Aliase sind nicht erlaubt",
       "tag": "YAML-Tags sind nicht erlaubt",
       "too_deep": "Zu tief verschachtelt",
-      "schema": "Ungültiger Wert"
+      "schema": "Ungültiger Wert",
+      "rejected": "Wird von Moat abgelehnt"
     }
   },
   "edit": {
@@ -341,7 +344,8 @@
         "failed": "Der Passkey konnte nicht angelegt werden.",
         "set_failed": "Das Gate liess sich nicht umstellen. Lege zuerst einen Passkey an."
       }
-    }
+    },
+    "yaml": "In moat.yaml zeigen"
   },
   "routes": {
     "subtitle": "Was das Gate weiterleitet, und an wen",
@@ -732,7 +736,8 @@
       "projects": "Projekte",
       "setup": "Einrichtung",
       "account": "Konto",
-      "organisations": "Organisationen"
+      "organisations": "Organisationen",
+      "settings": "Einstellungen"
     },
     "sections": {
       "setup": {
@@ -741,11 +746,10 @@
         "where": "Einrichtung, in der Seitenleiste unten",
         "steps": {
           "language": "Wähle unter «Sprache», wie Moat mit dir spricht.",
-          "key": "Erstelle unter «Signaturschlüssel» mit «Neuen Schlüssel erstellen» deine Schlüsseldatei, oder wähle mit «Vorhandene Schlüsseldatei wählen» eine, die du schon hast. Die Passphrase gibst du nur im eigenen Fenster von Moat ein.",
           "project": "Lege unter «Erstes Projekt» mit «Neues Projekt anlegen» einen Projektordner an, oder füge mit «Vorhandenen Ordner hinzufügen» einen bestehenden hinzu.",
+          "key": "Erstelle unter «Signaturschlüssel» mit «Neuen Schlüssel erstellen» die Schlüsseldatei für das Projekt, oder wähle mit «Vorhandene Schlüsseldatei wählen» eine, die du schon hast. Jedes Projekt hat seinen eigenen Schlüssel. Die Passphrase gibst du nur im eigenen Fenster von Moat ein.",
           "gate": "Installiere unter «Erstes Gate» das Gate mit dem angezeigten Befehl, trage Gate-ID und Box-Schlüssel ein und klicke auf «Prüfen». Vergleiche den Fingerprint mit der Ausgabe des Gates und bestätige mit «Stimmt überein».",
-          "recipe": "Wähle unter «Erstes Recipe» eine fertige Route und klicke auf «Übernehmen». Versiegle das Secret mit «Versiegeln», signiere mit «Bundle signieren» und installiere auf dem Server die Richtlinie aus «Richtlinie anzeigen» und das Bundle. Mit «Testen» schickst du dann eine Anfrage durch das Gate.",
-          "summary": "Die «Zusammenfassung» zeigt, was eingerichtet ist, den Vertrauensmodus und die Härtungsstufe. Mit «Fertig» öffnet sich dein Projekt."
+          "summary": "Die «Zusammenfassung» zeigt, was eingerichtet ist, den Vertrauensmodus und die Härtungsstufe. Mit «Fertig» öffnet sich dein Projekt. Routen richtest du danach im Projekt unter «Routen» ein, zum Beispiel mit «Route aus Vorlage»."
         },
         "tips": {
           "later": "Optionale Schritte überspringst du mit «Später». Die Zusammenfassung zeigt sie weiter an.",
@@ -812,9 +816,9 @@
         "where": "Projekt › Übersicht › Vertrauensmodus und Gates",
         "steps": {
           "keygen": "Erzeuge einmal eine Schlüsseldatei mit `moat keygen <datei>.moatkey` und wähle eine gute Passphrase.",
-          "keyDesktop": "In Moat Desktop erstellst du den Schlüssel unter «Einrichtung» › «Signaturschlüssel» mit «Neuen Schlüssel erstellen».",
+          "keyDesktop": "In Moat Desktop erstellst du den Schlüssel eines Projekts unter «Einstellungen» mit «Neuen Schlüssel erstellen». Jedes Projekt hat seinen eigenen.",
           "trust": "Gib dem Gate bei der Installation den öffentlichen Schlüssel mit (--signer). Wechseln kannst du ihn nur am Gate selbst, mit `php moat-gate.php trust`.",
-          "passkeyDesktop": "Für «Signiert mit Passkey» klickst du unter «Gates» im Abschnitt «Passkey» auf «Passkey anlegen». Ein eigenes Fenster von Moat Desktop fragt dein Betriebssystem nach einem Passkey und zeigt Fingerprint und Befehl.",
+          "passkeyDesktop": "Für «Signiert mit Passkey» klickst du unter «Einstellungen» oder unter «Gates» auf «Passkey anlegen». Ein eigenes Fenster von Moat Desktop fragt dein Betriebssystem nach einem Passkey und zeigt Fingerprint und Befehl.",
           "passkeyGate": "Führe den Befehl `php moat-gate.php trust --passkey=…` am Gate aus und vergleiche den Fingerprint. Schalte danach beim Gate «Mit Passkey signieren» ein.",
           "badge": "Neben jedem Gate steht der Vertrauensmodus, mit dem Satz, was ein Angreifer könnte, wenn Moat Cloud gehackt würde."
         },
@@ -846,7 +850,7 @@
         "where": "Projekt › Routen",
         "steps": {
           "write": "Klicke unter «Routen» auf «Neue Route» und fülle Methode, Pfad, Upstream und Ziel-Pfad aus. Das Drei-Punkte-Menü am Ende jeder Zeile hat «Bearbeiten», «Ausschalten» (legt die Route still, ohne sie zu löschen) und «Löschen». Wer lieber im Editor arbeitet, trägt sie direkt in moat.yaml ein.",
-          "recipe": "Für häufige Fälle gibt es Recipes, zum Beispiel die Newsletter-Anmeldung bei HubSpot.",
+          "recipe": "Für häufige Fälle gibt es Recipes, zum Beispiel die Newsletter-Anmeldung bei HubSpot: Klicke unter «Routen» auf «Route aus Vorlage», wähle eine und klicke auf «Übernehmen». Danach versiegelst du das Secret, signierst ein Bundle und schickst mit «Testen» eine Anfrage durch das Gate.",
           "origins": "Ruft eine andere Website die Route im Browser auf, trage sie unter «Erlaubte Websites» ein (in moat.yaml: `origins`). Ohne Eintrag lehnen Browser fremde Websites ab.",
           "body": "Damit nur erwartete Daten zur API gehen, liste in moat.yaml unter `body` die Felder, die deine Website schickt, mit Typ (`string`, `integer`, `boolean`, `object`, `array`) und Grenzen wie `required`, `maxLength`, `enum` oder `format: email`. Das Gate entfernt jedes andere Feld und lehnt Inhalte, die nicht passen, mit 400 und `body_invalid` ab. Die Recipes bringen ihre Felder mit. Unter «Routen» steht bei jeder Route, welche Felder geprüft werden, oder dass der Inhalt ungeprüft weitergeht.",
           "bundle": "Eine neue oder geänderte Route gilt auf dem Gate erst mit dem nächsten Bundle: `moat build <gate>`, hochladen und annehmen.",
@@ -968,7 +972,7 @@
         "purpose": "Ein neuer Signaturschlüssel ersetzt den alten in zwei Schritten auf jedem Server, damit keine Website ausfällt. Moat Desktop merkt sich den alten Schlüssel, bis du den Wechsel abschliesst.",
         "where": "Projekt › Gates › Schlüssel wechseln",
         "steps": {
-          "choose": "Wähle oder erstelle einen neuen Schlüssel in der Einrichtung oder unter «Gates». Sobald er sich vom alten unterscheidet, erscheint das Feld «Schlüssel wechseln».",
+          "choose": "Wähle oder erstelle unter «Einstellungen» einen neuen Schlüssel für das Projekt. Sobald er sich vom alten unterscheidet, erscheint unter «Gates» das Feld «Schlüssel wechseln».",
           "pin": "Führe auf jedem Server den ersten Befehl aus: er legt den alten und den neuen Schlüssel fest.",
           "sign": "Signiere das nächste Bundle jedes Gates mit dem neuen Schlüssel («Bundle signieren») und aktiviere es auf dem Server.",
           "pinNew": "Wenn jedes Gate den neuen Schlüssel zeigt, führe auf jedem Server den zweiten Befehl aus: er legt nur den neuen Schlüssel fest.",
@@ -1074,6 +1078,41 @@
           "signer": "Für «Bequem» braucht das Gate den öffentlichen Schlüssel von Moat Cloud. Er steht unter «Gates». Hat diese Moat Cloud keinen Schlüssel, gibt es nur «Signiert».",
           "sealed": "Ein Secret erscheint nie im Klartext in Moat Cloud: Es wird bei dir versiegelt, die Seite zeigt nur Namen und Versionen. Im Browser gilt das nur gegen eine Moat Cloud, die nicht aktiv gehackt ist.",
           "rotation": "Ein Schlüsselwechsel von Moat Cloud geht in zwei Schritten: Erst kündigt der Betreiber den neuen Schlüssel an, du trägst ihn an jedem Gate zusätzlich ein, dann wechselt Moat Cloud. «Gates» zeigt beide Schritte."
+        }
+      },
+      "settings": {
+        "title": "Einstellungen",
+        "purpose": "Jedes Projekt hat seinen eigenen Signaturschlüssel. Unter «Einstellungen» siehst und änderst du ihn für jedes Projekt, und du legst den Passkey dieses Geräts an.",
+        "where": "Einstellungen, in der Seitenleiste",
+        "steps": {
+          "open": "Öffne «Einstellungen» in der Seitenleiste.",
+          "keys": "Unter «Signaturschlüssel pro Projekt» steht jedes Projekt mit dem Fingerprint und dem öffentlichen Schlüssel seines Schlüssels.",
+          "create": "Mit «Neuen Schlüssel erstellen» legst du für ein Projekt eine neue Schlüsseldatei an. Die Passphrase gibst du zweimal im eigenen Fenster von Moat ein.",
+          "choose": "Mit «Vorhandene Schlüsseldatei wählen» nimmst du eine Datei, die du schon hast, zum Beispiel eine mit `moat keygen` erzeugte.",
+          "replace": "Wählst du für ein Projekt einen anderen Schlüssel, beginnt ein Schlüsselwechsel: Moat Desktop merkt sich den alten, bis du den Wechsel unter «Gates» abschliesst.",
+          "passkey": "Unter «Passkey dieses Geräts» legst du mit «Passkey anlegen» einen Passkey an. Es gibt einen für ganz Moat Desktop."
+        },
+        "tips": {
+          "own": "Ein Projekt pro Schlüssel trennt deine Websites: Wer den Schlüssel eines Projekts hat, kann die Gates eines anderen nicht ändern.",
+          "backup": "Sichere jede Schlüsseldatei an einem zweiten Ort. Ohne sie kannst du für dieses Projekt nichts mehr freigeben.",
+          "perGate": "Ob ein Gate mit dem Projektschlüssel oder mit dem Passkey signiert, legst du im Projekt unter «Gates» mit «Mit Passkey signieren» fest."
+        }
+      },
+      "configEditor": {
+        "title": "moat.yaml bearbeiten",
+        "purpose": "Die moat.yaml ist die eine Konfigurationsdatei eines Projekts. Im Editor siehst und änderst du sie als Text, ohne den Projektordner zu öffnen.",
+        "where": "Projekt › moat.yaml",
+        "steps": {
+          "open": "Öffne im Projekt den Bereich «moat.yaml».",
+          "fromGate": "Unter «Gates» öffnet «In moat.yaml zeigen» den Editor und markiert den Eintrag dieses Gates.",
+          "edit": "Ändere den Text. Moat prüft ihn beim Speichern so streng wie das CLI.",
+          "save": "Klicke auf «Speichern». Ist etwas falsch, nennt Moat Zeile und Spalte, und nichts wird geschrieben.",
+          "sign": "Ein Gate sieht die Änderung erst mit dem nächsten Bundle: Klicke unter «Gates» auf «Bundle signieren»."
+        },
+        "tips": {
+          "allGates": "Routen und Upstreams gelten für alle Gates des Projekts. Pro Gate stehen unter `gates` nur seine Umgebung und ob es gesperrt ist.",
+          "strict": "Keine Anker, Aliase oder YAML-Tags; setze Pfade, URLs und Zeitangaben in Anführungszeichen.",
+          "secrets": "Secrets gehören nie in diese Datei, nur ihre Namen. Den Wert versiegelst du unter «Gates»."
         }
       }
     }
@@ -1761,5 +1800,44 @@
     "title": "Aus Vorlage",
     "intro": "Ein Recipe richtet eine fertige Route für einen häufigen Zweck ein. Danach versiegelst du das Secret, signierst ein Bundle und schickst eine Testanfrage durch dein Gate.",
     "open": "Route aus Vorlage"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "subtitle": "Signaturschlüssel deiner Projekte und der Passkey dieses Geräts.",
+    "keys": {
+      "title": "Signaturschlüssel pro Projekt",
+      "intro": "Jedes Projekt hat seinen eigenen Signaturschlüssel. Ein Gate nimmt nur Bundles an, die mit dem Schlüssel seines Projekts signiert sind.",
+      "loadFailed": "Die Projekte konnten nicht geladen werden.",
+      "noProjects": "Noch kein Projekt. Lege zuerst eines an.",
+      "toProjects": "Zu den Projekten",
+      "toGates": "Gates des Projekts"
+    },
+    "passkey": {
+      "title": "Passkey dieses Geräts",
+      "intro": "Ein Passkey für ganz Moat Desktop. Unter «Gates» legst du pro Gate fest, ob es mit dem Projektschlüssel oder mit dem Passkey signiert.",
+      "perGate": "Welche Gates mit dem Passkey signieren, legst du im Projekt unter «Gates» fest."
+    }
+  },
+  "configEditor": {
+    "intro": "Die moat.yaml dieses Projekts als Text. Sie gilt für alle Gates des Projekts. Secrets gehören nie hier hinein, nur ihre Namen.",
+    "editor": "moat.yaml",
+    "loadError": "Die moat.yaml konnte nicht gelesen werden. Lade die Seite neu.",
+    "empty": "Dieses Projekt hat noch keine moat.yaml. Schreibe sie hier und speichere sie.",
+    "gateMarked": "Der Eintrag des Gates «{{gate}}» ist markiert (Zeilen {{from}} bis {{to}}). Routen und Upstreams darunter gelten für alle Gates des Projekts.",
+    "gateNotInFile": "Das Gate «{{gate}}» steht nicht unter «gates» in dieser Datei: Es bekommt alle Routen des Projekts und gehört zu keiner Umgebung.",
+    "lines": "{{count}} Zeilen",
+    "invalid": "Nicht gespeichert: Die moat.yaml ist so nicht gültig.",
+    "line": "Zeile {{line}}, Spalte {{column}}",
+    "saved": "Gespeichert.",
+    "save": "Speichern",
+    "reload": "Neu laden",
+    "discard": "Änderungen verwerfen",
+    "nextBundle": "Ein Gate sieht die Änderung erst mit dem nächsten signierten Bundle.",
+    "errors": {
+      "config_changed": "Die Datei wurde inzwischen geändert. Lade sie neu und übernimm deine Änderungen noch einmal.",
+      "config_too_large": "Die moat.yaml ist zu gross.",
+      "not_writable": "Die moat.yaml kann nicht geschrieben werden. Prüfe die Rechte des Projektordners.",
+      "failed": "Das hat nicht geklappt. Versuche es noch einmal."
+    }
   }
 }

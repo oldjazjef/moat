@@ -310,6 +310,12 @@ export const CONFIG_ISSUE_CODES = [
   'schema',
 ] as const;
 
+/** What the moat.yaml editor can be told besides those: refused by the core's later checks. */
+export const CONFIG_TEXT_ISSUE_CODES = [
+  ...CONFIG_ISSUE_CODES,
+  'rejected',
+] as const;
+
 /** `CompiledUpstream.auth.type`, each `routes.auth.<type>`. */
 export const AUTH_TYPES = [
   'bearer',
@@ -318,3 +324,17 @@ export const AUTH_TYPES = [
   'basic',
   'oauth2',
 ] as const;
+
+/** `GET|PUT /api/projects/:id/config` (ConfigText in apps/api/src/project/application/config-text.ts). */
+export interface ConfigText {
+  readonly text: string | null;
+  readonly hash: string | null;
+}
+
+/** Where a refused moat.yaml is wrong; the text of `config.errors.<code>`. */
+export interface ConfigTextIssue {
+  readonly code: (typeof CONFIG_TEXT_ISSUE_CODES)[number];
+  readonly path: readonly (string | number)[];
+  readonly line: number | null;
+  readonly column: number | null;
+}

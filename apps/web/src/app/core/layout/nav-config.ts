@@ -3,6 +3,7 @@ import {
   lucideCircleHelp,
   lucideFolderKanban,
   lucideListChecks,
+  lucideSettings,
   lucideUserRound,
   lucideUsers,
 } from '@ng-icons/lucide';
@@ -25,6 +26,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
     path: '/app/projects',
     labelKey: 'nav.projects',
     icon: 'lucideFolderKanban',
+  },
+  // The device's passkey and each project's signing key.
+  {
+    path: '/app/settings',
+    labelKey: 'nav.settings',
+    icon: 'lucideSettings',
   },
 ];
 
@@ -75,6 +82,7 @@ export const NAV_ICONS = {
   lucideCircleHelp,
   lucideFolderKanban,
   lucideListChecks,
+  lucideSettings,
   lucideUserRound,
   lucideUsers,
 };

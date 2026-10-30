@@ -1,3 +1,4 @@
+import { RouterLink } from '@angular/router';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import { HlmButtonImports } from '@moat/ui/button';
@@ -15,6 +16,7 @@ import { GatesPageService } from './gates-page.service';
 @Component({
   selector: 'mt-gates-page',
   imports: [
+    RouterLink,
     TranslatePipe,
     RichText,
     RowActions,

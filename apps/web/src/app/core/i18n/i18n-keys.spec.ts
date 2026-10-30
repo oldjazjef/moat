@@ -7,7 +7,7 @@ import { allHelpKeys } from '../../features/help/help-content';
 import { allTrustKeys } from '../../shared/components/trust-mode-badge/trust-modes';
 import {
   AUTH_TYPES,
-  CONFIG_ISSUE_CODES,
+  CONFIG_TEXT_ISSUE_CODES,
   EDIT_ERROR_CODES,
   QUOTA_PERIODS,
   USAGE_FORMATS,
@@ -27,6 +27,7 @@ import { SETUP_ERRORS } from '../../features/setup/pages/setup-page/setup-page.s
 import { GATE_NOTICES } from '../../features/setup/components/steps/gate-step';
 import { GATE_FETCH_ERRORS } from '../../features/setup/components/steps/gate-fetch';
 import { PROJECT_KEY_NOTICES } from '../../shared/components/project-key';
+import { CONFIG_EDITOR_ERRORS } from '../../features/config/pages/config-page/config-page.service';
 import { PROJECT_NOTICES } from '../../features/setup/components/steps/project-step';
 import {
   GATE_CODES,
@@ -120,7 +121,8 @@ const DYNAMIC_KEYS = [
     (reason) => `audit.verify.reason.${reason}`,
   ),
   ...allTrustKeys(),
-  ...CONFIG_ISSUE_CODES.map((code) => `config.errors.${code}`),
+  ...CONFIG_TEXT_ISSUE_CODES.map((code) => `config.errors.${code}`),
+  ...CONFIG_EDITOR_ERRORS.map((code) => `configEditor.errors.${code}`),
   ...EDIT_ERROR_CODES.map((code) => `edit.errors.${code}`),
   ...AUTH_TYPES.map((type) => `routes.auth.${type}`),
   ...['none', ...AUTH_TYPES].map(

@@ -524,13 +524,17 @@ function registerIpc(): void {
     async (event, id: unknown): Promise<PasskeyStatus> => {
       const none = { passkey: null, gates: [] };
       if (!fromApp(event) || api === null) return none;
-      if (typeof id !== 'string' || !PROJECT_ID.test(id)) return none;
+      // No project (the settings): the device's passkey alone.
+      if (id !== null && (typeof id !== 'string' || !PROJECT_ID.test(id)))
+        return none;
       const config = readConfig(app.getPath('userData'));
       const info =
         config.passkey === null ? null : await passkeyInfo(api, config.passkey);
-      return info === null
-        ? none
-        : { passkey: info, gates: passkeyGatesOf(config.passkeyGates, id) };
+      if (info === null) return none;
+      return {
+        passkey: info,
+        gates: id === null ? [] : passkeyGatesOf(config.passkeyGates, id),
+      };
     },
   );
   ipcMain.handle(

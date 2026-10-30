@@ -87,6 +87,12 @@ export const appRoutes: Route[] = [
         loadChildren: () => import('./features/projects/projects.routes'),
       },
       {
+        // Moat Desktop: the device's passkey and each project's signing key.
+        path: 'settings',
+        canMatch: [desktopOnly],
+        loadChildren: () => import('./features/settings/settings.routes'),
+      },
+      {
         // FR-73: the setup wizard — on the first start, and again from the sidebar.
         path: 'setup',
         canMatch: [desktopOnly],

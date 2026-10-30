@@ -180,6 +180,16 @@
         <div class="flex flex-wrap items-center gap-2">
           <mt-lock-badge [locked]="gate.lock?.enabled === false" />
           <mt-trust-mode-badge [mode]="service.trustModeOf(gate)" />
+          <a
+            hlmBtn
+            size="sm"
+            variant="outline"
+            data-gate-yaml
+            [routerLink]="[resource.base(), 'config']"
+            [queryParams]="{ gate: gate.name }"
+          >
+            {{ 'gates.yaml' | translate }}
+          </a>
         </div>
       </div>
     </div>

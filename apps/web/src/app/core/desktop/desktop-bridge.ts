@@ -326,7 +326,8 @@ export interface DesktopBridge {
    * outcomes only.
    */
   readonly passkey?: {
-    status(projectId: string): Promise<PasskeyStatus>;
+    /** The device's passkey; with a project also which of its gates sign with it. */
+    status(projectId: string | null): Promise<PasskeyStatus>;
     enroll(locale: string): Promise<PasskeyEnrollResult>;
     use(
       projectId: string,

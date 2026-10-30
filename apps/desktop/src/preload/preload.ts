@@ -70,8 +70,11 @@ const bridge: DesktopBridge = {
       ),
   },
   passkey: {
-    status: (projectId: string) =>
-      ipcRenderer.invoke(IPC.passkeyStatus, String(projectId)),
+    status: (projectId: string | null) =>
+      ipcRenderer.invoke(
+        IPC.passkeyStatus,
+        projectId === null ? null : String(projectId),
+      ),
     enroll: (locale: string) =>
       ipcRenderer.invoke(IPC.passkeyEnroll, String(locale)),
     use: (projectId: string, gate: string, on: boolean, locale: string) =>

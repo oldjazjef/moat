@@ -17,7 +17,8 @@
     "orgProjects": "Projects",
     "members": "Members",
     "account": "Account",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "settings": "Settings"
   },
   "common": {
     "reload": "Reload",
@@ -60,7 +61,8 @@
       "gates": "Gates",
       "routes": "Routes",
       "console": "Test console",
-      "history": "History"
+      "history": "History",
+      "config": "moat.yaml"
     },
     "remove": {
       "button": "Remove from list",
@@ -111,7 +113,8 @@
       "alias": "Anchors and aliases are not allowed",
       "tag": "YAML tags are not allowed",
       "too_deep": "Nested too deeply",
-      "schema": "Invalid value"
+      "schema": "Invalid value",
+      "rejected": "Refused by Moat"
     }
   },
   "edit": {
@@ -341,7 +344,8 @@
         "failed": "The passkey could not be created.",
         "set_failed": "The gate could not be switched. Create a passkey first."
       }
-    }
+    },
+    "yaml": "Show in moat.yaml"
   },
   "routes": {
     "subtitle": "What the gate forwards, and to whom",
@@ -732,7 +736,8 @@
       "projects": "Projects",
       "setup": "Setup",
       "account": "Account",
-      "organisations": "Organisations"
+      "organisations": "Organisations",
+      "settings": "Settings"
     },
     "sections": {
       "setup": {
@@ -741,11 +746,10 @@
         "where": "Setup, at the bottom of the sidebar",
         "steps": {
           "language": "Under “Language”, choose how Moat speaks to you.",
-          "key": "Under “Signing key”, create your key file with “Create a new key”, or choose one you already have with “Choose an existing key file”. You type the passphrase only in Moat's own window.",
           "project": "Under “First project”, create a project folder with “Create a new project”, or add an existing one with “Add an existing folder”.",
+          "key": "Under “Signing key”, create the project's key file with “Create a new key”, or choose one you already have with “Choose an existing key file”. Every project has its own key. You type the passphrase only in Moat's own window.",
           "gate": "Under “First gate”, install the gate with the command shown, enter the gate ID and box key and click “Check”. Compare the fingerprint with the gate's output and confirm with “It matches”.",
-          "recipe": "Under “First recipe”, choose a ready-made route and click “Apply”. Seal the secret with “Seal”, sign with “Sign bundle” and install the policy from “Show policy” and the bundle on the server. “Test” then sends a request through the gate.",
-          "summary": "The “Summary” shows what is set up, the trust mode and the hardening level. “Finish” opens your project."
+          "summary": "The “Summary” shows what is set up, the trust mode and the hardening level. “Finish” opens your project. You then set up routes in the project under “Routes”, for example with “Route from a template”."
         },
         "tips": {
           "later": "You skip optional steps with “Later”. The summary keeps showing them.",
@@ -812,9 +816,9 @@
         "where": "Project › Overview › Trust mode and Gates",
         "steps": {
           "keygen": "Create a key file once with `moat keygen <file>.moatkey` and choose a good passphrase.",
-          "keyDesktop": "In Moat Desktop you create the key under “Setup” › “Signing key” with “Create a new key”.",
+          "keyDesktop": "In Moat Desktop you create a project's key under “Settings” with “Create a new key”. Every project has its own.",
           "trust": "Give the gate the public key when you install it (--signer). You can change it only on the gate itself, with `php moat-gate.php trust`.",
-          "passkeyDesktop": "For “Signed with passkey” click “Create passkey” under “Gates” in the “Passkey” section. A window of Moat Desktop of its own asks your operating system for a passkey and shows the fingerprint and the command.",
+          "passkeyDesktop": "For “Signed with passkey” click “Create passkey” under “Settings” or under “Gates”. Moat Desktop's own window asks your operating system for a passkey and shows fingerprint and command.",
           "passkeyGate": "Run the command `php moat-gate.php trust --passkey=…` on the gate and compare the fingerprint. Then switch on “Sign with passkey” for the gate.",
           "badge": "Next to each gate you see its trust mode, with the sentence on what an attacker could do if Moat Cloud were hacked."
         },
@@ -846,7 +850,7 @@
         "where": "Project › Routes",
         "steps": {
           "write": "Under “Routes”, click “New route” and fill in method, path, upstream and target path. The three-dot menu at the end of each row has “Edit”, “Switch off” (disables the route without deleting it) and “Delete”. If you prefer your editor, write it into moat.yaml directly.",
-          "recipe": "For common cases there are recipes, for example the newsletter sign-up with HubSpot.",
+          "recipe": "For common cases there are recipes, for example the newsletter sign-up with HubSpot: under “Routes” click “Route from a template”, choose one and click “Apply”. Then you seal the secret, sign a bundle and send a request through the gate with “Test”.",
           "origins": "If another website calls the route in a browser, add it under “Allowed websites” (in moat.yaml: `origins`). Without an entry, browsers refuse other websites.",
           "body": "So that only expected data reaches the API, list the fields your website sends under `body` in moat.yaml, with a type (`string`, `integer`, `boolean`, `object`, `array`) and bounds such as `required`, `maxLength`, `enum` or `format: email`. The gate removes every other field and refuses content that does not fit with 400 and `body_invalid`. The recipes bring their fields along. Under “Routes”, each route shows which fields are checked, or that its content is forwarded unchecked.",
           "bundle": "A new or changed route applies on the gate only with the next bundle: `moat build <gate>`, upload it and accept it.",
@@ -968,7 +972,7 @@
         "purpose": "A new signing key replaces the old one in two steps on each server, so no website stops working. Moat Desktop remembers the old key until you finish the change.",
         "where": "Project › Gates › Change key",
         "steps": {
-          "choose": "Choose or create a new key in the setup or in “Gates”. As soon as it differs from the old one, the panel “Change key” appears.",
+          "choose": "Choose or create a new key for the project under “Settings”. As soon as it differs from the old one, the panel “Change key” appears under “Gates”.",
           "pin": "On each server run the first command: it pins the old and the new key.",
           "sign": "Sign the next bundle of every gate with the new key (“Sign bundle”) and activate it on the server.",
           "pinNew": "When every gate shows the new key, run the second command on each server: it pins the new key alone.",
@@ -1074,6 +1078,41 @@
           "signer": "For “Convenient” the gate needs Moat Cloud's public key. It is shown under “Gates”. If this Moat Cloud has no key, there is only “Signed”.",
           "sealed": "A secret never appears in the clear in Moat Cloud: it is sealed on your side, the page shows only names and versions. In the browser that holds only against a Moat Cloud that is not actively hacked.",
           "rotation": "Moat Cloud's key change takes two steps: first the operator announces the new key and you pin it at every gate in addition, then Moat Cloud switches. “Gates” shows both steps."
+        }
+      },
+      "settings": {
+        "title": "Settings",
+        "purpose": "Every project has its own signing key. Under “Settings” you see and change it for every project, and you create this device's passkey.",
+        "where": "Settings, in the sidebar",
+        "steps": {
+          "open": "Open “Settings” in the sidebar.",
+          "keys": "Under “Signing key per project” each project is listed with the fingerprint and the public key of its key.",
+          "create": "With “Create a new key” you create a new key file for a project. You type the passphrase twice in Moat's own window.",
+          "choose": "With “Choose an existing key file” you take a file you already have, for example one made with `moat keygen`.",
+          "replace": "Choosing another key for a project starts a key change: Moat Desktop remembers the old one until you finish the change under “Gates”.",
+          "passkey": "Under “This device's passkey” you create a passkey with “Create passkey”. There is one for all of Moat Desktop."
+        },
+        "tips": {
+          "own": "One key per project keeps your websites apart: whoever has one project's key cannot change another project's gates.",
+          "backup": "Back up every key file in a second place. Without it you can no longer approve anything for that project.",
+          "perGate": "Whether a gate signs with the project key or with the passkey you choose in the project under “Gates” with “Sign with passkey”."
+        }
+      },
+      "configEditor": {
+        "title": "Edit moat.yaml",
+        "purpose": "moat.yaml is the one configuration file of a project. In the editor you see and change it as text, without opening the project folder.",
+        "where": "Project › moat.yaml",
+        "steps": {
+          "open": "Open “moat.yaml” in the project.",
+          "fromGate": "Under “Gates”, “Show in moat.yaml” opens the editor with that gate's entry marked.",
+          "edit": "Change the text. Moat checks it on saving as strictly as the CLI does.",
+          "save": "Click “Save”. If something is wrong, Moat names line and column, and nothing is written.",
+          "sign": "A gate sees the change only with its next bundle: click “Sign bundle” under “Gates”."
+        },
+        "tips": {
+          "allGates": "Routes and upstreams apply to every gate of the project. Under `gates` each gate has only its environment and whether it is locked.",
+          "strict": "No anchors, aliases or YAML tags; put paths, URLs and durations in quotes.",
+          "secrets": "Secrets never belong in this file, only their names. You seal the value under “Gates”."
         }
       }
     }
@@ -1761,5 +1800,44 @@
     "title": "From a template",
     "intro": "A recipe sets up a ready-made route for a common purpose. Then you seal the secret, sign a bundle and send a test request through your gate.",
     "open": "Route from a template"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Your projects' signing keys and this device's passkey.",
+    "keys": {
+      "title": "Signing key per project",
+      "intro": "Every project has its own signing key. A gate accepts only bundles signed with its project's key.",
+      "loadFailed": "The projects could not be loaded.",
+      "noProjects": "No project yet. Create one first.",
+      "toProjects": "To the projects",
+      "toGates": "The project's gates"
+    },
+    "passkey": {
+      "title": "This device's passkey",
+      "intro": "One passkey for all of Moat Desktop. Under “Gates” you choose per gate whether it signs with the project key or with the passkey.",
+      "perGate": "Which gates sign with the passkey you choose in the project under “Gates”."
+    }
+  },
+  "configEditor": {
+    "intro": "This project's moat.yaml as text. It applies to every gate of the project. Secrets never belong in here, only their names.",
+    "editor": "moat.yaml",
+    "loadError": "The moat.yaml could not be read. Reload the page.",
+    "empty": "This project has no moat.yaml yet. Write it here and save it.",
+    "gateMarked": "The entry of the gate “{{gate}}” is marked (lines {{from}} to {{to}}). The routes and upstreams below apply to every gate of the project.",
+    "gateNotInFile": "The gate “{{gate}}” is not listed under “gates” in this file: it gets every route of the project and belongs to no environment.",
+    "lines": "{{count}} lines",
+    "invalid": "Not saved: the moat.yaml is not valid like this.",
+    "line": "Line {{line}}, column {{column}}",
+    "saved": "Saved.",
+    "save": "Save",
+    "reload": "Reload",
+    "discard": "Discard changes",
+    "nextBundle": "A gate sees the change only with its next signed bundle.",
+    "errors": {
+      "config_changed": "The file has changed in the meantime. Reload it and make your changes again.",
+      "config_too_large": "The moat.yaml is too large.",
+      "not_writable": "The moat.yaml cannot be written. Check the project folder's permissions.",
+      "failed": "That did not work. Try again."
+    }
   }
 }
