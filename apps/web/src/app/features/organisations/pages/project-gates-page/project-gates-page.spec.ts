@@ -46,6 +46,7 @@ const gate = (patch: Partial<GateView> = {}): GateView => ({
   boxKeyFingerprint: 'MOAT-BOX1-2222',
   signerFingerprint: SIGNER.fingerprint,
   hasPullAddress: false,
+  hasReportAddress: false,
   latestVersion: 0,
   createdAt: '2026-10-18T08:00:00.000Z',
   ...patch,
@@ -374,6 +375,31 @@ describe('ProjectGatesPage (Gates eines Cloud-Projekts)', () => {
     });
     expect(text(el, '[data-address]')).toContain('/api/pull/');
     expect(text(el, '[data-pull]')).toContain('nur einmal angezeigt');
+  });
+
+  it('shows the report address once with the policy block for the gate (FR-50, T-110)', async () => {
+    const { el, harness } = await open();
+    click(el, '[data-report-create]');
+    const request = await sent('POST', `${BASE}/gates/site/report-address`);
+    const address = `https://moat.example.ch/api/report/${'R'.repeat(43)}`;
+    request.flush({ url: address });
+    await tick(harness);
+    await flushNext(harness, `${BASE}/gates`, {
+      gates: [gate({ hasReportAddress: true })],
+      signer: SIGNER,
+    });
+    expect(text(el, '[data-report-address]')).toBe(address);
+    const policy = JSON.parse(text(el, '[data-report-policy]')) as unknown;
+    expect(policy).toEqual({ report: { url: address, intervalSeconds: 900 } });
+    expect(text(el, '[data-report]')).toContain('nur einmal angezeigt');
+  });
+
+  it('only says a report address exists when the page is opened later', async () => {
+    const { el } = await open(OWNER_ACCESS, [gate({ hasReportAddress: true })]);
+    expect(el.querySelector('[data-report-address]')).toBeNull();
+    expect(text(el, '[data-has-report-address]')).toContain(
+      'nicht noch einmal angezeigt',
+    );
   });
 
   it('only says an address exists when the page is opened later', async () => {

@@ -43,6 +43,7 @@ import {
 } from '../../tenancy/ports/tenancy.ports';
 import { projectStorage } from '../domain/project-storage';
 import { CloudProjectStorePort, type GateRecord } from '../ports/gates.ports';
+import { CloudTrafficStorePort } from '../../traffic/ports/traffic.ports';
 import { CloudSigner } from './cloud-signer';
 import {
   AddGateCommand,
@@ -335,6 +336,7 @@ async function gateView(
   gate: GateRecord,
   signerFingerprint: string | null,
   latestVersion: number,
+  hasReportAddress = false,
 ): Promise<GateView> {
   return {
     name: gate.name,
@@ -350,6 +352,7 @@ async function gateView(
             fromBase64UrlLength(gate.signerKey ?? '', 32),
           ),
     hasPullAddress: gate.pullTokenHash !== null,
+    hasReportAddress,
     latestVersion,
     createdAt: gate.createdAt,
   };
@@ -365,6 +368,7 @@ export class ListGatesHandler
     projects: OrgProjectRepositoryPort,
     private readonly store: CloudProjectStorePort,
     private readonly signer: CloudSigner,
+    private readonly traffic: CloudTrafficStorePort,
   ) {
     super(organisations, projects);
   }
@@ -378,6 +382,9 @@ export class ListGatesHandler
     );
     if (access !== 'ok') return failure(access);
     const info = this.signer.info();
+    const reporting = await this.traffic.gatesWithReportAddress(
+      query.projectId,
+    );
     const gates: GateView[] = [];
     for (const gate of await this.store.listGates(query.projectId))
       gates.push(
@@ -386,6 +393,7 @@ export class ListGatesHandler
           info?.fingerprint ?? null,
           (await this.store.latestBundle(query.projectId, gate.name))
             ?.version ?? 0,
+          reporting.includes(gate.name),
         ),
       );
     return { status: 'ok', gates, signer: info };

@@ -394,6 +394,45 @@
         }
       </div>
 
+      <div class="flex flex-col gap-3" data-report>
+        <h3 class="text-sm font-semibold">
+          {{ 'gatesPage.report.title' | translate }}
+        </h3>
+        <p class="text-muted-foreground text-sm">
+          {{ 'gatesPage.report.description' | translate }}
+        </p>
+        @if (ui.reportAddress; as address) {
+        <p class="mt-code" data-report-address>{{ address }}</p>
+        <p class="mt-warning-text text-sm">
+          {{ 'gatesPage.report.once' | translate }}
+        </p>
+        <p class="text-muted-foreground text-sm">
+          {{ 'gatesPage.report.policy' | translate }}
+        </p>
+        <pre class="mt-code bg-muted rounded-md p-3" data-report-policy>
+{{
+          service.reportPolicy(address) }}</pre>
+        } @else if (gate.hasReportAddress) {
+        <p class="text-muted-foreground text-sm" data-has-report-address>
+          {{ 'gatesPage.report.exists' | translate }}
+        </p>
+        } @if (service.canManage()) {
+        <div>
+          <button
+            hlmBtn
+            variant="outline"
+            type="button"
+            data-report-create
+            [disabled]="ui.busy"
+            (click)="service.createReportAddress(gate.name)"
+          >
+            {{ (gate.hasReportAddress ? 'gatesPage.report.renew' :
+            'gatesPage.report.create') | translate }}
+          </button>
+        </div>
+        }
+      </div>
+
       @if (service.canManage()) {
       <div class="flex flex-col gap-3" data-remove>
         <h3 class="text-sm font-semibold">

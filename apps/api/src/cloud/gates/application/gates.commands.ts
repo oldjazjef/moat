@@ -91,6 +91,8 @@ export interface GateView {
    */
   readonly signerFingerprint: string | null;
   readonly hasPullAddress: boolean;
+  /** FR-50, T-110: the gate has a report address (shown only once, when made). */
+  readonly hasReportAddress: boolean;
   /** 0 when no bundle yet. */
   readonly latestVersion: number;
   readonly createdAt: string;
