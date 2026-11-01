@@ -21,6 +21,7 @@ import {
   PERMISSIONS_POLICY,
 } from './cloud-server/security-headers';
 import { createStaticSite } from './cloud-server/static-site';
+import { reportBodyParser } from './cloud/traffic/report-body';
 import type { Env } from './config/env';
 import { CloudDatabase } from './persistence/cloud/cloud-database';
 
@@ -97,6 +98,9 @@ export async function bootstrapCloud(
     app.use(
       requireSameOrigin(config.get('MOAT_PUBLIC_ORIGIN', { infer: true })),
     );
+    // A gate's traffic report is read from its exact bytes (core parseTrafficReport), never
+    // re-serialised: a raw parser for this one path, before Nest's JSON parser sees it.
+    app.use(`/${CLOUD_GLOBAL_PREFIX}/report`, reportBodyParser());
     if (options.webDir !== undefined) app.use(createStaticSite(options.webDir));
     app.setGlobalPrefix(CLOUD_GLOBAL_PREFIX);
     if (options.shutdownHooks === true) app.enableShutdownHooks();

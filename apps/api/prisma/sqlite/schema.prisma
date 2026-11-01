@@ -383,9 +383,46 @@ model CloudGate {
   project       OrgProject   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   secrets       CloudSecret[]
   bundles       CloudBundle[]
+  reportAddress CloudReportAddress?
+  traffic       CloudTraffic[]
 
   @@id([projectId, name])
   @@map("cloud_gate")
+}
+
+/// FR-50, T-110: where a gate reports its traffic — the SHA-256 of the token only.
+model CloudReportAddress {
+  projectId String    @map("project_id")
+  gate      String
+  tokenHash String    @unique @map("token_hash")
+  createdAt String    @map("created_at")
+  gateRef   CloudGate @relation(fields: [projectId, gate], references: [projectId, name], onDelete: Cascade)
+
+  @@id([projectId, gate])
+  @@map("cloud_report_address")
+}
+
+/// FR-50, FR-51: what a gate reported, per route and UTC hour (sums only). `route` '' = no route.
+model CloudTraffic {
+  projectId  String    @map("project_id")
+  gate       String
+  hour       BigInt
+  route      String
+  requests   Int
+  s2         Int
+  s3         Int
+  s4         Int
+  s5         Int
+  /// JSON object: the gate's error codes and their counts.
+  errors     String
+  msTotal    BigInt    @map("ms_total")
+  msMax      Int       @map("ms_max")
+  receivedAt String    @map("received_at")
+  gateRef    CloudGate @relation(fields: [projectId, gate], references: [projectId, name], onDelete: Cascade)
+
+  @@id([projectId, gate, hour, route])
+  @@index([projectId, hour])
+  @@map("cloud_traffic")
 }
 
 /// A sealed secret (ciphertext only, SEC-31).

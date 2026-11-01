@@ -253,9 +253,11 @@ function bucketOf(value: JsonValue): TrafficBucket | null {
   const codes = Object.entries(errors);
   if (codes.length > MAX_REPORT_ERROR_CODES) return null;
   let errorSum = 0;
+  const counted: [string, number][] = [];
   for (const [code, count] of codes) {
     if (!ERROR.test(code) || !isCount(count) || count === 0) return null;
     errorSum += count;
+    counted.push([code, count]);
   }
   if (errorSum > requests) return null;
   return {
@@ -266,7 +268,7 @@ function bucketOf(value: JsonValue): TrafficBucket | null {
     s3,
     s4,
     s5,
-    errors: Object.fromEntries(codes.sort(([a], [b]) => (a < b ? -1 : 1))),
+    errors: Object.fromEntries(counted.sort(([a], [b]) => (a < b ? -1 : 1))),
     msTotal,
     msMax,
   };

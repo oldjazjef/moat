@@ -89,7 +89,7 @@ const sha256 = (text: string): string =>
  * project inside that organisation — anything else is `not_found`, a member without the right is
  * `forbidden`. A malformed id never reaches the database.
  */
-async function guard(
+export async function guard(
   organisations: OrganisationRepositoryPort,
   projects: OrgProjectRepositoryPort,
   actorId: string,
