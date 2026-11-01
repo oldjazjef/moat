@@ -39,7 +39,8 @@ final class PolicyCheck
         $hasMaxAge = $value->has('maxConfigAgeSeconds');
         $hasPull = $value->has('pull');
         $hasLog = $value->has('logMaxBytes');
-        if (!$value->hasExactKeys('v', 'upstreams', 'maxBodyBytes', 'maxResponseBytes', 'maxTimeoutMs', 'limits', ...($testing ? ['testing'] : []), ...($hasMaxAge ? ['maxConfigAgeSeconds'] : []), ...($hasPull ? ['pull'] : []), ...($hasLog ? ['logMaxBytes'] : []))) {
+        $hasReport = $value->has('report');
+        if (!$value->hasExactKeys('v', 'upstreams', 'maxBodyBytes', 'maxResponseBytes', 'maxTimeoutMs', 'limits', ...($testing ? ['testing'] : []), ...($hasMaxAge ? ['maxConfigAgeSeconds'] : []), ...($hasPull ? ['pull'] : []), ...($hasLog ? ['logMaxBytes'] : []), ...($hasReport ? ['report'] : []))) {
             self::invalid();
         }
         $logMaxBytes = $hasLog ? $value->get('logMaxBytes') : RequestLog::DEFAULT_MAX_BYTES;
@@ -72,17 +73,28 @@ final class PolicyCheck
         $limits = self::limits($value->get('limits'));
         [$resolve, $caFile] = $testing ? self::testing($value->get('testing')) : [[], null];
 
-        $pull = $hasPull ? self::pull($value->get('pull')) : null;
+        $pull = null;
+        if ($hasPull) {
+            [$host, $port, $path, $interval] = self::place($value->get('pull'), PolicyPull::MIN_INTERVAL, PolicyPull::MAX_INTERVAL);
+            $pull = new PolicyPull($host, $port, $path, $interval);
+        }
+        $report = null;
+        if ($hasReport) {
+            [$host, $port, $path, $interval] = self::place($value->get('report'), PolicyReport::MIN_INTERVAL, PolicyReport::MAX_INTERVAL);
+            $report = new PolicyReport($host, $port, $path, $interval);
+        }
 
-        return new Policy($allowed, $maxBodyBytes, $maxResponseBytes, $maxTimeoutMs, $limits, $testing, $resolve, $caFile, $maxAge, $pull, $logMaxBytes);
+        return new Policy($allowed, $maxBodyBytes, $maxResponseBytes, $maxTimeoutMs, $limits, $testing, $resolve, $caFile, $maxAge, $pull, $logMaxBytes, $report);
     }
 
     /**
      * `https://host[:port]/path`: the origin as an upstream's (lower-case DNS name, no IP literal,
      * no `:443`), the path segments of unreserved characters and none `.` or `..` (isPullUrl in
-     * libs/core).
+     * libs/core) — for `pull` and for `report`.
+     *
+     * @return array{string, int, string, int}
      */
-    private static function pull(mixed $value): PolicyPull
+    private static function place(mixed $value, int $minInterval, int $maxInterval): array
     {
         if (!$value instanceof JsonObject || !$value->hasExactKeys('url', 'intervalSeconds')) {
             self::invalid();
@@ -91,7 +103,7 @@ final class PolicyCheck
         $interval = $value->get('intervalSeconds');
         if (
             !\is_string($url) || \strlen($url) > PolicyPull::MAX_URL
-            || !\is_int($interval) || !ConfigValidator::intIn($interval, PolicyPull::MIN_INTERVAL, PolicyPull::MAX_INTERVAL)
+            || !\is_int($interval) || !ConfigValidator::intIn($interval, $minInterval, $maxInterval)
             || preg_match('#^(https://[^/]+)((?:/[A-Za-z0-9._~-]+)+)$#D', $url, $match) !== 1
             || !ConfigValidator::isOrigin($match[1])
         ) {
@@ -105,12 +117,12 @@ final class PolicyCheck
         $authority = substr($match[1], \strlen('https://'));
         $colon = strrpos($authority, ':');
 
-        return new PolicyPull(
+        return [
             $colon === false ? $authority : substr($authority, 0, $colon),
             $colon === false ? 443 : (int) substr($authority, $colon + 1),
             $match[2],
             $interval,
-        );
+        ];
     }
 
     /** Throws `policy_violation` unless every upstream, route and limit lies within the policy. */

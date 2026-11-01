@@ -51,6 +51,13 @@ import {
   type HardeningFacts,
 } from './gate/hardening';
 import { killSwitchOf, type KillFile } from './gate/kill-switch';
+import type { RequestLogEntry } from './gate/request-log';
+import {
+  buildTrafficReport,
+  encodeTrafficReport,
+  parseTrafficReport,
+  type TrafficReport,
+} from './gate/traffic-report';
 
 /**
  * The shared vectors in conformance/vectors/crypto/ (docs/CRYPTO.md §11) — the same files the PHP
@@ -128,9 +135,11 @@ describe('conformance vectors', () => {
       'http/body.json',
       'gate/hardening.json',
       'gate/kill-switch.json',
+      'gate/traffic-report.json',
       '../http/gate.json',
       '../http/gate-locked.json',
       '../http/gate-kill-switch.json',
+      '../http/gate-report.json',
     ]) {
       for (const list of lists(load<unknown>(file))) {
         const names = list.flatMap((item) =>
@@ -655,6 +664,64 @@ describe('conformance vectors', () => {
           ? { kind: file }
           : { kind: 'present', content: file.content };
       expect(killSwitchOf(kill)).toEqual(want);
+    });
+  });
+
+  describe('gate/traffic-report.json', () => {
+    const vectors = load<{
+      now: number;
+      build: {
+        name: string;
+        gateId: string;
+        entries: RequestLogEntry[];
+        sentUntil: number | null;
+        now: number;
+        expect: unknown;
+      }[];
+      parse: { name: string; text: string; expect: unknown }[];
+    }>('gate/traffic-report.json');
+    it.each(vectors.build)(
+      'build: $name',
+      ({ gateId, entries, sentUntil, now, expect: want }) => {
+        const built = buildTrafficReport(gateId, entries, sentUntil, now);
+        expect(built).toEqual(want);
+        // What the gate sends is read back as the same report by the Cloud.
+        if (built.report !== null) {
+          const read = parseTrafficReport(
+            encodeTrafficReport(built.report),
+            now,
+          );
+          expect(read).toEqual({ ok: true, report: built.report });
+        }
+      },
+    );
+    it.each(vectors.parse)('parse: $name', ({ text, expect: want }) => {
+      expect(
+        parseTrafficReport(new TextEncoder().encode(text), vectors.now),
+      ).toEqual(want);
+    });
+    it('sends no client hash, path or method', () => {
+      const report: TrafficReport | null = buildTrafficReport(
+        'gateTrafficReport00000',
+        [
+          {
+            t: 7200,
+            route: 'a',
+            method: 'POST',
+            status: 200,
+            error: null,
+            ms: 1,
+            client: 'fedcba9876543210',
+          },
+        ],
+        3600,
+        3 * 3600,
+      ).report;
+      const text = new TextDecoder().decode(
+        encodeTrafficReport(report as TrafficReport),
+      );
+      expect(text).not.toContain('fedcba9876543210');
+      expect(text).not.toContain('POST');
     });
   });
 

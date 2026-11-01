@@ -31,6 +31,7 @@ use Moat\Gate\Runtime\KillSwitch;
 use Moat\Gate\Runtime\NotConfigured;
 use Moat\Gate\Runtime\PullOutcome;
 use Moat\Gate\Runtime\PullRecord;
+use Moat\Gate\Runtime\ReportSender;
 use Moat\Gate\Runtime\RequestLog;
 use Moat\Gate\Runtime\SetupMode;
 use Moat\Gate\Runtime\Trust;
@@ -57,7 +58,7 @@ use Moat\Gate\Storage\Files;
  */
 final class Cli
 {
-    private const USAGE = "usage: php moat-gate.php install|trust|policy|accept|pull|status|check|kill|revive|log|setup (see the gate README)\n";
+    private const USAGE = "usage: php moat-gate.php install|trust|policy|accept|pull|report|status|check|kill|revive|log|setup (see the gate README)\n";
 
     /** @param list<string> $argv */
     public static function main(string $gateDir, array $argv): int
@@ -71,6 +72,7 @@ final class Cli
                 'policy' => self::policy($gateDir, $args),
                 'accept' => self::accept($gateDir, $args),
                 'pull' => self::pull($gateDir),
+                'report' => self::report($gateDir),
                 'status' => self::status($gateDir),
                 'check' => self::check($gateDir, $args, $options),
                 'kill' => self::kill($gateDir, $args, $options, true),
@@ -243,6 +245,34 @@ final class Cli
         return $record->outcome === PullOutcome::Accepted || $record->outcome === PullOutcome::Unchanged ? 0 : 1;
     }
 
+    /**
+     * The traffic report (FR-50, T-110): sends now, whatever the interval says. The address is
+     * shown without its last segment, which is the gate's credential towards the place.
+     */
+    private static function report(string $gateDir): int
+    {
+        $gate = Gate::open($gateDir);
+        if ($gate->policy?->report === null) {
+            throw new UsageError('the local policy has no "report" block: nowhere to send a report');
+        }
+        $outcome = ReportSender::now($gate, time()) ?? throw new \RuntimeException('no report');
+        $state = ReportSender::state($gate->data);
+        self::out('Report to ' . $gate->policy->report->shownUrl() . ': ' . self::reportText($state['outcome'] ?? null, $state['reason'] ?? null));
+
+        return $outcome === 'sent' || $outcome === 'nothing' ? 0 : 1;
+    }
+
+    private static function reportText(?string $outcome, ?string $reason): string
+    {
+        return match ($outcome) {
+            'sent' => 'sent, the place took it.',
+            'nothing' => 'no complete hour to send yet.',
+            'failed' => 'no usable answer (' . $reason . '), sent again next time.',
+            'status' => 'the place answered ' . $reason . ', sent again next time.',
+            default => 'still running or interrupted.',
+        };
+    }
+
     private static function pullText(PullRecord $record): string
     {
         return match ($record->outcome) {
@@ -381,6 +411,11 @@ final class Cli
             $record = PullRecord::read($gate->data);
             self::out('Pull:       ' . $gate->policy->pull->url() . ' at most every ' . $gate->policy->pull->intervalSeconds . ' s; '
                 . ($record === null ? 'not tried yet' : 'last ' . gmdate('Y-m-d H:i', $record->attemptedAt) . ' UTC, ' . self::pullText($record)));
+        }
+        if ($gate->policy?->report !== null) {
+            $state = ReportSender::state($gate->data);
+            self::out('Report:     ' . $gate->policy->report->shownUrl() . ' at most every ' . $gate->policy->report->intervalSeconds . ' s; '
+                . ($state === null ? 'not sent yet' : 'last ' . gmdate('Y-m-d H:i', $state['attemptedAt']) . ' UTC, ' . self::reportText($state['outcome'], $state['reason'])));
         }
         $setup = SetupMode::remaining($gate, time());
         self::out('Setup mode: ' . ($setup === null ? 'off (php moat-gate.php setup switches it on)' : 'on for ' . intdiv($setup + 59, 60) . ' more minute(s)'));

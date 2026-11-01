@@ -54,6 +54,7 @@ php moat-gate.php trust --signer=<pk>[,…] [--threshold=n] [--force]   # replac
 php moat-gate.php trust --passkey=<point>[,…] --rp-id=<rpId> --origin=<origin>[,…] [--threshold=n] [--force]
                                            # pin passkeys, trust mode 2 (below)
 php moat-gate.php pull                     # fetch the bundle from the policy's pull place now (below)
+php moat-gate.php report                   # send the traffic report to the policy's report place now (below)
 php moat-gate.php status                   # fingerprints, policy, active bundle, pull, kill switch
 php moat-gate.php kill [--route=<name>]    # switch the gate or one route off at once (below)
 php moat-gate.php revive [--route=<name>]  # and on again (without --route: everything)
@@ -247,6 +248,32 @@ interval, and prints what came of it; `status` shows the place and the last atte
 gets `pull_<outcome> <code>` when a pulled file was not taken. A place that keeps serving the old
 file holds back new bundles (T-23): against that, the kill switch and `maxConfigAgeSeconds`.
 Cases: [`conformance/http/gate-pull.json`](../../conformance/http/gate-pull.json).
+
+## Traffic report (FR-50, T-110)
+
+The gate can tell Moat Cloud how much traffic it serves. The place is named only in the local
+policy, like the pull place:
+
+```json
+"report": { "url": "https://cloud.example.com/api/report/<address from Moat Cloud>", "intervalSeconds": 900 }
+```
+
+Same URL rules as `pull`; the interval is 5 minutes to one day. When it is over, the gate sends one
+report **after** the answer to a request has gone out (under PHP-FPM it closes the connection
+first, so the visitor never waits), through the same guarded cURL client, at most once per
+interval (data file `report`, lock `reportlock`).
+
+A report holds **sums only**, per route and complete UTC hour from the request log: requests, the
+status classes 2xx–5xx, the gate's error codes and the duration (sum and maximum) — never a client
+hash, a path, a header, a body or an address. The gate sends the complete hours since the last one
+the place took (at most 24 back) and moves on only after a 2xx answer, so a lost report is sent
+again. Nothing the place answers is used: it cannot change what the gate does.
+
+The address's last segment is the gate's credential towards Moat Cloud: whoever has it can send
+numbers in the gate's name (they are shown as "reported by the gate", never as fact). `status` and
+`report` print the address without it. `php moat-gate.php report` sends at once. Without a log
+(`logMaxBytes: 0`) there is nothing to report. Format: [`conformance/vectors/gate/traffic-report.json`](../../conformance/vectors/gate/traffic-report.json);
+cases: [`conformance/http/gate-report.json`](../../conformance/http/gate-report.json).
 
 ## Origins and CORS (FR-15)
 

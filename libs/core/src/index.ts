@@ -160,6 +160,8 @@ export {
   DEFAULT_LIMITS,
   isPullUrl,
   MIN_PULL_INTERVAL,
+  MIN_REPORT_INTERVAL,
+  MAX_REPORT_INTERVAL,
   MAX_PULL_INTERVAL,
   DEFAULT_LOG_BYTES,
   MAX_LOG_BYTES,
@@ -350,6 +352,20 @@ export {
   type RequestLogRouteSummary,
   type RequestLogSummary,
 } from './gate/request-log';
+export {
+  buildTrafficReport,
+  encodeTrafficReport,
+  HOUR,
+  MAX_REPORT_BUCKETS,
+  MAX_REPORT_BYTES,
+  MAX_REPORT_ERROR_CODES,
+  parseTrafficReport,
+  REPORT_LOOKBACK_HOURS,
+  REPORT_MAX_AGE_HOURS,
+  type TrafficBucket,
+  type TrafficReport,
+  type TrafficReportRefusal,
+} from './gate/traffic-report';
 export {
   chainHistory,
   verifyHistory,

@@ -13,6 +13,7 @@ use Moat\Gate\Runtime\BundlePull;
 use Moat\Gate\Runtime\Gate;
 use Moat\Gate\Runtime\NotConfigured;
 use Moat\Gate\Runtime\PullOutcome;
+use Moat\Gate\Runtime\ReportSender;
 use Moat\Gate\Runtime\RequestHandler;
 use Moat\Gate\Runtime\SetupMode;
 use Moat\Gate\Storage\DataDir;
@@ -98,6 +99,32 @@ final class Kernel
             return;
         }
         RequestHandler::handle($request, $bundle, $gate, time())->send();
+        self::report($gate);
+    }
+
+    /**
+     * The traffic report (FR-50, T-110), after the answer has gone out: under PHP-FPM the
+     * connection is closed first, so the visitor never waits for it. Never changes an answer;
+     * anything that goes wrong is logged as a code.
+     */
+    private static function report(Gate $gate): void
+    {
+        if ($gate->policy?->report === null) {
+            return;
+        }
+        if (\function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+        try {
+            $outcome = ReportSender::ifDue($gate, time());
+        } catch (\Throwable $error) {
+            self::log($error, 'report_failed');
+
+            return;
+        }
+        if ($outcome !== null && $outcome !== 'sent' && $outcome !== 'nothing') {
+            self::log(null, 'report_' . $outcome);
+        }
     }
 
     /**
