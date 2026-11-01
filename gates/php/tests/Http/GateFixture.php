@@ -188,7 +188,9 @@ final class GateFixture
     {
         $log = file_get_contents($this->upstreamLog);
 
-        return $log === false ? 0 : preg_match_all('#^POST /api/report/#m', $log);
+        $count = $log === false ? 0 : preg_match_all('#^POST /api/report/#m', $log);
+
+        return $count === false ? 0 : $count;
     }
 
     /** The body of the last report the place received; '' when there is none. */
@@ -196,7 +198,7 @@ final class GateFixture
     {
         $file = \dirname($this->upstreamLog) . '/reports.jsonl';
         $lines = is_file($file) ? file($file, FILE_IGNORE_NEW_LINES) : false;
-        $last = $lines === false || $lines === [] ? '' : (string) end($lines);
+        $last = $lines === false || $lines === [] ? '' : $lines[\count($lines) - 1];
 
         return str_starts_with($last, 'POST ') ? substr($last, 5) : '';
     }

@@ -152,7 +152,7 @@ final class TrafficReport
     private static function topErrors(array $errors): array
     {
         $codes = array_keys($errors);
-        usort($codes, static fn(string $a, string $b): int => ($errors[$b] <=> $errors[$a]) ?: strcmp($a, $b));
+        usort($codes, static fn(string $a, string $b): int => $errors[$a] !== $errors[$b] ? $errors[$b] <=> $errors[$a] : strcmp($a, $b));
         $kept = [];
         foreach (\array_slice($codes, 0, self::MAX_ERROR_CODES) as $code) {
             $kept[$code] = $errors[$code];
