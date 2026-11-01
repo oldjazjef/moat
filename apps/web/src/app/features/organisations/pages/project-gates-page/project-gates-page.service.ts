@@ -32,6 +32,8 @@ export interface GateUi {
   } | null;
   /** The pull address, shown once, right after it was made. */
   readonly address: string | null;
+  /** The report address (FR-50, T-110), shown once, right after it was made. */
+  readonly reportAddress: string | null;
   readonly secrets: readonly SecretView[] | null;
   readonly secretSaved: string | null;
 }
@@ -43,6 +45,7 @@ const EMPTY: GateUi = {
   preview: null,
   done: null,
   address: null,
+  reportAddress: null,
   secrets: null,
   secretSaved: null,
 };
@@ -347,5 +350,32 @@ export class ProjectGatesPageService {
       this.patch(gate, { address: answer.url });
       this.gates.reload();
     }
+  }
+
+  /**
+   * The report address (FR-50, T-110): where the gate's local policy sends its traffic report.
+   * A new one ends the old; it is shown once.
+   */
+  async createReportAddress(gate: string): Promise<void> {
+    const url = this.gateUrl(gate);
+    if (url === null) return;
+    const answer = await this.run(gate, () =>
+      firstValueFrom(
+        this.http.post<{ url: string }>(`${url}/report-address`, {}),
+      ),
+    );
+    if (answer !== null) {
+      this.patch(gate, { reportAddress: answer.url });
+      this.gates.reload();
+    }
+  }
+
+  /** The block for the gate's local policy, with the address just made. */
+  reportPolicy(address: string): string {
+    return JSON.stringify(
+      { report: { url: address, intervalSeconds: 900 } },
+      null,
+      2,
+    );
   }
 }

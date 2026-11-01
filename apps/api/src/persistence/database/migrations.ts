@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import postgresTraffic from '../../../prisma/postgresql/migrations/20261101120000_traffic_report/migration.sql?raw';
+import sqliteTraffic from '../../../prisma/sqlite/migrations/20261101120000_traffic_report/migration.sql?raw';
 import postgresOidc from '../../../prisma/postgresql/migrations/20261022120000_oidc/migration.sql?raw';
 import sqliteOidc from '../../../prisma/sqlite/migrations/20261022120000_oidc/migration.sql?raw';
 import postgresPasskeys from '../../../prisma/postgresql/migrations/20261021120000_account_passkeys/migration.sql?raw';
@@ -48,6 +50,7 @@ export const MIGRATIONS: Readonly<Record<Dialect, readonly Migration[]>> = {
     migration('20261020120000_audit_gate_remove', sqliteRemove),
     migration('20261021120000_account_passkeys', sqlitePasskeys),
     migration('20261022120000_oidc', sqliteOidc),
+    migration('20261101120000_traffic_report', sqliteTraffic),
   ],
   postgresql: [
     migration('20261014120000_init', postgresInit),
@@ -58,6 +61,7 @@ export const MIGRATIONS: Readonly<Record<Dialect, readonly Migration[]>> = {
     migration('20261020120000_audit_gate_remove', postgresRemove),
     migration('20261021120000_account_passkeys', postgresPasskeys),
     migration('20261022120000_oidc', postgresOidc),
+    migration('20261101120000_traffic_report', postgresTraffic),
   ],
 };
 
@@ -93,5 +97,8 @@ export const MOAT_TABLES = [
   // Single sign-on (20261022120000_oidc).
   'account_identity',
   'oidc_login',
+  // Traffic reports of gates (20261101120000_traffic_report).
+  'cloud_report_address',
+  'cloud_traffic',
 ] as const;
 export const MIGRATIONS_TABLE = '_prisma_migrations';

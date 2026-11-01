@@ -139,10 +139,11 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       'secret',
       'release',
       'pull',
+      'report',
       'status',
       'remove',
     ),
-    tips: items('mode', 'signer', 'sealed', 'rotation'),
+    tips: items('mode', 'signer', 'sealed', 'rotation', 'reported'),
     links: [{ id: 'organisations', path: '/app/organisations', only: 'cloud' }],
   },
   {

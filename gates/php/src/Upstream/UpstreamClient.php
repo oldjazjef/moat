@@ -123,6 +123,34 @@ final class UpstreamClient
     }
 
     /**
+     * The traffic report (FR-50, T-110): one POST of `$json` to the report address, through the
+     * same guarded client — pinned IP, HTTPS only, no redirect followed, PULL_TIMEOUT_MS. The
+     * answer's body is read only up to a few bytes and never used: the place gives the gate nothing.
+     *
+     * @return int|GateError the status, or why no usable answer came back
+     */
+    public static function post(string $host, int $port, string $path, string $json, ?Policy $policy): int|GateError
+    {
+        $received = new Received();
+        try {
+            [$ok, $errno, $status] = self::exchange($host, $port, $path, 'POST', ['Expect:', 'Content-Type: application/json'], $json, self::PULL_TIMEOUT_MS, 1024, $policy, $received);
+        } catch (Failure $failure) {
+            return $failure->error;
+        }
+        if (!$received->tooLarge && (!$ok || $errno !== 0)) {
+            return $errno === CURLE_OPERATION_TIMEDOUT ? GateError::UpstreamTimeout : GateError::UpstreamUnreachable;
+        }
+        if ($status >= 300 && $status < 400) {
+            return GateError::UpstreamRedirect;
+        }
+        if ($status < 200 || $status > 599) {
+            return GateError::UpstreamUnreachable;
+        }
+
+        return $status;
+    }
+
+    /**
      * @param non-empty-string $method
      * @param list<string>     $headers header lines
      *

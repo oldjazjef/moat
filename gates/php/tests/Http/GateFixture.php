@@ -180,7 +180,33 @@ final class GateFixture
     {
         $log = file_get_contents($this->upstreamLog);
 
-        return $log === false ? 0 : substr_count($log, "\n") - $this->pulls();
+        return $log === false ? 0 : substr_count($log, "\n") - $this->pulls() - $this->reports();
+    }
+
+    /** Traffic reports the place received (FR-50, T-110): one line each. */
+    public function reports(): int
+    {
+        $log = file_get_contents($this->upstreamLog);
+
+        $count = $log === false ? 0 : preg_match_all('#^POST /api/report/#m', $log);
+
+        return $count === false ? 0 : $count;
+    }
+
+    /** The body of the last report the place received; '' when there is none. */
+    public function lastReport(): string
+    {
+        $file = \dirname($this->upstreamLog) . '/reports.jsonl';
+        $lines = is_file($file) ? file($file, FILE_IGNORE_NEW_LINES) : false;
+        $last = $lines === false || $lines === [] ? '' : $lines[\count($lines) - 1];
+
+        return str_starts_with($last, 'POST ') ? substr($last, 5) : '';
+    }
+
+    /** Makes the report interval over: the gate reports after the next request. */
+    public function setReportDue(): void
+    {
+        (DataDir::locate($this->site) ?? throw new \RuntimeException('no data folder'))->remove('report');
     }
 
     /** Fetches of the published bundle file (the lazy pull, DT-11). */

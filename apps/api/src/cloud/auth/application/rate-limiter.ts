@@ -90,6 +90,19 @@ export const MAIL_INVITE_PER_ACTOR: Policy = {
   windowMs: HOUR,
 };
 
+/** Traffic reports of gates (FR-50, T-110): per address that sends, and per gate. */
+export const REPORT_PER_IP: Policy = {
+  scope: 'report-ip',
+  limit: 600,
+  windowMs: HOUR,
+};
+/** A gate reports at most every 5 minutes; twice that leaves room for a retry. */
+export const REPORT_PER_GATE: Policy = {
+  scope: 'report-gate',
+  limit: 24,
+  windowMs: HOUR,
+};
+
 @Injectable()
 export class RateLimiter {
   constructor(

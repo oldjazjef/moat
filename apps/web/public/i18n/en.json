@@ -1073,13 +1073,15 @@
           "release": "Click “Preview” on a gate. When you see what changes, click “Release and sign”. For a gate in the “Signed” mode you upload your signed bundle with “Upload bundle”.",
           "pull": "Use “Create pull address” to make the address the gate fetches its bundle from, and enter it in the gate. It is shown only once.",
           "remove": "To remove a gate from the project, use “Delete gate” and then “Really delete” under the gate. Its sealed secrets, bundles and pull address go with it; the gate on your server keeps running with its last bundle.",
-          "status": "Under “Status” you see what needs attention: gates without a bundle, changes not released yet, missing secrets and expiring bundles. Gates report nothing to Moat Cloud, so there is no traffic data."
+          "status": "Under “Status” you see what needs attention: gates without a bundle, changes not yet released, missing secrets and expiring bundles. For gates with a report address, “Status” also shows the reported requests, errors and response times.",
+          "report": "To see how much traffic a gate has, create its report address under “Gates” with “Create report address” and add the block shown to the gate's local policy. It is shown only once."
         },
         "tips": {
           "mode": "“Convenient”: Moat Cloud signs. An attacker on Moat Cloud can change your routes within the gate's local limits. “Signed”: you sign, Moat Cloud only stores. You change the mode only at the gate.",
           "signer": "For “Convenient” the gate needs Moat Cloud's public key. It is shown under “Gates”. If this Moat Cloud has no key, there is only “Signed”.",
           "sealed": "A secret never appears in the clear in Moat Cloud: it is sealed on your side, the page shows only names and versions. In the browser that holds only against a Moat Cloud that is not actively hacked.",
-          "rotation": "Moat Cloud's key change takes two steps: first the operator announces the new key and you pin it at every gate in addition, then Moat Cloud switches. “Gates” shows both steps."
+          "rotation": "Moat Cloud's key change takes two steps: first the operator announces the new key and you pin it at every gate in addition, then Moat Cloud switches. “Gates” shows both steps.",
+          "reported": "Reported numbers are the gate's claim: whoever knows the report address can send numbers. They never change what a gate does. Only sums per route and hour are reported, never single visitors."
         }
       },
       "settings": {
@@ -1554,7 +1556,10 @@
       "gate.pull_token": "Pull address created",
       "secret.set": "Secret stored",
       "bundle.sign": "Bundle signed",
-      "bundle.upload": "Bundle uploaded"
+      "bundle.upload": "Bundle uploaded",
+      "gate": {
+        "report_token": "Report address created"
+      }
     },
     "export": {
       "asJson": "Export as JSON",
@@ -1692,6 +1697,15 @@
       "description": "Removes the gate from this project together with its sealed secrets, its bundles and its pull address. The gate on your server keeps running with the last bundle it accepted; the moat.yaml stays as it is. Adding the same gate again starts at bundle 1.",
       "ask": "Delete gate",
       "confirm": "Really delete"
+    },
+    "report": {
+      "title": "Report address",
+      "description": "The gate reports sums of its traffic here: requests, status classes, error codes and response time per route and hour, never a single request, a visitor or a path. The address itself is this one gate's password for reporting.",
+      "create": "Create report address",
+      "renew": "Create new report address",
+      "exists": "There is a report address. For security it is not shown again. A new one ends the old.",
+      "once": "Copy it now: it is shown only once.",
+      "policy": "Add this block to the gate's local policy and install it with “php moat-gate.php policy”:"
     }
   },
   "configPage": {
@@ -1707,7 +1721,7 @@
   },
   "statusPage": {
     "title": "Status",
-    "description": "What needs attention in this project, worked out from what Moat Cloud itself stores: bundles, secrets and the configuration. Your gates report nothing to Moat Cloud, so this page says nothing about traffic, errors or response times.",
+    "description": "What needs attention in this project, worked out from what Moat Cloud stores itself: bundles, secrets and configuration. Plus the traffic gates with a report address reported – as the gate's claim, not as checked fact.",
     "loadError": "The status could not be read. Reload the page.",
     "allClear": "Nothing needs attention.",
     "attention": "{{count}} point(s) need attention.",
@@ -1732,6 +1746,26 @@
       "bundle_expiring": "The latest bundle expires within 14 days.",
       "release_pending": "The configuration changed since the latest bundle. Release a new one to apply it.",
       "secrets_missing": "These secrets are used by the configuration but not stored yet:"
+    },
+    "traffic": {
+      "title": "Traffic (reported by the gate)",
+      "window": "Period",
+      "days": "{{count}} day(s)",
+      "loadError": "The traffic could not be read.",
+      "off": "This gate reports nothing. Create a report address under “Gates” and add it to the gate's local policy.",
+      "none": "The gate reported no requests in this period.",
+      "claim": "Sums as the gate reported them (last report {{at}} UTC). Whoever knows the report address can send numbers in its name.",
+      "requests": "Requests",
+      "failed": "Refused or failed",
+      "failedValue": "{{count}} ({{share}} %)",
+      "latency": "Response time",
+      "latencyValue": "{{average}} ms on average, at most {{max}} ms",
+      "chart": "Requests per hour",
+      "route": "Route",
+      "errorsShort": "4xx/5xx",
+      "averageShort": "ms (average)",
+      "noRoute": "no route",
+      "codes": "The gate's error codes:"
     }
   },
   "projectKey": {

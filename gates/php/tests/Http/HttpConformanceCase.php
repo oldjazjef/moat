@@ -63,8 +63,12 @@ abstract class HttpConformanceCase extends TestCase
         if (($case['pullDue'] ?? false) === true) {
             $gate->setPullDue();
         }
+        if (($case['reportDue'] ?? false) === true) {
+            $gate->setReportDue();
+        }
         $before = $gate->upstreamCalls();
         $pullsBefore = $gate->pulls();
+        $reportsBefore = $gate->reports();
 
         $request = self::withSetupToken($request, $gate->setupToken);
         [$status, $headers, $body] = self::send($gate->baseUrl, $request);
@@ -86,6 +90,22 @@ abstract class HttpConformanceCase extends TestCase
         self::assertSame(Vectors::int($expect['upstreamCalls']), $gate->upstreamCalls() - $before, 'upstream calls');
         if (isset($expect['pulls'])) {
             self::assertSame(Vectors::int($expect['pulls']), $gate->pulls() - $pullsBefore, 'pulls');
+        }
+        if (isset($expect['reports'])) {
+            // The report goes out after the answer: give it a moment to arrive.
+            $deadline = microtime(true) + 3;
+            while ($gate->reports() - $reportsBefore < Vectors::int($expect['reports']) && microtime(true) < $deadline) {
+                usleep(50_000);
+            }
+            self::assertSame(Vectors::int($expect['reports']), $gate->reports() - $reportsBefore, 'reports');
+        }
+        if (isset($expect['reportKeys'])) {
+            $report = json_decode($gate->lastReport(), true, 16, JSON_THROW_ON_ERROR);
+            self::assertIsArray($report, 'report');
+            self::assertSame(Vectors::list($expect['reportKeys']), self::sortedKeys($report), 'report keys');
+        }
+        foreach (Vectors::list($expect['reportExcludes'] ?? []) as $text) {
+            self::assertStringNotContainsString(Vectors::string($text), $gate->lastReport(), 'report');
         }
         foreach (explode("\n", $gate->secret) as $secret) {
             self::assertStringNotContainsString($secret, $body . implode("\n", $headers));

@@ -755,6 +755,40 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
     ),
   },
   {
+    // FR-50, T-110: the gate's report address, shown once.
+    method: 'POST',
+    path: '/api/orgs/:orgId/projects/:projectId/gates/:gate/report-address',
+    request: `${GATE}/report-address`,
+    expect: guarded(
+      {
+        owner: 201,
+        admin: 201,
+        editor: 403,
+        viewer: 403,
+        billing: 403,
+        foreign: 404,
+      },
+      true,
+    ),
+  },
+  {
+    // FR-51: what the gates reported (sums only), read like the status.
+    method: 'GET',
+    path: '/api/orgs/:orgId/projects/:projectId/traffic',
+    request: `${PROJECT}/traffic`,
+    expect: guarded(
+      {
+        owner: 200,
+        admin: 200,
+        editor: 200,
+        viewer: 200,
+        billing: 403,
+        foreign: 404,
+      },
+      false,
+    ),
+  },
+  {
     method: 'GET',
     path: '/api/orgs/:orgId/projects/:projectId/gates/:gate/secrets',
     request: `${GATE}/secrets`,
@@ -873,5 +907,13 @@ export const CLOUD_AUTHZ_MATRIX: readonly CloudAuthzEntry[] = [
     path: '/api/pull/:token',
     request: `/api/pull/${'T'.repeat(43)}`,
     expect: open(404, false),
+  },
+  {
+    // A gate's traffic report: no session, the address is the credential. An unknown token is a
+    // 404 for all; a cross-site write is refused before it (T-78).
+    method: 'POST',
+    path: '/api/report/:token',
+    request: `/api/report/${'T'.repeat(43)}`,
+    expect: open(404, true),
   },
 ];

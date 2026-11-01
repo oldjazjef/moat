@@ -36,6 +36,11 @@ import {
   type WebFacts,
 } from '../src/gate/hardening';
 import { killSwitchOf, type KillFile } from '../src/gate/kill-switch';
+import type { RequestLogEntry } from '../src/gate/request-log';
+import {
+  buildTrafficReport,
+  parseTrafficReport,
+} from '../src/gate/traffic-report';
 import {
   addCharge,
   answerCharge,
@@ -2417,6 +2422,47 @@ function policyVectors(): Json {
         }),
     ],
     ['pull null', (_c, p) => (p['pull'] = null)],
+    [
+      'report to Moat Cloud every 15 minutes (FR-50)',
+      (_c, p) =>
+        (p['report'] = {
+          url: 'https://cloud.example.ch/api/report/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+          intervalSeconds: 900,
+        }),
+    ],
+    [
+      'report more often than every 5 minutes',
+      (_c, p) =>
+        (p['report'] = {
+          url: 'https://cloud.example.ch/api/report/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+          intervalSeconds: 299,
+        }),
+    ],
+    [
+      'report over plain HTTP',
+      (_c, p) =>
+        (p['report'] = {
+          url: 'http://cloud.example.ch/api/report/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+          intervalSeconds: 900,
+        }),
+    ],
+    [
+      'report URL with a query',
+      (_c, p) =>
+        (p['report'] = {
+          url: 'https://cloud.example.ch/api/report?token=x',
+          intervalSeconds: 900,
+        }),
+    ],
+    [
+      'report with an unknown field',
+      (_c, p) =>
+        (p['report'] = {
+          url: 'https://cloud.example.ch/api/report/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+          intervalSeconds: 900,
+          includeClients: true,
+        }),
+    ],
   ];
   return {
     description:
@@ -3412,6 +3458,190 @@ function killSwitchVectors(): Json {
   };
 }
 
+function trafficReportVectors(): Json {
+  const GATE = 'gateTrafficReport00000';
+  const H = 1_798_675_200; // 2027-01-01T00:00:00Z, a multiple of 3600
+  const entry = (
+    t: number,
+    route: string | null,
+    status: number,
+    error: string | null,
+    ms: number,
+  ): RequestLogEntry => ({
+    t,
+    route,
+    method: 'POST',
+    status,
+    error,
+    ms,
+    client: '0123456789abcdef',
+  });
+  const build: [string, RequestLogEntry[], number | null, number][] = [
+    [
+      'no complete hour yet since the last report',
+      [entry(H + 10, 'newsletter', 200, null, 5)],
+      H,
+      H + 1800,
+    ],
+    [
+      'one hour, one route: sums, status classes, error codes, duration',
+      [
+        entry(H + 10, 'newsletter', 200, null, 120),
+        entry(H + 20, 'newsletter', 201, null, 80),
+        entry(H + 30, 'newsletter', 429, 'rate_limited', 1),
+        entry(H + 40, 'newsletter', 502, 'upstream_unreachable', 3000),
+        entry(H + 50, 'newsletter', 304, null, 7),
+      ],
+      H,
+      H + 3600 + 5,
+    ],
+    [
+      'the current hour is left for later, and so are entries before the last report',
+      [
+        entry(H - 60, 'newsletter', 200, null, 1),
+        entry(H + 10, 'newsletter', 200, null, 2),
+        entry(H + 3600 + 10, 'newsletter', 200, null, 3),
+      ],
+      H,
+      H + 3600 + 100,
+    ],
+    [
+      'several routes and hours, and requests that matched no route (null last)',
+      [
+        entry(H + 3600 + 1, null, 404, 'route_not_found', 0),
+        entry(H + 1, 'status', 200, null, 4),
+        entry(H + 2, 'newsletter', 200, null, 6),
+        entry(H + 3600 + 2, 'newsletter', 403, 'origin_not_allowed', 0),
+      ],
+      H,
+      H + 7200,
+    ],
+    [
+      'nothing happened: an empty report still moves the cursor',
+      [],
+      H,
+      H + 7200 + 1,
+    ],
+    [
+      'never reported: looks back 24 hours at most',
+      [
+        entry(H - 25 * 3600, 'newsletter', 200, null, 1),
+        entry(H - 23 * 3600, 'newsletter', 200, null, 2),
+      ],
+      null,
+      H + 10,
+    ],
+    [
+      'a cursor in the future (a clock set back) starts 24 hours back',
+      [entry(H - 3600 + 5, 'newsletter', 200, null, 9)],
+      H + 99 * 3600,
+      H + 10,
+    ],
+  ];
+  const report = (hours: Json[]) => ({ v: 1, gateId: GATE, hours }) as Json;
+  const bucket = (overrides: Record<string, Json> = {}): Json => ({
+    hour: H,
+    route: 'newsletter',
+    requests: 3,
+    s2: 2,
+    s3: 0,
+    s4: 1,
+    s5: 0,
+    errors: { rate_limited: 1 },
+    msTotal: 50,
+    msMax: 40,
+    ...overrides,
+  });
+  const now = H + 2 * 3600;
+  const parse: [string, string][] = [
+    ['a valid report', JSON.stringify(report([bucket()]))],
+    ['an empty report', JSON.stringify(report([]))],
+    [
+      'status classes that do not add up',
+      JSON.stringify(report([bucket({ s2: 1 })])),
+    ],
+    [
+      'more errors than requests',
+      JSON.stringify(report([bucket({ errors: { rate_limited: 4 } })])),
+    ],
+    [
+      'an hour not on the hour',
+      JSON.stringify(report([bucket({ hour: H + 1 })])),
+    ],
+    [
+      'an hour in the future',
+      JSON.stringify(report([bucket({ hour: now + 3600 })])),
+    ],
+    [
+      'an hour older than 30 days',
+      JSON.stringify(report([bucket({ hour: H - 31 * 24 * 3600 })])),
+    ],
+    [
+      'the same hour and route twice',
+      JSON.stringify(report([bucket(), bucket()])),
+    ],
+    [
+      'a client hash: unknown field',
+      JSON.stringify(report([bucket({ client: '0123456789abcdef' })])),
+    ],
+    [
+      'a path instead of a route name',
+      JSON.stringify(report([bucket({ route: '/newsletter' })])),
+    ],
+    ['a negative count', JSON.stringify(report([bucket({ msTotal: -1 })]))],
+    [
+      'a bucket without requests',
+      JSON.stringify(
+        report([
+          bucket({
+            requests: 0,
+            s2: 0,
+            s4: 0,
+            errors: {},
+            msTotal: 0,
+            msMax: 0,
+          }),
+        ]),
+      ),
+    ],
+    ['another version', JSON.stringify({ v: 2, gateId: GATE, hours: [] })],
+    [
+      'a gate id of the wrong shape',
+      JSON.stringify({ v: 1, gateId: 'short', hours: [] }),
+    ],
+    [
+      'duplicate keys: the last one counts (as strict JSON everywhere in Moat)',
+      `{"v":1,"v":1,"gateId":"${GATE}","hours":[]}`,
+    ],
+  ];
+  return {
+    description:
+      "The traffic report (FR-50, FR-51, T-110): what a gate sends to the report address its local policy names. `build`: from the request log entries (as in gate-log), the last cursor `sentUntil` (start of the first hour not yet sent; null = never) and the clock `now`, the gate sends the complete UTC hours since the cursor (at most 24 back, a cursor in the future counts as none), sums per (hour, route): `requests`, status classes `s2`..`s5`, the gate's `errors` by code (the 20 most frequent), `msTotal`, `msMax`; buckets sorted by hour, then route, null last. No client hash, no single request. `expect.report` null = nothing to send yet; `expect.until` = the next cursor once the Cloud took it. `parse`: how Moat Cloud reads a received report at `now` (strict JSON, exact keys, sums consistent, hours on the hour, not in the future and at most 30 days old, each (hour, route) once): `{ok: true, report}` or `{ok: false, code}`.",
+    now,
+    build: build.map(([name, entries, sentUntil, at]) => ({
+      name,
+      gateId: GATE,
+      entries: entries as unknown as Json,
+      sentUntil,
+      now: at,
+      expect: buildTrafficReport(
+        GATE,
+        entries,
+        sentUntil,
+        at,
+      ) as unknown as Json,
+    })),
+    parse: parse.map(([name, text]) => ({
+      name,
+      text,
+      expect: parseTrafficReport(
+        new TextEncoder().encode(text),
+        now,
+      ) as unknown as Json,
+    })),
+  };
+}
+
 function bodyVectors(): Json {
   const signup: Record<string, Json> = {
     email: { type: 'string', required: true, format: 'email', maxLength: 254 },
@@ -3616,5 +3846,6 @@ export async function buildFormatVectors(): Promise<Record<string, Json>> {
     'crypto/keyfile.json': await keyFileVectors(),
     'gate/hardening.json': hardeningVectors(),
     'gate/kill-switch.json': killSwitchVectors(),
+    'gate/traffic-report.json': trafficReportVectors(),
   };
 }

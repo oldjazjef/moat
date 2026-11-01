@@ -15,6 +15,7 @@ import { HelpLink } from '../../../help/components/help-link';
 import { OrgTabs } from '../../components/org-tabs';
 import { ProjectTabs } from '../../components/project-tabs';
 import { OrgScope } from '../../org-scope';
+import { TRAFFIC_DAYS } from '../../../../core/api/gates.types';
 import { ProjectStatusPageService } from './project-status-page.service';
 
 @Component({
@@ -42,6 +43,7 @@ export class ProjectStatusPage {
   readonly orgId = input.required<string>();
   readonly projectId = input.required<string>();
   protected readonly service = inject(ProjectStatusPageService);
+  protected readonly trafficDays = TRAFFIC_DAYS;
 
   constructor() {
     inject(OrgScope).bind(this.orgId);

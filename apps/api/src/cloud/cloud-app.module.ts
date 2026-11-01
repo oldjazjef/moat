@@ -9,6 +9,7 @@ import { Clock, SystemClock } from './common/clock';
 import { AccountMailModule } from './mail/account-mail.module';
 import { GatesModule } from './gates/gates.module';
 import { TenancyModule } from './tenancy/tenancy.module';
+import { TrafficModule } from './traffic/traffic.module';
 
 @Controller('health')
 class CloudHealthController {
@@ -47,6 +48,7 @@ class ClockModule {}
     AuditModule,
     GatesModule,
     TenancyModule,
+    TrafficModule,
   ],
   controllers: [CloudHealthController],
 })

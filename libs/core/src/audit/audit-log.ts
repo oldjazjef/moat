@@ -28,6 +28,7 @@ export const AUDIT_ACTIONS = [
   'gate.add',
   'gate.remove',
   'gate.pull_token',
+  'gate.report_token',
   'secret.set',
   'bundle.sign',
   'bundle.upload',
@@ -125,6 +126,12 @@ export type AuditEvent =
   | {
       /** A gate's pull address was created or replaced (the token itself is never recorded). */
       readonly action: 'gate.pull_token';
+      readonly target: string;
+      readonly details: { readonly gate: string };
+    }
+  | {
+      /** A gate's report address was created or replaced (FR-50, T-110; never the token). */
+      readonly action: 'gate.report_token';
       readonly target: string;
       readonly details: { readonly gate: string };
     }
@@ -412,6 +419,7 @@ export function eventValid(
       );
     case 'gate.remove':
     case 'gate.pull_token':
+    case 'gate.report_token':
       return id && exactly('gate') && name(d['gate']);
     case 'secret.set':
       return (

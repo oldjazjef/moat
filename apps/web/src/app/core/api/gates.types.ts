@@ -19,6 +19,8 @@ export interface GateView {
   readonly boxKeyFingerprint: string;
   readonly signerFingerprint: string | null;
   readonly hasPullAddress: boolean;
+  /** FR-50, T-110: the gate has a report address (shown only once, when made). */
+  readonly hasReportAddress: boolean;
   readonly latestVersion: number;
   readonly createdAt: string;
 }
@@ -99,4 +101,40 @@ export interface GateStatus {
 export interface ProjectStatus {
   readonly project: readonly StatusFinding[];
   readonly gates: readonly GateStatus[];
+}
+
+/** `GET /api/orgs/:o/projects/:p/traffic` (FR-51): what the gates reported, sums only. */
+export const TRAFFIC_DAYS = [1, 7, 30] as const;
+export type TrafficDays = (typeof TRAFFIC_DAYS)[number];
+
+export interface TrafficTotals {
+  readonly requests: number;
+  readonly s2: number;
+  readonly s3: number;
+  readonly s4: number;
+  readonly s5: number;
+  readonly msAverage: number | null;
+  readonly msMax: number;
+}
+
+export interface GateTraffic {
+  readonly gate: string;
+  readonly hasReportAddress: boolean;
+  readonly lastReceivedAt: string | null;
+  readonly totals: TrafficTotals;
+  readonly routes: readonly (TrafficTotals & {
+    readonly route: string | null;
+  })[];
+  readonly errors: readonly { readonly code: string; readonly count: number }[];
+  readonly hours: readonly {
+    readonly hour: number;
+    readonly requests: number;
+    readonly failed: number;
+  }[];
+}
+
+export interface ProjectTraffic {
+  readonly from: number;
+  readonly to: number;
+  readonly gates: readonly GateTraffic[];
 }

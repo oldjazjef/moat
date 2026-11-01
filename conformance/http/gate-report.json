@@ -1,0 +1,140 @@
+{
+  "description": "The traffic report (FR-50, T-110): the local policy names the one place the gate reports to (`report.url`), at most every `intervalSeconds`, after the answer to a request has gone out and without cron. It carries sums per route and complete UTC hour only (conformance/vectors/gate/traffic-report.json): `{v, gateId, hours}`, never a client hash, path, header or body; the place's answer is never used and never changes a request. Same runner and fake upstream as gate.json; the fake records each report POSTed to `/api/report/…` and answers 204. `reportDue: true` makes the interval over (the runner removes the gate's report record), otherwise the last report was just now. `reports` counts the reports the place received during the case, `upstreamCalls` the other upstream calls; `reportKeys` = the keys of the last report, `reportExcludes` = texts it never holds.",
+  "config": {
+    "version": 1,
+    "enabled": true,
+    "upstreams": {
+      "fake": {
+        "origin": "https://upstream.test:{port}",
+        "auth": {
+          "type": "bearer",
+          "secret": "api-token"
+        },
+        "timeoutMs": 5000
+      }
+    },
+    "routes": {
+      "newsletter": {
+        "method": "POST",
+        "path": "/newsletter",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 1024,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": ["https://www.example.ch"],
+        "rateLimit": null
+      },
+      "status": {
+        "method": "GET",
+        "path": "/status",
+        "upstream": "fake",
+        "upstreamPath": "/echo",
+        "maxBodyBytes": 0,
+        "contentTypes": ["application/json"],
+        "responseContentTypes": ["application/json"],
+        "enabled": true,
+        "origins": [],
+        "rateLimit": null
+      }
+    }
+  },
+  "policy": {
+    "v": 1,
+    "upstreams": {
+      "upstream.test:{port}": {
+        "pathPrefixes": ["/echo"],
+        "methods": ["GET", "POST"],
+        "secrets": ["api-token"]
+      }
+    },
+    "maxBodyBytes": 1024,
+    "maxResponseBytes": 65536,
+    "maxTimeoutMs": 5000,
+    "limits": {
+      "perIp": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "total": {
+        "requests": 200,
+        "windowSeconds": 60
+      },
+      "maxClients": 5000
+    },
+    "testing": {
+      "resolve": {
+        "upstream.test:{port}": "127.0.0.1"
+      },
+      "caFile": "{caFile}"
+    },
+    "report": {
+      "url": "https://upstream.test:{port}/api/report/TESTONLYreportAddress0000000000000000000000",
+      "intervalSeconds": 300
+    }
+  },
+  "secrets": {
+    "api-token": "TEST-ONLY-planted-secret-7f3a9c"
+  },
+  "cases": [
+    {
+      "name": "a due report goes out after the answer, sums only",
+      "reportDue": true,
+      "request": {
+        "method": "GET",
+        "path": "/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "reports": 1,
+        "reportKeys": ["gateId", "hours", "v"],
+        "reportExcludes": [
+          "client",
+          "/status",
+          "/echo",
+          "TEST-ONLY-planted-secret-7f3a9c",
+          "GET"
+        ]
+      }
+    },
+    {
+      "name": "within the interval: no second report",
+      "request": {
+        "method": "GET",
+        "path": "/status",
+        "headers": {},
+        "body": ""
+      },
+      "expect": {
+        "status": 200,
+        "upstreamCalls": 1,
+        "reports": 0
+      }
+    },
+    {
+      "name": "a refused request is served as before and reported later",
+      "reportDue": true,
+      "request": {
+        "method": "POST",
+        "path": "/newsletter",
+        "headers": {
+          "Origin": "https://evil.example",
+          "Content-Type": "application/json"
+        },
+        "body": "{}"
+      },
+      "expect": {
+        "status": 403,
+        "error": "origin_forbidden",
+        "upstreamCalls": 0,
+        "reports": 1,
+        "reportKeys": ["gateId", "hours", "v"],
+        "reportExcludes": ["evil.example", "client"]
+      }
+    }
+  ]
+}

@@ -64,6 +64,30 @@
       </ul>
     </div>
   </section>
+  } @if (answer.gates.length > 0) {
+  <div
+    class="flex flex-wrap items-center gap-2 text-sm"
+    role="group"
+    [attr.aria-label]="'statusPage.traffic.window' | translate"
+    data-traffic-days
+  >
+    <span class="text-muted-foreground"
+      >{{ 'statusPage.traffic.window' | translate }}</span
+    >
+    @for (days of trafficDays; track days) {
+    <button
+      hlmBtn
+      size="sm"
+      type="button"
+      [variant]="service.days() === days ? 'default' : 'outline'"
+      [attr.aria-pressed]="service.days() === days"
+      [attr.data-days]="days"
+      (click)="service.days.set(days)"
+    >
+      {{ 'statusPage.traffic.days' | translate: { count: days } }}
+    </button>
+    }
+  </div>
   } @if (answer.gates.length === 0) {
   <p class="text-muted-foreground text-sm" data-no-gates>
     {{ 'statusPage.noGates' | translate }}
@@ -122,6 +146,102 @@
         }
       </ul>
       }
+      <div class="flex flex-col gap-2 border-t pt-3" data-traffic>
+        <h3 class="text-sm font-semibold">
+          {{ 'statusPage.traffic.title' | translate }}
+        </h3>
+        @if (service.traffic.error()) {
+        <p class="text-muted-foreground text-sm" data-traffic-error>
+          {{ 'statusPage.traffic.loadError' | translate }}
+        </p>
+        } @else if (service.trafficOf(gate.name); as traffic) { @if
+        (!traffic.hasReportAddress && traffic.totals.requests === 0) {
+        <p class="text-muted-foreground text-sm" data-traffic-off>
+          {{ 'statusPage.traffic.off' | translate }}
+        </p>
+        } @else if (traffic.totals.requests === 0) {
+        <p class="text-muted-foreground text-sm" data-traffic-none>
+          {{ 'statusPage.traffic.none' | translate }}
+        </p>
+        } @else {
+        <p class="text-muted-foreground text-xs" data-traffic-claim>
+          {{ 'statusPage.traffic.claim' | translate: { at:
+          traffic.lastReceivedAt?.slice(0, 16)?.replace('T', ' ') ?? '' } }}
+        </p>
+        <dl class="mt-facts" data-traffic-totals>
+          <dt>{{ 'statusPage.traffic.requests' | translate }}</dt>
+          <dd data-requests>{{ traffic.totals.requests }}</dd>
+          <dt>{{ 'statusPage.traffic.failed' | translate }}</dt>
+          <dd data-failed>
+            {{ 'statusPage.traffic.failedValue' | translate: { count:
+            traffic.totals.s4 + traffic.totals.s5, share:
+            service.failedShare(traffic) } }}
+          </dd>
+          <dt>{{ 'statusPage.traffic.latency' | translate }}</dt>
+          <dd data-latency>
+            {{ 'statusPage.traffic.latencyValue' | translate: { average:
+            traffic.totals.msAverage ?? 0, max: traffic.totals.msMax } }}
+          </dd>
+        </dl>
+        @if (traffic.hours.length > 1) {
+        <svg
+          class="text-primary h-10 w-full max-w-xl"
+          role="img"
+          [attr.preserveAspectRatio]="'none'"
+          [attr.viewBox]="'0 0 ' + traffic.hours.length + ' 40'"
+          [attr.aria-label]="'statusPage.traffic.chart' | translate"
+          data-traffic-chart
+        >
+          @for (hour of traffic.hours; track hour.hour; let i = $index) {
+          <rect
+            fill="currentColor"
+            [attr.x]="i + 0.1"
+            width="0.8"
+            [attr.y]="40 - (40 * hour.requests) / service.peak(traffic)"
+            [attr.height]="(40 * hour.requests) / service.peak(traffic)"
+          />
+          }
+        </svg>
+        }
+        <table class="w-full max-w-xl text-sm" data-traffic-routes>
+          <thead>
+            <tr class="text-muted-foreground text-left">
+              <th class="py-1 font-medium">
+                {{ 'statusPage.traffic.route' | translate }}
+              </th>
+              <th class="py-1 text-right font-medium">
+                {{ 'statusPage.traffic.requests' | translate }}
+              </th>
+              <th class="py-1 text-right font-medium">
+                {{ 'statusPage.traffic.errorsShort' | translate }}
+              </th>
+              <th class="py-1 text-right font-medium">
+                {{ 'statusPage.traffic.averageShort' | translate }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (route of traffic.routes; track route.route) {
+            <tr class="border-t" data-traffic-route>
+              <td class="mt-code py-1">
+                {{ route.route ?? ('statusPage.traffic.noRoute' | translate) }}
+              </td>
+              <td class="py-1 text-right">{{ route.requests }}</td>
+              <td class="py-1 text-right">{{ route.s4 + route.s5 }}</td>
+              <td class="py-1 text-right">{{ route.msAverage ?? 0 }}</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+        @if (traffic.errors.length > 0) {
+        <p class="text-sm" data-traffic-codes>
+          {{ 'statusPage.traffic.codes' | translate }} @for (error of
+          traffic.errors; track error.code; let last = $last) {
+          <span class="mt-code">{{ error.code }}</span> ({{ error.count }}){{
+          last ? '' : ', ' }} }
+        </p>
+        } } }
+      </div>
     </div>
   </section>
   } }

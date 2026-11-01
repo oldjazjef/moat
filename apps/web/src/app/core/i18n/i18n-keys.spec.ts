@@ -129,6 +129,7 @@ const DYNAMIC_KEYS = [
     'gate.add',
     'gate.remove',
     'gate.pull_token',
+    'gate.report_token',
     'secret.set',
     'bundle.sign',
     'bundle.upload',

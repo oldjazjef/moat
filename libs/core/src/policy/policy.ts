@@ -52,6 +52,9 @@ export const MAX_CONFIG_AGE = 10 * 365 * 86_400;
 export const MIN_PULL_INTERVAL = 60;
 export const MAX_PULL_INTERVAL = 86_400;
 export const MAX_PULL_URL = 2048;
+/** FR-50, T-110: how often a gate may send its traffic report, at most. */
+export const MIN_REPORT_INTERVAL = 300;
+export const MAX_REPORT_INTERVAL = 86_400;
 
 /** FR-50: the request log's size before it rolls over (gate/request-log.ts); 0 = no log. */
 export const DEFAULT_LOG_BYTES = 262_144;
@@ -148,6 +151,21 @@ export const policySchema = z.strictObject({
     .strictObject({
       url: z.string().refine(isPullUrl),
       intervalSeconds: z.int().min(MIN_PULL_INTERVAL).max(MAX_PULL_INTERVAL),
+    })
+    .optional(),
+  /**
+   * FR-50, T-110: where the gate sends its traffic report (sums per route and hour, nothing
+   * about a single request), at most every `intervalSeconds`, during a request and without cron.
+   * Only here, in the local policy: no bundle can name or change the place (SEC-10). The address
+   * is the gate's credential towards that place; the gate takes nothing back from it.
+   */
+  report: z
+    .strictObject({
+      url: z.string().refine(isPullUrl),
+      intervalSeconds: z
+        .int()
+        .min(MIN_REPORT_INTERVAL)
+        .max(MAX_REPORT_INTERVAL),
     })
     .optional(),
   /**

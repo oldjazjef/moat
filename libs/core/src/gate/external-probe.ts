@@ -24,6 +24,8 @@ export const DATA_FILES = [
   'webfacts',
   'pull',
   'pulllock',
+  'report',
+  'reportlock',
   'tokens',
   'tokenslock',
   'log',

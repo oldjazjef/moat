@@ -32,5 +32,7 @@ final readonly class Policy
         public ?PolicyPull $pull = null,
         /** FR-50: bytes of the request log before it rolls over; 0 = no log. */
         public int $logMaxBytes = RequestLog::DEFAULT_MAX_BYTES,
+        /** FR-50, T-110: where and how often the gate sends its traffic report; null = never. */
+        public ?PolicyReport $report = null,
     ) {}
 }

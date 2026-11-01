@@ -104,6 +104,7 @@ describe('dryRun predicts the gate (conformance/http/, FR-42)', () => {
       'gate-locked.json',
       'gate-log.json',
       'gate-pull.json',
+      'gate-report.json',
       'gate-setup.json',
       'gate.json',
     ]);

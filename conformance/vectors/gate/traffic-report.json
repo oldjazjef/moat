@@ -1,0 +1,514 @@
+{
+  "description": "The traffic report (FR-50, FR-51, T-110): what a gate sends to the report address its local policy names. `build`: from the request log entries (as in gate-log), the last cursor `sentUntil` (start of the first hour not yet sent; null = never) and the clock `now`, the gate sends the complete UTC hours since the cursor (at most 24 back, a cursor in the future counts as none), sums per (hour, route): `requests`, status classes `s2`..`s5`, the gate's `errors` by code (the 20 most frequent), `msTotal`, `msMax`; buckets sorted by hour, then route, null last. No client hash, no single request. `expect.report` null = nothing to send yet; `expect.until` = the next cursor once the Cloud took it. `parse`: how Moat Cloud reads a received report at `now` (strict JSON, exact keys, sums consistent, hours on the hour, not in the future and at most 30 days old, each (hour, route) once): `{ok: true, report}` or `{ok: false, code}`.",
+  "now": 1798682400,
+  "build": [
+    {
+      "name": "no complete hour yet since the last report",
+      "gateId": "gateTrafficReport00000",
+      "entries": [
+        {
+          "t": 1798675210,
+          "route": "newsletter",
+          "method": "POST",
+          "status": 200,
+          "error": null,
+          "ms": 5,
+          "client": "0123456789abcdef"
+        }
+      ],
+      "sentUntil": 1798675200,
+      "now": 1798677000,
+      "expect": {
+        "report": null,
+        "until": 1798675200
+      }
+    },
+    {
+      "name": "one hour, one route: sums, status classes, error codes, duration",
+      "gateId": "gateTrafficReport00000",
+      "entries": [
+        {
+          "t": 1798675210,
+          "route": "newsletter",
+          "method": "POST",
+          "status": 200,
+          "error": null,
+          "ms": 120,
+          "client": "0123456789abcdef"
+        },
+        {
+          "t": 1798675220,
+          "route": "newsletter",
+          "method": "POST",
+          "status": 201,
+          "error": null,
+          "ms": 80,
+          "client": "0123456789abcdef"
+        },
+        {
+          "t": 1798675230,
+          "route": "newsletter",
+          "method": "POST",
+          "status": 429,
+          "error": "rate_limited",
+          "ms": 1,
+          "client": "0123456789abcdef"
+        },
+        {
+          "t": 1798675240,
+          "route": "newsletter",
+          "method": "POST",
+          "status": 502,
+          "error": "upstream_unreachable",
+          "ms": 3000,
+          "client": "0123456789abcdef"
+        },
+        {
+          "t": 1798675250,
+          "route": "newsletter",
+          "method": "POST",
+          "status": 304,
+          "error": null,
+          "ms": 7,
+          "client": "0123456789abcdef"
+        }
+      ],
+      "sentUntil": 1798675200,
+      "now": 1798678805,
+      "expect": {
+        "report": {
+          "v": 1,
+          "gateId": "gateTrafficReport00000",
+          "hours": [
+            {
+              "hour": 1798675200,
+              "route": "newsletter",
+              "requests": 5,
+              "s2": 2,
+              "s3": 1,
+              "s4": 1,
+              "s5": 1,
+              "errors": {
+                "rate_limited": 1,
+                "upstream_unreachable": 1
+              },
+              "msTotal": 3208,
+              "msMax": 3000
+            }
+          ]
+        },
+        "until": 1798678800
+      }
+    },
+    {
+      "name": "the current hour is left for later, and so are entries before the last report",
+      "gateId": "gateTrafficReport00000",
+      "entries": [
+        {
+          "t": 1798675140,
+          "route": "newsletter",
+          "method": "POST",
+          "status": 200,
+          "error": null,
+          "ms": 1,
+          "client": "0123456789abcdef"
+        },
+        {
+          "t": 1798675210,
+          "route": "newsletter",
+          "method": "POST",
+          "status": 200,
+          "error": null,
+          "ms": 2,
+          "client": "0123456789abcdef"
+        },
+        {
+          "t": 1798678810,
+          "route": "newsletter",
+          "method": "POST",
+          "status": 200,
+          "error": null,
+          "ms": 3,
+          "client": "0123456789abcdef"
+        }
+      ],
+      "sentUntil": 1798675200,
+      "now": 1798678900,
+      "expect": {
+        "report": {
+          "v": 1,
+          "gateId": "gateTrafficReport00000",
+          "hours": [
+            {
+              "hour": 1798675200,
+              "route": "newsletter",
+              "requests": 1,
+              "s2": 1,
+              "s3": 0,
+              "s4": 0,
+              "s5": 0,
+              "errors": {},
+              "msTotal": 2,
+              "msMax": 2
+            }
+          ]
+        },
+        "until": 1798678800
+      }
+    },
+    {
+      "name": "several routes and hours, and requests that matched no route (null last)",
+      "gateId": "gateTrafficReport00000",
+      "entries": [
+        {
+          "t": 1798678801,
+          "route": null,
+          "method": "POST",
+          "status": 404,
+          "error": "route_not_found",
+          "ms": 0,
+          "client": "0123456789abcdef"
+        },
+        {
+          "t": 1798675201,
+          "route": "status",
+          "method": "POST",
+          "status": 200,
+          "error": null,
+          "ms": 4,
+          "client": "0123456789abcdef"
+        },
+        {
+          "t": 1798675202,
+          "route": "newsletter",
+          "method": "POST",
+          "status": 200,
+          "error": null,
+          "ms": 6,
+          "client": "0123456789abcdef"
+        },
+        {
+          "t": 1798678802,
+          "route": "newsletter",
+          "method": "POST",
+          "status": 403,
+          "error": "origin_not_allowed",
+          "ms": 0,
+          "client": "0123456789abcdef"
+        }
+      ],
+      "sentUntil": 1798675200,
+      "now": 1798682400,
+      "expect": {
+        "report": {
+          "v": 1,
+          "gateId": "gateTrafficReport00000",
+          "hours": [
+            {
+              "hour": 1798675200,
+              "route": "newsletter",
+              "requests": 1,
+              "s2": 1,
+              "s3": 0,
+              "s4": 0,
+              "s5": 0,
+              "errors": {},
+              "msTotal": 6,
+              "msMax": 6
+            },
+            {
+              "hour": 1798675200,
+              "route": "status",
+              "requests": 1,
+              "s2": 1,
+              "s3": 0,
+              "s4": 0,
+              "s5": 0,
+              "errors": {},
+              "msTotal": 4,
+              "msMax": 4
+            },
+            {
+              "hour": 1798678800,
+              "route": "newsletter",
+              "requests": 1,
+              "s2": 0,
+              "s3": 0,
+              "s4": 1,
+              "s5": 0,
+              "errors": {
+                "origin_not_allowed": 1
+              },
+              "msTotal": 0,
+              "msMax": 0
+            },
+            {
+              "hour": 1798678800,
+              "route": null,
+              "requests": 1,
+              "s2": 0,
+              "s3": 0,
+              "s4": 1,
+              "s5": 0,
+              "errors": {
+                "route_not_found": 1
+              },
+              "msTotal": 0,
+              "msMax": 0
+            }
+          ]
+        },
+        "until": 1798682400
+      }
+    },
+    {
+      "name": "nothing happened: an empty report still moves the cursor",
+      "gateId": "gateTrafficReport00000",
+      "entries": [],
+      "sentUntil": 1798675200,
+      "now": 1798682401,
+      "expect": {
+        "report": {
+          "v": 1,
+          "gateId": "gateTrafficReport00000",
+          "hours": []
+        },
+        "until": 1798682400
+      }
+    },
+    {
+      "name": "never reported: looks back 24 hours at most",
+      "gateId": "gateTrafficReport00000",
+      "entries": [
+        {
+          "t": 1798585200,
+          "route": "newsletter",
+          "method": "POST",
+          "status": 200,
+          "error": null,
+          "ms": 1,
+          "client": "0123456789abcdef"
+        },
+        {
+          "t": 1798592400,
+          "route": "newsletter",
+          "method": "POST",
+          "status": 200,
+          "error": null,
+          "ms": 2,
+          "client": "0123456789abcdef"
+        }
+      ],
+      "sentUntil": null,
+      "now": 1798675210,
+      "expect": {
+        "report": {
+          "v": 1,
+          "gateId": "gateTrafficReport00000",
+          "hours": [
+            {
+              "hour": 1798592400,
+              "route": "newsletter",
+              "requests": 1,
+              "s2": 1,
+              "s3": 0,
+              "s4": 0,
+              "s5": 0,
+              "errors": {},
+              "msTotal": 2,
+              "msMax": 2
+            }
+          ]
+        },
+        "until": 1798675200
+      }
+    },
+    {
+      "name": "a cursor in the future (a clock set back) starts 24 hours back",
+      "gateId": "gateTrafficReport00000",
+      "entries": [
+        {
+          "t": 1798671605,
+          "route": "newsletter",
+          "method": "POST",
+          "status": 200,
+          "error": null,
+          "ms": 9,
+          "client": "0123456789abcdef"
+        }
+      ],
+      "sentUntil": 1799031600,
+      "now": 1798675210,
+      "expect": {
+        "report": {
+          "v": 1,
+          "gateId": "gateTrafficReport00000",
+          "hours": [
+            {
+              "hour": 1798671600,
+              "route": "newsletter",
+              "requests": 1,
+              "s2": 1,
+              "s3": 0,
+              "s4": 0,
+              "s5": 0,
+              "errors": {},
+              "msTotal": 9,
+              "msMax": 9
+            }
+          ]
+        },
+        "until": 1798675200
+      }
+    }
+  ],
+  "parse": [
+    {
+      "name": "a valid report",
+      "text": "{\"v\":1,\"gateId\":\"gateTrafficReport00000\",\"hours\":[{\"hour\":1798675200,\"route\":\"newsletter\",\"requests\":3,\"s2\":2,\"s3\":0,\"s4\":1,\"s5\":0,\"errors\":{\"rate_limited\":1},\"msTotal\":50,\"msMax\":40}]}",
+      "expect": {
+        "ok": true,
+        "report": {
+          "v": 1,
+          "gateId": "gateTrafficReport00000",
+          "hours": [
+            {
+              "hour": 1798675200,
+              "route": "newsletter",
+              "requests": 3,
+              "s2": 2,
+              "s3": 0,
+              "s4": 1,
+              "s5": 0,
+              "errors": {
+                "rate_limited": 1
+              },
+              "msTotal": 50,
+              "msMax": 40
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "an empty report",
+      "text": "{\"v\":1,\"gateId\":\"gateTrafficReport00000\",\"hours\":[]}",
+      "expect": {
+        "ok": true,
+        "report": {
+          "v": 1,
+          "gateId": "gateTrafficReport00000",
+          "hours": []
+        }
+      }
+    },
+    {
+      "name": "status classes that do not add up",
+      "text": "{\"v\":1,\"gateId\":\"gateTrafficReport00000\",\"hours\":[{\"hour\":1798675200,\"route\":\"newsletter\",\"requests\":3,\"s2\":1,\"s3\":0,\"s4\":1,\"s5\":0,\"errors\":{\"rate_limited\":1},\"msTotal\":50,\"msMax\":40}]}",
+      "expect": {
+        "ok": false,
+        "code": "report_invalid"
+      }
+    },
+    {
+      "name": "more errors than requests",
+      "text": "{\"v\":1,\"gateId\":\"gateTrafficReport00000\",\"hours\":[{\"hour\":1798675200,\"route\":\"newsletter\",\"requests\":3,\"s2\":2,\"s3\":0,\"s4\":1,\"s5\":0,\"errors\":{\"rate_limited\":4},\"msTotal\":50,\"msMax\":40}]}",
+      "expect": {
+        "ok": false,
+        "code": "report_invalid"
+      }
+    },
+    {
+      "name": "an hour not on the hour",
+      "text": "{\"v\":1,\"gateId\":\"gateTrafficReport00000\",\"hours\":[{\"hour\":1798675201,\"route\":\"newsletter\",\"requests\":3,\"s2\":2,\"s3\":0,\"s4\":1,\"s5\":0,\"errors\":{\"rate_limited\":1},\"msTotal\":50,\"msMax\":40}]}",
+      "expect": {
+        "ok": false,
+        "code": "report_invalid"
+      }
+    },
+    {
+      "name": "an hour in the future",
+      "text": "{\"v\":1,\"gateId\":\"gateTrafficReport00000\",\"hours\":[{\"hour\":1798686000,\"route\":\"newsletter\",\"requests\":3,\"s2\":2,\"s3\":0,\"s4\":1,\"s5\":0,\"errors\":{\"rate_limited\":1},\"msTotal\":50,\"msMax\":40}]}",
+      "expect": {
+        "ok": false,
+        "code": "report_invalid"
+      }
+    },
+    {
+      "name": "an hour older than 30 days",
+      "text": "{\"v\":1,\"gateId\":\"gateTrafficReport00000\",\"hours\":[{\"hour\":1795996800,\"route\":\"newsletter\",\"requests\":3,\"s2\":2,\"s3\":0,\"s4\":1,\"s5\":0,\"errors\":{\"rate_limited\":1},\"msTotal\":50,\"msMax\":40}]}",
+      "expect": {
+        "ok": false,
+        "code": "report_stale"
+      }
+    },
+    {
+      "name": "the same hour and route twice",
+      "text": "{\"v\":1,\"gateId\":\"gateTrafficReport00000\",\"hours\":[{\"hour\":1798675200,\"route\":\"newsletter\",\"requests\":3,\"s2\":2,\"s3\":0,\"s4\":1,\"s5\":0,\"errors\":{\"rate_limited\":1},\"msTotal\":50,\"msMax\":40},{\"hour\":1798675200,\"route\":\"newsletter\",\"requests\":3,\"s2\":2,\"s3\":0,\"s4\":1,\"s5\":0,\"errors\":{\"rate_limited\":1},\"msTotal\":50,\"msMax\":40}]}",
+      "expect": {
+        "ok": false,
+        "code": "report_invalid"
+      }
+    },
+    {
+      "name": "a client hash: unknown field",
+      "text": "{\"v\":1,\"gateId\":\"gateTrafficReport00000\",\"hours\":[{\"hour\":1798675200,\"route\":\"newsletter\",\"requests\":3,\"s2\":2,\"s3\":0,\"s4\":1,\"s5\":0,\"errors\":{\"rate_limited\":1},\"msTotal\":50,\"msMax\":40,\"client\":\"0123456789abcdef\"}]}",
+      "expect": {
+        "ok": false,
+        "code": "report_invalid"
+      }
+    },
+    {
+      "name": "a path instead of a route name",
+      "text": "{\"v\":1,\"gateId\":\"gateTrafficReport00000\",\"hours\":[{\"hour\":1798675200,\"route\":\"/newsletter\",\"requests\":3,\"s2\":2,\"s3\":0,\"s4\":1,\"s5\":0,\"errors\":{\"rate_limited\":1},\"msTotal\":50,\"msMax\":40}]}",
+      "expect": {
+        "ok": false,
+        "code": "report_invalid"
+      }
+    },
+    {
+      "name": "a negative count",
+      "text": "{\"v\":1,\"gateId\":\"gateTrafficReport00000\",\"hours\":[{\"hour\":1798675200,\"route\":\"newsletter\",\"requests\":3,\"s2\":2,\"s3\":0,\"s4\":1,\"s5\":0,\"errors\":{\"rate_limited\":1},\"msTotal\":-1,\"msMax\":40}]}",
+      "expect": {
+        "ok": false,
+        "code": "report_invalid"
+      }
+    },
+    {
+      "name": "a bucket without requests",
+      "text": "{\"v\":1,\"gateId\":\"gateTrafficReport00000\",\"hours\":[{\"hour\":1798675200,\"route\":\"newsletter\",\"requests\":0,\"s2\":0,\"s3\":0,\"s4\":0,\"s5\":0,\"errors\":{},\"msTotal\":0,\"msMax\":0}]}",
+      "expect": {
+        "ok": false,
+        "code": "report_invalid"
+      }
+    },
+    {
+      "name": "another version",
+      "text": "{\"v\":2,\"gateId\":\"gateTrafficReport00000\",\"hours\":[]}",
+      "expect": {
+        "ok": false,
+        "code": "report_invalid"
+      }
+    },
+    {
+      "name": "a gate id of the wrong shape",
+      "text": "{\"v\":1,\"gateId\":\"short\",\"hours\":[]}",
+      "expect": {
+        "ok": false,
+        "code": "report_invalid"
+      }
+    },
+    {
+      "name": "duplicate keys: the last one counts (as strict JSON everywhere in Moat)",
+      "text": "{\"v\":1,\"v\":1,\"gateId\":\"gateTrafficReport00000\",\"hours\":[]}",
+      "expect": {
+        "ok": true,
+        "report": {
+          "v": 1,
+          "gateId": "gateTrafficReport00000",
+          "hours": []
+        }
+      }
+    }
+  ]
+}

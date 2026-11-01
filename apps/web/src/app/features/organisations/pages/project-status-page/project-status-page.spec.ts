@@ -8,7 +8,9 @@ import {
 } from '../../../../../testing/cloud-harness';
 import type {
   GateStatus,
+  GateTraffic,
   ProjectStatus,
+  ProjectTraffic,
 } from '../../../../core/api/gates.types';
 import type { MyAccess } from '../../../../core/auth/account.types';
 import { ProjectStatusPage } from './project-status-page';
@@ -36,9 +38,30 @@ const gate = (patch: Partial<GateStatus> = {}): GateStatus => ({
   ...patch,
 });
 
+const quiet = (patch: Partial<GateTraffic> = {}): GateTraffic => ({
+  gate: 'site',
+  hasReportAddress: false,
+  lastReceivedAt: null,
+  totals: {
+    requests: 0,
+    s2: 0,
+    s3: 0,
+    s4: 0,
+    s5: 0,
+    msAverage: null,
+    msMax: 0,
+  },
+  routes: [],
+  errors: [],
+  hours: [],
+  ...patch,
+});
+const NO_TRAFFIC: ProjectTraffic = { from: 0, to: 0, gates: [quiet()] };
+
 const open = (
   status: ProjectStatus | { failStatus: number },
   access: MyAccess = ADMIN_ACCESS,
+  traffic: ProjectTraffic = NO_TRAFFIC,
 ) =>
   openCloudPage(
     `/app/organisations/${ORG_ID}/projects/${PROJECT}/status`,
@@ -47,16 +70,21 @@ const open = (
       [`/api/orgs/${ORG_ID}`]: entry(access),
       [BASE]: { project: { id: PROJECT, name: 'Shop' } },
       [`${BASE}/status`]: status,
+      [`${BASE}/traffic?days=7`]: traffic,
+      [`${BASE}/traffic?days=30`]: traffic,
     },
   );
 
 describe('ProjectStatusPage (Status eines Cloud-Projekts)', () => {
   afterEach(() => localStorage.clear());
 
-  it('says plainly that nothing needs attention, and that it knows nothing about traffic', async () => {
+  it('says plainly that nothing needs attention, and that a gate without an address reports nothing', async () => {
     const { el } = await open({ project: [], gates: [gate()] });
     expect(text(el, '[data-status-ok]')).toBe('Nichts braucht Aufmerksamkeit.');
-    expect(text(el, '[data-status-scope]')).toContain('nichts über Verkehr');
+    expect(text(el, '[data-status-scope]')).toContain(
+      'nicht als geprüfte Tatsache',
+    );
+    expect(text(el, '[data-traffic-off]')).toContain('meldet nichts');
     expect(text(el, '[data-version]')).toBe('2');
     expect(text(el, '[data-issued]')).toBe('2026-10-20');
     expect(text(el, '[data-expires]')).toBe('läuft nicht ab');
@@ -114,5 +142,62 @@ describe('ProjectStatusPage (Status eines Cloud-Projekts)', () => {
   it('shows a refused read as a translated text', async () => {
     const { el } = await open({ failStatus: 500 });
     expect(el.querySelector('[data-load-error]')).not.toBeNull();
+  });
+
+  it("shows the reported traffic as the gate's claim: sums, routes, error codes (FR-51, T-110)", async () => {
+    const { el } = await open({ project: [], gates: [gate()] }, ADMIN_ACCESS, {
+      from: 0,
+      to: 0,
+      gates: [
+        quiet({
+          hasReportAddress: true,
+          lastReceivedAt: '2026-11-01T10:05:00.000Z',
+          totals: {
+            requests: 40,
+            s2: 36,
+            s3: 0,
+            s4: 3,
+            s5: 1,
+            msAverage: 120,
+            msMax: 900,
+          },
+          routes: [
+            {
+              route: 'newsletter',
+              requests: 30,
+              s2: 27,
+              s3: 0,
+              s4: 3,
+              s5: 0,
+              msAverage: 100,
+              msMax: 300,
+            },
+            {
+              route: null,
+              requests: 10,
+              s2: 9,
+              s3: 0,
+              s4: 0,
+              s5: 1,
+              msAverage: 180,
+              msMax: 900,
+            },
+          ],
+          errors: [{ code: 'rate_limited', count: 3 }],
+          hours: [
+            { hour: 3600, requests: 10, failed: 1 },
+            { hour: 7200, requests: 30, failed: 3 },
+          ],
+        }),
+      ],
+    });
+    expect(text(el, '[data-traffic-claim]')).toContain('2026-11-01 10:05');
+    expect(text(el, '[data-requests]')).toBe('40');
+    expect(text(el, '[data-failed]')).toBe('4 (10.0 %)');
+    expect(text(el, '[data-latency]')).toContain('120 ms');
+    expect(el.querySelectorAll('[data-traffic-route]').length).toBe(2);
+    expect(text(el, '[data-traffic-routes]')).toContain('keine Route');
+    expect(text(el, '[data-traffic-codes]')).toContain('rate_limited');
+    expect(el.querySelectorAll('[data-traffic-chart] rect').length).toBe(2);
   });
 });

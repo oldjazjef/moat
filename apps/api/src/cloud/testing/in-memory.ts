@@ -1,3 +1,7 @@
+import {
+  CloudTrafficStorePort,
+  type TrafficRecord,
+} from '../traffic/ports/traffic.ports';
 import type { AuditRow } from '@moat/core';
 import {
   type AddBundleOutcome,
@@ -698,5 +702,87 @@ export class InMemoryOidc extends OidcRepositoryPort {
     if (at < 0) return Promise.resolve(null);
     const [row] = this.logins.splice(at, 1);
     return Promise.resolve(row && row.expiresAt > now ? row : null);
+  }
+}
+
+/** Report addresses and reported traffic in memory; the gates are the store's. */
+export class InMemoryTrafficStore extends CloudTrafficStorePort {
+  readonly addresses = new Map<string, { hash: string; at: string }>();
+  readonly rows: (TrafficRecord & { projectId: string })[] = [];
+
+  constructor(private readonly store: InMemoryCloudStore) {
+    super();
+  }
+
+  private gate(projectId: string, name: string) {
+    return this.store.gates.find(
+      (g) => g.projectId === projectId && g.name === name,
+    );
+  }
+
+  setReportTokenHash(
+    projectId: string,
+    gate: string,
+    hash: string,
+    at: string,
+  ) {
+    if (this.gate(projectId, gate) === undefined) return Promise.resolve(false);
+    this.addresses.set(`${projectId}/${gate}`, { hash, at });
+    return Promise.resolve(true);
+  }
+  gatesWithReportAddress(projectId: string) {
+    return Promise.resolve(
+      [...this.addresses.keys()]
+        .filter((key) => key.startsWith(`${projectId}/`))
+        .map((key) => key.slice(projectId.length + 1))
+        .filter((gate) => this.gate(projectId, gate) !== undefined)
+        .sort(),
+    );
+  }
+  findGateByReportTokenHash(hash: string) {
+    for (const [key, address] of this.addresses) {
+      if (address.hash !== hash) continue;
+      const [projectId = '', gate = ''] = key.split('/');
+      return Promise.resolve(this.gate(projectId, gate) ?? null);
+    }
+    return Promise.resolve(null);
+  }
+  record(
+    projectId: string,
+    gate: string,
+    buckets: readonly Omit<TrafficRecord, 'gate'>[],
+    olderThanHour: number,
+  ) {
+    for (const bucket of buckets) {
+      const i = this.rows.findIndex(
+        (row) =>
+          row.projectId === projectId &&
+          row.gate === gate &&
+          row.hour === bucket.hour &&
+          row.route === bucket.route,
+      );
+      const row = { ...bucket, projectId, gate };
+      if (i >= 0) this.rows[i] = row;
+      else this.rows.push(row);
+    }
+    for (let i = this.rows.length - 1; i >= 0; i -= 1) {
+      const row = this.rows[i];
+      if (
+        row?.projectId === projectId &&
+        row.gate === gate &&
+        row.hour < olderThanHour
+      )
+        this.rows.splice(i, 1);
+    }
+    return Promise.resolve();
+  }
+  traffic(projectId: string, fromHour: number) {
+    return Promise.resolve(
+      this.rows
+        .filter((row) => row.projectId === projectId && row.hour >= fromHour)
+        .filter((row) => this.gate(projectId, row.gate) !== undefined)
+        .sort((a, b) => a.hour - b.hour || a.gate.localeCompare(b.gate))
+        .map(({ projectId: _projectId, ...row }) => row),
+    );
   }
 }

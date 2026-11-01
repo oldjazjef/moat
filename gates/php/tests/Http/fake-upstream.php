@@ -110,6 +110,11 @@ for (;;) {
         $answer = '{"token_type":"Bearer","expires_in":3600}';
     } elseif ($path === '/usage') {
         $answer = '{"id":"chatcmpl-1","usage":{"prompt_tokens":60,"completion_tokens":40,"total_tokens":100}}';
+    } elseif (str_starts_with($path, '/api/report/')) {
+        // The traffic report (conformance/http/gate-report.json): kept for the runner, 204.
+        file_put_contents(dirname($logFile) . '/reports.jsonl', $method . ' ' . $body . "\n", FILE_APPEND);
+        $status = 204;
+        $answer = '';
     } elseif ($path === '/bundles/gate.json') {
         // What the lazy pull fetches (conformance/http/gate-pull.json), as the runner published it.
         $published = json_decode((string) file_get_contents(dirname($logFile) . '/published.json'), true);
