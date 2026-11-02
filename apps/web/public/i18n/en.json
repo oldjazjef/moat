@@ -513,6 +513,39 @@
       "honeypotField": "Field",
       "honeypotHint": "An invisible form field only bots fill in. If it is filled in the JSON, the gate refuses.",
       "jwtKept": "This route also checks a JWT. Change its keys in moat.yaml; the form leaves them as they are."
+    },
+    "test": "Test",
+    "tester": {
+      "title": "Test a request: {{route}}",
+      "intro": "Sends a request with this route's method and path through your gate and shows the answer.",
+      "warning": "The request goes through the installed gate to the real API: the gate adds the secret, as it does for your website. What counts is the bundle the gate has accepted, not moat.yaml.",
+      "client": "This route requires a client check (API key, JWT, Turnstile or honeypot). The test sends no key and no token; the gate then answers 401 `client_unauthorized`.",
+      "close": "Close",
+      "origin": "Send as website (Origin)",
+      "noOrigin": "Without Origin",
+      "noBody": "{{method}} sends no body.",
+      "send": "Send",
+      "sending": "Sending …",
+      "response": "Answer",
+      "ok": "The gate forwarded the request, the API answered {{status}}.",
+      "upstreamError": "The gate forwarded the request, but the API answered {{status}}.",
+      "status": "Status",
+      "duration": "Duration",
+      "ms": "{{ms}} ms",
+      "headers": "Answer headers",
+      "body": "Answer body",
+      "empty": "The answer has no body.",
+      "truncated": "The answer is longer and was cut off after 32 KiB.",
+      "notices": {
+        "config_missing": "This project has no moat.yaml.",
+        "config_invalid": "moat.yaml contains errors. The overview shows what to do.",
+        "route_unknown": "This route is no longer in moat.yaml.",
+        "url_invalid": "The address does not fit. It starts with https:// and has nothing after ? or #.",
+        "body_invalid": "The body is not valid JSON.",
+        "origin_invalid": "This website is not among the route's allowed websites.",
+        "not_confirmed": "You did not confirm the address. Nothing was sent.",
+        "failed": "The test could not be started."
+      }
     }
   },
   "setup": {
@@ -851,13 +884,14 @@
         "purpose": "A route is an address on your gate that forwards exactly one kind of request to an upstream. The gate refuses everything else.",
         "where": "Project › Routes",
         "steps": {
-          "write": "Under “Routes”, click “New route” and fill in method, path, upstream and target path. The three-dot menu at the end of each row has “Edit”, “Switch off” (disables the route without deleting it) and “Delete”. If you prefer your editor, write it into moat.yaml directly.",
+          "write": "Under “Routes”, click “New route” and fill in method, path, upstream and target path. The three-dot menu at the end of each row has “Test”, “Edit”, “Switch off” (disables the route without deleting it) and “Delete”. If you prefer your editor, write it into moat.yaml directly.",
           "recipe": "For common cases there are recipes, for example the newsletter sign-up with HubSpot: under “Routes” click “Route from a template”, choose one and click “Apply”. Then you seal the secret, sign a bundle and send a request through the gate with “Test”.",
           "origins": "If another website calls the route in a browser, add it under “Allowed websites” (in moat.yaml: `origins`). Without an entry, browsers refuse other websites.",
           "body": "So that only expected data reaches the API, list the fields your website sends under `body` in moat.yaml, with a type (`string`, `integer`, `boolean`, `object`, `array`) and bounds such as `required`, `maxLength`, `enum` or `format: email`. The gate removes every other field and refuses content that does not fit with 400 and `body_invalid`. The recipes bring their fields along. Under “Routes”, each route shows which fields are checked, or that its content is forwarded unchecked.",
           "bundle": "A new or changed route applies on the gate only with the next bundle: `moat build <gate>`, upload it and accept it.",
           "check": "Under “Routes” you see every route as the gate checks it: path, target, allowed websites, limits and maximum size.",
-          "client": "Who may call the route: set an API key, Cloudflare Turnstile and a honeypot in “New route” or “Edit” under “Who may call the route?”. A JWT with its public keys (`client.jwt`) goes into moat.yaml. If a check fails, the gate answers 401 `client_unauthorized`."
+          "client": "Who may call the route: set an API key, Cloudflare Turnstile and a honeypot in “New route” or “Edit” under “Who may call the route?”. A JWT with its public keys (`client.jwt`) goes into moat.yaml. If a check fails, the gate answers 401 `client_unauthorized`.",
+          "test": "To try a route, click “Test” in its three-dot menu. Enter the gate address, choose the website to send as if needed, adjust the body and click “Send”. You see the status, duration, headers and body of the answer. The request goes through the gate to the real API."
         },
         "tips": {
           "exact": "Paths match exactly: `/newsletter` does not match `/newsletter/abc`.",
@@ -1851,7 +1885,8 @@
       "upstream_forbidden": "The policy on the server does not allow this call. Install the policy shown.",
       "upstream_unreachable": "The gate cannot reach the API. Does your hosting allow outgoing HTTPS connections?",
       "upstream_timeout": "The API took too long to answer the gate.",
-      "internal_error": "An error occurred in the gate. `php moat-gate.php status` on the server shows more."
+      "internal_error": "An error occurred in the gate. `php moat-gate.php status` on the server shows more.",
+      "client_unauthorized": "The route requires a client check, and the request did not pass it."
     },
     "noGate": "A test request needs a gate in the project. Catch up on the “First gate” step.",
     "notices": {
@@ -1867,7 +1902,8 @@
       "route_unknown": "The route is no longer in the project.",
       "url_invalid": "The address does not fit. It starts with https:// and has nothing after ? or #.",
       "body_invalid": "The request body is not valid JSON.",
-      "not_confirmed": "The test request was not sent: the address was not confirmed in Moat's window."
+      "not_confirmed": "The test request was not sent: the address was not confirmed in Moat's window.",
+      "origin_invalid": "This website is not among the route's allowed websites."
     },
     "title": "From a template",
     "intro": "A recipe sets up a ready-made route for a common purpose. Then you seal the secret, sign a bundle and send a test request through your gate.",

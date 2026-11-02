@@ -46,6 +46,12 @@ export class RoutesPageService {
 
   /** The open form: «Neue Route» (`null`) or the route being changed; undefined = closed. */
   readonly editing = signal<RouteRow | null | undefined>(undefined);
+  /** «Testen»: the route whose request tester is open; null = none. */
+  readonly testing = signal<string | null>(null);
+  /** The open tester's row, read fresh from the config (null once the route is gone). */
+  readonly testingRow = computed(
+    () => this.routes().find((row) => row.name === this.testing()) ?? null,
+  );
   /** «Route aus Vorlage» (FR-43) is open. */
   readonly recipeOpen = signal(false);
   /** «Löschen» asks once: the route waiting for the second click. */
@@ -136,9 +142,10 @@ export class RoutesPageService {
     this.editing.set(undefined);
   }
 
-  /** «Bearbeiten», «Ausschalten»/«Einschalten», «Löschen» (asks once more, see remove). */
+  /** «Testen», «Bearbeiten», «Ausschalten»/«Einschalten», «Löschen» (asks once more). */
   routeActions(row: RouteRow): readonly RowAction[] {
     return [
+      { id: 'test', labelKey: 'routes.test' },
       { id: 'edit', labelKey: 'routes.edit' },
       row.route.enabled
         ? { id: 'disable', labelKey: 'routes.switchOff' }
@@ -148,7 +155,8 @@ export class RoutesPageService {
   }
 
   routeAction(row: RouteRow, action: string): void {
-    if (action === 'edit') this.open(row);
+    if (action === 'test') this.testing.set(row.name);
+    else if (action === 'edit') this.open(row);
     else if (action === 'disable') void this.setEnabled(row, false);
     else if (action === 'enable') void this.setEnabled(row, true);
     else if (action === 'remove') void this.remove(row);

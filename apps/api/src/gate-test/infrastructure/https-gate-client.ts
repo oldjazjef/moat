@@ -12,6 +12,7 @@ import {
   type GateFailure,
   type GateRequest,
   type ProbeReply,
+  SHOWN_HEADERS,
 } from '../ports/gate-client.port';
 import { addressAllowed } from './address-rules';
 
@@ -19,7 +20,8 @@ import { addressAllowed } from './address-rules';
 export const TIMEOUT_MS = 20_000;
 /** More than any gate error or test answer; a larger body is cut off (`truncated`). */
 export const MAX_READ_BYTES = 64 * 1024;
-export const MAX_EXCERPT = 2048;
+/** What the person reads of an answer: enough for a JSON reply of a real API. */
+export const MAX_EXCERPT = 32 * 1024;
 /** The names that may reach loopback in development; any other name resolving there may not. */
 const LOOPBACK_NAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
 
@@ -40,6 +42,7 @@ export class HttpsGateClient extends GateClientPort {
   }
 
   async send(request: GateRequest): Promise<GateAnswer> {
+    const started = performance.now();
     const raw = await this.resolveAndExchange(request);
     if (raw.status === 'failed') return raw;
     const text = raw.body.toString('utf8');
@@ -49,6 +52,8 @@ export class HttpsGateClient extends GateClientPort {
       contentType: raw.contentType,
       excerpt: text.slice(0, MAX_EXCERPT),
       truncated: raw.truncated || text.length > MAX_EXCERPT,
+      headers: raw.headers,
+      durationMs: Math.round(performance.now() - started),
     };
   }
 
@@ -143,6 +148,7 @@ export class HttpsGateClient extends GateClientPort {
             // The marker must be found in the bytes as they are (DT-07): no compression.
             'Accept-Encoding': 'identity',
             'User-Agent': 'MoatDesktop-Test',
+            ...(request.origin === undefined ? {} : { Origin: request.origin }),
             ...(request.body === null
               ? {}
               : {
@@ -173,8 +179,19 @@ type RawAnswer =
       readonly contentEncoding: string | null;
       readonly body: Buffer;
       readonly truncated: boolean;
+      readonly headers: Readonly<Record<string, string>>;
     }
   | { readonly status: 'failed'; readonly reason: GateFailure };
+
+function shownHeaders(response: IncomingMessage): Record<string, string> {
+  const shown: Record<string, string> = {};
+  for (const name of SHOWN_HEADERS) {
+    const value = response.headers[name];
+    const text = Array.isArray(value) ? value.join(', ') : value;
+    if (typeof text === 'string') shown[name] = text.slice(0, 256);
+  }
+  return shown;
+}
 
 function read(response: IncomingMessage, done: (answer: RawAnswer) => boolean) {
   // Every byte read is wiped once the answer is built, or dropped (DT-07: a data file holds keys).
@@ -197,6 +214,7 @@ function read(response: IncomingMessage, done: (answer: RawAnswer) => boolean) {
         typeof encoding === 'string' ? encoding.slice(0, 64) : null,
       body,
       truncated,
+      headers: shownHeaders(response),
     });
     if (!accepted) body.fill(0);
   };

@@ -530,4 +530,107 @@ describe('RoutesPage', () => {
     removed.flush(PROJECT);
     await settle(harness);
   });
+
+  it('«Testen» sends one request through the gate and shows status, duration, headers and body', async () => {
+    localStorage.clear();
+    const { el, harness } = await openProjectTab('routes', RoutesPage, PROJECT);
+    (await menuItem(harness, routeRow(el, 'newsletter'), 'test')).click();
+    await settle(harness);
+    const tester = el.querySelector('[data-request-tester]') as HTMLElement;
+    expect(text(tester, '#request-tester-title')).toContain('newsletter');
+    expect(
+      (tester.querySelector('[data-tester-origin]') as HTMLSelectElement).value,
+    ).toBe('https://www.example.ch');
+    expect(
+      (tester.querySelector('[data-tester-body]') as HTMLTextAreaElement).value,
+    ).toBe('{}\n');
+    type(el, '#tester-gate-url', 'https://www.example.ch/moat-gate.php');
+    type(el, '#tester-body', '{"email":"a@example.com"}');
+    await settle(harness);
+    expect(text(tester, '[data-tester-request]')).toBe(
+      'POST https://www.example.ch/moat-gate.php/newsletter',
+    );
+    (
+      tester.querySelector('[data-tester-form]') as HTMLFormElement
+    ).dispatchEvent(new Event('submit'));
+    await settle(harness);
+    const http = TestBed.inject(HttpTestingController);
+    const sent = http.expectOne(`/api/projects/${PROJECT.id}/test-request`);
+    expect(sent.request.body).toEqual({
+      url: 'https://www.example.ch/moat-gate.php',
+      route: 'newsletter',
+      body: '{"email":"a@example.com"}',
+      locale: 'de-CH',
+      origin: 'https://www.example.ch',
+    });
+    sent.flush({
+      status: 'answered',
+      httpStatus: 201,
+      contentType: 'application/json',
+      excerpt: '{"id":"501"}',
+      truncated: false,
+      headers: {
+        'x-ratelimit-remaining': '4',
+        'content-type': 'application/json',
+      },
+      durationMs: 87,
+    });
+    await settle(harness);
+    expect(
+      tester.querySelector('[data-tester-outcome]')?.getAttribute('data-kind'),
+    ).toBe('upstream');
+    expect(text(tester, '[data-tester-status]')).toBe('201');
+    expect(text(tester, '[data-tester-duration]')).toBe('87 ms');
+    expect(text(tester, '[data-tester-headers]')).toBe(
+      'content-typeapplication/jsonx-ratelimit-remaining4',
+    );
+    expect(tester.querySelector('[data-tester-response]')?.textContent).toBe(
+      '{\n  "id": "501"\n}',
+    );
+    // The address is remembered for this project (a convenience in this browser only).
+    expect(localStorage.getItem(`mt-gate-url-${PROJECT.id}`)).toBe(
+      'https://www.example.ch/moat-gate.php',
+    );
+  });
+
+  it("«Testen» explains the gate's own refusal and says why nothing was sent", async () => {
+    const { el, harness } = await openProjectTab('routes', RoutesPage, PROJECT);
+    (await menuItem(harness, routeRow(el, 'newsletter'), 'test')).click();
+    await settle(harness);
+    const tester = el.querySelector('[data-request-tester]') as HTMLElement;
+    const form = tester.querySelector('[data-tester-form]') as HTMLFormElement;
+    const http = TestBed.inject(HttpTestingController);
+    form.dispatchEvent(new Event('submit'));
+    await settle(harness);
+    http.expectOne(`/api/projects/${PROJECT.id}/test-request`).flush({
+      status: 'answered',
+      httpStatus: 403,
+      contentType: 'application/json',
+      excerpt: '{"error":"origin_forbidden"}',
+      truncated: false,
+      headers: {},
+      durationMs: 3,
+    });
+    await settle(harness);
+    expect(
+      tester
+        .querySelector('[data-tester-outcome] [data-code]')
+        ?.getAttribute('data-code'),
+    ).toBe('origin_forbidden');
+    form.dispatchEvent(new Event('submit'));
+    await settle(harness);
+    http
+      .expectOne(`/api/projects/${PROJECT.id}/test-request`)
+      .flush(
+        { error: 'not_confirmed' },
+        { status: 422, statusText: 'Unprocessable' },
+      );
+    await settle(harness);
+    expect(
+      tester.querySelector('[data-tester-notice]')?.getAttribute('data-code'),
+    ).toBe('not_confirmed');
+    (tester.querySelector('[data-tester-close]') as HTMLButtonElement).click();
+    await settle(harness);
+    expect(el.querySelector('[data-request-tester]')).toBeNull();
+  });
 });

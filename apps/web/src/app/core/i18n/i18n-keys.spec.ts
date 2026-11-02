@@ -33,6 +33,7 @@ import {
   GATE_CODES,
   RECIPE_NOTICES,
 } from '../../features/routes/components/recipe-panel';
+import { REQUEST_TESTER_NOTICES } from '../../features/routes/components/request-tester';
 import { GATE_FAILURES, RECIPE_IDS } from '../api/recipe.types';
 import { HARDENING_NOTICES } from '../../shared/components/hardening-check';
 import {
@@ -172,6 +173,7 @@ const DYNAMIC_KEYS = [
   ...GATE_FETCH_ERRORS.map((code) => `setup.gate.fetch.errors.${code}`),
   ...RECIPE_NOTICES.map((code) => `recipe.notices.${code}`),
   ...GATE_CODES.map((code) => `recipe.codes.${code}`),
+  ...REQUEST_TESTER_NOTICES.map((code) => `routes.tester.notices.${code}`),
   ...HARDENING_NOTICES.map((code) => `hardening.check.notices.${code}`),
   ...CONSOLE_NOTICES.map((code) => `console.notices.${code}`),
   ...DRY_RUN_ERRORS.map((code) => `console.errors.${code}`),

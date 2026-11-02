@@ -513,6 +513,39 @@
       "honeypotField": "Feld",
       "honeypotHint": "Ein unsichtbares Formularfeld, das nur Bots ausfüllen. Ist es im JSON gefüllt, lehnt das Gate ab.",
       "jwtKept": "Diese Route prüft auch ein JWT. Seine Schlüssel änderst du in moat.yaml; das Formular lässt sie, wie sie sind."
+    },
+    "test": "Testen",
+    "tester": {
+      "title": "Anfrage testen: {{route}}",
+      "intro": "Schickt eine Anfrage mit Methode und Pfad dieser Route durch dein Gate und zeigt die Antwort.",
+      "warning": "Die Anfrage geht durch das installierte Gate an die echte API: Das Gate fügt das Secret hinzu, wie bei deiner Website. Es gilt das Bundle, das auf dem Gate angenommen ist, nicht moat.yaml.",
+      "client": "Diese Route verlangt eine Client-Prüfung (API-Key, JWT, Turnstile oder Honeypot). Der Test schickt keinen Schlüssel und kein Token mit; das Gate antwortet dann mit 401 `client_unauthorized`.",
+      "close": "Schliessen",
+      "origin": "Senden als Website (Origin)",
+      "noOrigin": "Ohne Origin",
+      "noBody": "{{method}} schickt keinen Inhalt.",
+      "send": "Senden",
+      "sending": "Wird gesendet …",
+      "response": "Antwort",
+      "ok": "Das Gate hat die Anfrage weitergeleitet, die API hat mit {{status}} geantwortet.",
+      "upstreamError": "Das Gate hat die Anfrage weitergeleitet, aber die API hat mit {{status}} geantwortet.",
+      "status": "Status",
+      "duration": "Dauer",
+      "ms": "{{ms}} ms",
+      "headers": "Header der Antwort",
+      "body": "Inhalt der Antwort",
+      "empty": "Die Antwort hat keinen Inhalt.",
+      "truncated": "Die Antwort ist länger und wurde nach 32 KiB abgeschnitten.",
+      "notices": {
+        "config_missing": "Dieses Projekt hat keine moat.yaml.",
+        "config_invalid": "moat.yaml enthält Fehler. Die Übersicht zeigt, was zu tun ist.",
+        "route_unknown": "Diese Route gibt es in moat.yaml nicht mehr.",
+        "url_invalid": "Die Adresse passt nicht. Sie beginnt mit https:// und hat keinen Teil nach ? oder #.",
+        "body_invalid": "Der Inhalt ist kein gültiges JSON.",
+        "origin_invalid": "Diese Website steht nicht unter den erlaubten Websites der Route.",
+        "not_confirmed": "Du hast die Adresse nicht bestätigt. Es wurde nichts gesendet.",
+        "failed": "Der Test konnte nicht gestartet werden."
+      }
     }
   },
   "setup": {
@@ -851,13 +884,14 @@
         "purpose": "Eine Route ist eine Adresse auf deinem Gate, die genau eine Anfrage an einen Upstream weiterleitet. Alles andere lehnt das Gate ab.",
         "where": "Projekt › Routen",
         "steps": {
-          "write": "Klicke unter «Routen» auf «Neue Route» und fülle Methode, Pfad, Upstream und Ziel-Pfad aus. Das Drei-Punkte-Menü am Ende jeder Zeile hat «Bearbeiten», «Ausschalten» (legt die Route still, ohne sie zu löschen) und «Löschen». Wer lieber im Editor arbeitet, trägt sie direkt in moat.yaml ein.",
+          "write": "Klicke unter «Routen» auf «Neue Route» und fülle Methode, Pfad, Upstream und Ziel-Pfad aus. Das Drei-Punkte-Menü am Ende jeder Zeile hat «Testen», «Bearbeiten», «Ausschalten» (legt die Route still, ohne sie zu löschen) und «Löschen». Wer lieber im Editor arbeitet, trägt sie direkt in moat.yaml ein.",
           "recipe": "Für häufige Fälle gibt es Recipes, zum Beispiel die Newsletter-Anmeldung bei HubSpot: Klicke unter «Routen» auf «Route aus Vorlage», wähle eine und klicke auf «Übernehmen». Danach versiegelst du das Secret, signierst ein Bundle und schickst mit «Testen» eine Anfrage durch das Gate.",
           "origins": "Ruft eine andere Website die Route im Browser auf, trage sie unter «Erlaubte Websites» ein (in moat.yaml: `origins`). Ohne Eintrag lehnen Browser fremde Websites ab.",
           "body": "Damit nur erwartete Daten zur API gehen, liste in moat.yaml unter `body` die Felder, die deine Website schickt, mit Typ (`string`, `integer`, `boolean`, `object`, `array`) und Grenzen wie `required`, `maxLength`, `enum` oder `format: email`. Das Gate entfernt jedes andere Feld und lehnt Inhalte, die nicht passen, mit 400 und `body_invalid` ab. Die Recipes bringen ihre Felder mit. Unter «Routen» steht bei jeder Route, welche Felder geprüft werden, oder dass der Inhalt ungeprüft weitergeht.",
           "bundle": "Eine neue oder geänderte Route gilt auf dem Gate erst mit dem nächsten Bundle: `moat build <gate>`, hochladen und annehmen.",
           "check": "Unter «Routen» siehst du jede Route so, wie das Gate sie prüft: Pfad, Ziel, erlaubte Websites, Limits und maximale Grösse.",
-          "client": "Wer die Route aufrufen darf: API-Key, Cloudflare Turnstile und Honeypot stellst du in «Neue Route» bzw. «Bearbeiten» unter «Wer darf die Route aufrufen?» ein. Ein JWT mit seinen öffentlichen Schlüsseln (`client.jwt`) schreibst du in moat.yaml. Scheitert eine Prüfung, antwortet das Gate mit 401 `client_unauthorized`."
+          "client": "Wer die Route aufrufen darf: API-Key, Cloudflare Turnstile und Honeypot stellst du in «Neue Route» bzw. «Bearbeiten» unter «Wer darf die Route aufrufen?» ein. Ein JWT mit seinen öffentlichen Schlüsseln (`client.jwt`) schreibst du in moat.yaml. Scheitert eine Prüfung, antwortet das Gate mit 401 `client_unauthorized`.",
+          "test": "Zum Ausprobieren klicke im Drei-Punkte-Menü einer Route auf «Testen». Gib die Adresse des Gates ein, wähle bei Bedarf die Website, als die gesendet wird, passe den Inhalt an und klicke auf «Senden». Du siehst Status, Dauer, Header und Inhalt der Antwort. Die Anfrage geht durch das Gate an die echte API."
         },
         "tips": {
           "exact": "Pfade gelten exakt: `/newsletter` passt nicht auf `/newsletter/abc`.",
@@ -1851,7 +1885,8 @@
       "upstream_forbidden": "Die Richtlinie auf dem Server erlaubt diesen Aufruf nicht. Installiere die angezeigte Richtlinie.",
       "upstream_unreachable": "Das Gate erreicht die API nicht. Erlaubt dein Hosting ausgehende HTTPS-Verbindungen?",
       "upstream_timeout": "Die API hat dem Gate zu lange nicht geantwortet.",
-      "internal_error": "Im Gate ist ein Fehler aufgetreten. `php moat-gate.php status` auf dem Server zeigt mehr."
+      "internal_error": "Im Gate ist ein Fehler aufgetreten. `php moat-gate.php status` auf dem Server zeigt mehr.",
+      "client_unauthorized": "Die Route verlangt eine Client-Prüfung, und die Anfrage hat sie nicht bestanden."
     },
     "noGate": "Für eine Testanfrage braucht das Projekt ein Gate. Hole den Schritt «Erstes Gate» nach.",
     "notices": {
@@ -1867,7 +1902,8 @@
       "route_unknown": "Die Route ist nicht mehr im Projekt.",
       "url_invalid": "Die Adresse passt nicht. Sie beginnt mit https:// und hat keinen Teil nach ? oder #.",
       "body_invalid": "Der Inhalt der Anfrage ist kein gültiges JSON.",
-      "not_confirmed": "Die Testanfrage wurde nicht gesendet: Die Adresse wurde im Fenster von Moat nicht bestätigt."
+      "not_confirmed": "Die Testanfrage wurde nicht gesendet: Die Adresse wurde im Fenster von Moat nicht bestätigt.",
+      "origin_invalid": "Diese Website steht nicht unter den erlaubten Websites der Route."
     },
     "title": "Aus Vorlage",
     "intro": "Ein Recipe richtet eine fertige Route für einen häufigen Zweck ein. Danach versiegelst du das Secret, signierst ein Bundle und schickst eine Testanfrage durch dein Gate.",

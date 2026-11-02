@@ -245,6 +245,8 @@ describe('«Route aus Vorlage» in Routen (FR-43)', () => {
       contentType: 'application/json',
       excerpt: '{"error":"gate_not_configured"}',
       truncated: false,
+      headers: {},
+      durationMs: 12,
     });
     await settle(harness);
     const outcome = el.querySelector('[data-recipe-outcome]');
@@ -259,6 +261,8 @@ describe('«Route aus Vorlage» in Routen (FR-43)', () => {
       contentType: 'application/json',
       excerpt: '{"id":"501"}',
       truncated: false,
+      headers: {},
+      durationMs: 12,
     });
     await settle(harness);
     expect(text(el.querySelector('[data-recipe-outcome]'))).toContain(
@@ -295,6 +299,8 @@ describe('outcomeOf', () => {
       contentType: 'application/json',
       excerpt,
       truncated: false,
+      headers: {},
+      durationMs: 12,
     });
 
   it("reads the gate's own error code", () => {

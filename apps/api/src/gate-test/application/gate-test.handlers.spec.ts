@@ -33,6 +33,8 @@ class FakeClient extends GateClientPort {
       contentType: 'application/json',
       excerpt: '{"id":"1"}',
       truncated: false,
+      headers: { 'content-type': 'application/json' },
+      durationMs: 5,
     };
   }
   async probe(): Promise<never> {
@@ -168,6 +170,44 @@ describe('«Testen» through the gate (FR-73, T-59)', () => {
     ).toEqual({ status: 'refused', code: 'not_confirmed' });
     expect(confirmation.asked).toEqual([`en ${GATE}/newsletter`]);
     expect(client.sent).toEqual([]);
+  });
+
+  it("sends one of the route's own origins as Origin, and refuses any other (FR-15)", async () => {
+    const { id, client, test } = setup(
+      applyRecipe(BASE, 'hubspot-newsletter', {
+        origins: ['https://www.example.ch'],
+      }),
+    );
+    expect(
+      await test.execute(
+        new TestGateCommand(
+          id,
+          GATE,
+          'newsletter',
+          BODY,
+          '',
+          'https://evil.example',
+        ),
+      ),
+    ).toEqual({ status: 'refused', code: 'origin_invalid' });
+    expect(client.sent).toEqual([]);
+    await test.execute(
+      new TestGateCommand(
+        id,
+        GATE,
+        'newsletter',
+        BODY,
+        '',
+        'https://www.example.ch',
+      ),
+    );
+    expect(client.sent[0]?.origin).toBe('https://www.example.ch');
+  });
+
+  it('sends no Origin unless one was chosen', async () => {
+    const { id, client, test } = setup();
+    await test.execute(new TestGateCommand(id, GATE, 'newsletter', BODY, ''));
+    expect(client.sent[0]?.origin).toBeUndefined();
   });
 
   it('refuses a damaged moat.yaml', async () => {

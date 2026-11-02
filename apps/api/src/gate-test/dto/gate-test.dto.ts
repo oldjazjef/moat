@@ -29,6 +29,12 @@ export class GateTestDto {
   @IsOptional()
   @IsIn(['de-CH', 'en'])
   locale?: 'de-CH' | 'en';
+
+  /** Send with this Origin, as a browser on that site would; one of the route's origins. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_GATE_URL)
+  origin?: string;
 }
 
 /** `POST /api/projects/:id/hardening-check` (DT-07). */

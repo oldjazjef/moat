@@ -51,7 +51,7 @@ Four components (ANFORDERUNGEN.md, header):
 > shows the box key fingerprint, `POST …/gates` pins it only with that fingerprint; core
 > `planGate`), Erstes Recipe (core `RECIPES` + `applyRecipe`, FR-43, as the `applyRecipe` edit;
 > `GET /api/recipes`; seal and sign as in «Gates»; `GET /api/projects/:id/policy` = `suggestPolicy`;
-> «Testen» = `POST /api/projects/:id/test-request` in `apps/api/src/gate-test/`, desktop only, the main
+> «Testen» = `POST /api/projects/:id/test-request` in `apps/api/src/gate-test/`, desktop only (also the request tester per route in «Routen» → «Testen», `features/routes/components/request-tester`: optional `origin` from the route's own origins, answer with status, `durationMs`, the `SHOWN_HEADERS` and the pretty-printed body), the main
 > process confirms each new address in its own dialog, HTTPS to public addresses pinned after the
 > check, T-59), Zusammenfassung. The check from outside in the desktop (DT-07): «Von aussen prüfen»
 > (`mt-hardening-check`, in the wizard summary and per gate in «Gates») →

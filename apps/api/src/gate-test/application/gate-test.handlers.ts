@@ -23,7 +23,7 @@ import { GateTestConfirmationPort } from '../ports/gate-test-confirmation.port';
 import { gateTestTarget } from './gate-test-target';
 
 /** A test body larger than any recipe's; the gate checks the route's own limit. */
-export const MAX_TEST_BODY = 16 * 1024;
+export const MAX_TEST_BODY = 64 * 1024;
 const WITH_BODY = new Set(['POST', 'PUT', 'PATCH']);
 
 export type GateTestRefusal =
@@ -32,6 +32,8 @@ export type GateTestRefusal =
   | 'route_unknown'
   | 'url_invalid'
   | 'body_invalid'
+  /** The Origin is not one of the route's origins in moat.yaml. */
+  | 'origin_invalid'
   /** The person did not confirm the address in the desktop's own dialog (T-59). */
   | 'not_confirmed';
 
@@ -61,6 +63,8 @@ export class TestGateCommand extends Command<GateTestResult> {
     readonly body: string,
     /** The page's language, for the confirmation dialog only. */
     readonly locale: string,
+    /** Send as a browser on this site would: one of the route's own origins, or none. */
+    readonly origin: string | null = null,
   ) {
     super();
   }
@@ -120,12 +124,15 @@ export class TestGateHandler implements ICommandHandler<TestGateCommand> {
     const hasBody = WITH_BODY.has(route.method);
     if (hasBody ? !isJson(command.body) : command.body.trim() !== '')
       return { status: 'refused', code: 'body_invalid' };
+    if (command.origin !== null && !route.origins.includes(command.origin))
+      return { status: 'refused', code: 'origin_invalid' };
     if (!(await this.confirmation.confirm(url, command.locale)))
       return { status: 'refused', code: 'not_confirmed' };
     const answer = await this.client.send({
       url,
       method: route.method,
       body: hasBody ? command.body : null,
+      ...(command.origin === null ? {} : { origin: command.origin }),
     });
     return { status: 'sent', answer };
   }
