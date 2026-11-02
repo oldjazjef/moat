@@ -1,6 +1,6 @@
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { BrowserWindow, type IpcMainInvokeEvent } from 'electron';
+import { dialogUrl } from './lib/dialog-protocol';
 
 /**
  * A modal window of the main process for a step the page must not do itself (DT-15: signing;
@@ -112,10 +112,7 @@ export class DialogSlot<Session, Result> {
         if (busy > 0 && !done) event.preventDefault();
       });
       window.on('closed', () => dialog.finish(options.cancelled));
-      void window.loadURL(
-        options.web?.url ??
-          pathToFileURL(join(options.appDir, options.page)).href,
-      );
+      void window.loadURL(options.web?.url ?? dialogUrl(options.page));
     });
   }
 }

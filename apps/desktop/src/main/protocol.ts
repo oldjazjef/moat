@@ -11,6 +11,11 @@ import {
   forwardHeaders,
   routeRequest,
 } from './lib/web-protocol';
+import {
+  DIALOG_SCHEME,
+  dialogContentType,
+  dialogFileOf,
+} from './lib/dialog-protocol';
 
 /** Must run before `app` is ready. */
 export function registerAppScheme(): void {
@@ -25,7 +30,31 @@ export function registerAppScheme(): void {
         codeCache: true,
       },
     },
+    // The dialog windows' static pages (lib/dialog-protocol.ts): no fetch, no streams.
+    { scheme: DIALOG_SCHEME, privileges: { standard: true, secure: true } },
   ]);
+}
+
+/**
+ * Serves `moat-dialog://local/<page>`: exactly the files of the packaged `dialogs/` folder, read
+ * by the main process (which reads app.asar); anything else is a 404.
+ */
+export function handleDialogScheme(dialogsDir: string): void {
+  protocol.handle(DIALOG_SCHEME, async (request) => {
+    const file = dialogFileOf(request.url);
+    if (file === null) return new Response('Not found', { status: 404 });
+    try {
+      return new Response(await readFile(join(dialogsDir, file)), {
+        headers: {
+          'content-type': dialogContentType(file),
+          'x-content-type-options': 'nosniff',
+          'cache-control': 'no-store',
+        },
+      });
+    } catch {
+      return new Response('Not found', { status: 404 });
+    }
+  });
 }
 
 const PAGE_HEADERS = {
