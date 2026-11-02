@@ -71,6 +71,7 @@ export class GateTestController {
         body.route,
         body.body,
         body.locale ?? '',
+        body.origin ?? null,
       ),
     );
     if (result.status === 'not_found') throw new NotFoundException();

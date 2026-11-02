@@ -247,6 +247,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
       'body',
       'bundle',
       'check',
+      { id: 'test', only: 'desktop' },
     ),
     tips: items('exact', 'quote', 'requireBody'),
     links: [PROJECTS],

@@ -79,6 +79,13 @@
     [upstreams]="service.upstreamNames()"
     (closed)="service.close()"
   />
+  } @if (service.testingRow(); as row) {
+  <mt-request-tester
+    [projectId]="resource.id()"
+    [name]="row.name"
+    [route]="row.route"
+    (closed)="service.testing.set(null)"
+  />
   } @if (service.routes().length === 0) {
   <p class="text-muted-foreground text-sm">{{ 'routes.empty' | translate }}</p>
   } @else {

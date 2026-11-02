@@ -71,13 +71,16 @@ describe('HttpsGateClient (T-59)', () => {
       method: 'POST',
       body: '{"a":1}',
     });
-    expect(answer).toEqual({
+    expect(answer).toMatchObject({
       status: 'answered',
       httpStatus: 503,
       contentType: 'application/json',
       excerpt: '{"error":"gate_not_configured"}',
       truncated: false,
     });
+    expect(
+      answer.status === 'answered' && answer.durationMs,
+    ).toBeGreaterThanOrEqual(0);
     expect(seen.method).toBe('POST');
     expect(seen.url).toBe('/moat-gate.php/newsletter');
     expect(seen.body).toBe('{"a":1}');
@@ -85,6 +88,30 @@ describe('HttpsGateClient (T-59)', () => {
     // No Origin, no cookie: nothing the website's visitors would not send either.
     expect(seen.headers?.['origin']).toBeUndefined();
     expect(seen.headers?.['cookie']).toBeUndefined();
+  });
+
+  it('sends the chosen Origin and shows only the listed answer headers', async () => {
+    const { url, seen } = await fakeGate(() => ({
+      status: 200,
+      body: '{}',
+      headers: {
+        'X-RateLimit-Remaining': '9',
+        'Set-Cookie': 'session=secret',
+        'X-Upstream-Secret': 'nope',
+      },
+    }));
+    const answer = await new HttpsGateClient(env(true)).send({
+      url,
+      method: 'POST',
+      body: '{}',
+      origin: 'https://www.example.ch',
+    });
+    expect(seen.headers?.['origin']).toBe('https://www.example.ch');
+    if (answer.status !== 'answered') throw new Error('no answer');
+    expect(answer.headers['x-ratelimit-remaining']).toBe('9');
+    expect(answer.headers['content-type']).toBe('application/json');
+    expect(Object.keys(answer.headers).sort()).not.toContain('set-cookie');
+    expect(Object.keys(answer.headers)).not.toContain('x-upstream-secret');
   });
 
   it('setup (T-73): a GET with the token header and nothing else extra', async () => {

@@ -6,7 +6,29 @@ export interface GateRequest {
   readonly body: string | null;
   /** Extra headers; set by the client's own methods only, never by a caller's input. */
   readonly headers?: Readonly<Record<string, string>>;
+  /**
+   * The `Origin` to send, as a browser on that site would: only one of the route's own origins
+   * from moat.yaml (the handler checks), never free text.
+   */
+  readonly origin?: string;
 }
+
+/** Answer headers the request tester shows; anything else is not passed on. */
+export const SHOWN_HEADERS = [
+  'content-type',
+  'content-length',
+  'cache-control',
+  'retry-after',
+  'vary',
+  'access-control-allow-origin',
+  'access-control-allow-methods',
+  'access-control-allow-headers',
+  'access-control-expose-headers',
+  'access-control-max-age',
+  'x-ratelimit-limit',
+  'x-ratelimit-remaining',
+  'x-ratelimit-reset',
+] as const;
 
 export type GateAnswer =
   | {
@@ -17,6 +39,10 @@ export type GateAnswer =
       readonly excerpt: string;
       /** True when the body was longer than what was read. */
       readonly truncated: boolean;
+      /** SHOWN_HEADERS that came back, lower-case names, values cut to 256 characters. */
+      readonly headers: Readonly<Record<string, string>>;
+      /** From sending the request to the end of the answer, in milliseconds. */
+      readonly durationMs: number;
     }
   | {
       readonly status: 'failed';

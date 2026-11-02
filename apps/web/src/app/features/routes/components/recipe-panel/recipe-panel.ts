@@ -61,6 +61,7 @@ export const GATE_CODES = [
   'body_too_large',
   'body_invalid',
   'origin_forbidden',
+  'client_unauthorized',
   'request_unbounded',
   'rate_limited',
   'quota_exceeded',

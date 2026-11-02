@@ -101,7 +101,11 @@ import { registerKeyDialogIpc, showKeyDialog } from './key-window';
 import { registerSealDialogIpc, showSealDialog } from './seal-window';
 import { registerSignDialogIpc, showSignDialog } from './sign-window';
 import { APP_ORIGIN, isAppUrl } from './lib/web-protocol';
-import { handleAppScheme, registerAppScheme } from './protocol';
+import {
+  handleAppScheme,
+  handleDialogScheme,
+  registerAppScheme,
+} from './protocol';
 import {
   registerDatabaseDialogIpc,
   showDatabaseDialog,
@@ -268,6 +272,7 @@ async function start(): Promise<void> {
   }
 
   handleAppScheme(join(appDir, 'web'), api);
+  handleDialogScheme(join(appDir, 'dialogs'));
   // The app needs no camera, microphone, notifications, … — refuse every permission request.
   session.defaultSession.setPermissionRequestHandler((_wc, _p, callback) =>
     callback(false),

@@ -40,6 +40,9 @@ export type GateAnswer =
       readonly contentType: string | null;
       readonly excerpt: string;
       readonly truncated: boolean;
+      /** The answer headers worth showing (SHOWN_HEADERS in the API), lower-case names. */
+      readonly headers: Readonly<Record<string, string>>;
+      readonly durationMs: number;
     }
   | { readonly status: 'failed'; readonly reason: GateFailure };
 
@@ -50,5 +53,6 @@ export const GATE_TEST_REFUSALS = [
   'route_unknown',
   'url_invalid',
   'body_invalid',
+  'origin_invalid',
   'not_confirmed',
 ] as const;
